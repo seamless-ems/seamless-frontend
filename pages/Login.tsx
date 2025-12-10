@@ -14,6 +14,25 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const handleLogin = async (role: 'ADMIN' | 'SPEAKER') => {
     setLoading(role);
     try {
+      if (role === 'SPEAKER') {
+        // redirect to Google OAuth
+        const baseUrl = (import.meta as any).env?.VITE_API_URL || '';
+        const redirectUri = `${window.location.origin}/#/oauth-callback`;
+        const url = `${baseUrl.replace(/\/$/, '')}/google/login?redirect=${encodeURIComponent(redirectUri)}`;
+        window.location.assign(url);
+        return;
+      }
+
+      if (role === 'ADMIN') {
+        // Start admin OAuth flow which will redirect back to /#/admin-callback
+        const baseUrl = (import.meta as any).env?.VITE_API_URL || '';
+        const redirectUri = `${window.location.origin}/#/admin-callback`;
+        const url = `${baseUrl.replace(/\/$/, '')}/google/admin/login?redirect=${encodeURIComponent(redirectUri)}`;
+        window.location.assign(url);
+        return;
+      }
+
+      // Fallback: Admin mock/demo login
       const user = await MockGoogleService.login(role);
       onLogin(user);
     } catch (e) {

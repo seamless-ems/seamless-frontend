@@ -4,28 +4,29 @@ import { Speaker, SpeakerStatus, User } from '../types';
 const MOCK_SPEAKERS: Speaker[] = [
   {
     id: '1',
-    fullName: 'Alice Johnson',
+    firstName: 'Alice',
+    lastName: 'Johnson',
     email: 'alice@techcorp.com',
     companyName: 'TechCorp',
     companyRole: 'CTO',
     bio: 'Veteran software engineer with 20 years of experience in distributed systems.',
-    talkTitle: 'Scaling to Infinity',
-    talkDescription: 'A deep dive into how we scaled our systems to handle 1M concurrent users.',
+    // legacy talk fields removed; keep as notes where helpful
+    notes: 'Talk: Scaling to Infinity — A deep dive into how we scaled our systems to handle 1M concurrent users.',
     status: SpeakerStatus.APPROVED,
     submissionDate: '2023-10-01T10:00:00Z',
     lastUpdated: '2023-10-01T10:00:00Z',
-    profilePhotoUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
-    companyLogoUrl: 'https://ui-avatars.com/api/?name=Tech+Corp&background=0D8ABC&color=fff&size=128',
+    headshotDriveUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
+    companyLogoDriveUrl: 'https://ui-avatars.com/api/?name=Tech+Corp&background=0D8ABC&color=fff&size=128',
   },
   {
     id: '2',
-    fullName: 'Bob Smith',
+    firstName: 'Bob',
+    lastName: 'Smith',
     email: 'bob@startup.io',
     companyName: 'StartupIO',
     companyRole: 'Founder',
     bio: 'Serial entrepreneur and AI enthusiast.',
-    talkTitle: 'AI in 2024',
-    talkDescription: 'Predictions for the future of Generative AI.',
+    notes: 'Talk: AI in 2024 — Predictions for the future of Generative AI.',
     status: SpeakerStatus.PENDING_REVIEW,
     submissionDate: '2023-10-05T14:30:00Z',
     lastUpdated: '2023-10-05T14:30:00Z',
@@ -62,7 +63,7 @@ export const MockGoogleService = {
     // In a real app, this would match the logged in email
     const speakers = getStoredSpeakers();
     const demoSpeaker = speakers[0]; 
-    return { id: demoSpeaker.id, name: demoSpeaker.fullName, email: demoSpeaker.email, role: 'SPEAKER' };
+    return { id: demoSpeaker.id, name: `${demoSpeaker.firstName || ''} ${demoSpeaker.lastName || ''}`.trim(), email: demoSpeaker.email, role: 'SPEAKER' };
   },
 
   // Simulate Sheet: Get All Rows
@@ -84,18 +85,20 @@ export const MockGoogleService = {
     const speakers = getStoredSpeakers();
     const newSpeaker: Speaker = {
       id: crypto.randomUUID(),
-      fullName: data.fullName || '',
+      // When creating via the intake form we may get a mix of legacy and normalized fields.
+      firstName: (data.firstName || '').toString() || '',
+      lastName: (data.lastName || '').toString() || '',
       email: data.email || '',
       companyName: data.companyName || '',
       companyRole: data.companyRole || '',
       bio: data.bio || '',
-      talkTitle: data.talkTitle || '',
-      talkDescription: data.talkDescription || '',
+      // preserve event association when provided
+      eventId: data.eventId || undefined,
       status: SpeakerStatus.DRAFT,
       submissionDate: new Date().toISOString(),
       lastUpdated: new Date().toISOString(),
-      profilePhotoUrl: data.profilePhotoUrl || '',
-      companyLogoUrl: data.companyLogoUrl || '',
+  headshotDriveUrl: ((data.headshotDriveUrl as string) || ((data as any).profilePhotoUrl as string) || '') as string,
+  companyLogoDriveUrl: ((data.companyLogoDriveUrl as string) || ((data as any).companyLogoUrl as string) || '') as string,
     };
     speakers.push(newSpeaker);
     saveSpeakers(speakers);

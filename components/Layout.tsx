@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calendar, Users, FileText, BarChart3, LogOut } from 'lucide-react';
+import { Calendar, Users, FileText, BarChart3, LogOut, Settings as SettingsIcon } from 'lucide-react';
 import { User } from '../types';
 import { Logo } from './Logo';
 
@@ -41,7 +41,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, activePage, onNa
         </div>
 
         <nav className="p-4 space-y-1">
-          <NavItem page="schedule" icon={Calendar} label="Schedule" />
+          {/* <NavItem page="schedule" icon={Calendar} label="Schedule" /> */}
           
           {!user && (
             <NavItem page="intake" icon={FileText} label="Speaker Registration" />
@@ -53,7 +53,9 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, activePage, onNa
 
           {user?.role === 'ADMIN' && (
             <>
-              <NavItem page="admin" icon={BarChart3} label="Admin Dashboard" />
+              {/* <NavItem page="admin" icon={BarChart3} label="Admin Dashboard" /> */}
+              <NavItem page="events" icon={FileText} label="Events" />
+              <NavItem page="settings" icon={SettingsIcon} label="Settings" />
             </>
           )}
         </nav>

@@ -1,9 +1,9 @@
 {
-  "name": "seamless-ems",
+  "name": "seamless-frontend",
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "homepage": "https://seamless-ems.github.io/sems-frontend",
+  "homepage": "https://seamless-ems.github.io/seamless-frontend",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
