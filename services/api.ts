@@ -58,7 +58,10 @@ export async function apiFetch<T = any>(
     const id = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
-      const res = await fetch(url, { ...rest, method, headers: finalHeaders, body, signal: controller.signal, credentials: 'include' });
+      // Allow callers to specify credentials in options; don't force 'include' here
+      const fetchOptions = { ...rest, method, headers: finalHeaders, body, signal: controller.signal } as RequestInit;
+      if (options.credentials) fetchOptions.credentials = options.credentials;
+      const res = await fetch(url, fetchOptions);
       clearTimeout(id);
 
       const contentType = res.headers.get('content-type') || '';
