@@ -8,7 +8,6 @@ export default defineConfig(({ mode }) => {
         port: 5173,
         host: '0.0.0.0',
       },
-      base: mode === 'production' ? '/seamless-frontend/' : '/',
       plugins: [react()],
       resolve: {
         alias: {
