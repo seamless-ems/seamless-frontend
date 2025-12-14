@@ -1,3 +1,4 @@
+import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -14,32 +15,122 @@ import Subscription from "./pages/Subscription";
 import CreateEvent from "./pages/CreateEvent";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import Auth from "./pages/Auth";
+import ProtectedRoute from "./components/ProtectedRoute";
+import TokenProcessor from "@/components/TokenProcessor";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/events" element={<Events />} />
-          <Route path="/events/new" element={<CreateEvent />} />
-          <Route path="/event/:id" element={<EventDashboard />} />
-          <Route path="/event/:id/speakers" element={<SpeakerModule />} />
-          <Route path="/event/:id/speakers/:speakerId" element={<SpeakerPortal />} />
-          <Route path="/team" element={<Team />} />
-          <Route path="/subscription" element={<Subscription />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="/speaker-intake/:eventId" element={<SpeakerIntakeForm />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+// Token processing is handled by `src/components/TokenProcessor.tsx`
+
+const App = () => {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <TokenProcessor />
+          <Routes>
+            <Route path="/login" element={<Auth />} />
+            <Route path="/signup" element={<Auth />} />
+
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <Index />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/events"
+              element={
+                <ProtectedRoute>
+                  <Events />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/events/new"
+              element={
+                <ProtectedRoute>
+                  <CreateEvent />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/event/:id"
+              element={
+                <ProtectedRoute>
+                  <EventDashboard />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/event/:id/speakers"
+              element={
+                <ProtectedRoute>
+                  <SpeakerModule />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/event/:id/speakers/:speakerId"
+              element={
+                <ProtectedRoute>
+                  <SpeakerPortal />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/team"
+              element={
+                <ProtectedRoute>
+                  <Team />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/subscription"
+              element={
+                <ProtectedRoute>
+                  <Subscription />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/settings"
+              element={
+                <ProtectedRoute>
+                  <Settings />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/speaker-intake/:eventId"
+              element={
+                <ProtectedRoute>
+                  <SpeakerIntakeForm />
+                </ProtectedRoute>
+              }
+            />
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;

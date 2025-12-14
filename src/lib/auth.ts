@@ -1,0 +1,32 @@
+const TOKEN_KEY = "access_token";
+
+export function setToken(accessToken: string) {
+  try {
+    console.log("Setting token", accessToken);
+    localStorage.setItem(TOKEN_KEY, accessToken);
+  } catch (e) {
+    // ignore
+  }
+}
+
+export function getToken(): string | null {
+  try {
+    return localStorage.getItem(TOKEN_KEY);
+  } catch (e) {
+    return null;
+  }
+}
+
+export function clearToken() {
+  try {
+    localStorage.removeItem(TOKEN_KEY);
+  } catch (e) {
+    // ignore
+  }
+}
+
+export default {
+  setToken,
+  getToken,
+  clearToken,
+};

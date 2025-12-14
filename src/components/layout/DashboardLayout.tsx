@@ -37,6 +37,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { useNavigate } from "react-router-dom";
+import { clearToken } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 
 const accountNavItems = [
@@ -158,6 +160,8 @@ function AppSidebar({ eventId }: { eventId?: string }) {
 }
 
 export function DashboardLayout({ children, eventId }: DashboardLayoutProps) {
+  const navigate = useNavigate();
+
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full">
@@ -213,7 +217,18 @@ export function DashboardLayout({ children, eventId }: DashboardLayoutProps) {
                   <DropdownMenuItem>Profile</DropdownMenuItem>
                   <DropdownMenuItem>Settings</DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem className="text-destructive">
+                  <DropdownMenuItem
+                    className="text-destructive"
+                    onSelect={() => {
+                      try {
+                        clearToken();
+                      } catch (e) {
+                        // ignore
+                      }
+                      // navigate to login page
+                      navigate("/login");
+                    }}
+                  >
                     Sign Out
                   </DropdownMenuItem>
                 </DropdownMenuContent>
