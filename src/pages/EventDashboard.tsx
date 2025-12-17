@@ -1,4 +1,6 @@
 import { useParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { getJson } from "@/lib/api";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { ModuleCard } from "@/components/dashboard/ModuleCard";
 import { StatsCard } from "@/components/dashboard/StatsCard";
@@ -16,30 +18,85 @@ import {
   ExternalLink,
 } from "lucide-react";
 
-// Mock event data
-const mockEvent = {
-  id: "1",
-  title: "Tech Summit 2025",
-  dates: "Mar 15-17, 2025",
-  location: "San Francisco, CA",
-  status: "active" as const,
-  speakerCount: 24,
-  attendeeCount: 450,
-  fromEmail: "events@techsummit.com",
-  replyEmail: "hello@techsummit.com",
-  googleDriveLinked: true,
-  rootFolder: "Tech Summit 2025",
-  modules: {
-    speaker: { enabled: true, count: 24, submitted: 18 },
-    schedule: { enabled: true, sessions: 32 },
-    content: { enabled: false },
-    attendee: { enabled: false },
-    app: { enabled: false },
-  },
-};
+
 
 export default function EventDashboard() {
   const { id } = useParams();
+
+  const { data: rawEvent, isLoading, error } = useQuery<any, Error>({
+    queryKey: ["event", id],
+    queryFn: () => getJson<any>(`/events/${id}`),
+    enabled: Boolean(id),
+  });
+
+  // Normalize API response (snake_case fields, modules array) into a shape the UI expects
+  const event = (() => {
+    if (!rawEvent) return null;
+    // Format dates
+    const formatDate = (iso?: string) => {
+      try {
+        return iso ? new Date(iso).toLocaleDateString() : "";
+      } catch {
+        return "";
+      }
+    };
+
+    const start = formatDate(rawEvent.start_date);
+    const end = formatDate(rawEvent.end_date);
+    const dates = start && end ? `${start} — ${end}` : start || end || "";
+
+    return {
+      ...rawEvent,
+      title: rawEvent.title,
+      status: rawEvent.status,
+      dates,
+      location: rawEvent.location,
+      speakerCount: rawEvent.speaker_count ?? rawEvent.speakers_count ?? 0,
+      attendeeCount: rawEvent.attendee_count ?? 0,
+      fromEmail: rawEvent.from_email ?? rawEvent.fromEmail,
+      googleDriveLinked: rawEvent.google_drive_linked ?? false,
+      rootFolder: rawEvent.root_folder ?? rawEvent.rootFolder ?? "",
+      // keep modules as array; we'll map to the shape we need below
+      modules: Array.isArray(rawEvent.modules) ? rawEvent.modules : [],
+    };
+  })();
+
+  // Build a modules map from modules array for backward compatibility with the UI
+  const modules = (() => {
+    const map: Record<string, any> = {};
+    (event?.modules ?? []).forEach((m: any) => {
+      const key = m.name || m.id;
+      map[key] = {
+        enabled: !!m.enabled,
+        // copy over other possible properties
+        ...m,
+      };
+    });
+
+    return {
+      speaker: map.speaker ?? { enabled: false, submitted: 0 },
+      schedule: map.schedule ?? { enabled: false, sessions: 0 },
+      content: map.content ?? { enabled: false },
+      attendee: map.attendee ?? { enabled: false },
+      app: map.app ?? { enabled: false },
+    };
+  })();
+
+  if (isLoading) {
+    return (
+      <DashboardLayout eventId={id}>
+        <div className="py-16 text-center">Loading event…</div>
+      </DashboardLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <DashboardLayout eventId={id}>
+        <div className="py-16 text-center text-destructive">Error loading event: {String(error.message)}</div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout eventId={id}>
@@ -50,32 +107,32 @@ export default function EventDashboard() {
             <div className="space-y-3">
               <div className="flex items-center gap-3">
                 <h1 className="font-display text-3xl font-bold text-foreground">
-                  {mockEvent.title}
+                  {event?.title ?? "Untitled Event"}
                 </h1>
                 <Badge
                   variant="outline"
                   className="bg-primary/10 text-primary border-primary/20 capitalize"
                 >
-                  {mockEvent.status}
+                  {event?.status}
                 </Badge>
               </div>
 
               <div className="flex flex-wrap items-center gap-4 text-muted-foreground">
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4" />
-                  <span>{mockEvent.dates}</span>
+                  <span>{event?.dates}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <MapPin className="h-4 w-4" />
-                  <span>{mockEvent.location}</span>
+                  <span>{event?.location}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Mail className="h-4 w-4" />
-                  <span>{mockEvent.fromEmail}</span>
+                  <span>{event?.fromEmail}</span>
                 </div>
               </div>
 
-              {mockEvent.googleDriveLinked && (
+              {event?.googleDriveLinked && (
                 <div className="flex items-center gap-2 text-sm">
                   <Badge
                     variant="outline"
@@ -85,7 +142,7 @@ export default function EventDashboard() {
                     Google Drive Connected
                   </Badge>
                   <span className="text-muted-foreground">
-                    → {mockEvent.rootFolder}
+                    → {event?.rootFolder}
                   </span>
                 </div>
               )}
@@ -112,28 +169,28 @@ export default function EventDashboard() {
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           <StatsCard
             title="Speakers"
-            value={mockEvent.speakerCount}
-            subtitle={`${mockEvent.modules.speaker.submitted} forms submitted`}
+            value={event?.speakerCount ?? 0}
+            subtitle={`${modules?.speaker?.submitted ?? 0} forms submitted`}
             icon={<Mic2 className="h-6 w-6" />}
             variant="primary"
           />
           <StatsCard
             title="Sessions"
-            value={mockEvent.modules.schedule.sessions}
+            value={modules?.schedule?.sessions ?? 0}
             icon={<Calendar className="h-6 w-6" />}
             variant="accent"
           />
-          <StatsCard
+          {/* <StatsCard
             title="Attendees"
-            value={mockEvent.attendeeCount}
+            value={event?.attendeeCount ?? 0}
             icon={<Users className="h-6 w-6" />}
-          />
-          <StatsCard
+          /> */}
+          {/* <StatsCard
             title="Content Files"
             value={42}
             subtitle="12 pending review"
             icon={<FileText className="h-6 w-6" />}
-          />
+          /> */}
         </div>
 
         {/* Modules */}
@@ -147,10 +204,10 @@ export default function EventDashboard() {
               description="Manage speaker intake forms, assets, and promo cards"
               icon={<Mic2 className="h-6 w-6" />}
               href={`/event/${id}/speakers`}
-              enabled={mockEvent.modules.speaker.enabled}
+              enabled={modules?.speaker?.enabled ?? false}
               stats={{
                 label: "Registered Speakers",
-                value: mockEvent.speakerCount,
+                value: event?.speakerCount ?? 0,
               }}
               color="speaker"
               index={0}
@@ -160,20 +217,20 @@ export default function EventDashboard() {
               description="Create and publish your event schedule from Google Sheets"
               icon={<Calendar className="h-6 w-6" />}
               href={`/event/${id}/schedule`}
-              enabled={mockEvent.modules.schedule.enabled}
+              enabled={modules?.schedule?.enabled ?? false}
               stats={{
                 label: "Sessions",
-                value: mockEvent.modules.schedule.sessions,
+                value: modules?.schedule?.sessions ?? 0,
               }}
               color="schedule"
               index={1}
             />
-            <ModuleCard
+            {/* <ModuleCard
               title="Content Management"
               description="Centralized hub for presentations, videos, and files"
               icon={<FileText className="h-6 w-6" />}
               href={`/event/${id}/content`}
-              enabled={mockEvent.modules.content.enabled}
+              enabled={modules?.content?.enabled ?? false}
               color="content"
               comingSoon
               index={2}
@@ -183,16 +240,16 @@ export default function EventDashboard() {
               description="Manage attendee registrations and communications"
               icon={<Users className="h-6 w-6" />}
               href={`/event/${id}/attendees`}
-              enabled={mockEvent.modules.attendee.enabled}
+              enabled={modules?.attendee?.enabled ?? false}
               color="attendee"
               comingSoon
               index={3}
-            />
+            /> */}
           </div>
         </div>
 
         {/* Activity Feed */}
-        <div className="rounded-xl border border-border bg-card p-6">
+        {/* <div className="rounded-xl border border-border bg-card p-6">
           <h3 className="font-display text-xl font-semibold text-foreground mb-4">
             Recent Activity
           </h3>
@@ -237,7 +294,7 @@ export default function EventDashboard() {
               </div>
             ))}
           </div>
-        </div>
+        </div> */}
       </div>
     </DashboardLayout>
   );

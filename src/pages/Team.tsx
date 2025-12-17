@@ -39,30 +39,10 @@ import {
 import { Plus, MoreVertical, Mail, Shield, User, Users } from "lucide-react";
 import { TeamMember } from "@/types/event";
 import { cn } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
+import { getJson } from "@/lib/api";
 
-const mockTeamMembers: TeamMember[] = [
-  {
-    id: "1",
-    name: "James Demo",
-    email: "james@example.com",
-    role: "admin",
-    avatar: "",
-  },
-  {
-    id: "2",
-    name: "Sarah Connor",
-    email: "sarah@example.com",
-    role: "member",
-    avatar: "",
-  },
-  {
-    id: "3",
-    name: "Mike Johnson",
-    email: "mike@example.com",
-    role: "viewer",
-    avatar: "",
-  },
-];
+// team members are fetched from API
 
 const roleConfig = {
   admin: {
@@ -93,6 +73,13 @@ export default function Team() {
     setInviteRole("member");
     setIsDialogOpen(false);
   };
+
+  const { data: teamMembers, isLoading } = useQuery<TeamMember[], Error>({
+    queryKey: ["account", "team"],
+    queryFn: () => getJson<TeamMember[]>("/account/team"),
+  });
+
+  const members = teamMembers ?? [];
 
   return (
     <DashboardLayout>
@@ -180,7 +167,7 @@ export default function Team() {
         {/* Role Cards */}
         <div className="grid gap-4 sm:grid-cols-3">
           {Object.entries(roleConfig).map(([key, config]) => {
-            const count = mockTeamMembers.filter((m) => m.role === key).length;
+            const count = isLoading ? "…" : members.filter((m) => m.role === key).length;
             return (
               <div
                 key={key}
@@ -214,7 +201,7 @@ export default function Team() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {mockTeamMembers.map((member) => {
+              {members.map((member) => {
                 const role = roleConfig[member.role];
                 return (
                   <TableRow key={member.id} className="group">

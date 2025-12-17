@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
+import { getJson, createSpeakerIntake, presignUpload } from "@/lib/api";
 import {
   Form,
   FormControl,
@@ -92,26 +94,81 @@ export default function SpeakerIntakeForm() {
 
   const onSubmit = async (data: SpeakerIntakeFormData) => {
     setIsSubmitting(true);
-    
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    
-    console.log("Form submitted:", {
-      ...data,
-      headshot,
-      companyLogo,
-    });
-    
-    toast.success("Registration submitted successfully!");
-    setIsSubmitting(false);
+    try {
+      if (!eventId) {
+        toast.error("Invalid event");
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Build JSON payload with snake_case keys expected by the API
+      const payload: Record<string, any> = {
+        first_name: data.firstName,
+        last_name: data.lastName,
+        email: data.email,
+        company_name: data.companyName,
+        company_role: data.companyRole,
+        bio: data.bio,
+      };
+
+      // If images were selected, presign and upload them, then include public URLs
+      if (headshot) {
+        try {
+          const presign = await presignUpload({ filename: headshot.name, content_type: headshot.type, owner_type: "speaker", owner_id: eventId! });
+          // presign may return fields: url or presigned_url; handle both
+          const uploadUrl = presign.url ?? presign.presigned_url ?? presign.upload_url;
+          if (uploadUrl) {
+            await fetch(uploadUrl, {
+              method: "PUT",
+              headers: { "Content-Type": headshot.type },
+              body: headshot,
+            });
+            // backend expects `headshot` field (AnyUrl). Use public_url when provided.
+            payload.headshot = presign.public_url ?? presign.url ?? uploadUrl;
+          }
+        } catch (err) {
+          console.error("headshot upload failed", err);
+        }
+      }
+
+      if (companyLogo) {
+        try {
+          const presign = await presignUpload({ filename: companyLogo.name, content_type: companyLogo.type, owner_type: "speaker", owner_id: eventId! });
+          const uploadUrl = presign.url ?? presign.presigned_url ?? presign.upload_url;
+          if (uploadUrl) {
+            await fetch(uploadUrl, {
+              method: "PUT",
+              headers: { "Content-Type": companyLogo.type },
+              body: companyLogo,
+            });
+            // backend expects `company_logo` field name
+            payload.company_logo = presign.public_url ?? presign.url ?? uploadUrl;
+          }
+        } catch (err) {
+          console.error("company logo upload failed", err);
+        }
+      }
+
+      // postJson (createSpeakerIntake) will throw on non-2xx responses, so just await
+      await createSpeakerIntake(eventId, payload);
+
+      toast.success("Registration submitted successfully!");
+      navigate("/", { replace: true });
+    } catch (e) {
+      console.error("intake submit error", e);
+      toast.error(String(e));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  // Mock event data
-  const eventData = {
-    title: "Tech Conference 2024",
-    location: "San Francisco, USA",
-    type: "Conference",
-  };
+  const { data: eventData, isLoading: loadingEvent } = useQuery(
+    {
+      queryKey: ["event", eventId],
+      queryFn: () => getJson<any>(`/events/${eventId}`),
+      enabled: Boolean(eventId),
+    }
+  );
 
   return (
     <div className="min-h-screen bg-cream">
@@ -146,13 +203,13 @@ export default function SpeakerIntakeForm() {
           <div className="bg-white rounded-xl border border-border p-6">
             <p className="text-sm text-muted-foreground">Registering for</p>
             <h1 className="font-display text-2xl font-bold text-foreground mt-1">
-              {eventData.title}
+              {eventData?.title ?? (loadingEvent ? "Loading…" : "Untitled Event")}
             </h1>
             <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
               <MapPin className="h-4 w-4 text-primary" />
-              <span>{eventData.location}</span>
+              <span>{eventData?.location ?? ""}</span>
             </div>
-            <p className="text-sm text-muted-foreground mt-1">{eventData.type}</p>
+            <p className="text-sm text-muted-foreground mt-1">{eventData?.type ?? ""}</p>
           </div>
 
           <Form {...form}>

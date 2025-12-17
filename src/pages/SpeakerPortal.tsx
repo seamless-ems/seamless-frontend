@@ -27,26 +27,73 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Speaker } from "@/types/event";
+import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { updateSpeaker } from "@/lib/api";
+import { useEffect } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { toast } from "@/hooks/use-toast";
 
 // Mock speaker data
-const mockSpeaker = {
-  id: "1",
-  name: "Sarah Johnson",
-  email: "sarah@example.com",
-  title: "CEO",
-  company: "TechCorp",
-  bio: "Sarah is a visionary leader with over 15 years of experience in the tech industry. She has led multiple successful startups and is passionate about innovation and empowering teams.",
-  linkedin: "https://linkedin.com/in/sarahjohnson",
-  headshot: "",
-  companyLogo: "",
-  intakeFormStatus: "approved" as const,
-  websiteCardApproved: true,
-  promoCardApproved: true,
-  registeredAt: "2024-12-01",
-};
+import { useQuery } from "@tanstack/react-query";
+import { getJson } from "@/lib/api";
+
+// Speaker data will be fetched from the API per route params
 
 export default function SpeakerPortal() {
   const { id, speakerId } = useParams();
+
+  const { data: speaker, isLoading, error } = useQuery<Speaker | null, Error>({
+    queryKey: ["event", id, "speaker", speakerId],
+    queryFn: () => getJson<Speaker>(`/events/${id}/speakers/${speakerId}`),
+    enabled: Boolean(id && speakerId),
+  });
+
+  // Normalize API snake_case response to UI-friendly fields
+  const s = speaker
+    ? {
+      id: speaker.id,
+      name: `${(speaker as any).first_name ?? ((speaker as any).name ?? "")} ${(speaker as any).last_name ?? ""}`.trim(),
+      firstName: (speaker as any).first_name ?? undefined,
+      lastName: (speaker as any).last_name ?? undefined,
+      email: (speaker as any).email ?? (speaker as any).email_address ?? "",
+      title: (speaker as any).title ?? "",
+      company: (speaker as any).company ?? "",
+      headshot: (speaker as any).headshot_url ?? (speaker as any).headshot ?? null,
+      companyLogo: (speaker as any).company_logo_url ?? (speaker as any).companyLogo ?? null,
+      linkedin: (speaker as any).linkedin ?? null,
+      bio: (speaker as any).bio ?? "",
+      intakeFormStatus: (speaker as any).intake_form_status ?? (speaker as any).intakeFormStatus ?? "",
+      websiteCardApproved: (speaker as any).website_card_approved ?? (speaker as any).websiteCardApproved ?? false,
+      promoCardApproved: (speaker as any).promo_card_approved ?? (speaker as any).promoCardApproved ?? false,
+    }
+    : null;
+
+  const queryClient = useQueryClient();
+  const [editOpen, setEditOpen] = useState(false);
+  const [editFirstName, setEditFirstName] = useState<string>(s?.firstName ?? "");
+  const [editLastName, setEditLastName] = useState<string>(s?.lastName ?? "");
+  const [editEmail, setEditEmail] = useState<string>(s?.email ?? "");
+  const [editTitle, setEditTitle] = useState<string>(s?.title ?? "");
+  const [editCompany, setEditCompany] = useState<string>(s?.company ?? "");
+  const [editLinkedin, setEditLinkedin] = useState<string>(s?.linkedin ?? "");
+
+  useEffect(() => {
+    setEditFirstName(s?.firstName ?? "");
+    setEditLastName(s?.lastName ?? "");
+    setEditEmail(s?.email ?? "");
+    setEditTitle(s?.title ?? "");
+    setEditCompany(s?.company ?? "");
+    setEditLinkedin(s?.linkedin ?? "");
+  }, [s]);
 
   return (
     <DashboardLayout eventId={id}>
@@ -66,33 +113,30 @@ export default function SpeakerPortal() {
           <CardContent className="p-6">
             <div className="flex flex-col gap-6 md:flex-row md:items-start">
               <Avatar className="h-24 w-24 border-4 border-primary/20">
-                <AvatarImage src={mockSpeaker.headshot} />
+                <AvatarImage src={s?.headshot ?? undefined} />
                 <AvatarFallback className="bg-primary/10 text-primary text-2xl font-display">
-                  {mockSpeaker.name
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")}
+                  {(s?.firstName || s?.lastName) ? `${(s.firstName ?? "")[0] ?? ""}${(s.lastName ?? "")[0] ?? ""}` : "?"}
                 </AvatarFallback>
               </Avatar>
 
               <div className="flex-1 space-y-4">
                 <div>
                   <h1 className="font-display text-2xl font-bold text-foreground">
-                    {mockSpeaker.name}
+                    {s?.firstName ? `${s.firstName} ${s.lastName ?? ""}` : "Loading…"}
                   </h1>
                   <p className="text-lg text-muted-foreground">
-                    {mockSpeaker.title} at {mockSpeaker.company}
+                    {s ? `${s.title ?? ""}${s.company ? ` at ${s.company}` : ""}` : ""}
                   </p>
                 </div>
 
                 <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
                   <div className="flex items-center gap-2">
                     <Mail className="h-4 w-4" />
-                    <span>{mockSpeaker.email}</span>
+                    <span>{s?.email ?? ""}</span>
                   </div>
-                  {mockSpeaker.linkedin && (
+                  {s?.linkedin && (
                     <a
-                      href={mockSpeaker.linkedin}
+                      href={s.linkedin}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-2 hover:text-primary transition-colors"
@@ -110,9 +154,9 @@ export default function SpeakerPortal() {
                     className="bg-success/10 text-success border-success/20"
                   >
                     <CheckCircle className="h-3 w-3 mr-1" />
-                    Form Submitted
+                    {s?.intakeFormStatus === "submitted" || s?.intakeFormStatus === "approved" ? "Form Submitted" : "Form Pending"}
                   </Badge>
-                  {mockSpeaker.websiteCardApproved && (
+                  {s?.websiteCardApproved && (
                     <Badge
                       variant="outline"
                       className="bg-primary/10 text-primary border-primary/20"
@@ -120,7 +164,7 @@ export default function SpeakerPortal() {
                       Website Card Approved
                     </Badge>
                   )}
-                  {mockSpeaker.promoCardApproved && (
+                  {s?.promoCardApproved && (
                     <Badge
                       variant="outline"
                       className="bg-accent/10 text-accent border-accent/20"
@@ -132,7 +176,7 @@ export default function SpeakerPortal() {
               </div>
 
               <div className="flex gap-2">
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
                   <Edit className="h-4 w-4" />
                   Edit
                 </Button>
@@ -144,6 +188,54 @@ export default function SpeakerPortal() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Edit Dialog */}
+        <Dialog open={Boolean(editOpen)} onOpenChange={(v) => setEditOpen(Boolean(v))}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Speaker</DialogTitle>
+              <DialogDescription>Update speaker details</DialogDescription>
+            </DialogHeader>
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (!id || !speakerId) return;
+                try {
+                  await updateSpeaker(id, speakerId, {
+                    first_name: editFirstName,
+                    last_name: editLastName,
+                    email: editEmail,
+                    title: editTitle,
+                    company: editCompany,
+                    linkedin: editLinkedin,
+                  });
+                  queryClient.invalidateQueries({ queryKey: ["event", id, "speaker", speakerId] });
+                  queryClient.invalidateQueries({ queryKey: ["event", id, "speakers"] });
+                  setEditOpen(false);
+                  toast({ title: "Speaker updated" });
+                } catch (err: any) {
+                  toast({ title: "Failed to update speaker", description: String(err?.message || err) });
+                }
+              }}
+              className="space-y-4"
+            >
+              <div className="grid grid-cols-2 gap-2">
+                <Input value={editFirstName} onChange={(e) => setEditFirstName(e.target.value)} placeholder="First name" />
+                <Input value={editLastName} onChange={(e) => setEditLastName(e.target.value)} placeholder="Last name" />
+              </div>
+              <Input value={editEmail} onChange={(e) => setEditEmail(e.target.value)} placeholder="Email" />
+              <div className="grid grid-cols-2 gap-2">
+                <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="Title" />
+                <Input value={editCompany} onChange={(e) => setEditCompany(e.target.value)} placeholder="Company" />
+              </div>
+              <Input value={editLinkedin} onChange={(e) => setEditLinkedin(e.target.value)} placeholder="LinkedIn URL" />
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" type="button" onClick={() => setEditOpen(false)}>Cancel</Button>
+                <Button type="submit">Save</Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="info" className="space-y-6">
@@ -165,27 +257,33 @@ export default function SpeakerPortal() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Full Name</Label>
-                    <Input value={mockSpeaker.name} readOnly />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>First Name</Label>
+                      <Input value={s?.firstName ?? ""} readOnly />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Last Name</Label>
+                      <Input value={s?.lastName ?? ""} readOnly />
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label>Email</Label>
-                    <Input value={mockSpeaker.email} readOnly />
+                    <Input value={s?.email ?? ""} readOnly />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Title</Label>
-                      <Input value={mockSpeaker.title} readOnly />
+                      <Input value={s?.title ?? ""} readOnly />
                     </div>
                     <div className="space-y-2">
                       <Label>Company</Label>
-                      <Input value={mockSpeaker.company} readOnly />
+                      <Input value={s?.company ?? ""} readOnly />
                     </div>
                   </div>
                   <div className="space-y-2">
                     <Label>LinkedIn</Label>
-                    <Input value={mockSpeaker.linkedin || ""} readOnly />
+                    <Input value={s?.linkedin ?? ""} readOnly />
                   </div>
                 </CardContent>
               </Card>
@@ -199,7 +297,7 @@ export default function SpeakerPortal() {
                 </CardHeader>
                 <CardContent>
                   <Textarea
-                    value={mockSpeaker.bio}
+                    value={speaker?.bio ?? ""}
                     readOnly
                     className="min-h-[200px]"
                   />
@@ -220,9 +318,9 @@ export default function SpeakerPortal() {
                 </CardHeader>
                 <CardContent>
                   <div className="aspect-square max-w-[300px] rounded-xl bg-muted flex items-center justify-center border-2 border-dashed border-border">
-                    {mockSpeaker.headshot ? (
+                    {speaker?.headshot ? (
                       <img
-                        src={mockSpeaker.headshot}
+                        src={speaker.headshot}
                         alt="Headshot"
                         className="w-full h-full object-cover rounded-xl"
                       />
@@ -257,9 +355,9 @@ export default function SpeakerPortal() {
                 </CardHeader>
                 <CardContent>
                   <div className="aspect-video max-w-[300px] rounded-xl bg-muted flex items-center justify-center border-2 border-dashed border-border">
-                    {mockSpeaker.companyLogo ? (
+                    {speaker?.companyLogo ? (
                       <img
-                        src={mockSpeaker.companyLogo}
+                        src={speaker.companyLogo}
                         alt="Company Logo"
                         className="max-w-full max-h-full object-contain p-4"
                       />
@@ -297,12 +395,12 @@ export default function SpeakerPortal() {
                   <Badge
                     variant="outline"
                     className={cn(
-                      mockSpeaker.websiteCardApproved
+                      speaker?.websiteCardApproved
                         ? "bg-success/10 text-success border-success/20"
                         : "bg-warning/10 text-warning border-warning/20"
                     )}
                   >
-                    {mockSpeaker.websiteCardApproved ? (
+                    {speaker?.websiteCardApproved ? (
                       <>
                         <CheckCircle className="h-3 w-3 mr-1" />
                         Approved
@@ -321,21 +419,18 @@ export default function SpeakerPortal() {
                     <div className="flex items-start gap-4">
                       <Avatar className="h-16 w-16">
                         <AvatarFallback className="bg-primary/10 text-primary font-display">
-                          {mockSpeaker.name
-                            .split(" ")
-                            .map((n) => n[0])
-                            .join("")}
+                          {s?.firstName || s?.lastName ? `${(s.firstName ?? "")[0] ?? ""}${(s.lastName ?? "")[0] ?? ""}` : "?"}
                         </AvatarFallback>
                       </Avatar>
                       <div>
                         <h4 className="font-semibold text-foreground">
-                          {mockSpeaker.name}
+                          {s?.firstName ? `${s.firstName} ${s.lastName ?? ""}` : ""}
                         </h4>
                         <p className="text-sm text-muted-foreground">
-                          {mockSpeaker.title}
+                          {s?.title ?? ""}
                         </p>
                         <p className="text-sm text-primary">
-                          {mockSpeaker.company}
+                          {s?.company ?? ""}
                         </p>
                       </div>
                     </div>
@@ -345,7 +440,7 @@ export default function SpeakerPortal() {
                       <Eye className="h-4 w-4" />
                       Preview
                     </Button>
-                    {!mockSpeaker.websiteCardApproved && (
+                    {!s?.websiteCardApproved && (
                       <Button variant="teal" size="sm">
                         <CheckCircle className="h-4 w-4" />
                         Approve
@@ -362,12 +457,12 @@ export default function SpeakerPortal() {
                   <Badge
                     variant="outline"
                     className={cn(
-                      mockSpeaker.promoCardApproved
+                      speaker?.promoCardApproved
                         ? "bg-success/10 text-success border-success/20"
                         : "bg-warning/10 text-warning border-warning/20"
                     )}
                   >
-                    {mockSpeaker.promoCardApproved ? (
+                    {s?.promoCardApproved ? (
                       <>
                         <CheckCircle className="h-3 w-3 mr-1" />
                         Approved
@@ -385,11 +480,11 @@ export default function SpeakerPortal() {
                   <div className="aspect-[4/5] rounded-xl bg-gradient-to-br from-primary to-primary/80 text-primary-foreground p-6 flex flex-col justify-end mb-4">
                     <div className="space-y-2">
                       <h4 className="font-display text-xl font-bold">
-                        {mockSpeaker.name}
+                        {s?.firstName ? `${s.firstName} ${s.lastName ?? ""}` : ""}
                       </h4>
-                      <p className="text-sm opacity-90">{mockSpeaker.title}</p>
+                      <p className="text-sm opacity-90">{s?.title ?? ""}</p>
                       <p className="text-sm font-semibold">
-                        {mockSpeaker.company}
+                        {s?.company ?? ""}
                       </p>
                     </div>
                   </div>
@@ -420,7 +515,7 @@ export default function SpeakerPortal() {
               <CardContent>
                 <div className="rounded-lg bg-muted p-4 font-mono text-sm overflow-x-auto">
                   <code className="text-foreground">
-                    {`<iframe src="https://seamlessevents.io/embed/speaker/${mockSpeaker.id}" width="300" height="200" frameborder="0"></iframe>`}
+                    {`<iframe src="https://seamlessevents.io/embed/speaker/${s?.id ?? ""}" width="300" height="200" frameborder="0"></iframe>`}
                   </code>
                 </div>
                 <Button variant="outline" size="sm" className="mt-4">
@@ -440,7 +535,7 @@ export default function SpeakerPortal() {
               <CardContent>
                 <div className="rounded-lg bg-muted p-4 font-mono text-sm overflow-x-auto">
                   <code className="text-foreground">
-                    {`<iframe src="https://seamlessevents.io/embed/promo/${mockSpeaker.id}" width="400" height="500" frameborder="0"></iframe>`}
+                    {`<iframe src="https://seamlessevents.io/embed/promo/${s?.id ?? ""}" width="400" height="500" frameborder="0"></iframe>`}
                   </code>
                 </div>
                 <Button variant="outline" size="sm" className="mt-4">

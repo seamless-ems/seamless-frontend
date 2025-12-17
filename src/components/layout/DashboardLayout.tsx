@@ -45,16 +45,16 @@ const accountNavItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Events", url: "/events", icon: Calendar },
   { title: "Team", url: "/team", icon: Users },
-  { title: "Subscription", url: "/subscription", icon: CreditCard },
+  // { title: "Subscription", url: "/subscription", icon: CreditCard },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
 
 const eventNavItems = [
   { title: "Overview", url: "/event/:id", icon: LayoutDashboard },
   { title: "Speakers", url: "/event/:id/speakers", icon: Mic2 },
-  { title: "Schedule", url: "/event/:id/schedule", icon: Calendar },
-  { title: "Content", url: "/event/:id/content", icon: FileText },
-  { title: "Settings", url: "/event/:id/settings", icon: Settings },
+  // { title: "Schedule", url: "/event/:id/schedule", icon: Calendar },
+  // { title: "Content", url: "/event/:id/content", icon: FileText },
+  // { title: "Settings", url: "/event/:id/settings", icon: Settings },
 ];
 
 interface DashboardLayoutProps {

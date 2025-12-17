@@ -40,6 +40,36 @@ export async function getJson<TRes>(path: string): Promise<TRes> {
   return res.json();
 }
 
+export function presignUpload(body: { filename: string; content_type: string; owner_type: string; owner_id: string; }) {
+  return postJson<typeof body, any>(`/uploads/presign`, body);
+}
+
+// Upload a binary file to the backend (multipart/form-data). Used as a fallback when presigned PUTs are blocked by CORS.
+export async function uploadFile(file: File, ownerType: string, ownerId: string): Promise<any> {
+  const fd = new FormData();
+  fd.append("file", file);
+  fd.append("owner_type", ownerType);
+  fd.append("owner_id", ownerId);
+
+  const token = getToken();
+  const headers: Record<string, string> = {};
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  const res = await fetch(`${API_BASE}/uploads`, {
+    method: "POST",
+    headers,
+    body: fd,
+    credentials: "include",
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || res.statusText);
+  }
+
+  return res.json();
+}
+
 export type SignupRequest = {
   email: string;
   password: string;
@@ -72,4 +102,47 @@ export function googleLogin(): string {
 
 export function microsoftLogin(): string {
   return `${API_BASE}/microsoft/login`;
+}
+
+// Create an event
+export function createEvent<T = any>(body: T): Promise<any> {
+  return postJson<T, any>("/events", body);
+}
+
+// Create a speaker for an event
+export function createSpeakerIntake<T = any>(eventId: string, body: T): Promise<any> {
+  return postJson<T, any>(`/events/${eventId}/speakers`, body);
+}
+
+export function createSpeaker<T = any>(eventId: string, body: T): Promise<any> {
+  return postJson<T, any>(`/events/${eventId}/speakers`, body);
+}
+
+export async function updateSpeaker<T = any>(eventId: string, speakerId: string, body: T): Promise<any> {
+  const res = await fetch(`${API_BASE}/events/${eventId}/speakers/${speakerId}`, {
+    method: "PATCH",
+    headers: authHeaders(),
+    body: JSON.stringify(body),
+    credentials: "include",
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || res.statusText);
+  }
+
+  return res.json();
+}
+
+export async function deleteSpeaker(eventId: string, speakerId: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/events/${eventId}/speakers/${speakerId}`, {
+    method: "DELETE",
+    headers: authHeaders(),
+    credentials: "include",
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || res.statusText);
+  }
 }

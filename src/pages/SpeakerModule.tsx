@@ -43,59 +43,15 @@ import {
   AlertCircle,
   Send,
   FileText,
+  Share2,
 } from "lucide-react";
 import { Speaker } from "@/types/event";
+import { useQuery } from "@tanstack/react-query";
+import { getJson, createSpeaker, deleteSpeaker } from "@/lib/api";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "@/hooks/use-toast";
 
-const mockSpeakers: Speaker[] = [
-  {
-    id: "1",
-    name: "Sarah Johnson",
-    email: "sarah@example.com",
-    title: "CEO",
-    company: "TechCorp",
-    headshot: "",
-    intakeFormStatus: "approved",
-    websiteCardApproved: true,
-    promoCardApproved: true,
-    registeredAt: "2024-12-01",
-  },
-  {
-    id: "2",
-    name: "Mike Chen",
-    email: "mike@example.com",
-    title: "CTO",
-    company: "StartupXYZ",
-    headshot: "",
-    intakeFormStatus: "submitted",
-    websiteCardApproved: true,
-    promoCardApproved: false,
-    registeredAt: "2024-12-05",
-  },
-  {
-    id: "3",
-    name: "Emily Davis",
-    email: "emily@example.com",
-    title: "VP Engineering",
-    company: "BigTech Inc",
-    headshot: "",
-    intakeFormStatus: "pending",
-    websiteCardApproved: false,
-    promoCardApproved: false,
-    registeredAt: "2024-12-08",
-  },
-  {
-    id: "4",
-    name: "James Wilson",
-    email: "james@example.com",
-    title: "Product Lead",
-    company: "InnovateCo",
-    headshot: "",
-    intakeFormStatus: "submitted",
-    websiteCardApproved: false,
-    promoCardApproved: false,
-    registeredAt: "2024-12-10",
-  },
-];
+// speakers will be fetched from API when event id is available
 
 const statusConfig = {
   pending: {
@@ -117,17 +73,45 @@ const statusConfig = {
 
 export default function SpeakerModule() {
   const { id } = useParams();
+  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTab, setSelectedTab] = useState("all");
+  const [addOpen, setAddOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [newSpeaker, setNewSpeaker] = useState({ name: "", email: "", title: "", company: "" });
 
-  const filteredSpeakers = mockSpeakers.filter((speaker) => {
+  const { data: rawSpeakers, isLoading, error } = useQuery<any, Error>({
+    queryKey: ["event", id, "speakers"],
+    queryFn: () => getJson<any>(`/events/${id}/speakers`),
+    enabled: Boolean(id),
+  });
+
+  // Normalize response shapes (array or paginated object) into Speaker[]
+  const speakerList: Speaker[] = (() => {
+    if (!rawSpeakers) return [];
+    if (Array.isArray(rawSpeakers)) return rawSpeakers as Speaker[];
+    if (Array.isArray(rawSpeakers.items)) return rawSpeakers.items as Speaker[];
+    if (Array.isArray(rawSpeakers.results)) return rawSpeakers.results as Speaker[];
+    if (Array.isArray(rawSpeakers.speakers)) return rawSpeakers.speakers as Speaker[];
+    if (Array.isArray(rawSpeakers.data)) return rawSpeakers.data as Speaker[];
+    const firstArray = Object.values(rawSpeakers).find((v) => Array.isArray(v));
+    if (Array.isArray(firstArray)) return firstArray as Speaker[];
+    return [];
+  })();
+
+  const filteredSpeakers = speakerList.filter((speaker) => {
+    const name = (speaker.name ?? "").toString();
+    const email = (speaker.email ?? "").toString();
+    const company = (speaker.company ?? "").toString();
+    const q = searchQuery.toLowerCase();
+
     const matchesSearch =
-      speaker.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      speaker.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      speaker.company.toLowerCase().includes(searchQuery.toLowerCase());
+      name.toLowerCase().includes(q) ||
+      email.toLowerCase().includes(q) ||
+      company.toLowerCase().includes(q);
 
     if (selectedTab === "all") return matchesSearch;
-    return matchesSearch && speaker.intakeFormStatus === selectedTab;
+    return matchesSearch && (speaker.intakeFormStatus ?? "") === selectedTab;
   });
 
   return (
@@ -143,7 +127,7 @@ export default function SpeakerModule() {
               Manage speakers, intake forms, and promotional materials
             </p>
           </div>
-          <div className="flex gap-3">
+            <div className="flex gap-3">
             <Dialog>
               <DialogTrigger asChild>
                 <Button variant="outline">
@@ -165,14 +149,81 @@ export default function SpeakerModule() {
                 </div>
               </DialogContent>
             </Dialog>
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (!id) {
+                  toast({ title: "No event selected" });
+                  return;
+                }
+                const shareUrl = `${window.location.origin}/speaker-intake/${id}`;
+                window.open(shareUrl, "_blank");
+                toast({ title: "Opened intake form", description: "Opened in a new tab" });
+              }}
+            >
+              <Share2 className="h-4 w-4" />
+              Share Form
+            </Button>
+
             <Button variant="outline">
               <Mail className="h-4 w-4" />
               Send Reminder
             </Button>
-            <Button variant="teal">
-              <Plus className="h-4 w-4" />
-              Add Speaker
-            </Button>
+            <Dialog open={addOpen} onOpenChange={setAddOpen}>
+              <DialogTrigger asChild>
+                <Button variant="teal">
+                  <Plus className="h-4 w-4" />
+                  Add Speaker
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Add Speaker</DialogTitle>
+                  <DialogDescription>
+                    Manually add a new speaker to this event.
+                  </DialogDescription>
+                </DialogHeader>
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (!id) return;
+                    setCreating(true);
+                    try {
+                      const payload = { ...newSpeaker };
+                      await createSpeaker(id, payload);
+                      toast({ title: "Speaker added", description: `${newSpeaker.name} was added` });
+                      queryClient.invalidateQueries({ queryKey: ["event", id, "speakers"] });
+                      setAddOpen(false);
+                      setNewSpeaker({ name: "", email: "", title: "", company: "" });
+                    } catch (err: any) {
+                      toast({ title: "Failed to add speaker", description: String(err?.message || err) });
+                    } finally {
+                      setCreating(false);
+                    }
+                  }}
+                  className="space-y-4"
+                >
+                  <div className="grid gap-2">
+                    <label className="text-sm">Full name</label>
+                    <Input value={newSpeaker.name} onChange={(e) => setNewSpeaker((s) => ({ ...s, name: e.target.value }))} required />
+                  </div>
+                  <div className="grid gap-2">
+                    <label className="text-sm">Email</label>
+                    <Input type="email" value={newSpeaker.email} onChange={(e) => setNewSpeaker((s) => ({ ...s, email: e.target.value }))} required />
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <Input placeholder="Title" value={newSpeaker.title} onChange={(e) => setNewSpeaker((s) => ({ ...s, title: e.target.value }))} />
+                    <Input placeholder="Company" value={newSpeaker.company} onChange={(e) => setNewSpeaker((s) => ({ ...s, company: e.target.value }))} />
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button variant="outline" type="button" onClick={() => setAddOpen(false)}>Cancel</Button>
+                    <Button type="submit" disabled={creating}>
+                      {creating ? "Adding…" : "Add Speaker"}
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
 
@@ -181,31 +232,27 @@ export default function SpeakerModule() {
           <div className="rounded-lg border border-border bg-card p-4">
             <p className="text-sm text-muted-foreground">Total Speakers</p>
             <p className="text-2xl font-bold text-foreground mt-1">
-              {mockSpeakers.length}
+              {isLoading ? "…" : speakerList.length}
             </p>
           </div>
           <div className="rounded-lg border border-border bg-card p-4">
             <p className="text-sm text-muted-foreground">Forms Submitted</p>
             <p className="text-2xl font-bold text-success mt-1">
-              {
-                mockSpeakers.filter(
-                  (s) =>
-                    s.intakeFormStatus === "submitted" ||
-                    s.intakeFormStatus === "approved"
-                ).length
-              }
+              {isLoading ? "…" : speakerList.filter(
+                (s) => s.intakeFormStatus === "submitted" || s.intakeFormStatus === "approved"
+              ).length}
             </p>
           </div>
           <div className="rounded-lg border border-border bg-card p-4">
             <p className="text-sm text-muted-foreground">Pending Forms</p>
             <p className="text-2xl font-bold text-warning mt-1">
-              {mockSpeakers.filter((s) => s.intakeFormStatus === "pending").length}
+              {isLoading ? "…" : speakerList.filter((s) => s.intakeFormStatus === "pending").length}
             </p>
           </div>
           <div className="rounded-lg border border-border bg-card p-4">
             <p className="text-sm text-muted-foreground">Cards Approved</p>
             <p className="text-2xl font-bold text-primary mt-1">
-              {mockSpeakers.filter((s) => s.promoCardApproved).length}
+              {isLoading ? "…" : speakerList.filter((s) => s.promoCardApproved).length}
             </p>
           </div>
         </div>
@@ -246,8 +293,8 @@ export default function SpeakerModule() {
                 </TableHeader>
                 <TableBody>
                   {filteredSpeakers.map((speaker) => {
-                    const status = statusConfig[speaker.intakeFormStatus];
-                    const StatusIcon = status.icon;
+                    const status = statusConfig[speaker.intakeFormStatus ?? "pending"] || statusConfig.pending;
+                    const StatusIcon = status.icon || Clock;
 
                     return (
                       <TableRow key={speaker.id} className="group">
@@ -256,10 +303,10 @@ export default function SpeakerModule() {
                             <Avatar className="h-10 w-10">
                               <AvatarImage src={speaker.headshot} />
                               <AvatarFallback className="bg-primary/10 text-primary">
-                                {speaker.name
-                                  .split(" ")
-                                  .map((n) => n[0])
-                                  .join("")}
+                                  {String(speaker.name ?? "")
+                                    .split(" ")
+                                    .map((n) => n[0])
+                                    .join("")}
                               </AvatarFallback>
                             </Avatar>
                             <div>
@@ -360,6 +407,25 @@ export default function SpeakerModule() {
                               <DropdownMenuItem>
                                 <Send className="h-4 w-4 mr-2" />
                                 Send Reminder
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onSelect={async () => {
+                                  if (!id) return;
+                                  const ok = window.confirm(`Delete speaker ${speaker.name ?? speaker.email}?`);
+                                  if (!ok) return;
+                                  try {
+                                    await deleteSpeaker(id, speaker.id);
+                                    toast({ title: "Speaker deleted" });
+                                    queryClient.invalidateQueries({ queryKey: ["event", id, "speakers"] });
+                                  } catch (err: any) {
+                                    toast({ title: "Failed to delete speaker", description: String(err?.message || err) });
+                                  }
+                                }}
+                              >
+                                <span className="text-destructive flex items-center gap-2">
+                                  Delete
+                                </span>
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>

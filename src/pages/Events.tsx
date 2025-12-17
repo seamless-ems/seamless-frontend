@@ -13,75 +13,37 @@ import {
 import { Plus, Search, Filter } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Event } from "@/types/event";
+import { useQuery } from "@tanstack/react-query";
+import { getJson } from "@/lib/api";
 
-const mockEvents: Event[] = [
-  {
-    id: "1",
-    title: "Tech Summit 2025",
-    dates: "Mar 15-17, 2025",
-    location: "San Francisco, CA",
-    status: "active",
-    speakerCount: 24,
-    attendeeCount: 450,
-    modules: [
-      { id: "1", name: "speaker", enabled: true },
-      { id: "2", name: "schedule", enabled: true },
-      { id: "3", name: "content", enabled: false },
-    ],
-    googleDriveLinked: true,
-  },
-  {
-    id: "2",
-    title: "Product Launch Event",
-    dates: "Apr 5, 2025",
-    location: "New York, NY",
-    status: "draft",
-    speakerCount: 8,
-    attendeeCount: 0,
-    modules: [
-      { id: "1", name: "speaker", enabled: true },
-      { id: "2", name: "schedule", enabled: false },
-      { id: "3", name: "content", enabled: false },
-    ],
-    googleDriveLinked: false,
-  },
-  {
-    id: "3",
-    title: "Annual Conference 2024",
-    dates: "Nov 20-22, 2024",
-    location: "London, UK",
-    status: "completed",
-    speakerCount: 45,
-    attendeeCount: 1200,
-    modules: [
-      { id: "1", name: "speaker", enabled: true },
-      { id: "2", name: "schedule", enabled: true },
-      { id: "3", name: "content", enabled: true },
-    ],
-    googleDriveLinked: true,
-  },
-  {
-    id: "4",
-    title: "Developer Day 2025",
-    dates: "May 10, 2025",
-    location: "Austin, TX",
-    status: "draft",
-    speakerCount: 12,
-    attendeeCount: 0,
-    modules: [
-      { id: "1", name: "speaker", enabled: true },
-      { id: "2", name: "schedule", enabled: true },
-      { id: "3", name: "content", enabled: false },
-    ],
-    googleDriveLinked: false,
-  },
-];
+// Fetch events from API
 
 export default function Events() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
-  const filteredEvents = mockEvents.filter((event) => {
+  const { data: rawEvents, isLoading, error } = useQuery<any, Error>({
+    queryKey: ["events"],
+    queryFn: () => getJson<any>("/events"),
+  });
+
+  // Normalize a variety of possible API shapes into an Event[]
+  const events: Event[] = (() => {
+    if (!rawEvents) return [];
+    // Common paginated shapes: { items: [...]} or { results: [...] } or { events: [...] }
+    if (Array.isArray(rawEvents)) return rawEvents as Event[];
+    if (Array.isArray(rawEvents.items)) return rawEvents.items as Event[];
+    if (Array.isArray(rawEvents.results)) return rawEvents.results as Event[];
+    if (Array.isArray(rawEvents.events)) return rawEvents.events as Event[];
+    // If API returned { data: [...] }
+    if (Array.isArray(rawEvents.data)) return rawEvents.data as Event[];
+    // Fallback: try to find first array value
+    const firstArray = Object.values(rawEvents).find((v) => Array.isArray(v));
+    if (Array.isArray(firstArray)) return firstArray as Event[];
+    return [];
+  })();
+
+  const filteredEvents = (events ?? []).filter((event) => {
     const matchesSearch = event.title
       .toLowerCase()
       .includes(searchQuery.toLowerCase());
@@ -137,7 +99,11 @@ export default function Events() {
         </div>
 
         {/* Events Grid */}
-        {filteredEvents.length > 0 ? (
+        {isLoading ? (
+          <div className="py-16 text-center">Loading events…</div>
+        ) : error ? (
+          <div className="py-16 text-center text-destructive">Error loading events: {String(error.message)}</div>
+        ) : filteredEvents.length > 0 ? (
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
             {filteredEvents.map((event, index) => (
               <EventCard key={event.id} event={event} index={index} />

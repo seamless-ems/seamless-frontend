@@ -20,6 +20,8 @@ import {
   FolderOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { createEvent } from "@/lib/api";
+import { toast } from "@/hooks/use-toast";
 
 const availableModules = [
   {
@@ -82,10 +84,22 @@ export default function CreateEvent() {
     );
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Creating event:", { ...formData, modules: selectedModules });
-    navigate("/events");
+    try {
+      const payload = { ...formData, modules: selectedModules };
+      const created = await createEvent(payload);
+      toast({ title: "Event created", description: `Created ${created.title}` });
+      // navigate to the event dashboard if id present
+      if (created?.id) {
+        navigate(`/event/${created.id}`);
+      } else {
+        navigate("/events");
+      }
+    } catch (err: any) {
+      console.error("Create event failed", err);
+      toast({ title: "Failed to create event", description: String(err?.message || err) });
+    }
   };
 
   return (

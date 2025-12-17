@@ -106,7 +106,7 @@ export function EventCard({ event, index = 0 }: EventCardProps) {
       </div>
 
       <div className="flex flex-wrap gap-2 mb-4">
-        {event.modules.map((module) => (
+        {(event.modules ?? []).map((module) => (
           <Badge
             key={module.id}
             variant={module.enabled ? "default" : "outline"}
