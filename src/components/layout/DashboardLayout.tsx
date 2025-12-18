@@ -39,6 +39,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
 import { clearToken } from "@/lib/auth";
+import { signOut as firebaseSignOut } from "@/lib/firebase";
 import { cn } from "@/lib/utils";
 
 const accountNavItems = [
@@ -188,12 +189,12 @@ export function DashboardLayout({ children, eventId }: DashboardLayoutProps) {
                 </Link>
               </Button>
 
-              <Button variant="ghost" size="icon" className="relative">
+              {/* <Button variant="ghost" size="icon" className="relative">
                 <Bell className="h-5 w-5" />
                 <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-accent text-[10px] text-accent-foreground">
                   3
                 </span>
-              </Button>
+              </Button> */}
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -219,11 +220,21 @@ export function DashboardLayout({ children, eventId }: DashboardLayoutProps) {
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     className="text-destructive"
-                    onSelect={() => {
+                    onSelect={async () => {
                       try {
-                        clearToken();
+                        await firebaseSignOut();
                       } catch (e) {
-                        // ignore
+                        // ensure token cleared even if signOut fails
+                        try {
+                          clearToken();
+                        } catch (err) {
+                          // log the unexpected error during clearToken
+                          // eslint-disable-next-line no-console
+                          console.error("Error clearing token after signOut failure:", err);
+                        }
+                        // log the original signOut failure as well
+                        // eslint-disable-next-line no-console
+                        console.error("Firebase signOut failed:", e);
                       }
                       // navigate to login page
                       navigate("/login");

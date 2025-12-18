@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
-import { getJson, createSpeakerIntake, presignUpload } from "@/lib/api";
+import { getJson, createSpeakerIntake, presignUpload, uploadFile } from "@/lib/api";
 import {
   Form,
   FormControl,
@@ -111,21 +111,14 @@ export default function SpeakerIntakeForm() {
         bio: data.bio,
       };
 
-      // If images were selected, presign and upload them, then include public URLs
+      // If images were selected, POST them to the backend upload endpoint so the server
+      // can perform the R2 upload server-side (avoids browser CORS issues). The helper
+      // `uploadFile` returns JSON including `public_url` which we include in the speaker payload.
       if (headshot) {
         try {
-          const presign = await presignUpload({ filename: headshot.name, content_type: headshot.type, owner_type: "speaker", owner_id: eventId! });
-          // presign may return fields: url or presigned_url; handle both
-          const uploadUrl = presign.url ?? presign.presigned_url ?? presign.upload_url;
-          if (uploadUrl) {
-            await fetch(uploadUrl, {
-              method: "PUT",
-              headers: { "Content-Type": headshot.type },
-              body: headshot,
-            });
-            // backend expects `headshot` field (AnyUrl). Use public_url when provided.
-            payload.headshot = presign.public_url ?? presign.url ?? uploadUrl;
-          }
+          const res = await uploadFile(headshot, "speaker", eventId!);
+          // uploadFile returns an object with public_url (API proxy) — include that
+          payload.headshot = res?.public_url ?? res?.publicUrl ?? res?.url ?? null;
         } catch (err) {
           console.error("headshot upload failed", err);
         }
@@ -133,17 +126,8 @@ export default function SpeakerIntakeForm() {
 
       if (companyLogo) {
         try {
-          const presign = await presignUpload({ filename: companyLogo.name, content_type: companyLogo.type, owner_type: "speaker", owner_id: eventId! });
-          const uploadUrl = presign.url ?? presign.presigned_url ?? presign.upload_url;
-          if (uploadUrl) {
-            await fetch(uploadUrl, {
-              method: "PUT",
-              headers: { "Content-Type": companyLogo.type },
-              body: companyLogo,
-            });
-            // backend expects `company_logo` field name
-            payload.company_logo = presign.public_url ?? presign.url ?? uploadUrl;
-          }
+          const res = await uploadFile(companyLogo, "speaker", eventId!);
+          payload.company_logo = res?.public_url ?? res?.publicUrl ?? res?.url ?? null;
         } catch (err) {
           console.error("company logo upload failed", err);
         }

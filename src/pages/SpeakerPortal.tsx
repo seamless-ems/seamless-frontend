@@ -41,8 +41,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
-
-// Mock speaker data
 import { useQuery } from "@tanstack/react-query";
 import { getJson } from "@/lib/api";
 
@@ -68,7 +66,7 @@ export default function SpeakerPortal() {
       title: (speaker as any).title ?? "",
       company: (speaker as any).company ?? "",
       headshot: (speaker as any).headshot_url ?? (speaker as any).headshot ?? null,
-      companyLogo: (speaker as any).company_logo_url ?? (speaker as any).companyLogo ?? null,
+      companyLogo: (speaker as any).company_logo ?? (speaker as any).companyLogo ?? null,
       linkedin: (speaker as any).linkedin ?? null,
       bio: (speaker as any).bio ?? "",
       intakeFormStatus: (speaker as any).intake_form_status ?? (speaker as any).intakeFormStatus ?? "",
@@ -318,9 +316,9 @@ export default function SpeakerPortal() {
                 </CardHeader>
                 <CardContent>
                   <div className="aspect-square max-w-[300px] rounded-xl bg-muted flex items-center justify-center border-2 border-dashed border-border">
-                    {speaker?.headshot ? (
+                    {s?.headshot ? (
                       <img
-                        src={speaker.headshot}
+                        src={s.headshot ?? undefined}
                         alt="Headshot"
                         className="w-full h-full object-cover rounded-xl"
                       />
@@ -355,9 +353,9 @@ export default function SpeakerPortal() {
                 </CardHeader>
                 <CardContent>
                   <div className="aspect-video max-w-[300px] rounded-xl bg-muted flex items-center justify-center border-2 border-dashed border-border">
-                    {speaker?.companyLogo ? (
+                    {s?.companyLogo ? (
                       <img
-                        src={speaker.companyLogo}
+                        src={s.companyLogo ?? undefined}
                         alt="Company Logo"
                         className="max-w-full max-h-full object-contain p-4"
                       />
@@ -395,12 +393,12 @@ export default function SpeakerPortal() {
                   <Badge
                     variant="outline"
                     className={cn(
-                      speaker?.websiteCardApproved
+                      s?.websiteCardApproved
                         ? "bg-success/10 text-success border-success/20"
                         : "bg-warning/10 text-warning border-warning/20"
                     )}
                   >
-                    {speaker?.websiteCardApproved ? (
+                    {s?.websiteCardApproved ? (
                       <>
                         <CheckCircle className="h-3 w-3 mr-1" />
                         Approved
@@ -417,20 +415,29 @@ export default function SpeakerPortal() {
                   {/* Preview Card */}
                   <div className="rounded-xl border border-border bg-card p-4 mb-4">
                     <div className="flex items-start gap-4">
-                      <Avatar className="h-16 w-16">
-                        <AvatarFallback className="bg-primary/10 text-primary font-display">
-                          {s?.firstName || s?.lastName ? `${(s.firstName ?? "")[0] ?? ""}${(s.lastName ?? "")[0] ?? ""}` : "?"}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
+                      <div className="relative h-16 w-16 rounded-full overflow-hidden bg-primary/5 flex-shrink-0">
+                        {s?.headshot ? (
+                          <img src={s.headshot} alt="Headshot" className="w-full h-full object-cover" />
+                        ) : (
+                          <Avatar className="h-16 w-16">
+                            <AvatarFallback className="bg-primary/10 text-primary font-display">
+                              {s?.firstName || s?.lastName ? `${(s.firstName ?? "")[0] ?? ""}${(s.lastName ?? "")[0] ?? ""}` : "?"}
+                            </AvatarFallback>
+                          </Avatar>
+                        )}
+                      </div>
+                      <div className="flex-1">
                         <h4 className="font-semibold text-foreground">
                           {s?.firstName ? `${s.firstName} ${s.lastName ?? ""}` : ""}
                         </h4>
                         <p className="text-sm text-muted-foreground">
                           {s?.title ?? ""}
                         </p>
-                        <p className="text-sm text-primary">
+                        <p className="text-sm text-primary flex items-center gap-2">
                           {s?.company ?? ""}
+                          {s?.companyLogo && (
+                            <img src={s.companyLogo} alt="Company logo" className="h-4 object-contain ml-1" />
+                          )}
                         </p>
                       </div>
                     </div>
@@ -457,7 +464,7 @@ export default function SpeakerPortal() {
                   <Badge
                     variant="outline"
                     className={cn(
-                      speaker?.promoCardApproved
+                      s?.promoCardApproved
                         ? "bg-success/10 text-success border-success/20"
                         : "bg-warning/10 text-warning border-warning/20"
                     )}
@@ -477,13 +484,37 @@ export default function SpeakerPortal() {
                 </CardHeader>
                 <CardContent>
                   {/* Promo Card Preview */}
-                  <div className="aspect-[4/5] rounded-xl bg-gradient-to-br from-primary to-primary/80 text-primary-foreground p-6 flex flex-col justify-end mb-4">
-                    <div className="space-y-2">
-                      <h4 className="font-display text-xl font-bold">
+                  <div className="relative aspect-[4/5] rounded-xl text-primary-foreground p-6 flex flex-col justify-end mb-4 overflow-hidden">
+                    {/* Full-bleed headshot background when available */}
+                    {s?.headshot ? (
+                      <div
+                        className="absolute inset-0 bg-cover bg-center"
+                        style={{ backgroundImage: `url(${s.headshot})` }}
+                        aria-hidden
+                      />
+                    ) : (
+                      <div className="absolute inset-0 bg-gradient-to-br from-primary to-primary/80" aria-hidden />
+                    )}
+
+                    {/* subtle dark overlay for text readability */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-black/10 pointer-events-none" />
+
+                    {/* Decorative company logo in corner */}
+                    {s?.companyLogo && (
+                      <img
+                        src={s.companyLogo}
+                        alt="Company logo"
+                        className="absolute top-3 right-3 h-12 w-auto opacity-90 object-contain z-10"
+                      />
+                    )}
+
+                    {/* content (above overlays) */}
+                    <div className="relative z-20 space-y-2">
+                      <h4 className="font-display text-xl font-bold drop-shadow-md">
                         {s?.firstName ? `${s.firstName} ${s.lastName ?? ""}` : ""}
                       </h4>
-                      <p className="text-sm opacity-90">{s?.title ?? ""}</p>
-                      <p className="text-sm font-semibold">
+                      <p className="text-sm opacity-90 drop-shadow-sm">{s?.title ?? ""}</p>
+                      <p className="text-sm font-semibold drop-shadow-sm">
                         {s?.company ?? ""}
                       </p>
                     </div>

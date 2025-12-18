@@ -17,11 +17,10 @@ import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import ProtectedRoute from "./components/ProtectedRoute";
-import TokenProcessor from "@/components/TokenProcessor";
 
 const queryClient = new QueryClient();
 
-// Token processing is handled by `src/components/TokenProcessor.tsx`
+// Token processing is handled via Firebase onIdTokenChanged listener
 
 const App = () => {
   return (
@@ -30,7 +29,6 @@ const App = () => {
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <TokenProcessor />
           <Routes>
             <Route path="/login" element={<Auth />} />
             <Route path="/signup" element={<Auth />} />

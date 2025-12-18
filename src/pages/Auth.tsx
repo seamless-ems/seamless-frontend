@@ -7,7 +7,9 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { useLogin, useSignup } from "@/hooks/useAuth";
-import { googleLogin, microsoftLogin } from "@/lib/api";
+import { signInWithGooglePopup, signInWithMicrosoftPopup } from "@/lib/firebase";
+import { exchangeFirebaseToken } from "@/lib/api";
+import { setToken } from "@/lib/auth";
 
 const loginSchema = z.object({
     email: z.string().email(),
@@ -25,6 +27,7 @@ type LoginValues = z.infer<typeof loginSchema>;
 type SignupValues = z.infer<typeof signupSchema>;
 
 function LoginForm({ onSuccess }: { onSuccess: () => void }) {
+    const navigate = useNavigate();
     const loginMutation = useLogin({
         onSuccess: () => {
             toast.success("Signed in");
@@ -177,16 +180,36 @@ const Auth: React.FC = () => {
                     <Button
                         variant="outline"
                         className="flex-1"
-                        onClick={() => {
-                            try {
-                                const url = googleLogin();
-                                console.log("Redirecting to Google login:", url);
-                                window.location.assign(url);
-                            } catch (e) {
-                                console.error("google redirect error", e);
-                                toast.error("Unable to start Google login");
-                            }
-                        }}
+                        onClick={async () => {
+                                try {
+                                    const res = await signInWithGooglePopup();
+                                    // Attempt to exchange the returned ID token for a backend token
+                                    try {
+                                        const idToken = await res.user.getIdToken();
+                                        const backend = await exchangeFirebaseToken(idToken);
+                                        if (backend && backend.access_token) {
+                                            setToken(backend.access_token);
+                                        } else {
+                                            setToken(idToken);
+                                        }
+                                    } catch (err) {
+                                        console.warn("Google popup token exchange failed, falling back to ID token:", err);
+                                        try {
+                                            const idToken = await res.user.getIdToken();
+                                            setToken(idToken);
+                                        } catch (e) {
+                                            // ignore
+                                        }
+                                    }
+
+                                    toast.success("Signed in with Google");
+                                    // use react-router navigation to avoid full reloads
+                                    navigate("/", { replace: true });
+                                } catch (e) {
+                                    console.error("google popup error", e);
+                                    toast.error("Unable to sign in with Google");
+                                }
+                            }}
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 48 48">
                             <path fill="#EA4335" d="M24 9.5c3.9 0 7.4 1.4 10.1 3.8l7.6-7.6C36.9 2.5 30.8 0 24 0 14.7 0 6.9 5 2.6 12.3l8.9 6.9C13.5 15 18 9.5 24 9.5z" />
@@ -197,16 +220,34 @@ const Auth: React.FC = () => {
                     <Button
                         variant="outline"
                         className="flex-1"
-                        onClick={() => {
-                            try {
-                                const url = microsoftLogin();
-                                console.log("Redirecting to Microsoft login:", url);
-                                window.location.assign(url);
-                            } catch (e) {
-                                console.error("microsoft redirect error", e);
-                                toast.error("Unable to start Microsoft login");
-                            }
-                        }}
+                        onClick={async () => {
+                                try {
+                                    const res = await signInWithMicrosoftPopup();
+                                    try {
+                                        const idToken = await res.user.getIdToken();
+                                        const backend = await exchangeFirebaseToken(idToken);
+                                        if (backend && backend.access_token) {
+                                            setToken(backend.access_token);
+                                        } else {
+                                            setToken(idToken);
+                                        }
+                                    } catch (err) {
+                                        console.warn("Microsoft popup token exchange failed, falling back to ID token:", err);
+                                        try {
+                                            const idToken = await res.user.getIdToken();
+                                            setToken(idToken);
+                                        } catch (e) {
+                                            // ignore
+                                        }
+                                    }
+
+                                    toast.success("Signed in with Microsoft");
+                                    navigate("/", { replace: true });
+                                } catch (e) {
+                                    console.error("microsoft popup error", e);
+                                    toast.error("Unable to sign in with Microsoft");
+                                }
+                            }}
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24">
                             <rect x="1" y="1" width="10" height="10" fill="#f65314" />

@@ -5,62 +5,28 @@ import { Button } from "@/components/ui/button";
 import { Calendar, Users, Mic2, FileText, Plus, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Event } from "@/types/event";
+import { useQuery } from "@tanstack/react-query";
+import { getJson } from "@/lib/api";
 
-// Mock data
-const mockEvents: Event[] = [
-  {
-    id: "1",
-    title: "Tech Summit 2025",
-    dates: "Mar 15-17, 2025",
-    location: "San Francisco, CA",
-    status: "active",
-    speakerCount: 24,
-    attendeeCount: 450,
-    modules: [
-      { id: "1", name: "speaker", enabled: true },
-      { id: "2", name: "schedule", enabled: true },
-      { id: "3", name: "content", enabled: false },
-    ],
-    googleDriveLinked: true,
-    rootFolder: "Tech Summit 2025",
-  },
-  {
-    id: "2",
-    title: "Product Launch Event",
-    dates: "Apr 5, 2025",
-    location: "New York, NY",
-    status: "draft",
-    speakerCount: 8,
-    attendeeCount: 0,
-    modules: [
-      { id: "1", name: "speaker", enabled: true },
-      { id: "2", name: "schedule", enabled: false },
-      { id: "3", name: "content", enabled: false },
-    ],
-    googleDriveLinked: false,
-  },
-  {
-    id: "3",
-    title: "Annual Conference 2024",
-    dates: "Nov 20-22, 2024",
-    location: "London, UK",
-    status: "completed",
-    speakerCount: 45,
-    attendeeCount: 1200,
-    modules: [
-      { id: "1", name: "speaker", enabled: true },
-      { id: "2", name: "schedule", enabled: true },
-      { id: "3", name: "content", enabled: true },
-    ],
-    googleDriveLinked: true,
-    rootFolder: "Annual Conference 2024",
-  },
-];
+async function fetchEvents(): Promise<Event[]> {
+  // Normalize response shape if backend returns items/results/data
+  const res = await getJson<any>(`/events`);
+  if (Array.isArray(res)) return res as Event[];
+  if (res.items) return res.items as Event[];
+  if (res.results) return res.results as Event[];
+  if (res.data) return res.data as Event[];
+  return [];
+}
 
 export default function Index() {
-  const totalSpeakers = mockEvents.reduce((sum, e) => sum + e.speakerCount, 0);
-  const totalAttendees = mockEvents.reduce((sum, e) => sum + e.attendeeCount, 0);
-  const activeEvents = mockEvents.filter((e) => e.status === "active").length;
+  const { data, isLoading } = useQuery<Event[]>({ queryKey: ["events"], queryFn: fetchEvents });
+
+  // ensure we always operate on an array - backend may return objects sometimes
+  const events: Event[] = Array.isArray(data) ? data : (data ? (data as any).items ?? (data as any).results ?? (data as any).data ?? [] : []);
+
+  const totalSpeakers = events.reduce((sum, e) => sum + (e.speakerCount ?? 0), 0);
+  const totalAttendees = events.reduce((sum, e) => sum + (e.attendeeCount ?? 0), 0);
+  const activeEvents = events.filter((e) => e.status === "active").length;
 
   return (
     <DashboardLayout>
@@ -87,7 +53,7 @@ export default function Index() {
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           <StatsCard
             title="Total Events"
-            value={mockEvents.length}
+            value={events.length}
             subtitle={`${activeEvents} active`}
             icon={<Calendar className="h-6 w-6" />}
             variant="primary"
@@ -128,9 +94,11 @@ export default function Index() {
           </div>
 
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-            {mockEvents.map((event, index) => (
-              <EventCard key={event.id} event={event} index={index} />
-            ))}
+            {isLoading ? (
+              <div>Loading...</div>
+            ) : (
+              events.map((event, index) => <EventCard key={event.id} event={event} index={index} />)
+            )}
           </div>
         </div>
 

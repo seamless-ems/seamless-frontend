@@ -78,7 +78,7 @@ export default function SpeakerModule() {
   const [selectedTab, setSelectedTab] = useState("all");
   const [addOpen, setAddOpen] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [newSpeaker, setNewSpeaker] = useState({ name: "", email: "", title: "", company: "" });
+  const [newSpeaker, setNewSpeaker] = useState({ firstName: "", lastName: "", email: "", title: "", companyName: "", companyRole: "" });
 
   const { data: rawSpeakers, isLoading, error } = useQuery<any, Error>({
     queryKey: ["event", id, "speakers"],
@@ -127,7 +127,7 @@ export default function SpeakerModule() {
               Manage speakers, intake forms, and promotional materials
             </p>
           </div>
-            <div className="flex gap-3">
+          <div className="flex gap-3">
             <Dialog>
               <DialogTrigger asChild>
                 <Button variant="outline">
@@ -189,12 +189,20 @@ export default function SpeakerModule() {
                     if (!id) return;
                     setCreating(true);
                     try {
-                      const payload = { ...newSpeaker };
+                      // normalize payload to backend expected shape
+                      const payload = {
+                        firstName: newSpeaker.firstName,
+                        lastName: newSpeaker.lastName,
+                        email: newSpeaker.email,
+                        title: newSpeaker.title,
+                        companyName: newSpeaker.companyName,
+                        companyRole: newSpeaker.companyRole,
+                      };
                       await createSpeaker(id, payload);
-                      toast({ title: "Speaker added", description: `${newSpeaker.name} was added` });
+                      toast({ title: "Speaker added", description: `${newSpeaker.firstName} ${newSpeaker.lastName} was added` });
                       queryClient.invalidateQueries({ queryKey: ["event", id, "speakers"] });
                       setAddOpen(false);
-                      setNewSpeaker({ name: "", email: "", title: "", company: "" });
+                      setNewSpeaker({ firstName: "", lastName: "", email: "", title: "", companyName: "", companyRole: "" });
                     } catch (err: any) {
                       toast({ title: "Failed to add speaker", description: String(err?.message || err) });
                     } finally {
@@ -203,9 +211,15 @@ export default function SpeakerModule() {
                   }}
                   className="space-y-4"
                 >
-                  <div className="grid gap-2">
-                    <label className="text-sm">Full name</label>
-                    <Input value={newSpeaker.name} onChange={(e) => setNewSpeaker((s) => ({ ...s, name: e.target.value }))} required />
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <div className="grid gap-2">
+                      <label className="text-sm">First name</label>
+                      <Input value={newSpeaker.firstName} onChange={(e) => setNewSpeaker((s) => ({ ...s, firstName: e.target.value }))} required />
+                    </div>
+                    <div className="grid gap-2">
+                      <label className="text-sm">Last name</label>
+                      <Input value={newSpeaker.lastName} onChange={(e) => setNewSpeaker((s) => ({ ...s, lastName: e.target.value }))} required />
+                    </div>
                   </div>
                   <div className="grid gap-2">
                     <label className="text-sm">Email</label>
@@ -213,7 +227,11 @@ export default function SpeakerModule() {
                   </div>
                   <div className="grid gap-2 sm:grid-cols-2">
                     <Input placeholder="Title" value={newSpeaker.title} onChange={(e) => setNewSpeaker((s) => ({ ...s, title: e.target.value }))} />
-                    <Input placeholder="Company" value={newSpeaker.company} onChange={(e) => setNewSpeaker((s) => ({ ...s, company: e.target.value }))} />
+                    <Input placeholder="Company Name" value={newSpeaker.companyName} onChange={(e) => setNewSpeaker((s) => ({ ...s, companyName: e.target.value }))} />
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <Input placeholder="Company Role" value={newSpeaker.companyRole} onChange={(e) => setNewSpeaker((s) => ({ ...s, companyRole: e.target.value }))} />
+                    <div />
                   </div>
                   <div className="flex justify-end gap-2">
                     <Button variant="outline" type="button" onClick={() => setAddOpen(false)}>Cancel</Button>
@@ -303,10 +321,10 @@ export default function SpeakerModule() {
                             <Avatar className="h-10 w-10">
                               <AvatarImage src={speaker.headshot} />
                               <AvatarFallback className="bg-primary/10 text-primary">
-                                  {String(speaker.name ?? "")
-                                    .split(" ")
-                                    .map((n) => n[0])
-                                    .join("")}
+                                {String(speaker.name ?? "")
+                                  .split(" ")
+                                  .map((n) => n[0])
+                                  .join("")}
                               </AvatarFallback>
                             </Avatar>
                             <div>

@@ -118,3 +118,25 @@ If the app expects an API host, add it to a `.env` and reference it from code wi
 - If you see type errors after changing package versions, run `npm install` and restart the dev server.
 - If Tailwind classes don’t appear, ensure `tailwind.config.ts` content globs include the file you edited and restart Vite.
 
+
+
+## TODOS:
+- Every module needs to be able to work with every other one, and be possible to turn on/off individually
+- Look at sharepoint integration - is it so bad?
+## Settings
+- Add asterisk for required form fields in Settings page
+## Events:
+- Add event website to event create
+- Add event image upload to event create
+- Add sender name to event create
+## Schedules:
+- It is possible that they want a schedule but without speakers - think about how to handle this
+## Speakers:
+- We need the background to be included for the promo cards in the speaker portal
+- Add email designer (with brief templates) for promo cards in the speaker portal
+- Add font color as an option
+- Add google font options
+- Add intake form embed code (iframe with event ID)
+
+## Attendee
+- Only integrate tito if we have attendee module enabled (same for speakers)
