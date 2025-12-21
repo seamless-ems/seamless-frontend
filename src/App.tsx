@@ -5,15 +5,22 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
-import Events from "./pages/Events";
-import EventDashboard from "./pages/EventDashboard";
-import SpeakerModule from "./pages/SpeakerModule";
-import SpeakerPortal from "./pages/SpeakerPortal";
-import SpeakerIntakeForm from "./pages/SpeakerIntakeForm";
-import Team from "./pages/Team";
-import Subscription from "./pages/Subscription";
-import CreateEvent from "./pages/CreateEvent";
-import Settings from "./pages/Settings";
+import Events from "./pages/organizer/Events";
+import EventDashboard from "./pages/organizer/EventDashboard";
+import SpeakerModule from "./pages/organizer/SpeakerModule";
+import SpeakerEmbed from "./pages/public/SpeakerEmbed";
+import SpeakerEmbedSingle from "./pages/public/SpeakerEmbedSingle";
+import PromoEmbedSingle from "./pages/public/PromoEmbedSingle";
+import SpeakerPortal from "./pages/organizer/SpeakerPortal";
+import SpeakerDashboard from "./pages/speaker/SpeakerDashboard";
+import SpeakerProfile from "./pages/speaker/Profile";
+import { DashboardLayout } from "./components/layout/DashboardLayout";
+import SpeakerIntakeForm from "./pages/public/SpeakerIntakeForm";
+import Team from "./pages/organizer/Team";
+import Subscription from "./pages/organizer/Subscription";
+import CreateEvent from "./pages/organizer/CreateEvent";
+import Settings from "./pages/organizer/Settings";
+import EventSettings from "./pages/organizer/EventSettings";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -34,82 +41,118 @@ const App = () => {
             <Route path="/signup" element={<Auth />} />
 
             <Route
-              path="/"
+              path="/organizer"
               element={
                 <ProtectedRoute>
-                  <Index />
+                  <DashboardLayout mode="organizer">
+                    <Index />
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Duplicate organizer routes under /organizer namespace (optional) */}
+            <Route
+              path="/organizer/events"
+              element={
+                <ProtectedRoute>
+                  <DashboardLayout mode="organizer">
+                    <Events />
+                  </DashboardLayout>
                 </ProtectedRoute>
               }
             />
 
             <Route
-              path="/events"
+              path="/organizer/events/new"
               element={
                 <ProtectedRoute>
-                  <Events />
+                  <DashboardLayout mode="organizer">
+                    <CreateEvent />
+                  </DashboardLayout>
                 </ProtectedRoute>
               }
             />
 
             <Route
-              path="/events/new"
+              path="/organizer/event/:id"
               element={
                 <ProtectedRoute>
-                  <CreateEvent />
+                  <DashboardLayout mode="organizer">
+                    <EventDashboard />
+                  </DashboardLayout>
                 </ProtectedRoute>
               }
             />
 
             <Route
-              path="/event/:id"
+              path="/organizer/event/:id/speakers"
               element={
                 <ProtectedRoute>
-                  <EventDashboard />
+                  <DashboardLayout mode="organizer">
+                    <SpeakerModule />
+                  </DashboardLayout>
                 </ProtectedRoute>
               }
             />
 
             <Route
-              path="/event/:id/speakers"
+              path="/organizer/event/:id/settings"
               element={
                 <ProtectedRoute>
-                  <SpeakerModule />
+                  <DashboardLayout mode="organizer">
+                    <EventSettings />
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Public embed route for speaker promo cards */}
+            <Route path="/event/:id/speakers/embed" element={<SpeakerEmbed />} />
+            {/* Single-speaker embed routes (public) */}
+            <Route path="/event/:id/speakers/embed/speaker/:speakerId" element={<SpeakerEmbedSingle />} />
+            <Route path="/event/:id/speakers/embed/promo/:speakerId" element={<PromoEmbedSingle />} />
+
+            <Route
+              path="/organizer/event/:id/speakers/:speakerId"
+              element={
+                <ProtectedRoute>
+                  <DashboardLayout mode="organizer">
+                    <SpeakerPortal />
+                  </DashboardLayout>
                 </ProtectedRoute>
               }
             />
 
             <Route
-              path="/event/:id/speakers/:speakerId"
+              path="/organizer/team"
               element={
                 <ProtectedRoute>
-                  <SpeakerPortal />
+                  <DashboardLayout mode="organizer">
+                    <Team />
+                  </DashboardLayout>
                 </ProtectedRoute>
               }
             />
 
             <Route
-              path="/team"
+              path="/organizer/subscription"
               element={
                 <ProtectedRoute>
-                  <Team />
+                  <DashboardLayout mode="organizer">
+                    <Subscription />
+                  </DashboardLayout>
                 </ProtectedRoute>
               }
             />
 
             <Route
-              path="/subscription"
+              path="/organizer/settings"
               element={
                 <ProtectedRoute>
-                  <Subscription />
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="/settings"
-              element={
-                <ProtectedRoute>
-                  <Settings />
+                  <DashboardLayout mode="organizer">
+                    <Settings />
+                  </DashboardLayout>
                 </ProtectedRoute>
               }
             />
@@ -117,8 +160,31 @@ const App = () => {
             <Route
               path="/speaker-intake/:eventId"
               element={
+                // <ProtectedRoute>
+                <SpeakerIntakeForm />
+                // </ProtectedRoute>
+              }
+            />
+
+            {/* Speaker management routes (protected, /speaker namespace) */}
+            <Route
+              path="/speaker"
+              element={
                 <ProtectedRoute>
-                  <SpeakerIntakeForm />
+                  <DashboardLayout mode="speaker">
+                    <SpeakerDashboard />
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/speaker/profile"
+              element={
+                <ProtectedRoute>
+                  <DashboardLayout mode="speaker">
+                    <SpeakerProfile />
+                  </DashboardLayout>
                 </ProtectedRoute>
               }
             />

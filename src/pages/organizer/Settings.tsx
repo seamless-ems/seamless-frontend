@@ -1,4 +1,3 @@
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,9 +23,8 @@ import {
 export default function Settings() {
   const qc = useQueryClient();
 
-  const { data: me, isLoading: loadingMe } = useQuery<any, Error>({ queryKey: ["me"], queryFn: () => getMe() });
-  const { data: settings, isLoading: loadingSettings } = useQuery<any, Error>({ queryKey: ["settings"], queryFn: () => getSettings(), enabled: !!me });
-
+  const { data: me } = useQuery<any, Error>({ queryKey: ["me"], queryFn: () => getMe() });
+  const { data: settings } = useQuery<any, Error>({ queryKey: ["settings"], queryFn: () => getSettings(), enabled: !!me });
   const updateMeMut = useMutation({
     mutationFn: (body: any) => updateMe(body),
     onSuccess: () => {
@@ -59,7 +57,6 @@ export default function Settings() {
     },
   });
 
-  // Update form values when me/settings load
   React.useEffect(() => {
     form.reset({
       first_name: me?.first_name ?? "",
@@ -81,7 +78,7 @@ export default function Settings() {
   });
 
   return (
-    <DashboardLayout>
+    <div className="space-y-8">
       <div className="max-w-4xl mx-auto space-y-8">
         {/* Header */}
         <div>
@@ -96,51 +93,35 @@ export default function Settings() {
               Profile
             </CardTitle>
             <CardDescription>Your personal information and preferences</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex items-center gap-6">
+            <div className="flex-shrink-0 flex items-center">
               <Avatar className="h-20 w-20">
                 <AvatarImage src={me?.avatar_url ?? ""} />
                 <AvatarFallback className="bg-primary/10 text-primary text-xl font-display">{(me?.first_name?.[0] ?? "").toUpperCase()}{(me?.last_name?.[0] ?? "").toUpperCase()}</AvatarFallback>
               </Avatar>
-              <div>
-                <Button variant="outline" size="sm">
-                  <Upload className="h-4 w-4" />
-                  Upload Photo
-                </Button>
-                <p className="text-sm text-muted-foreground mt-2">JPG, PNG or GIF. Max 2MB</p>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-6">
+              <div className="flex-1">
+                <div className="grid gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="firstName">First Name</Label>
+                    <Input id="firstName" {...form.register("first_name")} readOnly />
+                    <Label htmlFor="lastName">Last Name</Label>
+                    <Input id="lastName" {...form.register("last_name")} readOnly />
+                    <Label htmlFor="email">Email</Label>
+                    <Input id="email" type="email" {...form.register("email")} readOnly />
+                  </div>
+                </div>
               </div>
+
             </div>
 
-            <Separator />
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="firstName">First Name</Label>
-                <Input id="firstName" {...form.register("first_name")} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="lastName">Last Name</Label>
-                <Input id="lastName" {...form.register("last_name")} />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" {...form.register("email")} />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="company">Company</Label>
-              <Input id="company" {...form.register("company")} />
-            </div>
-
-            <Button variant="teal" onClick={onSave} disabled={updateMeMut.status === "pending" || updateSettingsMut.status === "pending"}>Save Changes</Button>
           </CardContent>
         </Card>
 
         {/* Notifications - render based on settings if available */}
-        <Card>
+        {/* <Card>
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Bell className="h-5 w-5 text-primary" />
@@ -164,10 +145,10 @@ export default function Settings() {
               </div>
             ))}
           </CardContent>
-        </Card>
+        </Card> */}
 
         {/* Other sections unchanged, but they can be hooked to API later */}
-        <Card>
+        {/* <Card>
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Globe className="h-5 w-5 text-primary" />
@@ -202,10 +183,10 @@ export default function Settings() {
               <Button variant="outline">Connect</Button>
             </div>
           </CardContent>
-        </Card>
+        </Card> */}
 
         {/* Security */}
-        <Card>
+        {/* <Card>
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Shield className="h-5 w-5 text-primary" />
@@ -233,7 +214,7 @@ export default function Settings() {
               <Button variant="outline">Enable</Button>
             </div>
           </CardContent>
-        </Card>
+        </Card> */}
 
         {/* Danger Zone */}
         <Card className="border-destructive/30">
@@ -252,6 +233,6 @@ export default function Settings() {
           </CardContent>
         </Card>
       </div>
-    </DashboardLayout>
+    </div>
   );
 }

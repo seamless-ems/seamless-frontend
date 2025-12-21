@@ -143,6 +143,18 @@ const Auth: React.FC = () => {
     const mode = location.pathname === "/signup" ? "signup" : "login";
     const title = mode === "login" ? "Sign in to Seamless" : "Create your account";
     const navigate = useNavigate();
+    const [flow, setFlow] = React.useState<"organizer" | "speaker" | "public">("organizer");
+
+    const navigateAfterAuth = () => {
+        if (flow === "organizer") {
+            navigate("/organizer", { replace: true });
+        } else if (flow === "speaker") {
+            navigate("/speaker", { replace: true });
+        } else {
+            navigate("/", { replace: true });
+        }
+    };
+
     return (
         <div className="min-h-screen flex items-center justify-center bg-background">
             <div className="w-full max-w-md p-8 space-y-6 bg-card rounded-lg shadow-soft">
@@ -150,11 +162,36 @@ const Auth: React.FC = () => {
                     <h1 className="text-2xl font-semibold">{title}</h1>
                 </div>
 
+                {/* Flow selector */}
+                <div className="flex gap-2">
+                    <Button
+                        variant={flow === "organizer" ? "default" : "outline"}
+                        onClick={() => setFlow("organizer")}
+                        className="flex-1"
+                    >
+                        Organizer
+                    </Button>
+                    <Button
+                        variant={flow === "speaker" ? "default" : "outline"}
+                        onClick={() => setFlow("speaker")}
+                        className="flex-1"
+                    >
+                        Speaker
+                    </Button>
+                    <Button
+                        variant={flow === "public" ? "default" : "outline"}
+                        onClick={() => setFlow("public")}
+                        className="flex-1"
+                    >
+                        Public
+                    </Button>
+                </div>
+
                     <div key={mode} className="space-y-4">
                         {mode === "signup" ? (
-                            <SignupForm onSuccess={() => navigate("/", { replace: true })} />
+                            <SignupForm onSuccess={() => navigateAfterAuth()} />
                         ) : (
-                            <LoginForm onSuccess={() => navigate("/", { replace: true })} />
+                            <LoginForm onSuccess={() => navigateAfterAuth()} />
                         )}
 
                         <div className="text-sm text-center mt-2">
@@ -203,8 +240,8 @@ const Auth: React.FC = () => {
                                     }
 
                                     toast.success("Signed in with Google");
-                                    // use react-router navigation to avoid full reloads
-                                    navigate("/", { replace: true });
+                                    // navigate to flow-specific destination
+                                    navigateAfterAuth();
                                 } catch (e) {
                                     console.error("google popup error", e);
                                     toast.error("Unable to sign in with Google");
@@ -242,7 +279,7 @@ const Auth: React.FC = () => {
                                     }
 
                                     toast.success("Signed in with Microsoft");
-                                    navigate("/", { replace: true });
+                                    navigateAfterAuth();
                                 } catch (e) {
                                     console.error("microsoft popup error", e);
                                     toast.error("Unable to sign in with Microsoft");
@@ -259,9 +296,15 @@ const Auth: React.FC = () => {
                     </Button>
                 </div>
 
-                <p className="text-sm text-muted-foreground">
-                    By continuing you agree to the <a className="underline">terms</a> and <a className="underline">privacy policy</a>.
-                </p>
+                <div className="flex items-center justify-between gap-2">
+                    <Button variant="ghost" className="flex-1" onClick={() => navigate("/", { replace: true })}>
+                        Continue as guest
+                    </Button>
+
+                    <p className="text-sm text-muted-foreground">
+                        By continuing you agree to the <a className="underline">terms</a> and <a className="underline">privacy policy</a>.
+                    </p>
+                </div>
             </div>
         </div>
     );

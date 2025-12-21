@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Calendar, MapPin, Users, Mic2, MoreVertical } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Trash2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,6 +16,7 @@ import { cn } from "@/lib/utils";
 interface EventCardProps {
   event: Event;
   index?: number;
+  onDelete?: (id: string) => Promise<void> | void;
 }
 
 const statusStyles = {
@@ -23,7 +25,7 @@ const statusStyles = {
   completed: "bg-success/10 text-success border-success/20",
 };
 
-export function EventCard({ event, index = 0 }: EventCardProps) {
+export function EventCard({ event, index = 0, onDelete }: EventCardProps) {
   return (
     <div
       className="group rounded-xl border border-border bg-card p-6 shadow-soft transition-all duration-300 hover:shadow-medium hover:border-primary/30 animate-slide-up"
@@ -67,13 +69,21 @@ export function EventCard({ event, index = 0 }: EventCardProps) {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem asChild>
-              <Link to={`/event/${event.id}`}>Open Event</Link>
+              <Link to={`/organizer/event/${event.id}`}>Open Event</Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link to={`/event/${event.id}/settings`}>Edit Event</Link>
+              <Link to={`/organizer/event/${event.id}/settings`}>Edit Event</Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-destructive">
+            <DropdownMenuItem
+              className="text-destructive"
+              onSelect={async (e) => {
+                e.preventDefault();
+                if (typeof onDelete === "function") {
+                  await onDelete(event.id);
+                }
+              }}
+            >
               Delete Event
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -106,27 +116,37 @@ export function EventCard({ event, index = 0 }: EventCardProps) {
       </div>
 
       <div className="flex flex-wrap gap-2 mb-4">
-        {(event.modules ?? []).map((module) => (
-          <Badge
-            key={module.id}
-            variant={module.enabled ? "default" : "outline"}
-            className={cn(
-              "capitalize",
-              module.enabled &&
+        {(() => {
+          const raw = event.modules;
+          let modulesArray: any[] = [];
+          if (Array.isArray(raw)) modulesArray = raw;
+          else if (!raw) modulesArray = [];
+          else if (typeof raw === "string") modulesArray = (raw as any).split(",").map((name: string) => ({ id: name.trim(), name: name.trim(), enabled: true }));
+          else if (typeof raw === "object") modulesArray = Object.values(raw as any);
+          else modulesArray = [];
+
+          return modulesArray.map((module) => (
+            <Badge
+              key={module.id}
+              variant={module.enabled ? "default" : "outline"}
+              className={cn(
+                "capitalize",
+                module.enabled &&
                 module.name === "speaker" &&
                 "bg-speaker text-primary-foreground",
-              module.enabled &&
+                module.enabled &&
                 module.name === "schedule" &&
                 "bg-schedule text-accent-foreground",
-              module.enabled &&
+                module.enabled &&
                 module.name === "content" &&
                 "bg-content text-foreground",
-              !module.enabled && "opacity-50"
-            )}
-          >
-            {module.name}
-          </Badge>
-        ))}
+                !module.enabled && "opacity-50"
+              )}
+            >
+              {module.name}
+            </Badge>
+          ));
+        })()}
       </div>
 
       <div className="flex items-center justify-between pt-4 border-t border-border">
@@ -141,9 +161,20 @@ export function EventCard({ event, index = 0 }: EventCardProps) {
             </Badge>
           )}
         </div>
-        <Button variant="teal" size="sm" asChild>
-          <Link to={`/event/${event.id}`}>Manage Event</Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={async () => {
+            if (!confirm("Delete this event? This cannot be undone.")) return;
+            if (typeof onDelete === "function") {
+              await onDelete(event.id);
+            }
+          }} className="text-destructive">
+            <Trash2 className="h-4 w-4 mr-2" />
+          </Button>
+
+          <Button variant="teal" size="sm" asChild>
+            <Link to={`/organizer/event/${event.id}`}>Manage Event</Link>
+          </Button>
+        </div>
       </div>
     </div>
   );

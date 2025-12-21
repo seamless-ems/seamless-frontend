@@ -25,7 +25,6 @@ export interface Speaker {
   id: string;
   name: string;
   email: string;
-  title: string;
   company: string;
   headshot?: string;
   companyLogo?: string;
@@ -43,6 +42,25 @@ export interface TeamMember {
   email: string;
   role: 'admin' | 'member' | 'viewer';
   avatar?: string;
+}
+
+export interface TeamUser {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  is_admin: boolean;
+  team_id: string;
+  role: string | null;
+}
+
+export interface Team {
+  id: string;
+  name: string;
+  description?: string | null;
+  created_at?: string;
+  created_by?: string;
+  users: TeamUser[];
 }
 
 export interface Subscription {

@@ -43,7 +43,7 @@ export function useLogin(options?: {
       if (options?.onSuccess) {
         options.onSuccess(data);
       } else {
-        // No onSuccess handler provided by caller  navigate to dashboard/root
+        // No onSuccess handler provided by caller navigate to dashboard/root
         if (typeof window !== "undefined" && window.location) {
           try {
             window.location.replace("/");

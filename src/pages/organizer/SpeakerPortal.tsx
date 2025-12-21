@@ -1,6 +1,6 @@
 import { useParams, Link } from "react-router-dom";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
+import SpeakerForm from "@/components/SpeakerForm";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,9 +28,9 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Speaker } from "@/types/event";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { updateSpeaker } from "@/lib/api";
+import { updateSpeaker, uploadFile } from "@/lib/api";
 import { useEffect } from "react";
 import {
   Dialog,
@@ -44,8 +44,6 @@ import { toast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { getJson } from "@/lib/api";
 
-// Speaker data will be fetched from the API per route params
-
 export default function SpeakerPortal() {
   const { id, speakerId } = useParams();
 
@@ -55,7 +53,6 @@ export default function SpeakerPortal() {
     enabled: Boolean(id && speakerId),
   });
 
-  // Normalize API snake_case response to UI-friendly fields
   const s = speaker
     ? {
       id: speaker.id,
@@ -63,8 +60,8 @@ export default function SpeakerPortal() {
       firstName: (speaker as any).first_name ?? undefined,
       lastName: (speaker as any).last_name ?? undefined,
       email: (speaker as any).email ?? (speaker as any).email_address ?? "",
-      title: (speaker as any).title ?? "",
-      company: (speaker as any).company ?? "",
+      companyName: (speaker as any).company_name ?? "",
+      companyRole: (speaker as any).company_role ?? "",
       headshot: (speaker as any).headshot_url ?? (speaker as any).headshot ?? null,
       companyLogo: (speaker as any).company_logo ?? (speaker as any).companyLogo ?? null,
       linkedin: (speaker as any).linkedin ?? null,
@@ -77,44 +74,30 @@ export default function SpeakerPortal() {
 
   const queryClient = useQueryClient();
   const [editOpen, setEditOpen] = useState(false);
-  const [editFirstName, setEditFirstName] = useState<string>(s?.firstName ?? "");
-  const [editLastName, setEditLastName] = useState<string>(s?.lastName ?? "");
-  const [editEmail, setEditEmail] = useState<string>(s?.email ?? "");
-  const [editTitle, setEditTitle] = useState<string>(s?.title ?? "");
-  const [editCompany, setEditCompany] = useState<string>(s?.company ?? "");
-  const [editLinkedin, setEditLinkedin] = useState<string>(s?.linkedin ?? "");
-
-  useEffect(() => {
-    setEditFirstName(s?.firstName ?? "");
-    setEditLastName(s?.lastName ?? "");
-    setEditEmail(s?.email ?? "");
-    setEditTitle(s?.title ?? "");
-    setEditCompany(s?.company ?? "");
-    setEditLinkedin(s?.linkedin ?? "");
-  }, [s]);
+  const headshotInputRef = useRef<HTMLInputElement | null>(null);
+  const logoInputRef = useRef<HTMLInputElement | null>(null);
+  const [uploadingHeadshot, setUploadingHeadshot] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  // No need to sync edit fields with s, SpeakerForm will handle initial values
 
   return (
-    <DashboardLayout eventId={id}>
+    <div className="space-y-8">
       <div className="space-y-6">
-        {/* Back Button & Header */}
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="sm" asChild>
-            <Link to={`/event/${id}/speakers`}>
+            <Link to={`/organizer/event/${id}/speakers`}>
               <ChevronLeft className="h-4 w-4" />
               Back to Speakers
             </Link>
           </Button>
         </div>
 
-        {/* Speaker Header Card */}
         <Card>
           <CardContent className="p-6">
             <div className="flex flex-col gap-6 md:flex-row md:items-start">
               <Avatar className="h-24 w-24 border-4 border-primary/20">
                 <AvatarImage src={s?.headshot ?? undefined} />
-                <AvatarFallback className="bg-primary/10 text-primary text-2xl font-display">
-                  {(s?.firstName || s?.lastName) ? `${(s.firstName ?? "")[0] ?? ""}${(s.lastName ?? "")[0] ?? ""}` : "?"}
-                </AvatarFallback>
+                <AvatarFallback className="bg-primary/10 text-primary text-2xl font-display">{(s?.firstName || s?.lastName) ? `${(s.firstName ?? "")[0] ?? ""}${(s.lastName ?? "")[0] ?? ""}` : "?"}</AvatarFallback>
               </Avatar>
 
               <div className="flex-1 space-y-4">
@@ -123,7 +106,7 @@ export default function SpeakerPortal() {
                     {s?.firstName ? `${s.firstName} ${s.lastName ?? ""}` : "Loading…"}
                   </h1>
                   <p className="text-lg text-muted-foreground">
-                    {s ? `${s.title ?? ""}${s.company ? ` at ${s.company}` : ""}` : ""}
+                    {s ? `${s.companyRole ?? ""}${s.companyName ? ` at ${s.companyName}` : ""}` : ""}
                   </p>
                 </div>
 
@@ -187,25 +170,35 @@ export default function SpeakerPortal() {
           </CardContent>
         </Card>
 
-        {/* Edit Dialog */}
         <Dialog open={Boolean(editOpen)} onOpenChange={(v) => setEditOpen(Boolean(v))}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Edit Speaker</DialogTitle>
               <DialogDescription>Update speaker details</DialogDescription>
             </DialogHeader>
-            <form
-              onSubmit={async (e) => {
-                e.preventDefault();
+            <SpeakerForm
+              initialValues={{
+                firstName: s?.firstName ?? "",
+                lastName: s?.lastName ?? "",
+                email: s?.email ?? "",
+                companyName: s?.companyName ?? "",
+                companyRole: s?.companyRole ?? "",
+                linkedin: s?.linkedin ?? "",
+                bio: s?.bio ?? "",
+              }}
+              submitLabel="Save"
+              onCancel={() => setEditOpen(false)}
+              onSubmit={async (values) => {
                 if (!id || !speakerId) return;
                 try {
                   await updateSpeaker(id, speakerId, {
-                    first_name: editFirstName,
-                    last_name: editLastName,
-                    email: editEmail,
-                    title: editTitle,
-                    company: editCompany,
-                    linkedin: editLinkedin,
+                    first_name: values.firstName,
+                    last_name: values.lastName,
+                    email: values.email,
+                    companyName: values.companyName,
+                    companyRole: values.companyRole,
+                    linkedin: values.linkedin,
+                    bio: values.bio,
                   });
                   queryClient.invalidateQueries({ queryKey: ["event", id, "speaker", speakerId] });
                   queryClient.invalidateQueries({ queryKey: ["event", id, "speakers"] });
@@ -215,27 +208,10 @@ export default function SpeakerPortal() {
                   toast({ title: "Failed to update speaker", description: String(err?.message || err) });
                 }
               }}
-              className="space-y-4"
-            >
-              <div className="grid grid-cols-2 gap-2">
-                <Input value={editFirstName} onChange={(e) => setEditFirstName(e.target.value)} placeholder="First name" />
-                <Input value={editLastName} onChange={(e) => setEditLastName(e.target.value)} placeholder="Last name" />
-              </div>
-              <Input value={editEmail} onChange={(e) => setEditEmail(e.target.value)} placeholder="Email" />
-              <div className="grid grid-cols-2 gap-2">
-                <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="Title" />
-                <Input value={editCompany} onChange={(e) => setEditCompany(e.target.value)} placeholder="Company" />
-              </div>
-              <Input value={editLinkedin} onChange={(e) => setEditLinkedin(e.target.value)} placeholder="LinkedIn URL" />
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" type="button" onClick={() => setEditOpen(false)}>Cancel</Button>
-                <Button type="submit">Save</Button>
-              </div>
-            </form>
+            />
           </DialogContent>
         </Dialog>
 
-        {/* Main Content Tabs */}
         <Tabs defaultValue="info" className="space-y-6">
           <TabsList className="bg-card border border-border">
             <TabsTrigger value="info">Speaker Info</TabsTrigger>
@@ -244,7 +220,6 @@ export default function SpeakerPortal() {
             <TabsTrigger value="embed">Embed Codes</TabsTrigger>
           </TabsList>
 
-          {/* Speaker Info Tab */}
           <TabsContent value="info" className="space-y-6">
             <div className="grid gap-6 md:grid-cols-2">
               <Card>
@@ -271,12 +246,12 @@ export default function SpeakerPortal() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>Title</Label>
-                      <Input value={s?.title ?? ""} readOnly />
+                      <Label>Company Role</Label>
+                      <Input value={s?.companyRole ?? ""} readOnly />
                     </div>
                     <div className="space-y-2">
-                      <Label>Company</Label>
-                      <Input value={s?.company ?? ""} readOnly />
+                      <Label>Company Name</Label>
+                      <Input value={s?.companyName ?? ""} readOnly />
                     </div>
                   </div>
                   <div className="space-y-2">
@@ -304,7 +279,6 @@ export default function SpeakerPortal() {
             </div>
           </TabsContent>
 
-          {/* Assets Tab */}
           <TabsContent value="assets" className="space-y-6">
             <div className="grid gap-6 md:grid-cols-2">
               <Card>
@@ -332,13 +306,51 @@ export default function SpeakerPortal() {
                     )}
                   </div>
                   <div className="mt-4 flex gap-2">
-                    <Button variant="outline" size="sm">
+                    <input
+                      ref={headshotInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        if (!id || !speakerId) return;
+                        try {
+                          setUploadingHeadshot(true);
+                          const res = await uploadFile(file, "speaker", undefined, speakerId, id);
+                          const url = res?.public_url ?? res?.publicUrl ?? res?.url ?? null;
+                          if (!url) throw new Error("Upload did not return a file url");
+                          // Build full payload from existing speaker to satisfy backend validation
+                          const payload: any = {
+                            first_name: (speaker as any)?.first_name ?? (speaker as any)?.firstName ?? "",
+                            last_name: (speaker as any)?.last_name ?? (speaker as any)?.lastName ?? "",
+                            email: (speaker as any)?.email ?? (speaker as any)?.email_address ?? "",
+                            company_name: (speaker as any)?.company ?? (speaker as any)?.company_name ?? "",
+                            company_role: (speaker as any)?.company_role ?? (speaker as any)?.companyRole ?? (speaker as any)?.title ?? "",
+                            bio: (speaker as any)?.bio ?? "",
+                            linkedin: (speaker as any)?.linkedin ?? "",
+                            headshot: url,
+                          };
+                          await updateSpeaker(id, speakerId, payload);
+                          queryClient.invalidateQueries({ queryKey: ["event", id, "speaker", speakerId] });
+                          queryClient.invalidateQueries({ queryKey: ["event", id, "speakers"] });
+                          toast({ title: "Headshot replaced" });
+                        } catch (err: any) {
+                          toast({ title: "Failed to replace headshot", description: String(err?.message || err) });
+                        } finally {
+                          setUploadingHeadshot(false);
+                          // clear the input so same file can be selected again
+                          if (headshotInputRef.current) headshotInputRef.current.value = "";
+                        }
+                      }}
+                    />
+                    <Button variant="outline" size="sm" onClick={() => headshotInputRef.current?.click()} disabled={uploadingHeadshot}>
                       <Download className="h-4 w-4" />
                       Download
                     </Button>
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" onClick={() => headshotInputRef.current?.click()} disabled={uploadingHeadshot}>
                       <Upload className="h-4 w-4" />
-                      Replace
+                      {uploadingHeadshot ? "Uploading…" : "Replace"}
                     </Button>
                   </div>
                 </CardContent>
@@ -369,13 +381,49 @@ export default function SpeakerPortal() {
                     )}
                   </div>
                   <div className="mt-4 flex gap-2">
-                    <Button variant="outline" size="sm">
+                    <input
+                      ref={logoInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        if (!id || !speakerId) return;
+                        try {
+                          setUploadingLogo(true);
+                          const res = await uploadFile(file, "speaker", undefined, speakerId, id);
+                          const url = res?.public_url ?? res?.publicUrl ?? res?.url ?? null;
+                          if (!url) throw new Error("Upload did not return a file url");
+                          const payload: any = {
+                            first_name: (speaker as any)?.first_name ?? (speaker as any)?.firstName ?? "",
+                            last_name: (speaker as any)?.last_name ?? (speaker as any)?.lastName ?? "",
+                            email: (speaker as any)?.email ?? (speaker as any)?.email_address ?? "",
+                            company_name: (speaker as any)?.company ?? (speaker as any)?.company_name ?? "",
+                            company_role: (speaker as any)?.company_role ?? (speaker as any)?.companyRole ?? (speaker as any)?.title ?? "",
+                            bio: (speaker as any)?.bio ?? "",
+                            linkedin: (speaker as any)?.linkedin ?? "",
+                            company_logo: url,
+                          };
+                          await updateSpeaker(id, speakerId, payload);
+                          queryClient.invalidateQueries({ queryKey: ["event", id, "speaker", speakerId] });
+                          queryClient.invalidateQueries({ queryKey: ["event", id, "speakers"] });
+                          toast({ title: "Company logo replaced" });
+                        } catch (err: any) {
+                          toast({ title: "Failed to replace logo", description: String(err?.message || err) });
+                        } finally {
+                          setUploadingLogo(false);
+                          if (logoInputRef.current) logoInputRef.current.value = "";
+                        }
+                      }}
+                    />
+                    <Button variant="outline" size="sm" onClick={() => logoInputRef.current?.click()} disabled={uploadingLogo}>
                       <Download className="h-4 w-4" />
                       Download
                     </Button>
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" onClick={() => logoInputRef.current?.click()} disabled={uploadingLogo}>
                       <Upload className="h-4 w-4" />
-                      Replace
+                      {uploadingLogo ? "Uploading…" : "Replace"}
                     </Button>
                   </div>
                 </CardContent>
@@ -383,10 +431,8 @@ export default function SpeakerPortal() {
             </div>
           </TabsContent>
 
-          {/* Cards Tab */}
           <TabsContent value="cards" className="space-y-6">
             <div className="grid gap-6 md:grid-cols-2">
-              {/* Website Card */}
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle className="text-lg">Website Card</CardTitle>
@@ -412,7 +458,6 @@ export default function SpeakerPortal() {
                   </Badge>
                 </CardHeader>
                 <CardContent>
-                  {/* Preview Card */}
                   <div className="rounded-xl border border-border bg-card p-4 mb-4">
                     <div className="flex items-start gap-4">
                       <div className="relative h-16 w-16 rounded-full overflow-hidden bg-primary/5 flex-shrink-0">
@@ -420,9 +465,7 @@ export default function SpeakerPortal() {
                           <img src={s.headshot} alt="Headshot" className="w-full h-full object-cover" />
                         ) : (
                           <Avatar className="h-16 w-16">
-                            <AvatarFallback className="bg-primary/10 text-primary font-display">
-                              {s?.firstName || s?.lastName ? `${(s.firstName ?? "")[0] ?? ""}${(s.lastName ?? "")[0] ?? ""}` : "?"}
-                            </AvatarFallback>
+                            <AvatarFallback className="bg-primary/10 text-primary font-display">{s?.firstName || s?.lastName ? `${(s.firstName ?? "")[0] ?? ""}${(s.lastName ?? "")[0] ?? ""}` : "?"}</AvatarFallback>
                           </Avatar>
                         )}
                       </div>
@@ -431,10 +474,10 @@ export default function SpeakerPortal() {
                           {s?.firstName ? `${s.firstName} ${s.lastName ?? ""}` : ""}
                         </h4>
                         <p className="text-sm text-muted-foreground">
-                          {s?.title ?? ""}
+                          {s?.companyRole ?? ""}
                         </p>
                         <p className="text-sm text-primary flex items-center gap-2">
-                          {s?.company ?? ""}
+                          {s?.companyName ?? ""}
                           {s?.companyLogo && (
                             <img src={s.companyLogo} alt="Company logo" className="h-4 object-contain ml-1" />
                           )}
@@ -457,7 +500,6 @@ export default function SpeakerPortal() {
                 </CardContent>
               </Card>
 
-              {/* Promo Card */}
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle className="text-lg">Promo Card</CardTitle>
@@ -483,9 +525,7 @@ export default function SpeakerPortal() {
                   </Badge>
                 </CardHeader>
                 <CardContent>
-                  {/* Promo Card Preview */}
                   <div className="relative aspect-[4/5] rounded-xl text-primary-foreground p-6 flex flex-col justify-end mb-4 overflow-hidden">
-                    {/* Full-bleed headshot background when available */}
                     {s?.headshot ? (
                       <div
                         className="absolute inset-0 bg-cover bg-center"
@@ -496,10 +536,8 @@ export default function SpeakerPortal() {
                       <div className="absolute inset-0 bg-gradient-to-br from-primary to-primary/80" aria-hidden />
                     )}
 
-                    {/* subtle dark overlay for text readability */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-black/10 pointer-events-none" />
 
-                    {/* Decorative company logo in corner */}
                     {s?.companyLogo && (
                       <img
                         src={s.companyLogo}
@@ -508,14 +546,13 @@ export default function SpeakerPortal() {
                       />
                     )}
 
-                    {/* content (above overlays) */}
                     <div className="relative z-20 space-y-2">
                       <h4 className="font-display text-xl font-bold drop-shadow-md">
                         {s?.firstName ? `${s.firstName} ${s.lastName ?? ""}` : ""}
                       </h4>
-                      <p className="text-sm opacity-90 drop-shadow-sm">{s?.title ?? ""}</p>
+                      <p className="text-sm opacity-90 drop-shadow-sm">{s?.companyRole ?? ""}</p>
                       <p className="text-sm font-semibold drop-shadow-sm">
-                        {s?.company ?? ""}
+                        {s?.companyName ?? ""}
                       </p>
                     </div>
                   </div>
@@ -534,7 +571,6 @@ export default function SpeakerPortal() {
             </div>
           </TabsContent>
 
-          {/* Embed Codes Tab */}
           <TabsContent value="embed" className="space-y-6">
             <Card>
               <CardHeader>
@@ -546,7 +582,7 @@ export default function SpeakerPortal() {
               <CardContent>
                 <div className="rounded-lg bg-muted p-4 font-mono text-sm overflow-x-auto">
                   <code className="text-foreground">
-                    {`<iframe src="https://seamlessevents.io/embed/speaker/${s?.id ?? ""}" width="300" height="200" frameborder="0"></iframe>`}
+                    {`<iframe src="${(typeof window !== 'undefined' ? window.location.origin : 'https://seamlessevents.io')}/event/${id}/speakers/embed/speaker/${speakerId ?? s?.id ?? ""}" width="300" height="200" frameborder="0"></iframe>`}
                   </code>
                 </div>
                 <Button variant="outline" size="sm" className="mt-4">
@@ -566,7 +602,7 @@ export default function SpeakerPortal() {
               <CardContent>
                 <div className="rounded-lg bg-muted p-4 font-mono text-sm overflow-x-auto">
                   <code className="text-foreground">
-                    {`<iframe src="https://seamlessevents.io/embed/promo/${s?.id ?? ""}" width="400" height="500" frameborder="0"></iframe>`}
+                    {`<iframe src="${(typeof window !== 'undefined' ? window.location.origin : 'https://seamlessevents.io')}/event/${id}/speakers/embed/promo/${speakerId ?? s?.id ?? ""}" width="400" height="500" frameborder="0"></iframe>`}
                   </code>
                 </div>
                 <Button variant="outline" size="sm" className="mt-4">
@@ -578,6 +614,6 @@ export default function SpeakerPortal() {
           </TabsContent>
         </Tabs>
       </div>
-    </DashboardLayout>
+    </div>
   );
 }

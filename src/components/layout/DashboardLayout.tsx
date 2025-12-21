@@ -1,4 +1,4 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   Sidebar,
@@ -40,30 +40,38 @@ import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
 import { clearToken } from "@/lib/auth";
 import { signOut as firebaseSignOut } from "@/lib/firebase";
+import { useQuery } from "@tanstack/react-query";
+import { getMe, getTeam } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 const accountNavItems = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
-  { title: "Events", url: "/events", icon: Calendar },
-  { title: "Team", url: "/team", icon: Users },
-  // { title: "Subscription", url: "/subscription", icon: CreditCard },
-  { title: "Settings", url: "/settings", icon: Settings },
+  { title: "Dashboard", url: "/organizer", icon: LayoutDashboard },
+  { title: "Events", url: "/organizer/events", icon: Calendar },
+  { title: "Team", url: "/organizer/team", icon: Users },
+  // { title: "Subscription", url: "/organizer/subscription", icon: CreditCard },
+  { title: "Settings", url: "/organizer/settings", icon: Settings },
 ];
 
 const eventNavItems = [
-  { title: "Overview", url: "/event/:id", icon: LayoutDashboard },
-  { title: "Speakers", url: "/event/:id/speakers", icon: Mic2 },
-  // { title: "Schedule", url: "/event/:id/schedule", icon: Calendar },
-  // { title: "Content", url: "/event/:id/content", icon: FileText },
-  // { title: "Settings", url: "/event/:id/settings", icon: Settings },
+  { title: "Overview", url: "/organizer/event/:id", icon: LayoutDashboard },
+  { title: "Speakers", url: "/organizer/event/:id/speakers", icon: Mic2 },
+  // { title: "Schedule", url: "/organizer/event/:id/schedule", icon: Calendar },
+  // { title: "Content", url: "/organizer/event/:id/content", icon: FileText },
+  // { title: "Settings", url: "/organizer/event/:id/settings", icon: Settings },
+];
+
+const speakerAccountNavItems = [
+  { title: "Dashboard", url: "/speaker", icon: LayoutDashboard },
+  { title: "Profile", url: "/speaker/profile", icon: Users },
 ];
 
 interface DashboardLayoutProps {
   children: ReactNode;
   eventId?: string;
+  mode?: "organizer" | "speaker";
 }
 
-function AppSidebar({ eventId }: { eventId?: string }) {
+function AppSidebar({ eventId, mode }: { eventId?: string; mode?: "organizer" | "speaker" }) {
   const location = useLocation();
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
@@ -73,19 +81,29 @@ function AppSidebar({ eventId }: { eventId?: string }) {
         ...item,
         url: item.url.replace(":id", eventId),
       }))
+    : mode === "speaker"
+    ? speakerAccountNavItems
     : accountNavItems;
 
   const isActive = (url: string) => {
-    if (url === "/" || url === `/event/${eventId}`) {
-      return location.pathname === url;
+    // Build candidate paths to check. When in organizer mode, also check organizer-prefixed paths.
+    const candidates = [url];
+    if (mode === "organizer") {
+      // Map root to organizer events when appropriate
+      if (url === "/") candidates.push("/organizer");
+      // Prefix other urls with /organizer if not already
+      if (!url.startsWith("/organizer") && url !== "/") candidates.push(`/organizer${url}`);
     }
-    return location.pathname.startsWith(url);
+
+    return candidates.some((p) => location.pathname === p || location.pathname.startsWith(p));
   };
+
+  const brandLink = mode === "speaker" ? "/speaker" : "/organizer";
 
   return (
     <Sidebar className="border-r border-sidebar-border bg-sidebar">
       <div className="flex h-16 items-center border-b border-sidebar-border px-4">
-        <Link to="/" className="flex items-center gap-2">
+        <Link to={brandLink} className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-display font-bold">
             S
           </div>
@@ -106,7 +124,7 @@ function AppSidebar({ eventId }: { eventId?: string }) {
               className="w-full justify-start"
               asChild
             >
-              <Link to="/events">
+              <Link to="/organizer/events">
                 <ChevronDown className="mr-2 h-4 w-4 rotate-90" />
                 {!collapsed && "Back to Events"}
               </Link>
@@ -120,23 +138,26 @@ function AppSidebar({ eventId }: { eventId?: string }) {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    asChild
-                    className={cn(
-                      "transition-colors",
-                      isActive(item.url) &&
-                        "bg-primary/10 text-primary font-medium"
-                    )}
-                  >
-                    <Link to={item.url}>
-                      <item.icon className="h-4 w-4" />
-                      {!collapsed && <span>{item.title}</span>}
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {navItems.map((item) => {
+                const linkTo = mode === "organizer" && item.url === "/" ? "/organizer" : item.url;
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      className={cn(
+                        "transition-colors",
+                        isActive(item.url) &&
+                          "bg-primary/10 text-primary font-medium"
+                      )}
+                    >
+                      <Link to={linkTo}>
+                        <item.icon className="h-4 w-4" />
+                        {!collapsed && <span>{item.title}</span>}
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -160,13 +181,36 @@ function AppSidebar({ eventId }: { eventId?: string }) {
   );
 }
 
-export function DashboardLayout({ children, eventId }: DashboardLayoutProps) {
+export function DashboardLayout({ children, eventId, mode: propMode }: DashboardLayoutProps) {
   const navigate = useNavigate();
+  const { data: me } = useQuery<any>({ queryKey: ["me"], queryFn: () => getMe() });
+  const { data: teams } = useQuery<any[]>({ queryKey: ["teams"], queryFn: () => getTeam() });
+  const [mode, setMode] = useState<"organizer" | "speaker">(propMode ?? "organizer");
+
+  useEffect(() => {
+    // Priority: propMode > localStorage > infer from me
+    if (propMode) {
+      setMode(propMode);
+      if (typeof window !== "undefined") window.localStorage.setItem("dashboardMode", propMode);
+      return;
+    }
+
+    const stored = typeof window !== "undefined" ? window.localStorage.getItem("dashboardMode") : null;
+    if (stored === "organizer" || stored === "speaker") {
+      setMode(stored as "organizer" | "speaker");
+      return;
+    }
+
+    if (me) {
+      const isSpeaker = Array.isArray(me.roles) ? me.roles.includes("speaker") : (me.role === "speaker");
+      setMode(isSpeaker ? "speaker" : "organizer");
+    }
+  }, [propMode, me]);
 
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full">
-        <AppSidebar eventId={eventId} />
+        <AppSidebar eventId={eventId} mode={mode} />
         <div className="flex flex-1 flex-col">
           {/* Top Header */}
           <header className="flex h-16 items-center justify-between border-b border-border bg-card px-6">
@@ -182,12 +226,12 @@ export function DashboardLayout({ children, eventId }: DashboardLayoutProps) {
             </div>
 
             <div className="flex items-center gap-4">
-              <Button variant="teal" size="sm" asChild>
+              {/* <Button variant="teal" size="sm" asChild>
                 <Link to="/events/new">
                   <Plus className="h-4 w-4" />
                   <span className="hidden sm:inline">New Event</span>
                 </Link>
-              </Button>
+              </Button> */}
 
               {/* <Button variant="ghost" size="icon" className="relative">
                 <Bell className="h-5 w-5" />
@@ -203,20 +247,64 @@ export function DashboardLayout({ children, eventId }: DashboardLayoutProps) {
                     className="flex items-center gap-2 pl-2"
                   >
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src="" />
+                      <AvatarImage src={me?.avatar_url ?? ""} />
                       <AvatarFallback className="bg-primary/10 text-primary text-sm">
-                        JD
+                        {((me?.first_name?.[0] ?? "") + (me?.last_name?.[0] ?? "")).toUpperCase() || (me?.email?.[0] ?? "").toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     <span className="hidden md:inline text-sm font-medium">
-                      James Demo
+                      {me ? `${me.first_name ?? ""} ${me.last_name ?? ""}`.trim() : "Account"}
                     </span>
                     <ChevronDown className="h-4 w-4 text-muted-foreground" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuItem>Profile</DropdownMenuItem>
-                  <DropdownMenuItem>Settings</DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/organizer/settings">Settings</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/organizer/team">Team</Link>
+                  </DropdownMenuItem>
+                  {/* <DropdownMenuItem asChild>
+                    <Link to="/subscription">Subscription</Link>
+                  </DropdownMenuItem> */}
+                  <DropdownMenuSeparator />
+                  <div className="px-2 py-1 text-xs text-muted-foreground">Switch Team</div>
+                  {teams && teams.length > 0 ? (
+                    teams.map((t: any) => (
+                      <DropdownMenuItem key={t.id} onSelect={() => navigate(`/team?team=${encodeURIComponent(t.id)}`)}>
+                        <div className="flex items-center gap-2">
+                          <Users className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm">{t.name}</span>
+                        </div>
+                      </DropdownMenuItem>
+                    ))
+                  ) : (
+                    <DropdownMenuItem disabled>No teams</DropdownMenuItem>
+                  )}
+                  <DropdownMenuSeparator />
+                  {/* Mode switcher */}
+                  {mode !== "organizer" ? (
+                    <DropdownMenuItem
+                      onSelect={() => {
+                        setMode("organizer");
+                        if (typeof window !== "undefined") window.localStorage.setItem("dashboardMode", "organizer");
+                        navigate("/organizer");
+                      }}
+                    >
+                      Switch to Organizer
+                    </DropdownMenuItem>
+                  ) : (
+                    <DropdownMenuItem
+                      onSelect={() => {
+                        setMode("speaker");
+                        if (typeof window !== "undefined") window.localStorage.setItem("dashboardMode", "speaker");
+                        navigate("/speaker");
+                      }}
+                    >
+                      Switch to Speaker
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     className="text-destructive"
@@ -224,19 +312,15 @@ export function DashboardLayout({ children, eventId }: DashboardLayoutProps) {
                       try {
                         await firebaseSignOut();
                       } catch (e) {
-                        // ensure token cleared even if signOut fails
                         try {
                           clearToken();
                         } catch (err) {
-                          // log the unexpected error during clearToken
                           // eslint-disable-next-line no-console
                           console.error("Error clearing token after signOut failure:", err);
                         }
-                        // log the original signOut failure as well
                         // eslint-disable-next-line no-console
                         console.error("Firebase signOut failed:", e);
                       }
-                      // navigate to login page
                       navigate("/login");
                     }}
                   >

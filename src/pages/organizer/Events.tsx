@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { EventCard } from "@/components/dashboard/EventCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,8 +12,8 @@ import {
 import { Plus, Search, Filter } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Event } from "@/types/event";
-import { useQuery } from "@tanstack/react-query";
-import { getJson } from "@/lib/api";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { getJson, deleteEvent } from "@/lib/api";
 
 // Fetch events from API
 
@@ -26,6 +25,8 @@ export default function Events() {
     queryKey: ["events"],
     queryFn: () => getJson<any>("/events"),
   });
+
+  const qc = useQueryClient();
 
   // Normalize a variety of possible API shapes into an Event[]
   const events: Event[] = (() => {
@@ -53,7 +54,6 @@ export default function Events() {
   });
 
   return (
-    <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -66,7 +66,7 @@ export default function Events() {
             </p>
           </div>
           <Button variant="teal" size="lg" asChild>
-            <Link to="/events/new">
+            <Link to="/organizer/events/new">
               <Plus className="h-5 w-5" />
               Create Event
             </Link>
@@ -106,7 +106,22 @@ export default function Events() {
         ) : filteredEvents.length > 0 ? (
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
             {filteredEvents.map((event, index) => (
-              <EventCard key={event.id} event={event} index={index} />
+              <EventCard
+                key={event.id}
+                event={event}
+                index={index}
+                onDelete={async (id: string) => {
+                  if (!confirm("Delete this event? This cannot be undone.")) return;
+                  try {
+                    await deleteEvent(id);
+                    // refetch events
+                    qc.invalidateQueries({ queryKey: ["events"] });
+                  } catch (err: any) {
+                    console.error("Failed to delete event", err);
+                    alert("Failed to delete event: " + String(err?.message || err));
+                  }
+                }}
+              />
             ))}
           </div>
         ) : (
@@ -121,7 +136,7 @@ export default function Events() {
               Try adjusting your search or filters
             </p>
             <Button variant="teal" asChild>
-              <Link to="/events/new">
+              <Link to="/organizer/events/new">
                 <Plus className="h-4 w-4" />
                 Create Your First Event
               </Link>
@@ -129,6 +144,6 @@ export default function Events() {
           </div>
         )}
       </div>
-    </DashboardLayout>
   );
 }
+

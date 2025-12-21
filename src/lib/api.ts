@@ -71,11 +71,20 @@ export function presignUpload(body: { filename: string; content_type: string; ow
 }
 
 // Upload a binary file to the backend (multipart/form-data). Used as a fallback when presigned PUTs are blocked by CORS.
-export async function uploadFile(file: File, ownerType: string, ownerId: string): Promise<any> {
+// Make ownerId, speakerId and eventId optional so callers can omit them when not available.
+export async function uploadFile(
+  file: File,
+  ownerType: string,
+  ownerId?: string,
+  speakerId?: string,
+  eventId?: string
+): Promise<any> {
   const fd = new FormData();
   fd.append("file", file);
   fd.append("owner_type", ownerType);
-  fd.append("owner_id", ownerId);
+  if (ownerId) fd.append("owner_id", ownerId);
+  if (speakerId) fd.append("speaker_id", speakerId);
+  if (eventId) fd.append("event_id", eventId);
 
   const token = getToken();
   const headers: Record<string, string> = {};
@@ -197,6 +206,19 @@ export async function updateMe(body: any): Promise<any> {
   return patchJson<any, any>(`/account/me`, body);
 }
 
+export async function deleteAccount(): Promise<void> {
+  const res = await fetch(`${API_BASE}/account/me`, {
+    method: "DELETE",
+    headers: authHeaders(),
+    credentials: "include",
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || res.statusText);
+  }
+}
+
 export function changePassword(oldPassword: string, newPassword: string): Promise<any> {
   // API expects these as query params per spec
   return postJson<{}, any>(`/account/me/change-password?old_password=${encodeURIComponent(oldPassword)}&new_password=${encodeURIComponent(newPassword)}`, {});
@@ -210,12 +232,41 @@ export function updateSettings(body: any): Promise<any> {
   return postJson<any, any>(`/account/settings`, body);
 }
 
+// Integrations
+export function getIntegrationUrl(provider: string): Promise<{ url: string }> {
+  // backend returns { url: string }
+  return getJson<{ url: string }>(`/integrations/link/${encodeURIComponent(provider)}`);
+}
+
+// Check provider connection status. Example: GET /integrations/google/drive/status
+export function getGoogleDriveStatus(): Promise<{ connected: boolean; root_folder?: string }>{
+  return getJson<{ connected: boolean; root_folder?: string }>(`/google/drive/status`);
+}
+
+export async function deleteIntegration(provider: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/integrations/${encodeURIComponent(provider)}`, {
+    method: "DELETE",
+    headers: authHeaders(),
+    credentials: "include",
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || res.statusText);
+  }
+}
+
 // Provider login initiators (these endpoints usually redirect)
 // NOTE: googleLogin and microsoftLogin functions have been removed.
 
 // Create an event
 export function createEvent<T = any>(body: T): Promise<any> {
   return postJson<T, any>("/events", body);
+}
+
+// Update an existing event by id
+export function updateEvent<T = any>(eventId: string, body: T): Promise<any> {
+  return patchJson<T, any>(`/events/${encodeURIComponent(eventId)}`, body);
 }
 
 // Create a speaker for an event
@@ -233,6 +284,19 @@ export async function updateSpeaker<T = any>(eventId: string, speakerId: string,
 
 export async function deleteSpeaker(eventId: string, speakerId: string): Promise<void> {
   const res = await fetch(`${API_BASE}/events/${eventId}/speakers/${speakerId}`, {
+    method: "DELETE",
+    headers: authHeaders(),
+    credentials: "include",
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || res.statusText);
+  }
+}
+
+export async function deleteEvent(eventId: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/events/${encodeURIComponent(eventId)}`, {
     method: "DELETE",
     headers: authHeaders(),
     credentials: "include",
