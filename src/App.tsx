@@ -21,6 +21,7 @@ import Subscription from "./pages/organizer/Subscription";
 import CreateEvent from "./pages/organizer/CreateEvent";
 import Settings from "./pages/organizer/Settings";
 import EventSettings from "./pages/organizer/EventSettings";
+import Support from "./pages/Support";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -163,6 +164,17 @@ const App = () => {
                 <ProtectedRoute>
                   <DashboardLayout mode="organizer">
                     <Settings />
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/support"
+              element={
+                <ProtectedRoute>
+                  <DashboardLayout mode="organizer">
+                    <Support />
                   </DashboardLayout>
                 </ProtectedRoute>
               }

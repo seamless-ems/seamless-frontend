@@ -34,7 +34,7 @@ export default function SpeakerEmbed() {
   }, [rawSpeakers]);
 
   const visibleSpeakers = speakerList.filter((s: any) => {
-    return Boolean(s?.promo_card_template || s?.promoCardTemplate || s?.headshot || s?.first_name || s?.name);
+    return Boolean(s?.promoCardTemplate || s?.promo_card_template || s?.headshot || s?.firstName || s?.name);
   });
 
   const [dims, setDims] = React.useState<Record<string, { w: number; h: number }>>({});
@@ -70,10 +70,10 @@ export default function SpeakerEmbed() {
         ) : (
           <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
             {visibleSpeakers.map((speaker: any) => {
-              const headshot = speaker.headshot ?? speaker.headshot_url ?? (speaker as any).headshotUrl ?? null;
-              const firstName = speaker.first_name ?? (speaker as any).firstName ?? null;
-              const lastName = speaker.last_name ?? (speaker as any).lastName ?? null;
-              const promoTemplate = speaker.promo_card_template ?? (speaker as any).promoCardTemplate ?? (speaker.event && (speaker.event as any).promo_card_template) ?? null;
+              const headshot = speaker.headshot ?? speaker.headshotUrl ?? speaker.headshot_url ?? null;
+              const firstName = speaker.firstName ?? (speaker as any).first_name ?? null;
+              const lastName = speaker.lastName ?? (speaker as any).last_name ?? null;
+              const promoTemplate = speaker.promoCardTemplate ?? speaker.promo_card_template ?? (speaker.event && (speaker.event as any).promoCardTemplate) ?? null;
 
               const d = dims[speaker.id];
               const aspectStyle: React.CSSProperties = d

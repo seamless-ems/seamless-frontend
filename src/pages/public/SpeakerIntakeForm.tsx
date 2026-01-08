@@ -78,15 +78,15 @@ export default function SpeakerIntakeForm() {
     const s = fetchedSpeaker as any;
     if (!s) return;
     form.reset({
-      firstName: s.first_name ?? s.firstName ?? "",
-      lastName: s.last_name ?? s.lastName ?? "",
+      firstName: s.firstName ?? s.first_name ?? "",
+      lastName: s.lastName ?? s.last_name ?? "",
       email: s.email ?? "",
-      companyName: s.company ?? s.company_name ?? "",
-      companyRole: s.title ?? s.company_role ?? "",
+      companyName: s.companyName ?? s.company ?? s.company_name ?? "",
+      companyRole: s.companyRole ?? s.title ?? s.company_role ?? "",
       bio: s.bio ?? "",
     });
-    setHeadshotPreview(s.headshot ?? s.headshot_url ?? null);
-    setCompanyLogoPreview(s.company_logo ?? s.companyLogo ?? null);
+    setHeadshotPreview(s.headshot ?? s.headshotUrl ?? s.headshot_url ?? null);
+    setCompanyLogoPreview(s.companyLogo ?? s.company_logo ?? null);
   }, [fetchedSpeaker]);
 
   const handleImageUpload = (
@@ -129,6 +129,7 @@ export default function SpeakerIntakeForm() {
       }
 
       const payload: Record<string, any> = {
+        // backend expects snake_case for incoming fields
         first_name: data.firstName,
         last_name: data.lastName,
         email: data.email,

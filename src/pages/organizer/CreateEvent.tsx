@@ -76,14 +76,16 @@ export default function CreateEvent() {
 		endDate: "",
 		location: "",
 		fromEmail: "",
-		replyEmail: "",
+		replyToEmail: "",
 		emailSignature: "",
 		googleDriveConnected: false,
 		rootFolder: "",
 	});
 
 	const [selectedModules, setSelectedModules] = useState<string[]>(["speaker"]);
-	const [driveFolders, setDriveFolders] = useState<Array<{ id: string; name: string }>>([]);
+			const [driveFolders, setDriveFolders] = useState<any[]>([]);
+			// array of selected folder ids at each depth level, e.g. [topId, childId, grandChildId]
+			const [selectedFolderPath, setSelectedFolderPath] = useState<string[]>([]);
 	const { data: teams } = useQuery<any[]>({ queryKey: ["teams"], queryFn: () => getTeam() });
 	const location = useLocation();
 
@@ -124,11 +126,13 @@ export default function CreateEvent() {
 			try {
 				const status = await getGoogleDriveStatus();
 				if (status?.connected) {
-					setDriveFolders((status as any).folders ?? []);
+					// keep nested folders structure and render nested options
+					const folders = (status as any).folders ?? [];
+					setDriveFolders(folders);
 					setFormData((prev) => ({
 						...prev,
 						googleDriveConnected: true,
-						rootFolder: (status as any).root_folder ?? ((status as any).folders && (status as any).folders.length ? (status as any).folders[0].id : prev.rootFolder ?? ""),
+						rootFolder: (status as any).root_folder ?? (folders.length ? folders[0].id : prev.rootFolder ?? ""),
 					}));
 				}
 			} catch (err) {
@@ -137,6 +141,101 @@ export default function CreateEvent() {
 			}
 		})();
 	}, []);
+
+		// Find path of ids from root to targetId if present
+		const findPathToFolder = (folders: any[], targetId: string): string[] => {
+			if (!folders || !targetId) return [];
+			for (const f of folders) {
+				if (f.id === targetId) return [f.id];
+				if (f.children && f.children.length) {
+					const childPath = findPathToFolder(f.children, targetId);
+					if (childPath.length) return [f.id, ...childPath];
+				}
+			}
+			return [];
+		};
+
+		// helper to find folder object by id
+		const findFolderById = (folders: any[], id?: string): any | null => {
+			if (!id) return null;
+			for (const f of folders) {
+				if (f.id === id) return f;
+				if (f.children && f.children.length) {
+					const res = findFolderById(f.children, id);
+					if (res) return res;
+				}
+			}
+			return null;
+		};
+
+		const getBreadcrumb = () => {
+			if (!selectedFolderPath || !selectedFolderPath.length) return "";
+			const names = selectedFolderPath.map((id) => findFolderById(driveFolders, id)?.name ?? id);
+			return names.join(" / ");
+		};
+
+		// Get folder list for a particular depth level based on current selectedFolderPath
+		const getFoldersForDepth = (depth: number): any[] => {
+			if (depth === 0) return driveFolders;
+			let current = null as any;
+			for (let i = 0; i < depth; i++) {
+				const id = selectedFolderPath[i];
+				if (!id) return [];
+				const list = current ? current.children ?? [] : driveFolders;
+				current = list.find((x: any) => x.id === id);
+				if (!current) return [];
+			}
+			return current?.children ?? [];
+		};
+
+		// Build cascading Select components for each depth until no further children
+
+		const [currentDepth, setCurrentDepth] = useState<number>(0);
+
+		const handleSelectAtDepth = (depth: number, val: string) => {
+			setSelectedFolderPath((prev) => {
+				const next = prev.slice(0, depth);
+				next[depth] = val;
+				return next;
+			});
+			setFormData((f) => ({ ...f, rootFolder: val }));
+			// if selected folder has children, advance depth; otherwise trim
+			const opts = getFoldersForDepth(depth);
+			const selected = opts.find((o: any) => o.id === val);
+			if (selected && selected.children && selected.children.length) setCurrentDepth(depth + 1);
+			else setCurrentDepth(depth);
+		};
+
+		const renderCascadingSelects = () => {
+			const options = getFoldersForDepth(currentDepth);
+			if (!options || options.length === 0) return (
+				<Select>
+					<SelectTrigger className="w-full sm:w-[300px]">
+						<SelectValue placeholder="No folders available" />
+					</SelectTrigger>
+					<SelectContent>
+						<SelectItem value="no-folders" disabled>No folders available</SelectItem>
+					</SelectContent>
+				</Select>
+			);
+
+			const value = selectedFolderPath[currentDepth] ?? "";
+			return (
+				<div>
+					<div className="text-xs text-muted-foreground mb-1">{currentDepth === 0 ? "Top level" : `Level ${currentDepth + 1}`}</div>
+					<Select value={value} aria-label={`Folder level ${currentDepth + 1}`} onValueChange={(val) => handleSelectAtDepth(currentDepth, val)}>
+						<SelectTrigger className="w-full sm:w-[300px]">
+							<SelectValue placeholder={currentDepth === 0 ? "Select folder" : "Select subfolder"} />
+						</SelectTrigger>
+						<SelectContent>
+							{options.map((f: any) => (
+								<SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+				</div>
+			);
+		};
 
 	const toggleModule = (moduleId: string) => {
 		setSelectedModules((prev) =>
@@ -177,7 +276,11 @@ export default function CreateEvent() {
 			const eventId = generateUuid();
 
 			// If files were selected, upload them first to obtain URLs and include them in the create payload
-			const payload: any = { ...formData, modules: selectedModules, team_id: selectedTeamId, id: eventId };
+			// convert selectedModules array -> modules object (new API shape)
+			const modulesObj: Record<string, boolean> = {};
+			selectedModules.forEach((m) => (modulesObj[m] = true));
+
+			const payload: any = { ...formData, modules: modulesObj, team_id: selectedTeamId, id: eventId };
 
 			try {
 				if (eventImageFile) {
@@ -316,20 +419,15 @@ export default function CreateEvent() {
 							{formData.googleDriveConnected && (
 								<div className="space-y-2">
 									<Label htmlFor="rootFolder">Root Event Folder</Label>
-									<Select value={formData.rootFolder} onValueChange={(val) => setFormData((prev) => ({ ...prev, rootFolder: val }))}>
-										<SelectTrigger className="w-full sm:w-[300px]">
-											<SelectValue placeholder="Select folder" />
-										</SelectTrigger>
-										<SelectContent>
-											{driveFolders && driveFolders.length ? (
-												driveFolders.map((f) => (
-													<SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
-												))
-											) : (
-												<SelectItem value="no-folders" disabled>No folders available</SelectItem>
-											)}
-										</SelectContent>
-									</Select>
+									{renderCascadingSelects()}
+									<div className="flex items-center gap-3 mt-2">
+										<div className="text-sm text-muted-foreground">{getBreadcrumb() || "No folder selected"}</div>
+										{selectedFolderPath && selectedFolderPath.length > 0 && (
+											<Button variant="ghost" size="sm" type="button" onClick={() => { setSelectedFolderPath([]); setFormData((f) => ({ ...f, rootFolder: "" })); setCurrentDepth(0); }}>
+											Clear selection
+											</Button>
+										)}
+									</div>
 								</div>
 							)}
 						</CardContent>
@@ -448,16 +546,16 @@ export default function CreateEvent() {
 									/>
 								</div>
 								<div className="space-y-2">
-									<Label htmlFor="replyEmail">'Reply To' Email</Label>
+									<Label htmlFor="replyToEmail">'Reply To' Email</Label>
 									<Input
-										id="replyEmail"
+										id="replyToEmail"
 										type="email"
 										placeholder="hello@yourcompany.com"
-										value={formData.replyEmail}
+										value={formData.replyToEmail}
 										onChange={(e) =>
 											setFormData((prev) => ({
 												...prev,
-												replyEmail: e.target.value,
+												replyToEmail: e.target.value,
 											}))
 										}
 									/>

@@ -20,24 +20,8 @@ async function fetchEvents(): Promise<Event[]> {
     if (Array.isArray(firstArray)) arr = firstArray as any[];
   }
 
-  // deep camelize keys
-  function toCamel(str: string) { return str.replace(/_([a-z])/g, (_, c) => c.toUpperCase()); }
-  function deepCamel(obj: any): any {
-    if (Array.isArray(obj)) return obj.map(deepCamel);
-    if (obj && typeof obj === 'object' && obj.constructor === Object) {
-      const out: any = {};
-      for (const k in obj) {
-        if (Object.prototype.hasOwnProperty.call(obj, k)) {
-          out[toCamel(k)] = deepCamel(obj[k]);
-        }
-      }
-      return out;
-    }
-    return obj;
-  }
-
-  const mapped = arr.map(deepCamel) as Event[];
-  return mapped;
+  // API layer already returns camelCased keys via deepCamel in getJson
+  return arr as Event[];
 }
 
 export default function Index() {
@@ -57,7 +41,7 @@ export default function Index() {
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="font-display text-3xl font-bold text-foreground">
-            Welcome back{me?.first_name ? `, ${me.first_name}` : ", User"}
+            Welcome back{(me?.firstName ?? me?.first_name) ? `, ${me?.firstName ?? me?.first_name}` : ", User"}
           </h1>
           <p className="text-muted-foreground mt-1">
             Here's what's happening with your events

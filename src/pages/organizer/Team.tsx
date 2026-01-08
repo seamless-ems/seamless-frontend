@@ -280,8 +280,8 @@ export default function Team() {
                 </TableRow>
               )}
               {members.map((member: any) => {
-                const displayName = `${member.first_name ?? ""} ${member.last_name ?? ""}`.trim() || member.email;
-                const avatarSrc = member.avatar_url ?? member.avatar ?? "";
+                const displayName = `${member.firstName ?? member.first_name ?? ""} ${member.lastName ?? member.last_name ?? ""}`.trim() || member.email;
+                const avatarSrc = member.avatarUrl ?? member.avatar_url ?? member.avatar ?? "";
                 const roleKey = member.role ?? (member.is_admin ? "admin" : "member");
                 const roleMeta = (roleConfig as any)[roleKey] ?? { label: String(roleKey ?? "Member"), className: "bg-muted text-muted-foreground" };
 

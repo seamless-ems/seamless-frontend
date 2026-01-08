@@ -1,6 +1,7 @@
-export const API_BASE = import.meta.env.VITE_API_URL || "";
-
 import { getToken } from "@/lib/auth";
+import { deepCamel } from "@/lib/utils";
+
+export const API_BASE = import.meta.env.VITE_API_URL || "";
 
 function authHeaders(): Record<string, string> {
   const token = getToken();
@@ -22,7 +23,8 @@ async function postJson<TReq, TRes>(path: string, body: TReq): Promise<TRes> {
     throw new Error(text || res.statusText);
   }
 
-  return res.json();
+  const json = await res.json();
+  return deepCamel(json) as TRes;
 }
 
 async function patchJson<TReq, TRes>(path: string, body: TReq): Promise<TRes> {
@@ -38,7 +40,8 @@ async function patchJson<TReq, TRes>(path: string, body: TReq): Promise<TRes> {
     throw new Error(text || res.statusText);
   }
 
-  return res.json();
+  const json = await res.json();
+  return deepCamel(json) as TRes;
 }
 
 export async function getJson<TRes>(path: string): Promise<TRes> {
@@ -63,7 +66,8 @@ export async function getJson<TRes>(path: string): Promise<TRes> {
     throw new Error(text || res.statusText);
   }
 
-  return res.json();
+  const json = await res.json();
+  return deepCamel(json) as TRes;
 }
 
 export function presignUpload(body: { filename: string; content_type: string; owner_type: string; owner_id: string; }) {
@@ -102,7 +106,8 @@ export async function uploadFile(
     throw new Error(text || res.statusText);
   }
 
-  return res.json();
+  const json = await res.json();
+  return deepCamel(json);
 }
 
 export type SignupRequest = {
@@ -118,8 +123,8 @@ export type LoginRequest = {
 };
 
 export type TokenSchema = {
-  access_token: string;
-  token_type: string;
+  accessToken: string;
+  tokenType: string;
 };
 
 export function signup(body: SignupRequest): Promise<TokenSchema> {
@@ -131,9 +136,9 @@ export function login(body: LoginRequest): Promise<TokenSchema> {
 }
 
 // Exchange a Firebase ID token for the backend's session/token representation.
-// Backend should verify the ID token and return a TokenSchema { access_token, token_type }
+// Backend should verify the ID token and return a TokenSchema { accessToken, tokenType }
 export function exchangeFirebaseToken(idToken: string): Promise<TokenSchema> {
-  return postJson<{ access_token: string }, TokenSchema>("/auth/firebase", { access_token: idToken });
+  return postJson<{ accessToken: string }, TokenSchema>("/auth/firebase", { accessToken: idToken });
 }
 
 // --- Account endpoints ---
@@ -306,4 +311,9 @@ export async function deleteEvent(eventId: string): Promise<void> {
     const text = await res.text();
     throw new Error(text || res.statusText);
   }
+}
+
+// Support / Help
+export function sendSupportMessage(body: { name?: string; email: string; subject?: string; message: string; }): Promise<any> {
+  return postJson<typeof body, any>(`/support/contact`, body);
 }

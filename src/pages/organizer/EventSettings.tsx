@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-// ...existing code...
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getJson, updateEvent, uploadFile, getGoogleDriveStatus, getTeam, getMe } from "@/lib/api";
+import { getJson, updateEvent, uploadFile, getGoogleDriveStatus, getIntegrationUrl, deleteIntegration, getTeam, getMe } from "@/lib/api";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -11,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { FolderOpen, Calendar, MapPin, Mail, FileText, Mic2, Users } from "lucide-react";
+import { FolderOpen, Calendar, MapPin, Mail, FileText, Mic2, Users, Link as LinkIcon } from "lucide-react";
 
 
 export default function EventSettings() {
@@ -30,14 +29,15 @@ export default function EventSettings() {
     endDate: "",
     location: "",
     fromEmail: "",
-    replyEmail: "",
+    replyToEmail: "",
     emailSignature: "",
     googleDriveConnected: false,
     rootFolder: "",
   });
 
   const [selectedModules, setSelectedModules] = useState<string[]>(["speaker"]);
-  const [driveFolders, setDriveFolders] = useState<Array<{ id: string; name: string }>>([]);
+  const [driveFolders, setDriveFolders] = useState<any[]>([]);
+  const [selectedFolderPath, setSelectedFolderPath] = useState<string[]>([]);
   const { data: teams } = useQuery<any[]>({ queryKey: ["teams"], queryFn: () => getTeam() });
   const [selectedTeamId, setSelectedTeamId] = useState<string | undefined>(undefined);
   const [eventImageFile, setEventImageFile] = useState<File | null>(null);
@@ -49,26 +49,54 @@ export default function EventSettings() {
 
   useEffect(() => {
     if (!rawEvent) return;
+    // helper to coerce various date formats (ISO or timestamps) into YYYY-MM-DD for <input type="date" />
+    const toDateInput = (v: any) => {
+      if (v == null) return "";
+      // If already in YYYY-MM-DD, return as-is
+      if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+      // If ISO datetime, extract date portion
+      if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}T/.test(v)) return v.slice(0, 10);
+      // If numeric timestamp (seconds or ms)
+      if (typeof v === "number") {
+        // assume seconds if 10 digits
+        const asMs = v > 1e12 ? v : v * 1000;
+        const d = new Date(asMs);
+        if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+      }
+      // last resort: try Date parse
+      const d = new Date(v);
+      if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+      return "";
+    };
+
     setFormData((prev) => ({
       ...prev,
       title: rawEvent.title ?? "",
-      startDate: rawEvent.start_date ?? rawEvent.startDate ?? "",
-      endDate: rawEvent.end_date ?? rawEvent.endDate ?? "",
+      startDate: toDateInput(rawEvent.start_date ?? rawEvent.startDate ?? ""),
+      endDate: toDateInput(rawEvent.end_date ?? rawEvent.endDate ?? ""),
       location: rawEvent.location ?? "",
       fromEmail: rawEvent.from_email ?? rawEvent.fromEmail ?? "",
-      replyEmail: rawEvent.reply_email ?? rawEvent.replyEmail ?? "",
+      replyToEmail: rawEvent.reply_to_email ?? rawEvent.replyToEmail ?? "",
       emailSignature: rawEvent.email_signature ?? rawEvent.emailSignature ?? "",
       googleDriveConnected: rawEvent.google_drive_connected ?? false,
       rootFolder: rawEvent.root_folder ?? rawEvent.rootFolder ?? "",
     }));
 
-    // modules
-    const modulesArray = Array.isArray(rawEvent.modules) ? rawEvent.modules : [];
+    // modules - support new object shape { speaker: true } or older array/string formats
+    const rawModules = rawEvent.modules;
+    let modulesArray: any[] = [];
+    if (Array.isArray(rawModules)) modulesArray = rawModules;
+    else if (!rawModules) modulesArray = [];
+    else if (typeof rawModules === "string") modulesArray = (rawModules as any).split(",").map((name: string) => ({ id: name.trim(), name: name.trim(), enabled: true }));
+    else if (typeof rawModules === "object") {
+      modulesArray = Object.entries(rawModules).map(([key, val]) => (typeof val === "object" ? { id: key, name: key, ...val } : { id: key, name: key, enabled: !!val }));
+    }
+
     setSelectedModules(modulesArray.map((m: any) => m.name || m.id));
 
-    setEventImagePreview(rawEvent.eventImage ?? rawEvent.event_image ?? null);
-    setPromoTemplatePreview(rawEvent.promoCardTemplate ?? rawEvent.promo_card_template ?? null);
-    setSelectedTeamId(rawEvent.team_id ?? rawEvent.teamId ?? undefined);
+  setEventImagePreview(rawEvent.eventImage ?? rawEvent.event_image ?? null);
+  setPromoTemplatePreview(rawEvent.promoCardTemplate ?? rawEvent.promo_card_template ?? null);
+  setSelectedTeamId(rawEvent.teamId ?? rawEvent.team_id ?? undefined);
   }, [rawEvent]);
 
   useEffect(() => {
@@ -76,18 +104,141 @@ export default function EventSettings() {
       try {
         const status = await getGoogleDriveStatus();
         if (status?.connected) {
-          setDriveFolders((status as any).folders ?? []);
+          const folders = (status as any).folders ?? [];
+          setDriveFolders(folders);
+          // if a root folder already exists on the event, compute selectedFolderPath to pre-select cascading selects
+          const rootId = (status as any).root_folder ?? (folders.length ? folders[0].id : undefined) ?? undefined;
           setFormData((prev) => ({
             ...prev,
             googleDriveConnected: true,
-            rootFolder: (status as any).root_folder ?? ((status as any).folders && (status as any).folders.length ? (status as any).folders[0].id : prev.rootFolder ?? ""),
+            rootFolder: rootId ?? prev.rootFolder ?? "",
           }));
+          // if formData.rootFolder already populated (from rawEvent), compute full path
+          const initialRoot = (status as any).root_folder ?? undefined;
+          if (formData.rootFolder) {
+            // find path to the existing rootFolder within the fetched folders
+            const findPathToFolder = (foldersList: any[], targetId: string): string[] => {
+              if (!foldersList || !targetId) return [];
+              for (const f of foldersList) {
+                if (f.id === targetId) return [f.id];
+                if (f.children && f.children.length) {
+                  const childPath = findPathToFolder(f.children, targetId);
+                  if (childPath.length) return [f.id, ...childPath];
+                }
+              }
+              return [];
+            };
+            const path = findPathToFolder(folders, formData.rootFolder);
+            if (path && path.length) {
+              setSelectedFolderPath(path);
+              // set currentDepth to allow user to continue drilling from deepest preselected level
+              setCurrentDepth(Math.max(0, path.length - 1));
+            }
+          }
         }
       } catch (err) {
         console.debug("Google Drive status check failed", err);
       }
     })();
   }, []);
+
+  const renderFolderOptions = (folders: any[], depth = 0): React.ReactNode[] => {
+    if (!folders || !Array.isArray(folders)) return [];
+    return folders.flatMap((f: any) => {
+      const item = (
+        <SelectItem key={f.id} value={f.id}>
+          <span style={{ paddingLeft: depth * 12 }}>{f.name}</span>
+        </SelectItem>
+      );
+      const children = f.children && f.children.length ? renderFolderOptions(f.children, depth + 1) : [];
+      return [item, ...children];
+    });
+  };
+
+  // cascading helpers (mirrors CreateEvent)
+  const findPathToFolder = (folders: any[], targetId: string): string[] => {
+    if (!folders || !targetId) return [];
+    for (const f of folders) {
+      if (f.id === targetId) return [f.id];
+      if (f.children && f.children.length) {
+        const childPath = findPathToFolder(f.children, targetId);
+        if (childPath.length) return [f.id, ...childPath];
+      }
+    }
+    return [];
+  };
+
+  // helper to find folder object by id
+  const findFolderById = (folders: any[], id?: string): any | null => {
+    if (!id) return null;
+    for (const f of folders) {
+      if (f.id === id) return f;
+      if (f.children && f.children.length) {
+        const res = findFolderById(f.children, id);
+        if (res) return res;
+      }
+    }
+    return null;
+  };
+
+  const getFoldersForDepth = (depth: number): any[] => {
+    if (depth === 0) return driveFolders;
+    let current = null as any;
+    for (let i = 0; i < depth; i++) {
+      const id = selectedFolderPath[i];
+      if (!id) return [];
+      const list = current ? current.children ?? [] : driveFolders;
+      current = list.find((x: any) => x.id === id);
+      if (!current) return [];
+    }
+    return current?.children ?? [];
+  };
+
+  const [currentDepth, setCurrentDepth] = useState<number>(0);
+
+  const handleSelectAtDepth = (depth: number, val: string) => {
+    setSelectedFolderPath((prev) => {
+      const next = prev.slice(0, depth);
+      next[depth] = val;
+      return next;
+    });
+    setFormData((f) => ({ ...f, rootFolder: val }));
+    const opts = getFoldersForDepth(depth);
+    const selected = opts.find((o: any) => o.id === val);
+    if (selected && selected.children && selected.children.length) setCurrentDepth(depth + 1);
+    else setCurrentDepth(depth);
+  };
+
+  const renderCascadingSelects = () => {
+    const options = getFoldersForDepth(currentDepth);
+    if (!options || options.length === 0) return (
+      <Select>
+        <SelectTrigger className="w-full sm:w-[300px]">
+          <SelectValue placeholder="No folders available" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="no-folders" disabled>No folders available</SelectItem>
+        </SelectContent>
+      </Select>
+    );
+
+    const value = selectedFolderPath[currentDepth] ?? "";
+    return (
+      <div>
+        <div className="text-xs text-muted-foreground mb-1">{currentDepth === 0 ? "Top level" : `Level ${currentDepth + 1}`}</div>
+        <Select value={value} aria-label={`Folder level ${currentDepth + 1}`} onValueChange={(val) => handleSelectAtDepth(currentDepth, val)}>
+          <SelectTrigger className="w-full sm:w-[300px]">
+            <SelectValue placeholder={currentDepth === 0 ? "Select folder" : "Select subfolder"} />
+          </SelectTrigger>
+          <SelectContent>
+            {options.map((f: any) => (
+              <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    );
+  };
 
   const toggleModule = (moduleId: string) => {
     setSelectedModules((prev) => (prev.includes(moduleId) ? prev.filter((id) => id !== moduleId) : [...prev, moduleId]));
@@ -101,15 +252,19 @@ export default function EventSettings() {
       // Generate an event id if none present so uploads can be associated (keep existing id if server provided one)
       const eventId = rawEvent?.id ?? rawEvent?.event_id ?? id;
 
+      // convert selectedModules (array) -> modules object expected by API
+      const modulesObj: Record<string, boolean> = {};
+      selectedModules.forEach((m) => (modulesObj[m] = true));
+
       const payload: any = {
         title: formData.title,
         start_date: formData.startDate || undefined,
         end_date: formData.endDate || undefined,
         location: formData.location || undefined,
         from_email: formData.fromEmail || undefined,
-        reply_email: formData.replyEmail || undefined,
+  reply_to_email: formData.replyToEmail || undefined,
         email_signature: formData.emailSignature || undefined,
-        modules: selectedModules,
+        modules: modulesObj,
         team_id: selectedTeamId,
       };
 
@@ -159,6 +314,73 @@ export default function EventSettings() {
 
         <form onSubmit={handleSubmit} className="space-y-6">
 
+          {/* Google Drive */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <FolderOpen className="h-5 w-5 text-primary" />
+                Google Drive Integration
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-foreground">Connect Google Drive</p>
+                  <p className="text-sm text-muted-foreground">Sync speaker assets and content automatically</p>
+                </div>
+                {formData.googleDriveConnected ? (
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" type="button" disabled>
+                      <svg className="h-4 w-4 text-success" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 13l4 4L19 7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                      Connected
+                    </Button>
+                    <Button variant="destructive" type="button" onClick={async () => {
+                      try {
+                        await deleteIntegration("google");
+                        setDriveFolders([]);
+                        setFormData((prev) => ({ ...prev, googleDriveConnected: false, rootFolder: "" }));
+                        setSelectedFolderPath([]);
+                        toast({ title: "Disconnected", description: "Google Drive integration removed" });
+                      } catch (err: any) {
+                        console.error("Failed to disconnect", err);
+                        toast({ title: "Failed to disconnect", description: String(err?.message || err) });
+                      }
+                    }}>Disconnect</Button>
+                  </div>
+                ) : (
+                  <Button variant="outline" type="button" onClick={async () => {
+                    try {
+                      const res = await getIntegrationUrl("google");
+                      if (res?.url) window.location.href = res.url;
+                      else toast({ title: "Failed to start integration", description: "No URL returned from server" });
+                    } catch (err: any) {
+                      console.error("Integration link failed", err);
+                      toast({ title: "Failed to start integration", description: String(err?.message || err) });
+                    }
+                  }}>
+                    <LinkIcon className="h-4 w-4" />
+                    Connect Drive
+                  </Button>
+                )}
+              </div>
+
+              {formData.googleDriveConnected && (
+                <div className="space-y-2">
+                  <Label>Root Event Folder</Label>
+                  {renderCascadingSelects()}
+                  <div className="flex items-center gap-3 mt-2">
+                    <div className="text-sm text-muted-foreground">{selectedFolderPath && selectedFolderPath.length ? selectedFolderPath.map(id => findFolderById(driveFolders, id)?.name ?? id).join(" / ") : "No folder selected"}</div>
+                      {selectedFolderPath && selectedFolderPath.length > 0 && (
+                        <Button variant="ghost" size="sm" type="button" onClick={() => { setSelectedFolderPath([]); setFormData((f) => ({ ...f, rootFolder: "" })); setCurrentDepth(0); }}>
+                          Clear selection
+                        </Button>
+                      )}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Basic Info */}
           <Card>
             <CardHeader>
@@ -207,7 +429,7 @@ export default function EventSettings() {
                 </div>
                 <div className="space-y-2">
                   <Label>'Reply To' Email</Label>
-                  <Input type="email" placeholder="hello@yourcompany.com" value={formData.replyEmail} onChange={(e) => setFormData((prev) => ({ ...prev, replyEmail: e.target.value }))} />
+                  <Input type="email" placeholder="hello@yourcompany.com" value={formData.replyToEmail} onChange={(e) => setFormData((prev) => ({ ...prev, replyToEmail: e.target.value }))} />
                 </div>
               </div>
 

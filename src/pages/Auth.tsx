@@ -224,8 +224,8 @@ const Auth: React.FC = () => {
                                     try {
                                         const idToken = await res.user.getIdToken();
                                         const backend = await exchangeFirebaseToken(idToken);
-                                        if (backend && backend.access_token) {
-                                            setToken(backend.access_token);
+                                        if (backend && backend.accessToken) {
+                                            setToken(backend.accessToken);
                                         } else {
                                             setToken(idToken);
                                         }
@@ -263,8 +263,8 @@ const Auth: React.FC = () => {
                                     try {
                                         const idToken = await res.user.getIdToken();
                                         const backend = await exchangeFirebaseToken(idToken);
-                                        if (backend && backend.access_token) {
-                                            setToken(backend.access_token);
+                                        if (backend && backend.accessToken) {
+                                            setToken(backend.accessToken);
                                         } else {
                                             setToken(idToken);
                                         }

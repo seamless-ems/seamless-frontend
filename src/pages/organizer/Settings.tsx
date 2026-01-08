@@ -49,20 +49,20 @@ export default function Settings() {
 
   const form = useForm<any>({
     defaultValues: {
-      first_name: me?.first_name ?? "",
-      last_name: me?.last_name ?? "",
+      first_name: me?.firstName ?? me?.first_name ?? "",
+      last_name: me?.lastName ?? me?.last_name ?? "",
       email: me?.email ?? "",
-      company: me?.company ?? "",
+      company: me?.companyName ?? me?.company ?? "",
       notifications: settings ?? {},
     },
   });
 
   React.useEffect(() => {
     form.reset({
-      first_name: me?.first_name ?? "",
-      last_name: me?.last_name ?? "",
+      first_name: me?.firstName ?? me?.first_name ?? "",
+      last_name: me?.lastName ?? me?.last_name ?? "",
       email: me?.email ?? "",
-      company: me?.company ?? "",
+      company: me?.companyName ?? me?.company ?? "",
       notifications: settings ?? {},
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -17,7 +17,7 @@ export function useLogin(options?: {
 
       try {
         const backendToken = await exchangeFirebaseToken(idToken);
-        if (backendToken && backendToken.access_token) return backendToken as TokenSchema;
+        if (backendToken && backendToken.accessToken) return backendToken as TokenSchema;
       } catch (e) {
         // If exchange fails, fall back to returning the raw Firebase ID token
         // and let the onIdTokenChanged listener attempt exchange in the background.
@@ -25,7 +25,7 @@ export function useLogin(options?: {
         console.warn("exchangeFirebaseToken failed during login mutation, falling back to idToken:", e);
       }
 
-      return { access_token: idToken, token_type: "firebase" } as TokenSchema;
+      return { accessToken: idToken, tokenType: "firebase" } as TokenSchema;
     },
     onSuccess: (data) => {
       try {
@@ -33,8 +33,8 @@ export function useLogin(options?: {
         // caller navigation happens. This prevents a race where the app navigates
         // to a protected route before localStorage contains the token and then
         // immediately gets redirected back to /login.
-        if (data && data.access_token) {
-          setToken(data.access_token);
+        if (data && data.accessToken) {
+          setToken(data.accessToken);
         }
       } catch (e) {
         // ignore setToken errors
@@ -68,18 +68,18 @@ export function useSignup(options?: {
 
       try {
         const backendToken = await exchangeFirebaseToken(idToken);
-        if (backendToken && backendToken.access_token) return backendToken as TokenSchema;
+        if (backendToken && backendToken.accessToken) return backendToken as TokenSchema;
       } catch (e) {
         // eslint-disable-next-line no-console
         console.warn("exchangeFirebaseToken failed during signup mutation, falling back to idToken:", e);
       }
 
-      return { access_token: idToken, token_type: "firebase" } as TokenSchema;
+      return { accessToken: idToken, tokenType: "firebase" } as TokenSchema;
     },
     onSuccess: (data) => {
       try {
-        if (data && data.access_token) {
-          setToken(data.access_token);
+        if (data && data.accessToken) {
+          setToken(data.accessToken);
         }
       } catch (e) {
         // ignore

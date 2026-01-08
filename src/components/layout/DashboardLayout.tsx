@@ -156,9 +156,11 @@ function AppSidebar({ eventId, mode }: { eventId?: string; mode?: "organizer" | 
             <SidebarGroupContent>
               <SidebarMenu>
                 <SidebarMenuItem>
-                  <SidebarMenuButton className="text-muted-foreground hover:text-foreground">
-                    <HelpCircle className="h-4 w-4" />
-                    {!collapsed && <span>Help & Support</span>}
+                  <SidebarMenuButton asChild className="text-muted-foreground hover:text-foreground">
+                    <Link to="/support">
+                      <HelpCircle className="h-4 w-4" />
+                      {!collapsed && <span>Help & Support</span>}
+                    </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               </SidebarMenu>
@@ -194,13 +196,13 @@ export function DashboardLayout({ children, eventId, mode: propMode }: Dashboard
                 className="flex items-center gap-2 pl-2"
               >
                 <Avatar className="h-8 w-8">
-                  <AvatarImage src={me?.avatar_url ?? ""} />
+                  <AvatarImage src={me?.avatarUrl ?? me?.avatar_url ?? ""} />
                   <AvatarFallback className="bg-primary/10 text-primary text-sm">
-                    {((me?.first_name?.[0] ?? "") + (me?.last_name?.[0] ?? "")).toUpperCase() || (me?.email?.[0] ?? "").toUpperCase()}
+                    {(((me?.firstName ?? me?.first_name)?.[0] ?? "") + ((me?.lastName ?? me?.last_name)?.[0] ?? "")).toUpperCase() || (me?.email?.[0] ?? "").toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <span className="hidden md:inline text-sm font-medium">
-                  {me ? `${me.first_name ?? ""} ${me.last_name ?? ""}`.trim() : "Account"}
+                  {me ? `${me.firstName ?? me.first_name ?? ""} ${me.lastName ?? me.last_name ?? ""}`.trim() : "Account"}
                 </span>
                 <ChevronDown className="h-4 w-4 text-muted-foreground" />
               </Button>

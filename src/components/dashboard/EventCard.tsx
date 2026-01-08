@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Calendar, MapPin, Users, Mic2, MoreVertical } from "lucide-react";
+import { Calendar, MapPin, Users, Mic2, MoreVertical, FolderOpen } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
@@ -25,10 +25,18 @@ const statusStyles = {
   completed: "bg-success/10 text-success border-success/20",
 };
 
+const formatDate = (iso?: string) => {
+  try {
+    return iso ? new Date(iso).toLocaleDateString() : "";
+  } catch {
+    return "";
+  }
+};
+
 export function EventCard({ event, index = 0, onDelete }: EventCardProps) {
   return (
     <div
-      className="group rounded-xl border border-border bg-card p-6 shadow-soft transition-all duration-300 hover:shadow-medium hover:border-primary/30 animate-slide-up"
+      className="group rounded-xl border border-border bg-card p-6 shadow-soft transition-all duration-300 hover:shadow-medium hover:border-primary/30 animate-slide-up min-w-[300px]"
       style={{ animationDelay: `${index * 100}ms` }}
     >
       <div className="flex items-start justify-between mb-4">
@@ -51,7 +59,7 @@ export function EventCard({ event, index = 0, onDelete }: EventCardProps) {
           <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
             <div className="flex items-center gap-1.5">
               <Calendar className="h-4 w-4" />
-              <span>{event.dates}</span>
+              <span>{formatDate(event.startDate)} — {formatDate(event.endDate)}</span>
             </div>
             <div className="flex items-center gap-1.5">
               <MapPin className="h-4 w-4" />
@@ -93,7 +101,7 @@ export function EventCard({ event, index = 0, onDelete }: EventCardProps) {
         </DropdownMenu>
       </div>
 
-      <div className="flex items-center gap-6 mb-4">
+      {/* <div className="flex items-center gap-6 mb-4">
         <div className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-speaker/10 text-speaker">
             <Mic2 className="h-4 w-4" />
@@ -116,7 +124,7 @@ export function EventCard({ event, index = 0, onDelete }: EventCardProps) {
             <p className="text-xs text-muted-foreground">Attendees</p>
           </div>
         </div>
-      </div>
+      </div> */}
 
       <div className="flex flex-wrap gap-2 mb-4">
         {(() => {
@@ -125,8 +133,15 @@ export function EventCard({ event, index = 0, onDelete }: EventCardProps) {
           if (Array.isArray(raw)) modulesArray = raw;
           else if (!raw) modulesArray = [];
           else if (typeof raw === "string") modulesArray = (raw as any).split(",").map((name: string) => ({ id: name.trim(), name: name.trim(), enabled: true }));
-          else if (typeof raw === "object") modulesArray = Object.values(raw as any);
-          else modulesArray = [];
+          else if (typeof raw === "object") {
+            // new API shape may be { speaker: true, schedule: false }
+            // convert to an array of { id, name, enabled } or preserve object values when richer
+            const entries = Object.entries(raw as any);
+            modulesArray = entries.map(([key, val]) => {
+              if (val && typeof val === "object") return { id: key, name: key, ...val };
+              return { id: key, name: key, enabled: !!val };
+            });
+          } else modulesArray = [];
 
           return modulesArray.map((module, idx) => (
             <Badge
@@ -155,12 +170,14 @@ export function EventCard({ event, index = 0, onDelete }: EventCardProps) {
       <div className="flex items-center justify-between pt-4 border-t border-border">
         <div className="flex items-center gap-2">
           {event.googleDriveConnected ? (
-            <Badge variant="outline" className="text-success border-success/30">
-              Google Drive Connected
+            <Badge variant="outline" className="text-success border-success/30 flex items-center gap-2">
+              <FolderOpen className="h-4 w-4 text-success" />
+              <span className="sr-only">Google Drive Connected</span>
             </Badge>
           ) : (
-            <Badge variant="outline" className="text-muted-foreground">
-              Drive Not Linked
+            <Badge variant="outline" className="text-muted-foreground flex items-center gap-2">
+              <FolderOpen className="h-4 w-4 opacity-50" />
+              <span className="sr-only">Drive Not Linked</span>
             </Badge>
           )}
         </div>

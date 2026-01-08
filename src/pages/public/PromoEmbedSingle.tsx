@@ -14,16 +14,16 @@ export default function PromoEmbedSingle() {
     enabled: Boolean(id && speakerId),
   });
 
-  const headshot = (speaker as any)?.headshot ?? (speaker as any)?.headshot_url ?? null;
-  const name = (speaker as any)?.first_name ? `${(speaker as any).first_name} ${(speaker as any).last_name ?? ""}`.trim() : (speaker as any)?.name ?? "";
-  const companyRole = (speaker as any)?.company_role ?? "";
-  const companyName = (speaker as any)?.company_name ?? "";
+  const headshot = (speaker as any)?.headshot ?? (speaker as any)?.headshotUrl ?? (speaker as any)?.headshot_url ?? null;
+  const name = (speaker as any)?.firstName ? `${(speaker as any).firstName} ${(speaker as any).lastName ?? ""}`.trim() : (speaker as any)?.name ?? "";
+  const companyRole = (speaker as any)?.companyRole ?? "";
+  const companyName = (speaker as any)?.companyName ?? "";
 
   // Prefer the event's promo_card_template when speaker.events contains multiple events
-  let promoTemplate = (speaker as any)?.promo_card_template ?? (speaker as any)?.promoCardTemplate ?? null;
+  let promoTemplate = (speaker as any)?.promoCardTemplate ?? (speaker as any)?.promo_card_template ?? null;
   if (!promoTemplate && Array.isArray((speaker as any)?.events) && id) {
     const ev = (speaker as any).events.find((e: any) => String(e.id) === String(id));
-    if (ev) promoTemplate = ev.promo_card_template ?? ev.promoCardTemplate ?? null;
+    if (ev) promoTemplate = ev.promoCardTemplate ?? ev.promo_card_template ?? null;
   }
 
   const containerStyle: React.CSSProperties = promoTemplate

@@ -15,7 +15,7 @@ export default function PromoEmbed() {
         queryKey: ["event", id, "speakers", intakeStatus],
         queryFn: () => {
             const qs = intakeStatus ? `?intake_status=${encodeURIComponent(intakeStatus)}` : "";
-            return getJson<any>(`/events/${id}/speakers${qs}`);
+            return getJson<any>(`/events/${id}/speakers/public${qs}`);
         },
         enabled: Boolean(id),
     });
@@ -33,7 +33,7 @@ export default function PromoEmbed() {
     }, [rawSpeakers]);
 
     const visibleSpeakers = speakerList.filter((s: any) => {
-        return Boolean(s?.promo_card_template || s?.promoCardTemplate || s?.headshot || s?.first_name || s?.name);
+        return Boolean(s?.promoCardTemplate || s?.promo_card_template || s?.headshot || s?.firstName || s?.name);
     });
 
     return (
@@ -48,17 +48,17 @@ export default function PromoEmbed() {
                 ) : (
                     <div className="flex flex-wrap gap-6 justify-center">
                         {visibleSpeakers.map((speaker: any) => {
-                            const headshot = speaker.headshot ?? speaker.headshot_url ?? (speaker as any).headshotUrl ?? null;
-                            const name = speaker.first_name ? `${speaker.first_name} ${speaker.last_name ?? ""}`.trim() : speaker.name ?? "";
-                            const companyRole = speaker.company_role ?? speaker.title ?? "";
-                            const companyName = speaker.company_name ?? speaker.company ?? "";
+                            const headshot = speaker.headshot ?? speaker.headshotUrl ?? speaker.headshot_url ?? null;
+                            const name = speaker.firstName ? `${speaker.firstName} ${speaker.lastName ?? ""}`.trim() : speaker.name ?? "";
+                            const companyRole = speaker.companyRole ?? speaker.title ?? "";
+                            const companyName = speaker.companyName ?? speaker.company ?? "";
                             // Prefer the event's promo_card_template when speaker.events contains multiple events
-                            let promoTemplate = speaker.promo_card_template ?? speaker.promoCardTemplate ?? null;
+                            let promoTemplate = speaker.promoCardTemplate ?? speaker.promo_card_template ?? null;
                             if (!promoTemplate && Array.isArray(speaker.events) && id) {
                                 const ev = speaker.events.find((e: any) => String(e.id) === String(id));
-                                if (ev) promoTemplate = ev.promo_card_template ?? ev.promoCardTemplate ?? null;
+                                if (ev) promoTemplate = ev.promoCardTemplate ?? ev.promo_card_template ?? null;
                             }
-                            const companyLogo = speaker.company_logo ?? speaker.companyLogo ?? null;
+                            const companyLogo = speaker.companyLogo ?? speaker.company_logo ?? null;
                             const containerStyle: React.CSSProperties = promoTemplate
                                 ? { backgroundImage: `url(${promoTemplate})`, backgroundSize: "contain", backgroundPosition: "center", backgroundRepeat: "no-repeat" }
                                 : { background: "linear-gradient(180deg,#fff,#f7f7f9)" };

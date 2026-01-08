@@ -41,27 +41,8 @@ export default function Events() {
       const firstArray = Object.values(rawEvents).find((v) => Array.isArray(v));
       if (Array.isArray(firstArray)) arr = firstArray;
     }
-    // Recursively map all snake_case keys to camelCase
-    function toCamel(str: string) {
-      return str.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
-    }
-    function deepCamel(obj: any): any {
-      if (Array.isArray(obj)) {
-        return obj.map(deepCamel);
-      } else if (obj && typeof obj === 'object' && obj.constructor === Object) {
-        const mapped: any = {};
-        for (const key in obj) {
-          if (Object.prototype.hasOwnProperty.call(obj, key)) {
-            const camelKey = toCamel(key);
-            mapped[camelKey] = deepCamel(obj[key]);
-          }
-        }
-        return mapped;
-      }
-      return obj;
-    }
-    const mapped = arr.map(deepCamel) as Event[];
-    return mapped;
+    // API layer already converts snake_case -> camelCase
+    return arr as Event[];
   })();
 
   const filteredEvents = (events ?? []).filter((event) => {

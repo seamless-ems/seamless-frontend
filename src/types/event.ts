@@ -1,14 +1,15 @@
 export interface Event {
   id: string;
   title: string;
-  dates: string;
+  startDate?: string;
+  endDate?: string;
   location: string;
   status: 'draft' | 'active' | 'completed';
   speakerCount: number;
   attendeeCount: number;
   modules: EventModule[];
   fromEmail?: string;
-  replyEmail?: string;
+  replyToEmail?: string;
   emailSignature?: string;
   googleDriveConnected: boolean;
   rootFolder?: string;
@@ -46,8 +47,8 @@ export interface TeamMember {
 
 export interface TeamUser {
   id: string;
-  first_name: string;
-  last_name: string;
+  firstName: string;
+  lastName: string;
   email: string;
   is_admin: boolean;
   team_id: string;
@@ -58,8 +59,8 @@ export interface Team {
   id: string;
   name: string;
   description?: string | null;
-  created_at?: string;
-  created_by?: string;
+  createdAt?: string;
+  createdBy?: string;
   users: TeamUser[];
 }
 

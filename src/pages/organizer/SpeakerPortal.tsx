@@ -56,19 +56,19 @@ export default function SpeakerPortal() {
   const s = speaker
     ? {
       id: speaker.id,
-      name: `${(speaker as any).first_name ?? ((speaker as any).name ?? "")} ${(speaker as any).last_name ?? ""}`.trim(),
-      firstName: (speaker as any).first_name ?? undefined,
-      lastName: (speaker as any).last_name ?? undefined,
+      name: `${(speaker as any).firstName ?? (speaker as any).first_name ?? ((speaker as any).name ?? "")} ${(speaker as any).lastName ?? (speaker as any).last_name ?? ""}`.trim(),
+      firstName: (speaker as any).firstName ?? (speaker as any).first_name ?? undefined,
+      lastName: (speaker as any).lastName ?? (speaker as any).last_name ?? undefined,
       email: (speaker as any).email ?? (speaker as any).email_address ?? "",
-      companyName: (speaker as any).company_name ?? "",
-      companyRole: (speaker as any).company_role ?? "",
-      headshot: (speaker as any).headshot_url ?? (speaker as any).headshot ?? null,
-      companyLogo: (speaker as any).company_logo ?? (speaker as any).companyLogo ?? null,
+      companyName: (speaker as any).companyName ?? (speaker as any).company_name ?? "",
+      companyRole: (speaker as any).companyRole ?? (speaker as any).company_role ?? "",
+      headshot: (speaker as any).headshot ?? (speaker as any).headshotUrl ?? (speaker as any).headshot_url ?? null,
+      companyLogo: (speaker as any).companyLogo ?? (speaker as any).company_logo ?? null,
       linkedin: (speaker as any).linkedin ?? null,
       bio: (speaker as any).bio ?? "",
-      intakeFormStatus: (speaker as any).intake_form_status ?? (speaker as any).intakeFormStatus ?? "",
-      websiteCardApproved: (speaker as any).website_card_approved ?? (speaker as any).websiteCardApproved ?? false,
-      promoCardApproved: (speaker as any).promo_card_approved ?? (speaker as any).promoCardApproved ?? false,
+      intakeFormStatus: (speaker as any).intakeFormStatus ?? (speaker as any).intake_form_status ?? "",
+      websiteCardApproved: (speaker as any).websiteCardApproved ?? (speaker as any).website_card_approved ?? false,
+      promoCardApproved: (speaker as any).promoCardApproved ?? (speaker as any).promo_card_approved ?? false,
     }
     : null;
 
@@ -192,11 +192,12 @@ export default function SpeakerPortal() {
                 if (!id || !speakerId) return;
                 try {
                   await updateSpeaker(id, speakerId, {
+                    // backend expects snake_case fields for update
                     first_name: values.firstName,
                     last_name: values.lastName,
                     email: values.email,
-                    companyName: values.companyName,
-                    companyRole: values.companyRole,
+                    company_name: values.companyName,
+                    company_role: values.companyRole,
                     linkedin: values.linkedin,
                     bio: values.bio,
                   });

@@ -14,10 +14,10 @@ export default function SpeakerEmbedSingle() {
     enabled: Boolean(id && speakerId),
   });
 
-  const headshot = (speaker as any)?.headshot ?? (speaker as any)?.headshot_url ?? null;
-  const name = (speaker as any)?.first_name ? `${(speaker as any).first_name} ${(speaker as any).last_name ?? ""}`.trim() : (speaker as any)?.name ?? "";
+  const headshot = (speaker as any)?.headshot ?? (speaker as any)?.headshotUrl ?? (speaker as any)?.headshot_url ?? null;
+  const name = (speaker as any)?.firstName ? `${(speaker as any).firstName} ${(speaker as any).lastName ?? ""}`.trim() : (speaker as any)?.name ?? "";
   const title = (speaker as any)?.title ?? "";
-  const company = (speaker as any)?.company ?? "";
+  const company = (speaker as any)?.company ?? (speaker as any)?.companyName ?? "";
 
   return (
     <div className="min-h-screen bg-white text-black p-6">

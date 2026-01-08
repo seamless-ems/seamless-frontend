@@ -16,9 +16,13 @@ import {
 	Mail,
 	ExternalLink,
 } from "lucide-react";
-
-
-
+const formatDate = (iso?: string) => {
+	try {
+		return iso ? new Date(iso).toLocaleDateString() : "";
+	} catch {
+		return "";
+	}
+};
 export default function EventDashboard() {
 	const { id } = useParams();
 
@@ -60,8 +64,9 @@ export default function EventDashboard() {
 			modules: Array.isArray(rawEvent.modules)
 				? rawEvent.modules
 				: rawEvent.modules && typeof rawEvent.modules === "object"
-				? Object.entries(rawEvent.modules).map(([name, val]) => ({ name, ...(val as any) }))
-				: [],
+					? // support { speaker: true, schedule: false } and richer objects
+					Object.entries(rawEvent.modules).map(([name, val]) => (typeof val === "object" ? { name, ...(val as any) } : { name, enabled: !!val }))
+					: [],
 		};
 	})();
 
@@ -97,7 +102,7 @@ export default function EventDashboard() {
 	return (
 		<div className="space-y-8">
 			{/* Event Header */}
-			<div className="relative rounded-xl border border-border bg-card p-6 shadow-soft">
+			<div className="relative rounded-xl border border-border bg-card p-6 shadow-soft min-h-36 lg:min-h-36">
 				<div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
 					<div className="space-y-3">
 						<div className="flex items-center gap-3">
@@ -116,7 +121,7 @@ export default function EventDashboard() {
 						<div className="flex flex-wrap items-center gap-4 text-muted-foreground">
 							<div className="flex items-center gap-2">
 								<Calendar className="h-4 w-4" />
-								<span>{event?.dates}</span>
+								<span>{formatDate(event?.startDate)} — {formatDate(event?.endDate)}</span>
 							</div>
 							<div className="flex items-center gap-2">
 								<MapPin className="h-4 w-4" />
@@ -128,20 +133,22 @@ export default function EventDashboard() {
 							</div>
 						</div>
 
-						{event?.googleDriveConnected && (
-							<div className="flex items-center gap-2 text-sm">
-								<Badge
-									variant="outline"
-									className="text-success border-success/30"
-								>
-									<LinkIcon className="h-3 w-3 mr-1" />
-									Google Drive Connected
+						<div className="flex items-center gap-2 text-sm">
+							{event?.googleDriveConnected ? (
+								<Badge variant="outline" className="text-success border-success/30 flex items-center gap-2">
+									<LinkIcon className="h-3 w-3" />
+									<span className="sr-only">Google Drive Connected</span>
 								</Badge>
-								<span className="text-muted-foreground">
-									→ {event?.rootFolder}
-								</span>
-							</div>
-						)}
+							) : (
+								<Badge variant="outline" className="text-muted-foreground flex items-center gap-2">
+									<LinkIcon className="h-3 w-3 opacity-50" />
+									<span className="sr-only">Drive Not Linked</span>
+								</Badge>
+							)}
+							<span className="text-muted-foreground">
+								→ {event?.rootFolder}
+							</span>
+						</div>
 					</div>
 
 					{/* <div className="flex gap-3">

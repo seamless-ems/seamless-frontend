@@ -27,8 +27,8 @@ onIdTokenChanged(auth, async (user) => {
     // Try to exchange the Firebase ID token for a backend token so backend can link user records.
     try {
       const backendToken = await exchangeFirebaseToken(idToken);
-      if (backendToken && backendToken.access_token) {
-        setToken(backendToken.access_token);
+      if (backendToken && backendToken.accessToken) {
+        setToken(backendToken.accessToken);
         return;
       }
     } catch (e) {
