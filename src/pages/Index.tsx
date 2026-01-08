@@ -10,11 +10,34 @@ import { getJson, getMe } from "@/lib/api";
 async function fetchEvents(): Promise<Event[]> {
   // Normalize response shape if backend returns items/results/data
   const res = await getJson<any>(`/events`);
-  if (Array.isArray(res)) return res as Event[];
-  if (res.items) return res.items as Event[];
-  if (res.results) return res.results as Event[];
-  if (res.data) return res.data as Event[];
-  return [];
+  let arr: any[] = [];
+  if (Array.isArray(res)) arr = res;
+  else if (Array.isArray(res.items)) arr = res.items;
+  else if (Array.isArray(res.results)) arr = res.results;
+  else if (Array.isArray(res.data)) arr = res.data;
+  else {
+    const firstArray = Object.values(res).find((v: any) => Array.isArray(v));
+    if (Array.isArray(firstArray)) arr = firstArray as any[];
+  }
+
+  // deep camelize keys
+  function toCamel(str: string) { return str.replace(/_([a-z])/g, (_, c) => c.toUpperCase()); }
+  function deepCamel(obj: any): any {
+    if (Array.isArray(obj)) return obj.map(deepCamel);
+    if (obj && typeof obj === 'object' && obj.constructor === Object) {
+      const out: any = {};
+      for (const k in obj) {
+        if (Object.prototype.hasOwnProperty.call(obj, k)) {
+          out[toCamel(k)] = deepCamel(obj[k]);
+        }
+      }
+      return out;
+    }
+    return obj;
+  }
+
+  const mapped = arr.map(deepCamel) as Event[];
+  return mapped;
 }
 
 export default function Index() {

@@ -50,13 +50,18 @@ export default function EventDashboard() {
 			status: rawEvent.status,
 			dates,
 			location: rawEvent.location,
-			speakerCount: rawEvent.speaker_count ?? rawEvent.speakers_count ?? 0,
+			speakerCount: (Array.isArray(rawEvent.speakers) ? rawEvent.speakers.length : undefined) ?? rawEvent.speaker_count ?? rawEvent.speakers_count ?? 0,
 			attendeeCount: rawEvent.attendee_count ?? 0,
 			fromEmail: rawEvent.from_email ?? rawEvent.fromEmail,
-			googleDriveLinked: rawEvent.google_drive_linked ?? false,
+			googleDriveConnected: rawEvent.google_drive_connected ?? false,
 			rootFolder: rawEvent.root_folder ?? rawEvent.rootFolder ?? "",
+			eventImage: rawEvent.event_image ?? rawEvent.eventImage ?? null,
 			// keep modules as array; we'll map to the shape we need below
-			modules: Array.isArray(rawEvent.modules) ? rawEvent.modules : [],
+			modules: Array.isArray(rawEvent.modules)
+				? rawEvent.modules
+				: rawEvent.modules && typeof rawEvent.modules === "object"
+				? Object.entries(rawEvent.modules).map(([name, val]) => ({ name, ...(val as any) }))
+				: [],
 		};
 	})();
 
@@ -91,54 +96,55 @@ export default function EventDashboard() {
 
 	return (
 		<div className="space-y-8">
-				{/* Event Header */}
-				<div className="rounded-xl border border-border bg-card p-6 shadow-soft">
-					<div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-						<div className="space-y-3">
-							<div className="flex items-center gap-3">
-								<h1 className="font-display text-3xl font-bold text-foreground">
-									{event?.title ?? "Untitled Event"}
-								</h1>
-								<Badge
-									variant="outline"
-									className="bg-primary/10 text-primary border-primary/20 capitalize"
-								>
-									{event?.status}
-								</Badge>
-							</div>
-
-							<div className="flex flex-wrap items-center gap-4 text-muted-foreground">
-								<div className="flex items-center gap-2">
-									<Calendar className="h-4 w-4" />
-									<span>{event?.dates}</span>
-								</div>
-								<div className="flex items-center gap-2">
-									<MapPin className="h-4 w-4" />
-									<span>{event?.location}</span>
-								</div>
-								<div className="flex items-center gap-2">
-									<Mail className="h-4 w-4" />
-									<span>{event?.fromEmail}</span>
-								</div>
-							</div>
-
-							{event?.googleDriveLinked && (
-								<div className="flex items-center gap-2 text-sm">
-									<Badge
-										variant="outline"
-										className="text-success border-success/30"
-									>
-										<LinkIcon className="h-3 w-3 mr-1" />
-										Google Drive Connected
-									</Badge>
-									<span className="text-muted-foreground">
-										→ {event?.rootFolder}
-									</span>
-								</div>
-							)}
+			{/* Event Header */}
+			<div className="relative rounded-xl border border-border bg-card p-6 shadow-soft">
+				<div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+					<div className="space-y-3">
+						<div className="flex items-center gap-3">
+							<h1 className="font-display text-3xl font-bold text-foreground">
+								{event?.title ?? "Untitled Event"}
+							</h1>
+							{((event as any)?.eventImage || (event as any)?.event_image || (event as any)?.image) ? (
+								<img
+									src={(event as any)?.eventImage ?? (event as any)?.event_image ?? (event as any)?.image}
+									alt={event?.title ?? "Event image"}
+									className="pointer-events-none absolute top-6 right-6 h-24 w-36 rounded-md object-cover shadow-md z-10"
+								/>
+							) : null}
 						</div>
 
-						{/* <div className="flex gap-3">
+						<div className="flex flex-wrap items-center gap-4 text-muted-foreground">
+							<div className="flex items-center gap-2">
+								<Calendar className="h-4 w-4" />
+								<span>{event?.dates}</span>
+							</div>
+							<div className="flex items-center gap-2">
+								<MapPin className="h-4 w-4" />
+								<span>{event?.location}</span>
+							</div>
+							<div className="flex items-center gap-2">
+								<Mail className="h-4 w-4" />
+								<span>{event?.fromEmail}</span>
+							</div>
+						</div>
+
+						{event?.googleDriveConnected && (
+							<div className="flex items-center gap-2 text-sm">
+								<Badge
+									variant="outline"
+									className="text-success border-success/30"
+								>
+									<LinkIcon className="h-3 w-3 mr-1" />
+									Google Drive Connected
+								</Badge>
+								<span className="text-muted-foreground">
+									→ {event?.rootFolder}
+								</span>
+							</div>
+						)}
+					</div>
+
+					{/* <div className="flex gap-3">
 							<Button variant="outline" asChild>
 								<a href="#" target="_blank" rel="noopener noreferrer">
 									<ExternalLink className="h-4 w-4" />
@@ -152,71 +158,71 @@ export default function EventDashboard() {
 								</a>
 							</Button>
 						</div> */}
-					</div>
 				</div>
+			</div>
 
-				{/* Quick Stats */}
-				<div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2">
-					<StatsCard
-						title="Speakers"
-						value={event?.speakerCount ?? 0}
-						subtitle={`${modules?.speaker?.submitted ?? 0} forms submitted`}
-						icon={<Mic2 className="h-6 w-6" />}
-						variant="primary"
-					/>
-					<StatsCard
-						title="Sessions"
-						value={modules?.schedule?.sessions ?? 0}
-						subtitle="In your schedule"
-						icon={<Calendar className="h-6 w-6" />}
-						variant="accent"
-					/>
-					{/* <StatsCard
+			{/* Quick Stats */}
+			<div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2">
+				<StatsCard
+					title="Speakers"
+					value={event?.speakerCount ?? 0}
+					subtitle={`${modules?.speaker?.submitted ?? 0} forms submitted`}
+					icon={<Mic2 className="h-6 w-6" />}
+					variant="primary"
+				/>
+				<StatsCard
+					title="Sessions"
+					value={modules?.schedule?.sessions ?? 0}
+					subtitle="In your schedule"
+					icon={<Calendar className="h-6 w-6" />}
+					variant="accent"
+				/>
+				{/* <StatsCard
 						title="Attendees"
 						value={event?.attendeeCount ?? 0}
 						icon={<Users className="h-6 w-6" />}
 					/> */}
-					{/* <StatsCard
+				{/* <StatsCard
 						title="Content Files"
 						value={42}
 						subtitle="12 pending review"
 						icon={<FileText className="h-6 w-6" />}
 					/> */}
-				</div>
+			</div>
 
-				{/* Modules */}
-				<div>
-					<h2 className="font-display text-2xl font-semibold text-foreground mb-6">
-						Event Modules
-					</h2>
-					<div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-						<ModuleCard
-							title="Speaker Management"
-							description="Manage speaker intake forms, assets, and promo cards"
-							icon={<Mic2 className="h-6 w-6" />}
-							href={`/organizer/event/${id}/speakers`}
-							enabled={modules?.speaker?.enabled ?? false}
-							stats={{
-								label: "Registered Speakers",
-								value: event?.speakerCount ?? 0,
-							}}
-							color="speaker"
-							index={0}
-						/>
-						<ModuleCard
-							title="Schedule Management"
-							description="Create and publish your event schedule from Google Sheets"
-							icon={<Calendar className="h-6 w-6" />}
-							href={`/organizer/event/${id}/schedule`}
-							enabled={modules?.schedule?.enabled ?? false}
-							stats={{
-								label: "Sessions",
-								value: modules?.schedule?.sessions ?? 0,
-							}}
-							color="schedule"
-							index={1}
-						/>
-						{/* <ModuleCard
+			{/* Modules */}
+			<div>
+				<h2 className="font-display text-2xl font-semibold text-foreground mb-6">
+					Event Modules
+				</h2>
+				<div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+					<ModuleCard
+						title="Speaker Management"
+						description="Manage speaker intake forms, assets, and promo cards"
+						icon={<Mic2 className="h-6 w-6" />}
+						href={`/organizer/event/${id}/speakers`}
+						enabled={modules?.speaker?.enabled ?? false}
+						stats={{
+							label: "Registered Speakers",
+							value: event?.speakerCount ?? 0,
+						}}
+						color="speaker"
+						index={0}
+					/>
+					<ModuleCard
+						title="Schedule Management"
+						description="Create and publish your event schedule from Google Sheets"
+						icon={<Calendar className="h-6 w-6" />}
+						href={`/organizer/event/${id}/schedule`}
+						enabled={modules?.schedule?.enabled ?? false}
+						stats={{
+							label: "Sessions",
+							value: modules?.schedule?.sessions ?? 0,
+						}}
+						color="schedule"
+						index={1}
+					/>
+					{/* <ModuleCard
 							title="Content Management"
 							description="Centralized hub for presentations, videos, and files"
 							icon={<FileText className="h-6 w-6" />}
@@ -236,9 +242,9 @@ export default function EventDashboard() {
 							comingSoon
 							index={3}
 						/> */}
-					</div>
 				</div>
-
 			</div>
-		);
+
+		</div>
+	);
 }

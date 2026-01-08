@@ -350,17 +350,25 @@ export default function SpeakerIntakeForm() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                           <Label>Headshot</Label>
-                          <div className="mt-2 flex items-center gap-4">
+                          <div className="mt-2">
                             <input type="file" accept={ACCEPTED_IMAGE_TYPES.join(",")} onChange={(e) => handleImageUpload(e, "headshot")} />
-                            {headshotPreview && <img src={headshotPreview} alt="headshot preview" className="h-20 w-20 object-cover rounded-full" />}
+                            {headshotPreview && (
+                              <div className="mt-3">
+                                <img src={headshotPreview} alt="headshot preview" className="h-20 w-20 object-cover rounded-full mx-auto" />
+                              </div>
+                            )}
                           </div>
                         </div>
 
                         <div>
                           <Label>Company logo</Label>
-                          <div className="mt-2 flex items-center gap-4">
+                          <div className="mt-2">
                             <input type="file" accept={ACCEPTED_IMAGE_TYPES.join(",")} onChange={(e) => handleImageUpload(e, "companyLogo")} />
-                            {companyLogoPreview && <img src={companyLogoPreview} alt="company logo preview" className="h-16 w-16 object-contain" />}
+                            {companyLogoPreview && (
+                              <div className="mt-3">
+                                <img src={companyLogoPreview} alt="company logo preview" className="h-16 w-16 object-contain mx-auto" />
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>

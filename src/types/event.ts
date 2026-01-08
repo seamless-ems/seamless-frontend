@@ -10,7 +10,7 @@ export interface Event {
   fromEmail?: string;
   replyEmail?: string;
   emailSignature?: string;
-  googleDriveLinked: boolean;
+  googleDriveConnected: boolean;
   rootFolder?: string;
 }
 

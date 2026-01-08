@@ -162,7 +162,7 @@ class EventSummary(BaseModel):
     status: str
     speaker_count: int = 0
     attendee_count: int = 0
-    google_drive_linked: bool = False
+    google_drive_connected: bool = False
 
 class EventCreate(BaseModel):
     title: str
@@ -173,7 +173,7 @@ class EventCreate(BaseModel):
     from_email: Optional[EmailStr]
     reply_email: Optional[EmailStr]
     email_signature: Optional[str]
-    google_drive_linked: bool = False
+    google_drive_connected: bool = False
     root_folder: Optional[str]
 
 class SpeakerBase(BaseModel):
@@ -255,7 +255,7 @@ class Event(Base):
     from_email = Column(String)
     reply_email = Column(String)
     email_signature = Column(Text)
-    google_drive_linked = Column(Boolean, default=False)
+    google_drive_connected = Column(Boolean, default=False)
     root_folder = Column(String)
     modules = Column(JSON)  # or create EventModule table
 

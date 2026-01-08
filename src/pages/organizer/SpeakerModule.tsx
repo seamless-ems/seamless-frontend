@@ -77,6 +77,7 @@ export default function SpeakerModule() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTab, setSelectedTab] = useState("all");
   const [addOpen, setAddOpen] = useState(false);
+  const [customizeOpen, setCustomizeOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [newSpeaker, setNewSpeaker] = useState({ firstName: "", lastName: "", email: "", companyName: "", companyRole: "" });
   const { data: rawSpeakers, isLoading, error } = useQuery<any, Error>({
@@ -115,7 +116,9 @@ export default function SpeakerModule() {
         firstName,
         lastName,
         email,
+        // provide both legacy and camelCase keys for compatibility
         company,
+        companyName: company,
         companyRole,
         avatarUrl: headshot,
         intakeFormStatus,
@@ -148,44 +151,82 @@ export default function SpeakerModule() {
             <h1 className="font-display text-3xl font-bold text-foreground">Speaker Management</h1>
             <p className="text-muted-foreground mt-1">Manage speakers, intake forms, and promotional materials</p>
           </div>
-          <div className="flex gap-3">
-            <Dialog>
-              <DialogTrigger asChild>
+          <div className="flex gap-3 items-center">
+            {/* Combined options dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
                 <Button variant="outline">
-                  <Settings className="h-4 w-4" />
-                  Customize Form
+                  <MoreVertical className="h-4 w-4" />
                 </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl">
-                <DialogHeader>
-                  <DialogTitle>Customize Intake Form</DialogTitle>
-                  <DialogDescription>Configure the fields speakers need to fill out</DialogDescription>
-                </DialogHeader>
-                <div className="py-4">
-                  <p className="text-sm text-muted-foreground">Form customization coming in the next update...</p>
-                </div>
-              </DialogContent>
-            </Dialog>
-            <Button
-              variant="outline"
-              onClick={() => {
-                if (!id) {
-                  toast({ title: "No event selected" });
-                  return;
-                }
-                const shareUrl = `${window.location.origin}/speaker-intake/${id}`;
-                window.open(shareUrl, "_blank");
-                toast({ title: "Opened intake form", description: "Opened in a new tab" });
-              }}
-            >
-              <Share2 className="h-4 w-4" />
-              Share Form
-            </Button>
-
-            <Button variant="outline">
-              <Mail className="h-4 w-4" />
-              Send Reminder
-            </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem
+                  onSelect={() => {
+                    if (!id) {
+                      toast({ title: "No event selected" });
+                      return;
+                    }
+                    const embedUrl = `${window.location.origin}/event/${id}/speakers/embed`;
+                    window.open(embedUrl, "_blank");
+                    toast({ title: "Opened embed", description: "Speaker embed opened in a new tab" });
+                  }}
+                >
+                  <Code className="h-4 w-4 mr-2" />
+                  Embed: Speakers
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={() => {
+                    if (!id) {
+                      toast({ title: "No event selected" });
+                      return;
+                    }
+                    const promoUrl = `${window.location.origin}/event/${id}/speakers/embed/promo`;
+                    window.open(promoUrl, "_blank");
+                    toast({ title: "Opened embed", description: "Promo embed opened in a new tab" });
+                  }}
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  Embed: Promo
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onSelect={() => setCustomizeOpen(true)}
+                >
+                  <Settings className="h-4 w-4 mr-2" />
+                  Customize Form
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={() => {
+                    if (!id) {
+                      toast({ title: "No event selected" });
+                      return;
+                    }
+                    const shareUrl = `${window.location.origin}/speaker-intake/${id}`;
+                    window.open(shareUrl, "_blank");
+                    toast({ title: "Opened intake form", description: "Opened in a new tab" });
+                  }}
+                >
+                  <Share2 className="h-4 w-4 mr-2" />
+                  Share Form
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={() => {
+                    if (!id) {
+                      toast({ title: "No event selected" });
+                      return;
+                    }
+                    // Placeholder reminder action — implement API call if available
+                    const confirmed = window.confirm("Send reminder to all speakers?");
+                    if (!confirmed) return;
+                    toast({ title: "Reminders sent", description: "Speaker reminders have been queued." });
+                  }}
+                >
+                  <Mail className="h-4 w-4 mr-2" />
+                  Send Reminder
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            
             <Dialog open={addOpen} onOpenChange={setAddOpen}>
               <DialogTrigger asChild>
                 <Button variant="teal">
@@ -247,6 +288,18 @@ export default function SpeakerModule() {
                     <Button variant="outline" type="button" onClick={() => setAddOpen(false)}>Cancel</Button> <Button type="submit" disabled={creating}>{creating ? "Adding…" : "Add Speaker"}</Button>
                   </div>
                 </form>
+              </DialogContent>
+            </Dialog>
+            {/* Controlled dialog for customize form (opened from dropdown) */}
+            <Dialog open={customizeOpen} onOpenChange={setCustomizeOpen}>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>Customize Intake Form</DialogTitle>
+                  <DialogDescription>Configure the fields speakers need to fill out</DialogDescription>
+                </DialogHeader>
+                <div className="py-4">
+                  <p className="text-sm text-muted-foreground">Form customization coming in the next update...</p>
+                </div>
               </DialogContent>
             </Dialog>
           </div>

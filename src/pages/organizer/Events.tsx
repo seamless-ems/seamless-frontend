@@ -32,16 +32,36 @@ export default function Events() {
   const events: Event[] = (() => {
     if (!rawEvents) return [];
     // Common paginated shapes: { items: [...]} or { results: [...] } or { events: [...] }
-    if (Array.isArray(rawEvents)) return rawEvents as Event[];
-    if (Array.isArray(rawEvents.items)) return rawEvents.items as Event[];
-    if (Array.isArray(rawEvents.results)) return rawEvents.results as Event[];
-    if (Array.isArray(rawEvents.events)) return rawEvents.events as Event[];
-    // If API returned { data: [...] }
-    if (Array.isArray(rawEvents.data)) return rawEvents.data as Event[];
-    // Fallback: try to find first array value
-    const firstArray = Object.values(rawEvents).find((v) => Array.isArray(v));
-    if (Array.isArray(firstArray)) return firstArray as Event[];
-    return [];
+    let arr: any[] = [];
+  // rawEvents might be directly an array
+  console.debug("rawEvents:", rawEvents);
+  if (Array.isArray(rawEvents)) arr = rawEvents;
+    else if (Array.isArray(rawEvents.items)) arr = rawEvents.items;
+    else {
+      const firstArray = Object.values(rawEvents).find((v) => Array.isArray(v));
+      if (Array.isArray(firstArray)) arr = firstArray;
+    }
+    // Recursively map all snake_case keys to camelCase
+    function toCamel(str: string) {
+      return str.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
+    }
+    function deepCamel(obj: any): any {
+      if (Array.isArray(obj)) {
+        return obj.map(deepCamel);
+      } else if (obj && typeof obj === 'object' && obj.constructor === Object) {
+        const mapped: any = {};
+        for (const key in obj) {
+          if (Object.prototype.hasOwnProperty.call(obj, key)) {
+            const camelKey = toCamel(key);
+            mapped[camelKey] = deepCamel(obj[key]);
+          }
+        }
+        return mapped;
+      }
+      return obj;
+    }
+    const mapped = arr.map(deepCamel) as Event[];
+    return mapped;
   })();
 
   const filteredEvents = (events ?? []).filter((event) => {

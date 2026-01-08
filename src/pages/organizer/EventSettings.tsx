@@ -58,7 +58,7 @@ export default function EventSettings() {
       fromEmail: rawEvent.from_email ?? rawEvent.fromEmail ?? "",
       replyEmail: rawEvent.reply_email ?? rawEvent.replyEmail ?? "",
       emailSignature: rawEvent.email_signature ?? rawEvent.emailSignature ?? "",
-      googleDriveConnected: rawEvent.google_drive_linked ?? false,
+      googleDriveConnected: rawEvent.google_drive_connected ?? false,
       rootFolder: rawEvent.root_folder ?? rawEvent.rootFolder ?? "",
     }));
 

@@ -34,15 +34,18 @@ export function EventCard({ event, index = 0, onDelete }: EventCardProps) {
       <div className="flex items-start justify-between mb-4">
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-2">
-            <h3 className="font-display text-xl font-semibold text-foreground group-hover:text-primary transition-colors">
-              {event.title}
-            </h3>
-            <Badge
-              variant="outline"
-              className={cn("capitalize", statusStyles[event.status])}
-            >
-              {event.status}
-            </Badge>
+            <div className="flex items-center gap-3">
+              <h3 className="font-display text-xl font-semibold text-foreground group-hover:text-primary transition-colors">
+                {event.title}
+              </h3>
+              {((event as any).eventImage || (event as any).event_image || (event as any).image) ? (
+                <img
+                  src={(event as any).eventImage ?? (event as any).event_image ?? (event as any).image}
+                  alt={event.title}
+                  className="h-10 w-16 rounded-md object-cover"
+                />
+              ) : null}
+            </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
@@ -125,9 +128,9 @@ export function EventCard({ event, index = 0, onDelete }: EventCardProps) {
           else if (typeof raw === "object") modulesArray = Object.values(raw as any);
           else modulesArray = [];
 
-          return modulesArray.map((module) => (
+          return modulesArray.map((module, idx) => (
             <Badge
-              key={module.id}
+              key={module.id || `${module.name}-${idx}`}
               variant={module.enabled ? "default" : "outline"}
               className={cn(
                 "capitalize",
@@ -151,7 +154,7 @@ export function EventCard({ event, index = 0, onDelete }: EventCardProps) {
 
       <div className="flex items-center justify-between pt-4 border-t border-border">
         <div className="flex items-center gap-2">
-          {event.googleDriveLinked ? (
+          {event.googleDriveConnected ? (
             <Badge variant="outline" className="text-success border-success/30">
               Google Drive Connected
             </Badge>

@@ -108,9 +108,7 @@ function AppSidebar({ eventId, mode }: { eventId?: string; mode?: "organizer" | 
             S
           </div>
           {!collapsed && (
-            <span className="font-display text-xl font-semibold text-foreground">
-              seamless
-            </span>
+            <span className="font-display text-xl font-semibold text-foreground">seamless</span>
           )}
         </Link>
       </div>
@@ -118,12 +116,7 @@ function AppSidebar({ eventId, mode }: { eventId?: string; mode?: "organizer" | 
       <SidebarContent className="px-2 py-4">
         {eventId && (
           <div className="mb-4 px-2">
-            <Button
-              variant="soft"
-              size="sm"
-              className="w-full justify-start"
-              asChild
-            >
+            <Button variant="soft" size="sm" className="w-full justify-start" asChild>
               <Link to="/organizer/events">
                 <ChevronDown className="mr-2 h-4 w-4 rotate-90" />
                 {!collapsed && "Back to Events"}
@@ -144,11 +137,7 @@ function AppSidebar({ eventId, mode }: { eventId?: string; mode?: "organizer" | 
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton
                       asChild
-                      className={cn(
-                        "transition-colors",
-                        isActive(item.url) &&
-                          "bg-primary/10 text-primary font-medium"
-                      )}
+                      className={cn("transition-colors", isActive(item.url) && "bg-primary/10 text-primary font-medium")}
                     >
                       <Link to={linkTo}>
                         <item.icon className="h-4 w-4" />
@@ -186,7 +175,106 @@ export function DashboardLayout({ children, eventId, mode: propMode }: Dashboard
   const { data: me } = useQuery<any>({ queryKey: ["me"], queryFn: () => getMe() });
   const { data: teams } = useQuery<any[]>({ queryKey: ["teams"], queryFn: () => getTeam() });
   const [mode, setMode] = useState<"organizer" | "speaker">(propMode ?? "organizer");
+  function Header() {
+    const { state: sidebarState } = useSidebar();
 
+  const left = sidebarState === "collapsed" ? "0" : "var(--sidebar-width)";
+
+    return (
+      <header style={{ left }} className="fixed top-0 right-0 z-30 flex h-16 items-center justify-between border-b border-border bg-card/95 px-6">
+        <div className="flex items-center gap-4">
+          <SidebarTrigger className="-ml-2" />
+        </div>
+
+        <div className="flex items-center gap-4">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                className="flex items-center gap-2 pl-2"
+              >
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={me?.avatar_url ?? ""} />
+                  <AvatarFallback className="bg-primary/10 text-primary text-sm">
+                    {((me?.first_name?.[0] ?? "") + (me?.last_name?.[0] ?? "")).toUpperCase() || (me?.email?.[0] ?? "").toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="hidden md:inline text-sm font-medium">
+                  {me ? `${me.first_name ?? ""} ${me.last_name ?? ""}`.trim() : "Account"}
+                </span>
+                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuItem asChild>
+                <Link to="/organizer/settings">Settings</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/organizer/team">Team</Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <div className="px-2 py-1 text-xs text-muted-foreground">Switch Team</div>
+              {teams && teams.length > 0 ? (
+                teams.map((t: any) => (
+                  <DropdownMenuItem key={t.id} onSelect={() => navigate(`/team?team=${encodeURIComponent(t.id)}`)}>
+                    <div className="flex items-center gap-2">
+                      <Users className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm">{t.name}</span>
+                    </div>
+                  </DropdownMenuItem>
+                ))
+              ) : (
+                <DropdownMenuItem disabled>No teams</DropdownMenuItem>
+              )}
+              <DropdownMenuSeparator />
+              {mode !== "organizer" ? (
+                <DropdownMenuItem
+                  onSelect={() => {
+                    setMode("organizer");
+                    if (typeof window !== "undefined") window.localStorage.setItem("dashboardMode", "organizer");
+                    navigate("/organizer");
+                  }}
+                >
+                  Switch to Organizer
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem
+                  onSelect={() => {
+                    setMode("speaker");
+                    if (typeof window !== "undefined") window.localStorage.setItem("dashboardMode", "speaker");
+                    navigate("/speaker");
+                  }}
+                >
+                  Switch to Speaker
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive"
+                onSelect={async () => {
+                  try {
+                    await firebaseSignOut();
+                  } catch (e) {
+                    try {
+                      clearToken();
+                    } catch (err) {
+                      // eslint-disable-next-line no-console
+                      console.error("Error clearing token after signOut failure:", err);
+                    }
+                    // eslint-disable-next-line no-console
+                    console.error("Firebase signOut failed:", e);
+                  }
+                  navigate("/login");
+                }}
+              >
+                Sign Out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </header>
+    );
+  }
   useEffect(() => {
     // Priority: propMode > localStorage > infer from me
     if (propMode) {
@@ -211,128 +299,11 @@ export function DashboardLayout({ children, eventId, mode: propMode }: Dashboard
     <SidebarProvider>
       <div className="flex min-h-screen w-full">
         <AppSidebar eventId={eventId} mode={mode} />
-        <div className="flex flex-1 flex-col">
-          {/* Top Header */}
-          <header className="flex h-16 items-center justify-between border-b border-border bg-card px-6">
-            <div className="flex items-center gap-4">
-              <SidebarTrigger className="-ml-2" />
-              <div className="relative hidden md:block">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Search..."
-                  className="w-64 pl-9 bg-background"
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center gap-4">
-              {/* <Button variant="teal" size="sm" asChild>
-                <Link to="/events/new">
-                  <Plus className="h-4 w-4" />
-                  <span className="hidden sm:inline">New Event</span>
-                </Link>
-              </Button> */}
-
-              {/* <Button variant="ghost" size="icon" className="relative">
-                <Bell className="h-5 w-5" />
-                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-accent text-[10px] text-accent-foreground">
-                  3
-                </span>
-              </Button> */}
-
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    className="flex items-center gap-2 pl-2"
-                  >
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={me?.avatar_url ?? ""} />
-                      <AvatarFallback className="bg-primary/10 text-primary text-sm">
-                        {((me?.first_name?.[0] ?? "") + (me?.last_name?.[0] ?? "")).toUpperCase() || (me?.email?.[0] ?? "").toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="hidden md:inline text-sm font-medium">
-                      {me ? `${me.first_name ?? ""} ${me.last_name ?? ""}`.trim() : "Account"}
-                    </span>
-                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuItem asChild>
-                    <Link to="/organizer/settings">Settings</Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/organizer/team">Team</Link>
-                  </DropdownMenuItem>
-                  {/* <DropdownMenuItem asChild>
-                    <Link to="/subscription">Subscription</Link>
-                  </DropdownMenuItem> */}
-                  <DropdownMenuSeparator />
-                  <div className="px-2 py-1 text-xs text-muted-foreground">Switch Team</div>
-                  {teams && teams.length > 0 ? (
-                    teams.map((t: any) => (
-                      <DropdownMenuItem key={t.id} onSelect={() => navigate(`/team?team=${encodeURIComponent(t.id)}`)}>
-                        <div className="flex items-center gap-2">
-                          <Users className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">{t.name}</span>
-                        </div>
-                      </DropdownMenuItem>
-                    ))
-                  ) : (
-                    <DropdownMenuItem disabled>No teams</DropdownMenuItem>
-                  )}
-                  <DropdownMenuSeparator />
-                  {/* Mode switcher */}
-                  {mode !== "organizer" ? (
-                    <DropdownMenuItem
-                      onSelect={() => {
-                        setMode("organizer");
-                        if (typeof window !== "undefined") window.localStorage.setItem("dashboardMode", "organizer");
-                        navigate("/organizer");
-                      }}
-                    >
-                      Switch to Organizer
-                    </DropdownMenuItem>
-                  ) : (
-                    <DropdownMenuItem
-                      onSelect={() => {
-                        setMode("speaker");
-                        if (typeof window !== "undefined") window.localStorage.setItem("dashboardMode", "speaker");
-                        navigate("/speaker");
-                      }}
-                    >
-                      Switch to Speaker
-                    </DropdownMenuItem>
-                  )}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    className="text-destructive"
-                    onSelect={async () => {
-                      try {
-                        await firebaseSignOut();
-                      } catch (e) {
-                        try {
-                          clearToken();
-                        } catch (err) {
-                          // eslint-disable-next-line no-console
-                          console.error("Error clearing token after signOut failure:", err);
-                        }
-                        // eslint-disable-next-line no-console
-                        console.error("Firebase signOut failed:", e);
-                      }
-                      navigate("/login");
-                    }}
-                  >
-                    Sign Out
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </header>
-
+        <div className="flex flex-1 flex-col overflow-auto pt-16">
+          {/* Top Header (fixed) */}
+          <Header />
           {/* Main Content */}
-          <main className="flex-1 overflow-auto bg-background p-6">
+          <main className="flex-1 bg-background p-6">
             {children}
           </main>
         </div>

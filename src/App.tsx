@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
 import Events from "./pages/organizer/Events";
 import EventDashboard from "./pages/organizer/EventDashboard";
@@ -24,10 +24,19 @@ import EventSettings from "./pages/organizer/EventSettings";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import ProtectedRoute from "./components/ProtectedRoute";
+import PromoEmbed from "./pages/public/PromoEmbed";
+
+// Helper component for root redirect
+function RootRedirect() {
+  let mode = "organizer";
+  try {
+    const stored = localStorage.getItem("dashboardMode");
+    if (stored === "speaker") mode = "speaker";
+  } catch {}
+  return <Navigate to={`/${mode}`} replace />;
+}
 
 const queryClient = new QueryClient();
-
-// Token processing is handled via Firebase onIdTokenChanged listener
 
 const App = () => {
   return (
@@ -37,6 +46,7 @@ const App = () => {
         <Sonner />
         <BrowserRouter>
           <Routes>
+            <Route path="/" element={<RootRedirect />} />
             <Route path="/login" element={<Auth />} />
             <Route path="/signup" element={<Auth />} />
 
@@ -109,6 +119,7 @@ const App = () => {
 
             {/* Public embed route for speaker promo cards */}
             <Route path="/event/:id/speakers/embed" element={<SpeakerEmbed />} />
+            <Route path="/event/:id/speakers/embed/promo" element={<PromoEmbed />} />
             {/* Single-speaker embed routes (public) */}
             <Route path="/event/:id/speakers/embed/speaker/:speakerId" element={<SpeakerEmbedSingle />} />
             <Route path="/event/:id/speakers/embed/promo/:speakerId" element={<PromoEmbedSingle />} />
