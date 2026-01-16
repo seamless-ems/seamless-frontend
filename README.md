@@ -140,3 +140,5 @@ If the app expects an API host, add it to a `.env` and reference it from code wi
 
 ## Attendee
 - Only integrate tito if we have attendee module enabled (same for speakers)
+
+Test
