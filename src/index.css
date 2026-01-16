@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Fraunces:ital,opsz,wght@0,9..144,100..900;1,9..144,100..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,59 +6,95 @@
 
 @layer base {
   :root {
-    /* Seamless Brand Colors */
-    --background: 30 33% 97%;
-    --foreground: 200 15% 20%;
-
-    --card: 0 0% 100%;
-    --card-foreground: 200 15% 20%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 200 15% 20%;
-
-    /* Teal/Turquoise primary from Seamless */
-    --primary: 174 51% 48%;
+    /* Slate Blue Design System - Seamless Events */
+    /* Primary: Slate Blue */
+    --primary: 231 36% 48%; /* #4E5BA6 */
     --primary-foreground: 0 0% 100%;
 
-    /* Coral/Salmon accent */
-    --accent: 12 76% 70%;
+    /* Backgrounds */
+    --background: 30 33% 97%; /* #FAFAF9 */
+    --foreground: 220 39% 11%; /* #111827 */
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 39% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 39% 11%;
+
+    /* Accent - keeping for compatibility */
+    --accent: 231 36% 48%;
     --accent-foreground: 0 0% 100%;
 
-    --secondary: 174 30% 94%;
-    --secondary-foreground: 200 15% 20%;
+    --secondary: 231 53% 90%; /* #E8EAF6 - Primary Subtle */
+    --secondary-foreground: 220 39% 11%;
 
     --muted: 30 20% 94%;
-    --muted-foreground: 200 10% 50%;
+    --muted-foreground: 220 9% 46%; /* #6B7280 */
 
-    --destructive: 0 84% 60%;
+    --destructive: 0 84% 60%; /* #DC2626 */
     --destructive-foreground: 0 0% 100%;
 
-    --border: 200 10% 88%;
-    --input: 200 10% 88%;
-    --ring: 174 51% 48%;
+    --border: 220 13% 91%; /* #E5E7EB */
+    --input: 220 13% 91%;
+    --ring: 231 36% 48%;
 
-    --radius: 0.75rem;
+    --radius: 0.5rem;
 
-    /* Module colors */
-    --speaker: 174 51% 48%;
+    /* Module colors - keeping for module-specific styling */
+    --speaker: 231 36% 48%;
     --schedule: 12 76% 70%;
     --content: 45 93% 60%;
     --attendee: 200 60% 55%;
 
     /* Status colors */
-    --success: 152 69% 45%;
-    --warning: 45 93% 60%;
-    --info: 200 60% 55%;
+    --success: 142 71% 45%; /* #16A34A */
+    --warning: 38 92% 50%; /* #F59E0B */
+    --info: 217 91% 60%; /* #2563EB */
 
     /* Sidebar */
     --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 200 15% 30%;
-    --sidebar-primary: 174 51% 48%;
+    --sidebar-foreground: 220 39% 11%;
+    --sidebar-primary: 231 36% 48%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 174 30% 94%;
-    --sidebar-accent-foreground: 200 15% 20%;
-    --sidebar-border: 200 10% 92%;
-    --sidebar-ring: 174 51% 48%;
+    --sidebar-accent: 231 53% 90%;
+    --sidebar-accent-foreground: 220 39% 11%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 231 36% 48%;
+
+    /* Design System Tokens */
+    --primary-hover: 231 36% 40%; /* #3D4A8F */
+    --primary-subtle: 231 53% 90%; /* #E8EAF6 */
+
+    --bg-app: 30 33% 97%;
+    --bg-surface: 0 0% 100%;
+    --border-default: 220 13% 91%;
+
+    --text-primary: 220 39% 11%;
+    --text-secondary: 220 9% 46%;
+
+    /* Typography Scale */
+    --font-h1: 28px;
+    --font-h2: 20px;
+    --font-h3: 16px;
+    --font-body: 14px;
+    --font-small: 13px;
+    --font-tiny: 11px;
+
+    /* Spacing (8px scale) */
+    --space-xs: 4px;
+    --space-sm: 8px;
+    --space-md: 16px;
+    --space-lg: 24px;
+    --space-xl: 32px;
+    --space-2xl: 48px;
+
+    /* Borders & Radius */
+    --radius-card: 8px;
+    --radius-btn: 6px;
+    --border-width: 1px;
+
+    /* Shadows */
+    --shadow-card: 0 1px 2px rgba(0,0,0,0.06);
   }
 
   .dark {
@@ -71,10 +107,10 @@
     --popover: 200 15% 14%;
     --popover-foreground: 30 20% 95%;
 
-    --primary: 174 51% 52%;
+    --primary: 231 36% 52%;
     --primary-foreground: 0 0% 100%;
 
-    --accent: 12 76% 65%;
+    --accent: 231 36% 52%;
     --accent-foreground: 0 0% 100%;
 
     --secondary: 200 15% 18%;
@@ -88,16 +124,16 @@
 
     --border: 200 15% 22%;
     --input: 200 15% 22%;
-    --ring: 174 51% 52%;
+    --ring: 231 36% 52%;
 
     --sidebar-background: 200 15% 12%;
     --sidebar-foreground: 30 20% 90%;
-    --sidebar-primary: 174 51% 52%;
+    --sidebar-primary: 231 36% 52%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 200 15% 18%;
     --sidebar-accent-foreground: 30 20% 95%;
     --sidebar-border: 200 15% 20%;
-    --sidebar-ring: 174 51% 52%;
+    --sidebar-ring: 231 36% 52%;
   }
 }
 
@@ -107,11 +143,15 @@
   }
 
   body {
-    @apply bg-background text-foreground font-sans antialiased;
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    @apply font-display;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-weight: 600;
   }
 }
 
@@ -146,6 +186,11 @@
 
   .animate-scale-in {
     animation: scaleIn 0.3s ease-out forwards;
+  }
+
+  /* Shadow utilities matching design system */
+  .shadow-soft {
+    box-shadow: 0 1px 2px rgba(0,0,0,0.06);
   }
 }
 

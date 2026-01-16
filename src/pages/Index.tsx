@@ -41,7 +41,7 @@ export default function Index() {
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="font-display text-3xl font-bold text-foreground">
-            Welcome back{(me?.firstName ?? me?.first_name) ? `, ${me?.firstName ?? me?.first_name}` : ", User"}
+            Hola{(me?.firstName ?? me?.first_name) ? `, ${me?.firstName ?? me?.first_name}` : ", User"}
           </h1>
           <p className="text-muted-foreground mt-1">
             Here's what's happening with your events

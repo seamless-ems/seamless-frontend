@@ -1,6 +1,10 @@
-# seamless-frontend
+# Seamless Events - Beta Frontend
 
-A Vite + React + TypeScript frontend scaffolded around the shadcn/ui component patterns and Tailwind CSS. This repository powers the Seamless EMS frontend (UI for events, speakers, teams, subscriptions and settings).
+A Vite + React + TypeScript frontend for Seamless Events, an operational event management system. Built with shadcn/ui component patterns and Tailwind CSS.
+
+**Project Philosophy:** "The Trello of event operations" - stays in the background, operational not decorative, professional not flashy.
+
+**Current Status:** Beta phase - actively migrating features from offline prototype to production-ready app.
 
 ## Quick start
 
@@ -67,11 +71,27 @@ Key npm scripts are defined in `package.json`:
 - `npm run lint` — run ESLint across the repo
 - `npm run deploy` — (optional) deploy `dist` to GitHub Pages using `gh-pages` (configured by `predeploy` → `deploy`)
 
-## Styling & Design system
+## Styling & Design System
 
-- Tailwind is configured in `tailwind.config.ts`. The project uses CSS variables for theme colors and some extended theme values (module colors, sidebar tokens, animations).
-- Global styles are in `src/index.css` and `src/App.css`.
-- Many components are written as small, composable primitives under `src/components/ui` — prefer reusing them over writing new CSS.
+### Design Tokens
+**Primary Color:** Slate Blue `#4E5BA6` (HSL: `231 36% 48%`)
+**Font:** Inter (with system fallback)
+**Philosophy:** Operational, neutral, professional - "stays in the background"
+
+### CSS Variables
+All design tokens are defined in `src/index.css`:
+- Colors: `--primary`, `--primary-hover`, `--primary-subtle`
+- Typography: `--font-h1` (28px), `--font-h2` (20px), `--font-h3` (16px), `--font-body` (14px)
+- Spacing: `--space-xs` (4px) through `--space-2xl` (48px) - 8px base scale
+- Layout: `--radius-card` (8px), `--radius-btn` (6px)
+
+### Component Patterns
+- **Buttons:** Outline style preferred (1.5px border, no fills)
+- **Cards:** White background, light border, subtle shadow
+- **No gradients** (except module badges)
+- **No heavy animations** (basic hover only)
+
+See `CLAUDE.md` for complete design system documentation.
 
 ## Data fetching & caching
 
@@ -92,11 +112,46 @@ Use the provided `use-toast` hook to show notifications consistently.
 - Keep pages small — extract UI into `components/` when it repeats.
 - Prefer TypeScript types in `src/types/` for domain models (e.g. `event.ts`).
 
-## Environment & backend
+## Backend API Integration
 
-This repo contains only the frontend. Any backend API base URL or environment variables the app requires should be documented here when added. Currently there are no .env or API-specific files included in the repository root.
+### API Documentation
+The backend API structure is documented in `openapi.json` at the project root.
 
-If the app expects an API host, add it to a `.env` and reference it from code with `import.meta.env.VITE_API_URL` (Vite convention).
+**Available Endpoints:**
+- Authentication (Firebase token exchange)
+- Events (full CRUD, modules, speakers)
+- Team management (invite, roles, members)
+- Speakers (CRUD, public endpoints, intake forms)
+- Integrations (Google Drive, Microsoft OAuth)
+- File uploads (presigned URLs + R2 storage)
+- Subscription & billing
+
+### Data Conversion
+- **Backend returns:** snake_case (e.g., `first_name`, `start_date`)
+- **Frontend uses:** camelCase (automatically converted via `deepCamel()` utility)
+- **Input schemas:** camelCase
+- **Output schemas:** snake_case
+
+### Environment Variables
+Create a `.env` file in the project root:
+
+```env
+VITE_API_URL=<backend-api-url>
+VITE_FIREBASE_API_KEY=<firebase-api-key>
+VITE_FIREBASE_AUTH_DOMAIN=<firebase-auth-domain>
+VITE_FIREBASE_PROJECT_ID=<firebase-project-id>
+VITE_FIREBASE_STORAGE_BUCKET=<firebase-storage-bucket>
+VITE_FIREBASE_MESSAGING_SENDER_ID=<firebase-messaging-sender-id>
+VITE_FIREBASE_APP_ID=<firebase-app-id>
+```
+
+### Tracking API Gaps
+When working with the API, if you need data or endpoints that don't exist:
+1. Check `openapi.json` first
+2. Document in `API_GAPS.md`
+3. Coordinate with backend developer
+
+See `CLAUDE.md` for complete API workflow guidelines.
 
 ## Testing and linting
 
@@ -116,7 +171,33 @@ If the app expects an API host, add it to a `.env` and reference it from code wi
 ## Troubleshooting
 
 - If you see type errors after changing package versions, run `npm install` and restart the dev server.
-- If Tailwind classes don’t appear, ensure `tailwind.config.ts` content globs include the file you edited and restart Vite.
+- If Tailwind classes don't appear, ensure `tailwind.config.ts` content globs include the file you edited and restart Vite.
+
+---
+
+## Local Prototype Reference
+
+**Location:** `C:\Users\james\OneDrive\Documents\Seamless\Local Prototype\Seamless Demo\`
+
+The offline prototype contains the complete design system and feature implementations that are being migrated to this beta project.
+
+**Key Reference Files:**
+- `index.html` - Complete working demo with all screens in one file
+- `CSS_GUIDE.md` - Full design system documentation (Slate Blue color scheme, Inter font, spacing scale)
+- `CLAUDE.md` - Project context, design decisions, and ways of working
+
+**Migration Process:**
+Features from the prototype are being systematically migrated to this production-ready React/TypeScript codebase. The prototype serves as the design reference and feature specification.
+
+**What's Been Migrated:**
+- ✅ Design system (colors, typography, spacing)
+- ✅ Login screen design
+- 🚧 Dashboard layouts (in progress)
+- ⏸️ Speaker module
+- ⏸️ Event management
+- ⏸️ Team management
+
+---
 
 
 
