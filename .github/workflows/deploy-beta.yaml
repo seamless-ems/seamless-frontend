@@ -52,7 +52,7 @@ jobs:
           echo "firebase-service-account.json written"
 
       - name: Export credentials for Firebase tooling
-        if: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        if: secrets.FIREBASE_SERVICE_ACCOUNT
         run: echo "GOOGLE_APPLICATION_CREDENTIALS=${{ github.workspace }}/firebase-service-account.json" >> $GITHUB_ENV
 
       - name: Determine branch and preview channel name
