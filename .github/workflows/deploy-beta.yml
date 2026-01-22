@@ -10,6 +10,8 @@ on:
     branches:
       - 'beta'
       - 'beta/**'
+  workflow_dispatch:
+    
 
 env:
   NODE_VERSION: '22'
