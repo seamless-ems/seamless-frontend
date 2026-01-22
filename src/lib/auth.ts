@@ -2,7 +2,6 @@ const TOKEN_KEY = "accessToken";
 
 export function setToken(accessToken: string) {
   try {
-    console.log("Setting token", accessToken);
     localStorage.setItem(TOKEN_KEY, accessToken);
   } catch (e) {
     // ignore

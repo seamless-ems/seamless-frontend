@@ -351,7 +351,6 @@ export default function EventSettings() {
         }
       });
 
-      console.log('Updating event with payload:', JSON.stringify(payload, null, 2));
       await updateEvent(id, payload);
       queryClient.invalidateQueries({ queryKey: ["event", id] });
       toast({ title: "Event updated" });
@@ -606,7 +605,6 @@ export default function EventSettings() {
                 onSave={(config) => {
                   setFormConfig(config);
                   // TODO: Save to backend when API is ready
-                  console.log("Form config to save:", config);
                 }}
               />
             </CardContent>

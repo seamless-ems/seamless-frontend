@@ -42,8 +42,6 @@ export default function SpeakerPortal() {
     queryKey: ["event", id],
     queryFn: async () => {
       const data = await getJson<any>(`/events/${id}`);
-      console.log('Event data loaded:', data);
-      console.log('Promo template:', data?.promo_card_template || data?.promoCardTemplate);
       return data;
     },
     enabled: Boolean(id),
@@ -99,11 +97,8 @@ export default function SpeakerPortal() {
 
       // Convert blob to file
       const file = new File([croppedBlob], `${cropType}.jpg`, { type: "image/jpeg" });
-      console.log('Uploading file:', file.name, file.size, file.type);
       const res = await uploadFile(file, "speaker", undefined, speakerId, id);
-      console.log('Upload response:', res);
       const url = res?.public_url ?? res?.publicUrl ?? res?.url ?? null;
-      console.log('Extracted URL:', url);
       if (!url) throw new Error("Upload did not return a file url");
 
       const payload: any = {
@@ -125,7 +120,6 @@ export default function SpeakerPortal() {
         payload.company_logo = url;
       }
 
-      console.log('Updating speaker with payload:', payload);
       await updateSpeaker(id, speakerId, payload);
       queryClient.invalidateQueries({ queryKey: ["event", id, "speaker", speakerId] });
       queryClient.invalidateQueries({ queryKey: ["event", id, "speakers"] });

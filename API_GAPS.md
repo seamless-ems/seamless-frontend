@@ -313,75 +313,41 @@ When a speaker is added (manually by organizer or via intake form), no user acco
 - Frontend already has speaker dashboard (`/speaker` route)
 - Already has mode switching between organizer/speaker
 - Just needs backend to actually create user accounts
+# API Gaps — prioritized
 
-**Use cases:**
-- Organizer manually adds speaker → speaker receives invitation email
-- Speaker applies via intake form → speaker receives welcome email with login
-- Speaker logs in → sees list of events they're speaking at
-- Speaker can update their profile, view event details, upload assets
+Short, prioritized list of missing fields/endpoints the frontend depends on. Share with backend team; items marked P0/P1/P2 by priority.
 
----
+Last updated: 2026-01-22
 
-## User Roles & Permissions
+P0 — Critical (blocks features):
+- Speaker user account creation (`user_id` on Speaker, create user on POST /events/{id}/speakers, send invite). Needed so speakers can log in and use `/speaker` flows.
+- Speaker approval fields verification: `website_card_approved` and `promo_card_approved` (boolean, default false). Frontend depends on these for embeds.
 
-**Current API structure:**
-- Users have `is_admin` boolean field
-- Users have `role` string field (optional)
-- Users have `team_ids` array
+P1 — High priority:
+- `status` on Speaker (enum: `draft|pending|ready|archived`) with GET/PATCH support.
+- `internal_notes` on Speaker (text) for organizer-only notes.
+- `promo_card_template` on Event (string URL) — ensure included in GET /events/{id} and file upload persists URL.
+- `from_name` on Event (string, optional) — Include in GET/PATCH/POST for email settings.
 
-**Suggested role values:**
-1. **"admin"** - Team admin, can manage team members, billing, all events
-2. **"member"** - Team member, can manage events but not team/billing
-3. **"speaker"** - Speaker user, can access speaker dashboard and their events
+P2 — Nice-to-have / future work:
+- Endpoints for saving embed builder configs (store/embed presets).
+- Bulk speaker operations (bulk approve, bulk upload).
+- Event duplication and archiving endpoints.
 
-**Key distinction:**
-- **Team members** (`admin`/`member`) belong to an organization, manage events
-- **Speakers** (`speaker`) are invited to speak at events, have limited access
+API shape & quick checks for backend:
+- `/account/me` should return `first_name`, `last_name`, `email`, `avatar_url`, `role`, and `organization` (id, name, role).
+- Speaker model should include: `id, first_name, last_name, email, headshot_url, website_card_approved, promo_card_approved, status, internal_notes, user_id`.
+- Event model should include: `id, name, promo_card_template, from_name, modules`.
 
-**Permissions by role:**
-- `admin`: Full access to organization settings, team, billing, all events
-- `member`: Can create/manage events, cannot access team/billing settings
-- `speaker`: Can view events they're speaking at, update their profile, upload assets
+Actions for frontend dev (what to do now):
+1. Treat P0 items as blockers — add to `API_GAPS.md` and ask backend to prioritize.
+2. If backend not ready, implement approved mock responses and add `// TODO: Replace with API` near mocks. Keep mocks minimal and flagged.
+3. Verify snake_case ↔ camelCase mapping in `openapi.json` and `src/lib/api.ts` (`deepCamel()`).
 
-**Frontend implementation:**
-- ✅ Role-based navigation already implemented
-- ✅ Mode switcher (organizer/speaker) already exists
-- ✅ Speaker dashboard route exists (`/speaker`)
-- ⚠️ Backend needs to actually assign roles and create speaker user accounts
+Questions for backend:
+1. Should `POST /events/{id}/speakers` auto-create user accounts or return a `user_id` to link later?
+2. Confirm enum values for `speaker.status` and `event.status`.
+3. Confirm modules object shape: boolean flags or nested objects with metadata?
 
----
+Keep this file short — details and proposed migrations can be shared in a follow-up ticket when backend agrees to implement.
 
-## Notes for Backend Developer
-
-1. **Snake case vs camelCase**: The API returns snake_case fields (e.g., `first_name`), which we automatically convert to camelCase on the frontend using the `deepCamel()` utility. Input schemas use camelCase (e.g., `EventSchema-Input` has `startDate`), output schemas use snake_case (e.g., `EventSchema-Output` has `start_date`).
-
-2. **Speaker intake_form_status field**: This appears to be a string field. Please confirm valid values (e.g., "pending", "submitted", "approved", "rejected").
-
-3. **Event status field**: Referenced in query params but not defined in schema. Please confirm valid values.
-
-4. **Modules structure**: Currently defined as `additionalProperties: true` object. Frontend expects keys like `speaker`, `schedule`, `content`, `attendee`, `app` with boolean or object values.
-
----
-
-## Questions for Backend Developer
-
-1. What are the valid values for `intake_form_status` on speakers?
-2. What are the valid values for event `status` field?
-3. What should the modules object structure look like? (boolean values or nested objects with metadata?)
-4. Does the `/account/me` endpoint return user data including first_name, last_name, role, team_ids?
-5. **What are the valid values for user `role` field?** Suggest: "admin", "member", "speaker"
-6. **How should speaker user accounts be created?** Should `POST /events/{event_id}/speakers` automatically create user accounts?
-7. **Should there be a `user_id` field on speakers** to link speaker records to user accounts?
-
----
-
-## Future Features (Not Urgent)
-
-These features will be needed as we build out the app:
-
-- Event duplication endpoint
-- Event archiving endpoint
-- Bulk speaker operations
-- Speaker intake form builder endpoints
-- Embed builder configuration storage
-- Email template management

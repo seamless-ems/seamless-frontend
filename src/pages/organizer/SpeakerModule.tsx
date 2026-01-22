@@ -381,8 +381,7 @@ function EmbedBuilderContent({ eventId }: { eventId: string | undefined }) {
     return arr;
   })();
 
-  console.log('Raw speakers data:', speakersData);
-  console.log('All speakers data:', allSpeakers);
+  // raw speakers data processed
 
   // Normalize and filter to only approved speakers
   const approvedSpeakers = allSpeakers
@@ -401,18 +400,12 @@ function EmbedBuilderContent({ eventId }: { eventId: string | undefined }) {
       const promoApproved = s.promoCardApproved;
       const isApproved = websiteApproved && promoApproved;
 
-      console.log(`Speaker: ${s.name}`, {
-        websiteApproved,
-        promoApproved,
-        isApproved,
-        rawData: s
-      });
+      // speaker approval flags evaluated
 
       return isApproved;
     });
 
-  console.log('Approved speakers count:', approvedSpeakers.length);
-  console.log('Approved speakers:', approvedSpeakers);
+  // approvedSpeakers computed
 
   const approvedCount = approvedSpeakers.length;
 
@@ -774,7 +767,6 @@ function FormsTabContent({ eventId }: { eventId: string | undefined }) {
         eventId={eventId}
         onSave={(config) => {
           // TODO: Save to backend when API is ready
-          console.log("Form config to save:", config);
           toast({ title: "Form configuration saved" });
         }}
       />

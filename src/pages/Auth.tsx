@@ -45,9 +45,7 @@ function LoginForm({ onSuccess }: { onSuccess: () => void }) {
 
     const onSubmit = async (data: LoginValues) => {
         try {
-            console.log("Submitting login", data.email);
             const res = await loginMutation.mutateAsync({ email: data.email, password: data.password });
-            console.log("login success", res);
             onSuccess();
         } catch (err) {
             console.error("login error", err);
@@ -97,14 +95,12 @@ function SignupForm({ onSuccess }: { onSuccess: () => void }) {
 
     const onSubmit = async (data: SignupValues) => {
         try {
-            console.log("Submitting signup", data.email);
             const res = await signupMutation.mutateAsync({
                 email: data.email,
                 password: data.password,
                 first_name: data.first_name,
                 last_name: data.last_name,
             });
-            console.log("signup success", res);
             onSuccess();
         } catch (err) {
             console.error("signup error", err);
