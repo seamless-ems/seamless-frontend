@@ -44,7 +44,7 @@ jobs:
 
       - name: Configure Firebase service account
         env:
-          FIREBASE_SERVICE_ACCOUNT: secrets.FIREBASE_SERVICE_ACCOUNT
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: |
           echo "Writing Firebase service account to file"
           printf "%s" "$FIREBASE_SERVICE_ACCOUNT" | base64 --decode > "${{ github.workspace }}/firebase-service-account.json" 2>/dev/null || printf "%s" "$FIREBASE_SERVICE_ACCOUNT" > "${{ github.workspace }}/firebase-service-account.json"
