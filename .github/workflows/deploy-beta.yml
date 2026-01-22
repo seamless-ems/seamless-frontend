@@ -1,0 +1,103 @@
+name: Deploy Beta Preview
+
+on:
+  push:
+    branches:
+      - 'beta'
+      - 'beta/**'
+  pull_request:
+    # trigger on PRs where the head or base are beta branches
+    branches:
+      - 'beta'
+      - 'beta/**'
+
+env:
+  NODE_VERSION: '22'
+
+jobs:
+  deploy-beta:
+    name: Deploy Firebase preview for beta branch
+    runs-on: ubuntu-latest
+    concurrency:
+      group: firebase-deploy-beta-${{ github.ref }}
+      cancel-in-progress: true
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build --if-present
+
+      - name: Ensure jq is available
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Configure Firebase service account
+        if: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          echo "Writing Firebase service account to file"
+          printf "%s" "$FIREBASE_SERVICE_ACCOUNT" | base64 --decode > "${{ github.workspace }}/firebase-service-account.json" 2>/dev/null || printf "%s" "$FIREBASE_SERVICE_ACCOUNT" > "${{ github.workspace }}/firebase-service-account.json"
+          echo "firebase-service-account.json written"
+
+      - name: Export credentials for Firebase tooling
+        if: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: echo "GOOGLE_APPLICATION_CREDENTIALS=${{ github.workspace }}/firebase-service-account.json" >> $GITHUB_ENV
+
+      - name: Determine branch and preview channel name
+        id: channel
+        run: |
+          EVENT_NAME=${GITHUB_EVENT_NAME}
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            BRANCH_NAME="${GITHUB_HEAD_REF}"
+          else
+            BRANCH_NAME="${GITHUB_REF#refs/heads/}"
+          fi
+          # sanitize branch into safe channel id: replace non-alphanum/_/- with - and lowercase
+          CHANNEL_NAME=$(echo "$BRANCH_NAME" | sed -E 's/[^A-Za-z0-9._-]/-/g' | tr '[:upper:]' '[:lower:]')
+          CHANNEL="beta-${CHANNEL_NAME}"
+          echo "channel=$CHANNEL" >> $GITHUB_OUTPUT
+          echo "branch=$BRANCH_NAME" >> $GITHUB_OUTPUT
+
+      - name: Deploy to Firebase Hosting preview channel
+        env:
+          FIREBASE_PROJECT: ${{ secrets.FIREBASE_PROJECT_ID_BETA }}
+        run: |
+          if [ -z "$FIREBASE_PROJECT" ]; then
+            echo "Missing secret FIREBASE_PROJECT_ID_BETA. Set this to your beta Firebase project id." >&2
+            exit 1
+          fi
+          CHANNEL=${{ steps.channel.outputs.channel }}
+          echo "Deploying to project $FIREBASE_PROJECT channel $CHANNEL"
+          # Deploy and capture JSON output
+          npx firebase-tools hosting:channel:deploy "$CHANNEL" --project "$FIREBASE_PROJECT" --expires 7d --json > deploy.json
+          cat deploy.json
+          # extract a preview URL from the JSON (try a few common places)
+          PREVIEW_URL=$(jq -r '..|.preview_url? // .url? // empty' deploy.json | head -n1)
+          if [ -z "$PREVIEW_URL" ] || [ "$PREVIEW_URL" = "null" ]; then
+            echo "Failed to extract preview URL from deploy output" >&2
+            exit 1
+          fi
+          echo "preview_url=$PREVIEW_URL" >> $GITHUB_OUTPUT
+
+      - name: Comment preview URL on PR
+        if: ${{ github.event_name == 'pull_request' && success() }}
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ✅ Firebase preview deployed for branch `${{ steps.channel.outputs.branch }}`
+
+            Preview URL: ${{ steps.deploy-beta.outputs.preview_url || steps.channel.outputs.channel }}
+
+            The preview will expire in 7 days.
