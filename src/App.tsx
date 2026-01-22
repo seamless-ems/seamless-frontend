@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
 import Index from "./pages/Index";
 import Events from "./pages/organizer/Events";
 import EventDashboard from "./pages/organizer/EventDashboard";
@@ -35,6 +35,16 @@ function RootRedirect() {
     if (stored === "speaker") mode = "speaker";
   } catch {}
   return <Navigate to={`/${mode}`} replace />;
+}
+
+// Wrapper to pass eventId from route params to DashboardLayout
+function EventLayoutWrapper({ children, mode }: { children: React.ReactNode; mode: "organizer" | "speaker" }) {
+  const { id } = useParams();
+  return (
+    <DashboardLayout mode={mode} eventId={id}>
+      {children}
+    </DashboardLayout>
+  );
 }
 
 const queryClient = new QueryClient();
@@ -89,9 +99,9 @@ const App = () => {
               path="/organizer/event/:id"
               element={
                 <ProtectedRoute>
-                  <DashboardLayout mode="organizer">
+                  <EventLayoutWrapper mode="organizer">
                     <EventDashboard />
-                  </DashboardLayout>
+                  </EventLayoutWrapper>
                 </ProtectedRoute>
               }
             />
@@ -100,9 +110,9 @@ const App = () => {
               path="/organizer/event/:id/speakers"
               element={
                 <ProtectedRoute>
-                  <DashboardLayout mode="organizer">
+                  <EventLayoutWrapper mode="organizer">
                     <SpeakerModule />
-                  </DashboardLayout>
+                  </EventLayoutWrapper>
                 </ProtectedRoute>
               }
             />
@@ -111,9 +121,9 @@ const App = () => {
               path="/organizer/event/:id/settings"
               element={
                 <ProtectedRoute>
-                  <DashboardLayout mode="organizer">
+                  <EventLayoutWrapper mode="organizer">
                     <EventSettings />
-                  </DashboardLayout>
+                  </EventLayoutWrapper>
                 </ProtectedRoute>
               }
             />
@@ -129,9 +139,9 @@ const App = () => {
               path="/organizer/event/:id/speakers/:speakerId"
               element={
                 <ProtectedRoute>
-                  <DashboardLayout mode="organizer">
+                  <EventLayoutWrapper mode="organizer">
                     <SpeakerPortal />
-                  </DashboardLayout>
+                  </EventLayoutWrapper>
                 </ProtectedRoute>
               }
             />

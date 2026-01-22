@@ -146,16 +146,9 @@ const Auth: React.FC = () => {
     const location = useLocation();
     const mode = location.pathname === "/signup" ? "signup" : "login";
     const navigate = useNavigate();
-    const [flow, setFlow] = React.useState<"organizer" | "speaker" | "public">("organizer");
 
     const navigateAfterAuth = () => {
-        if (flow === "organizer") {
-            navigate("/organizer", { replace: true });
-        } else if (flow === "speaker") {
-            navigate("/speaker", { replace: true });
-        } else {
-            navigate("/", { replace: true });
-        }
+        navigate("/organizer", { replace: true });
     };
 
     return (
@@ -210,53 +203,22 @@ const Auth: React.FC = () => {
                 boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
             }}>
                 {/* Logo */}
-                <a href="#" className="block mb-6 text-center no-underline">
-                    <div className="text-[36px] font-bold leading-none" style={{
-                        letterSpacing: '-0.02em',
-                        color: 'hsl(var(--primary))'
-                    }}>
-                        Seamless
+                <div className="mb-8 text-center">
+                    <div className="flex items-baseline justify-center gap-2 leading-none">
+                        <span className="text-[36px] font-semibold" style={{
+                            letterSpacing: '-0.01em',
+                            color: 'hsl(var(--primary))'
+                        }}>
+                            Seamless
+                        </span>
+                        <span className="text-[28px] font-normal" style={{
+                            color: 'hsl(var(--text-secondary))'
+                        }}>
+                            Events
+                        </span>
                     </div>
-                    <div className="text-[18px] font-semibold uppercase mt-1" style={{
-                        letterSpacing: '0.2em',
-                        color: 'hsl(var(--text-secondary))'
-                    }}>
-                        Events
-                    </div>
-                </a>
-
-                {/* Heading */}
-                <h1 className="text-xl font-normal text-muted-foreground mb-8 text-center">
-                    {mode === "login" ? "Sign in to manage your events" : "Create your account"}
-                </h1>
-
-                {/* Flow selector */}
-                <div className="flex gap-2 mb-6">
-                    <Button
-                        variant={flow === "organizer" ? "default" : "outline"}
-                        onClick={() => setFlow("organizer")}
-                        className="flex-1"
-                        type="button"
-                    >
-                        Organizer
-                    </Button>
-                    <Button
-                        variant={flow === "speaker" ? "default" : "outline"}
-                        onClick={() => setFlow("speaker")}
-                        className="flex-1"
-                        type="button"
-                    >
-                        Speaker
-                    </Button>
-                    <Button
-                        variant={flow === "public" ? "default" : "outline"}
-                        onClick={() => setFlow("public")}
-                        className="flex-1"
-                        type="button"
-                    >
-                        Public
-                    </Button>
                 </div>
+
 
                 {/* Form */}
                 <div key={mode} className="space-y-4">
@@ -371,7 +333,7 @@ const Auth: React.FC = () => {
 
                 {/* Help text */}
                 <div className="text-center mt-4 text-sm text-muted-foreground">
-                    Need help? <a href="mailto:contact@seamlessevents.io" className="text-primary hover:underline">contact@seamlessevents.io</a>
+                    Need help? Contact us here
                 </div>
             </div>
         </div>

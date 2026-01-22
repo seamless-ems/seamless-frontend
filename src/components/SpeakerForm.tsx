@@ -61,14 +61,24 @@ export default function SpeakerForm({ initialValues = {}, onSubmit, onCancel, su
                 <Input type="email" value={values.email ?? ""} onChange={(e) => setValues((s) => ({ ...s, email: e.target.value }))} required />
             </div>
 
-            <div className="grid gap-2 sm:grid-cols-2">
-                <Input placeholder="Company Name" value={values.companyName ?? ""} onChange={(e) => setValues((s) => ({ ...s, companyName: e.target.value }))} />
-                <Input placeholder="Company Role" value={values.companyRole ?? ""} onChange={(e) => setValues((s) => ({ ...s, companyRole: e.target.value }))} />
-                <Input placeholder="LinkedIn URL" value={values.linkedin ?? ""} onChange={(e) => setValues((s) => ({ ...s, linkedin: e.target.value }))} />
+            <div className="grid gap-2">
+                <label className="text-sm">Title</label>
+                <Input value={values.companyRole ?? ""} onChange={(e) => setValues((s) => ({ ...s, companyRole: e.target.value }))} />
             </div>
+
+            <div className="grid gap-2">
+                <label className="text-sm">Company</label>
+                <Input value={values.companyName ?? ""} onChange={(e) => setValues((s) => ({ ...s, companyName: e.target.value }))} />
+            </div>
+
+            <div className="grid gap-2">
+                <label className="text-sm">LinkedIn</label>
+                <Input placeholder="linkedin.com/in/username" value={values.linkedin ?? ""} onChange={(e) => setValues((s) => ({ ...s, linkedin: e.target.value }))} />
+            </div>
+
             <div className="grid gap-2">
                 <label className="text-sm">Bio</label>
-                <Textarea value={values.bio ?? ""} onChange={(e) => setValues((s) => ({ ...s, bio: e.target.value }))} />
+                <Textarea value={values.bio ?? ""} onChange={(e) => setValues((s) => ({ ...s, bio: e.target.value }))} className="min-h-[100px]" />
             </div>
 
             <div className="flex justify-end gap-2">

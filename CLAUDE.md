@@ -10,7 +10,45 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **Status:** In active development (beta phase)
 **Repository:** seamless-frontend (staging site)
 
-### Recent Session Summary (January 16, 2026)
+### Recent Session Summary
+
+**Session: January 20, 2026 (Continued)**
+
+**Completed:**
+1. ✅ **Event Dashboard Complete** - Migrated from prototype to match design
+   - Added module navigation buttons at top with enabled/disabled states (2px slate blue border for active)
+   - Module summary cards showing detailed stats for each enabled module
+   - Simplified layout matching prototype exactly
+
+2. ✅ **Event Settings Page** - Full functionality with design system
+   - Module toggles working (Speakers, Schedule, Content, Partners, Attendees)
+   - "From Name" field added to Email Settings
+   - All CSS updated to use design tokens (var(--font-h1), etc.)
+   - Outline buttons with 1.5px borders
+
+3. ✅ **Breadcrumb Navigation Fixed** - Multi-level breadcrumbs working
+   - Event overview: "Team Seamless › Event Name"
+   - Event sub-pages: "Team Seamless › Event Name › Sub-Page"
+   - Changed "Settings" to "Event Settings" for clarity
+
+4. ✅ **EventId Routing Fixed** - Added EventLayoutWrapper
+   - Event routes now properly pass eventId to DashboardLayout
+   - Sidebar shows correct event-specific navigation (Overview, Speakers, Event Settings)
+
+5. 📝 **API Gap Documented** - `from_name` field
+   - Comprehensive implementation guide added to API_GAPS.md
+   - Frontend fully implemented, waiting on backend
+
+**Previous Session: January 20, 2026 (Early)**
+
+**Completed:**
+1. ✅ **Documentation Update** - Added critical frontend-only guidelines
+   - Added prominent "Frontend Only - No Backend Changes" section to CLAUDE.md
+   - Documented dev notes workflow (TODO/NOTE comments)
+   - Clarified that backend changes are never made in this repository
+   - Established workflow for handling missing backend functionality
+
+**Previous Session: January 16, 2026**
 
 **Completed:**
 1. ✅ **Design System Migration** - Migrated design system from offline prototype to beta
@@ -35,7 +73,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
    - To correct `231 36% 48%` (proper muted slate blue)
 
 **Next Session Goal:**
-Migrate features from the **offline prototype** into this beta project. The offline prototype contains the complete design system, UI patterns, and feature implementations that need to be integrated.
+Focus on **Speaker Module** - migrate the speaker management features from the offline prototype into this beta project. Match the speaker list screen, speaker portal, and all related functionality to the prototype design.
+
+**Speaker Module Scope:**
+- Speaker list view with tabs (All, Applications, etc.)
+- Speaker cards with status indicators
+- Individual speaker portal/detail view
+- Speaker intake forms management
+- Embed preview/configuration
+- Quick actions in sidebar (Add Speaker, Email All Speakers, etc.)
+
+**Reference:** See "SCREEN 4: SPEAKER LIST" and "SCREEN 5: SPEAKER PORTAL" in prototype `index.html`
 
 **Offline Prototype Location:**
 `C:\Users\james\OneDrive\Documents\Seamless\Local Prototype\Seamless Demo\`
@@ -44,6 +92,7 @@ Migrate features from the **offline prototype** into this beta project. The offl
 - `index.html` - Complete working demo with all screens
 - `CSS_GUIDE.md` - Full design system documentation
 - `CLAUDE.md` - Project context and design decisions
+- `Screenshots/` - Reference screenshots (always contains latest/current state - updated regularly)
 
 ---
 
@@ -399,6 +448,31 @@ box-shadow: 0 2px 8px rgba(78, 91, 166, 0.1);
 ---
 
 ## Ways of Working
+
+### 🚨 CRITICAL: Frontend Only - No Backend Changes
+
+**This is a frontend-only repository. We NEVER make backend changes.**
+
+- **NEVER modify backend code, database schemas, or API endpoints**
+- **NEVER suggest backend changes as solutions**
+- If functionality requires backend changes:
+  1. Document the requirement in `API_GAPS.md`
+  2. Ask the user for approval to use temporary mock/dummy data
+  3. Add clear `// TODO: Replace with API data when available` comments
+  4. Continue with frontend implementation using mock data
+- The backend is maintained separately by the backend team
+- Our job is to build the best possible frontend experience within the constraints of the existing API
+
+### Work Efficiently - Budget Constraints
+- **Keep messages short and concise** - we're working on a budget
+- **Be efficient with tool usage** - don't waste credits on unnecessary operations
+- **Work smart, not verbose** - focus on getting things done efficiently
+
+### Keep Dev Notes (Sparingly)
+- Add dev notes only at end of session or for major topics
+- Use `// TODO:` comments only when backend updates are needed
+- Update `API_GAPS.md` when discovering missing backend functionality
+- Don't over-comment - only document non-obvious decisions
 
 ### Always Check Design System First
 - **CRITICAL:** Always consult design system guidelines before making ANY style changes

@@ -32,6 +32,13 @@ import React from "react";
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 
+// TODO: Dynamic form rendering based on form config from Event Settings
+// Currently shows all default fields. Will be updated to:
+// 1. Fetch form config from /events/{eventId}/intake-form endpoint
+// 2. Dynamically render only enabled fields
+// 3. Support custom fields defined in form builder
+// 4. Apply required/optional validation based on config
+
 const speakerIntakeSchema = z.object({
   firstName: z.string().min(1, "First name is required").max(50),
   lastName: z.string().min(1, "Last name is required").max(50),

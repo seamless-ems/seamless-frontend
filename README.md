@@ -4,6 +4,8 @@ A Vite + React + TypeScript frontend for Seamless Events, an operational event m
 
 **Project Philosophy:** "The Trello of event operations" - stays in the background, operational not decorative, professional not flashy.
 
+**Progress & Updates:** Primary progress and session notes are maintained in [CLAUDE.md](CLAUDE.md). Ephemeral session files (e.g., session summaries) have been archived to `archive_docs/` to keep the repo root clean.
+
 **Current Status:** Beta phase - actively migrating features from offline prototype to production-ready app.
 
 ## Quick start
@@ -222,4 +224,11 @@ Features from the prototype are being systematically migrated to this production
 ## Attendee
 - Only integrate tito if we have attendee module enabled (same for speakers)
 
-Test
+## Git commands
+- `git status`
+- `git add .`
+- `git commit -m "useful commit message"`
+- `git push origin beta`
+
+## Commands 
+- npm run dev 
