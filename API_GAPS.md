@@ -351,3 +351,379 @@ Questions for backend:
 
 Keep this file short — details and proposed migrations can be shared in a follow-up ticket when backend agrees to implement.
 
+## Forms & Applications API (NEW — P0/P1 Priority)
+
+**Context:** Frontend has implemented UI for Forms and Applications tabs in the Speaker Module (`/organizer/event/{id}/speakers`). Both tabs are ready for backend integration but require the following endpoints and data models.
+
+**Missing Endpoints (P0 - Blocker):**
+
+### Forms Endpoints
+
+1. **GET `/events/{id}/forms`** — Fetch all forms for an event
+   - Returns: Array of Form objects with submission counts
+   - Query params: (none required, optional: `type` filter for "speaker_info" vs "application")
+   - Example response:
+   ```json
+   {
+     "forms": [
+       {
+         "id": "form_1",
+         "event_id": "event_123",
+         "name": "Event Speaker Information",
+         "type": "speaker_info",
+         "description": "For confirmed speakers - submissions go directly to Speakers",
+         "fields": [...],
+         "submissions_count": 12,
+         "created_at": "2026-01-15T10:00:00Z",
+         "updated_at": "2026-01-20T14:30:00Z"
+       },
+       {
+         "id": "form_2",
+         "event_id": "event_123",
+         "name": "Event Call for Speakers",
+         "type": "application",
+         "description": "Applications require approval - submissions go to Applications tab",
+         "fields": [...],
+         "submissions_count": 6,
+         "created_at": "2026-01-10T09:00:00Z",
+         "updated_at": "2026-01-18T11:20:00Z"
+       }
+     ]
+   }
+   ```
+
+2. **POST `/events/{id}/forms`** — Create a new form
+   - Body:
+   ```json
+   {
+     "name": "string (required)",
+     "type": "speaker_info|application (required)",
+     "description": "string (optional)",
+     "fields": [
+       {
+         "id": "field_1",
+         "label": "Full Name",
+         "type": "text|email|textarea|select|file",
+         "required": true,
+         "options": ["..."] // for select type only
+       }
+     ]
+   }
+   ```
+   - Returns: Created Form object with id and timestamps
+
+3. **PATCH `/events/{id}/forms/{formId}`** — Update form (name, description, fields)
+   - Body: Same as POST (partial updates allowed)
+   - Returns: Updated Form object
+   - Note: Should NOT allow changing `type` after creation
+
+4. **DELETE `/events/{id}/forms/{formId}`** — Delete form
+   - Returns: 204 No Content or `{ "success": true }`
+   - Note: Soft delete recommended to preserve submission history
+
+### Applications Endpoints
+
+5. **GET `/events/{id}/applications`** — Fetch all applications (form submissions of type "application")
+   - Returns: Array of Application objects
+   - Query params: (optional: `status` filter for "pending|approved|rejected")
+   - Example response:
+   ```json
+   {
+     "applications": [
+       {
+         "id": "app_1",
+         "event_id": "event_123",
+         "form_id": "form_2",
+         "form_name": "Event Call for Speakers",
+         "speaker_name": "Alice Johnson",
+         "email": "alice@example.com",
+         "company": "Tech Corp",
+         "topic": "AI in Modern Apps",
+         "status": "pending",
+         "submission_data": { "...": "..." },
+         "rejection_reason": null,
+         "created_at": "2026-01-20T15:45:00Z",
+         "updated_at": "2026-01-20T15:45:00Z"
+       }
+     ]
+   }
+   ```
+
+6. **PATCH `/events/{id}/applications/{appId}`** — Approve or reject application
+   - Body:
+   ```json
+   {
+     "status": "approved|rejected (required)",
+     "rejection_reason": "string (required if status=rejected, null otherwise)"
+   }
+   ```
+   - Returns: Updated Application object
+   - Side effect (on approve): Auto-create Speaker record linked to this Application
+   - Side effect (on reject): Store rejection_reason for applicant visibility in future
+
+**Form Submission Endpoint (P1 - Secondary):**
+
+7. **POST `/forms/{formId}/submissions`** — Public endpoint for form submissions (used by SpeakerIntakeForm)
+   - Body:
+   ```json
+   {
+     "form_id": "form_1",
+     "submission_data": {
+       "full_name": "Bob Smith",
+       "email": "bob@example.com",
+       "company": "StartUp Inc",
+       "...": "..."
+     }
+   }
+   ```
+   - Returns: `{ "id": "submission_123", "status": "received" }`
+   - Authentication: Public (no auth required) or rate-limited
+   - Routing: If form.type = "speaker_info", create Speaker record. If form.type = "application", create Application record.
+
+**Missing Data Models:**
+
+### Form Model
+```
+{
+  id: string (UUID)
+  event_id: string (FK to Event)
+  name: string
+  type: enum("speaker_info", "application") // determines routing of submissions
+  description: string | null
+  fields: Array<{
+    id: string
+    label: string
+    type: enum("text", "email", "textarea", "select", "file", "checkbox", "radio")
+    required: boolean
+    placeholder: string | null
+    options: string[] | null (for select/radio types)
+    validation: object | null (e.g., { "minLength": 5, "pattern": "regex" })
+  }>
+  submissions_count: integer (auto-calculated from Submission table)
+  created_at: datetime
+  updated_at: datetime
+  deleted_at: datetime | null (soft delete)
+}
+```
+
+### Application Model
+```
+{
+  id: string (UUID)
+  event_id: string (FK to Event)
+  form_id: string (FK to Form)
+  speaker_name: string
+  email: string
+  company: string | null
+  topic: string | null
+  status: enum("pending", "approved", "rejected") // default "pending"
+  submission_data: json (raw form submission data)
+  rejection_reason: string | null
+  linked_speaker_id: string | null (FK to Speaker, set when approved)
+  created_at: datetime
+  updated_at: datetime
+}
+```
+
+### Submission Model (for tracking all form submissions)
+```
+{
+  id: string (UUID)
+  form_id: string (FK to Form)
+  form_type: enum("speaker_info", "application")
+  submission_data: json
+  status: enum("received", "processed") // "processed" = moved to Speaker or Application
+  created_at: datetime
+}
+```
+
+**Frontend Integration Notes:**
+
+1. **Forms Tab** (`SpeakerModule.tsx` Forms tab):
+   - Call GET `/events/{id}/forms` on mount
+   - Display forms as cards with submission counts
+   - "Create New Form" button → POST `/events/{id}/forms` → refresh list
+   - "Edit Form" button → opens SpeakerFormBuilder → PATCH `/events/{id}/forms/{formId}` on save
+   - "Duplicate" button → POST with cloned fields → rename + save
+   - "Delete" button → DELETE `/events/{id}/forms/{formId}` → refresh list
+   - "Get Link" button → copy `${ORIGIN}/organizer/events/{eventId}/forms/{formId}` or similar public URL
+
+2. **Applications Tab** (`SpeakerModule.tsx` Applications tab):
+   - Call GET `/events/{id}/applications?status=pending` on mount
+   - Display applications in table/card view
+   - "Approve" button → PATCH `/events/{id}/applications/{appId}` with `status: "approved"` → refresh list
+   - "Reject" button → PATCH with `status: "rejected"` + reason → refresh list
+   - Approved applications should move to Speakers tab via auto-created Speaker record
+
+3. **Speaker Intake Form** (`SpeakerIntakeForm.tsx`):
+   - Form already submits to `/organizer/event/{eventId}/speaker-intake` endpoint
+   - Can be migrated to POST `/forms/{formId}/submissions` with public form ID
+   - Routing handled server-side based on form.type
+
+**Questions for Backend:**
+
+1. Should form.type auto-determine submission routing, or explicitly route in frontend?
+2. Can approved Applications auto-create Speaker records server-side, or should frontend call a separate endpoint?
+3. Should deleted forms (soft delete) keep their submissions and applications intact?
+4. For form field validation, should we store validation rules in DB or assume frontend-only?
+5. Should form submissions be queryable by `status`? (e.g., "drafts", "spam", "complete")
+
+**Testing Checklist (when endpoints ready):**
+
+- [ ] GET `/events/{id}/forms` returns correct form list with submission counts
+- [ ] POST `/events/{id}/forms` creates form and returns in GET list
+- [ ] PATCH `/events/{id}/forms/{formId}` updates fields and reflects in GET
+- [ ] DELETE `/events/{id}/forms/{formId}` removes from list
+- [ ] GET `/events/{id}/applications` returns submitted applications
+- [ ] PATCH `/events/{id}/applications/{appId}` with approve status creates Speaker record
+- [ ] PATCH with reject status stores rejection_reason
+- [ ] POST `/forms/{formId}/submissions` (public) routes correctly by form.type
+- [ ] Form links are copyable and publicly accessible
+
+## Form Fields & Custom Fields API (P1 - High Priority)
+
+**Context:** SpeakerFormBuilder component allows organizers to enable/disable default fields and add custom fields. Currently configured fields are only stored locally in frontend state. This section details what backend support is needed.
+
+**Default Fields (Pre-Configured):**
+
+These are always available, but can be enabled/disabled:
+```
+1. First Name (text) - required, cannot disable
+2. Last Name (text) - required, cannot disable
+3. Email (email) - required, cannot disable
+4. Company Name (text) - optional
+5. Role/Title (text) - optional
+6. Bio (textarea) - optional
+7. LinkedIn URL (text) - optional
+8. Headshot (file) - optional, image upload
+9. Company Logo (file) - optional, image upload
+```
+
+**Custom Fields:**
+
+Organizers can add unlimited custom fields with:
+- Field label (string)
+- Field type (text, textarea, email, file, [TODO: checkbox, radio, select])
+- Placeholder text (optional)
+- Required toggle (boolean)
+- Order/positioning (drag to reorder)
+
+**Missing Backend Requirements (P1):**
+
+### File Upload Handling (BLOCKER)
+
+**Issue:** Current form field type includes `file`, but no backend file upload endpoint exists.
+
+**Required:**
+1. **File upload endpoint** for form submissions:
+   ```
+   POST /forms/{formId}/submissions/upload
+   Content-Type: multipart/form-data
+   
+   Body:
+   {
+     "field_id": "headshot",
+     "file": <binary>
+   }
+   
+   Returns:
+   {
+     "file_url": "https://cdn.seamlessevents.io/forms/event_123/submission_456/headshot.jpg",
+     "file_size": 2048576,
+     "mime_type": "image/jpeg"
+   }
+   ```
+
+2. **File storage strategy:**
+   - Where are file uploads stored? (S3, GCS, file server, CDN?)
+   - URL structure for retrieving files?
+   - File size limits per field? (e.g., 5MB for images, 10MB for documents)
+   - Allowed MIME types per field? (images only, any document, etc.)
+
+3. **File cleanup:**
+   - Orphaned files when submission is deleted?
+   - File retention policy?
+   - Virus scanning? NSFW filtering?
+
+### Custom Field Types (P1 - Future)
+
+Currently supported in frontend:
+- `text` ✅
+- `textarea` ✅
+- `email` ✅
+- `file` ✅ (needs upload endpoint)
+
+Not yet supported but planned:
+- `select` - dropdown with multiple options (need `options: string[]` in field schema)
+- `checkbox` - single checkbox (boolean)
+- `radio` - radio button group (need `options: string[]`)
+- `date` - date picker
+- `time` - time picker
+- `phone` - phone number with validation
+- `url` - URL with validation
+
+**Questions for Backend:**
+
+1. **File uploads:** Should organizer-configured file fields (e.g., "Headshot") auto-route uploads to Speaker records or stay in form submission data?
+   - Example: If "Headshot" field is in Speaker Information Form, should it auto-update `speaker.headshot_url`?
+   - Or should frontend handle the routing after submission?
+
+2. **File size limits:** Should limits vary by field type or form.type?
+   - Speaker info forms might allow larger files than application forms?
+
+3. **Custom select/checkbox/radio:** Should field.options be simple string array or more structured?
+   ```json
+   // Option 1: Simple array
+   "options": ["Option A", "Option B", "Option C"]
+   
+   // Option 2: Objects with labels and values
+   "options": [
+     { "label": "Option A", "value": "opt_a" },
+     { "label": "Option B", "value": "opt_b" }
+   ]
+   ```
+
+4. **Field validation:** Should validation rules be stored per field or in form.type definition?
+   - E.g., "email" field always validates as email?
+   - Or allow regex patterns per field in the UI?
+
+5. **Form submission with files:** Should multipart form data include all fields + files, or separate endpoints?
+   ```
+   // Option 1: All in one multipart request
+   POST /forms/{formId}/submissions
+   Content-Type: multipart/form-data
+   {
+     "full_name": "Alice",
+     "email": "alice@example.com",
+     "headshot": <binary>,
+     "resume": <binary>
+   }
+   
+   // Option 2: Submit data first, upload files after
+   POST /forms/{formId}/submissions → returns submission_id
+   POST /forms/{formId}/submissions/{submission_id}/upload → upload files
+   ```
+
+**Frontend Implementation Status:**
+
+- ✅ UI for default field toggling (switch on/off)
+- ✅ UI for custom field creation (label, type, placeholder, required)
+- ✅ UI for custom field reordering (drag with up/down arrows)
+- ✅ Live preview of form as organizer builds it
+- ✅ Save button (currently saves to local state only)
+- 🔲 Backend persistence of form field configuration
+- 🔲 File upload handling in form submissions
+- 🔲 Multi-step form support (e.g., demographics → media → questions)
+- 🔲 Conditional fields (show/hide based on previous answers)
+
+**Testing Checklist:**
+
+- [ ] File upload endpoint accepts multipart/form-data
+- [ ] Uploaded files are stored and retrievable via returned URL
+- [ ] File size validation rejects oversized files
+- [ ] MIME type validation works (images, documents, etc.)
+- [ ] Form submission with file fields completes successfully
+- [ ] File fields marked required prevent submission without file
+- [ ] Custom fields with select/checkbox/radio types work (when implemented)
+- [ ] Form configuration persists across sessions
+

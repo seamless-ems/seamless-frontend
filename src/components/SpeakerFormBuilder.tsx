@@ -43,11 +43,11 @@ const DEFAULT_FIELDS: FormFieldConfig[] = [
   { id: "first_name", label: "First Name", type: "text", required: true, enabled: true },
   { id: "last_name", label: "Last Name", type: "text", required: true, enabled: true },
   { id: "email", label: "Email", type: "email", required: true, enabled: true },
-  { id: "company_name", label: "Company Name", type: "text", required: false, enabled: true },
-  { id: "company_role", label: "Role/Title", type: "text", required: false, enabled: true },
-  { id: "bio", label: "Bio", type: "textarea", required: false, enabled: true },
+  { id: "company_name", label: "Company Name", type: "text", required: false, enabled: false },
+  { id: "company_role", label: "Role/Title", type: "text", required: false, enabled: false },
+  { id: "bio", label: "Bio", type: "textarea", required: false, enabled: false },
   { id: "linkedin", label: "LinkedIn URL", type: "text", required: false, enabled: false },
-  { id: "headshot", label: "Headshot", type: "file", required: false, enabled: true },
+  { id: "headshot", label: "Headshot", type: "file", required: false, enabled: false },
   { id: "company_logo", label: "Company Logo", type: "file", required: false, enabled: false },
 ];
 
@@ -60,6 +60,7 @@ export default function SpeakerFormBuilder({
     initialConfig ?? DEFAULT_FIELDS
   );
   const [customFieldDialog, setCustomFieldDialog] = useState(false);
+  const [saveWarningOpen, setSaveWarningOpen] = useState(false);
   const [newCustomField, setNewCustomField] = useState({
     label: "",
     type: "text" as "text" | "textarea" | "email" | "file",
@@ -143,18 +144,32 @@ export default function SpeakerFormBuilder({
   };
 
   const handleSave = () => {
+    const headshotEnabled = fields.some(f => f.id === "headshot" && f.enabled);
+    const logoEnabled = fields.some(f => f.id === "company_logo" && f.enabled);
+    
+    // Show warning if either headshot or company logo is missing
+    if (!headshotEnabled || !logoEnabled) {
+      setSaveWarningOpen(true);
+      return;
+    }
+    
+    proceedWithSave();
+  };
+
+  const proceedWithSave = () => {
     if (onSave) {
       onSave(fields);
     }
     toast({ title: "Form configuration saved" });
+    setSaveWarningOpen(false);
   };
 
   const enabledFields = fields.filter((f) => f.enabled);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* Left Panel: Form Builder (titles removed - parent shows main heading) */}
-      <div className="lg:col-span-2 space-y-4">
+      <div className="lg:col-span-1 space-y-4">
 
         {/* Default Fields */}
         <Card className="p-4">
@@ -384,7 +399,7 @@ export default function SpeakerFormBuilder({
       </div>
 
       {/* Right Panel: Live Preview (heading removed - parent shows main heading) */}
-      <div className="lg:col-span-3 space-y-4">
+      <div className="lg:col-span-2 space-y-4">
 
         <Card className="p-6 bg-white">
           <div className="space-y-6">
@@ -426,13 +441,60 @@ export default function SpeakerFormBuilder({
             {enabledFields.length > 0 && (
               <div className="pt-4">
                 <Button className="w-full" disabled>
-                  Submit Registration
+                  Submit Information
                 </Button>
               </div>
             )}
           </div>
         </Card>
       </div>
+
+      {/* Warning Dialog for Missing Files */}
+      <Dialog open={saveWarningOpen} onOpenChange={setSaveWarningOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Promo & Website Cards Won't Work</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {(() => {
+              const headshotMissing = !fields.some(f => f.id === "headshot" && f.enabled);
+              const logoMissing = !fields.some(f => f.id === "company_logo" && f.enabled);
+              const missingCount = (headshotMissing ? 1 : 0) + (logoMissing ? 1 : 0);
+              
+              return (
+                <p className="text-sm text-muted-foreground">
+                  We noticed your form is missing {missingCount === 1 ? 'the following field' : 'the following fields'}:
+                </p>
+              );
+            })()}
+            <ul className="space-y-2 text-sm">
+              {!fields.some(f => f.id === "headshot" && f.enabled) && (
+                <li className="flex items-start gap-2">
+                  <span className="text-destructive mt-1">•</span>
+                  <span><strong>Headshot</strong> - Needed for speaker headshots on cards</span>
+                </li>
+              )}
+              {!fields.some(f => f.id === "company_logo" && f.enabled) && (
+                <li className="flex items-start gap-2">
+                  <span className="text-destructive mt-1">•</span>
+                  <span><strong>Company Logo</strong> - Needed for branding on cards</span>
+                </li>
+              )}
+            </ul>
+            <p className="text-sm text-muted-foreground">
+              Without these fields, speakers won't be able to generate promo cards or website embeds.
+            </p>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setSaveWarningOpen(false)} className="flex-1">
+                Go Back & Enable Fields
+              </Button>
+              <Button onClick={proceedWithSave} className="flex-1">
+                Save Anyway
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -27,6 +27,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -97,51 +98,47 @@ export default function SpeakerModule() {
   const totalCount = speakerList.length;
 
   return (
-    <div>
+    <div className="space-y-0">
       {/* Tabs Navigation */}
-      <div className="border-b border-border bg-card mb-6">
-        <div className="flex gap-8 px-6">
+      <div className="border-b border-border">
+        <div className="flex gap-8 px-0">
           <button
             onClick={() => setSelectedTab("speakers")}
-            className={`pb-4 pt-4 border-b-2 transition-colors ${
+            className={`pb-3 border-b-2 transition-colors text-sm ${
               selectedTab === "speakers"
-                ? "border-primary text-primary font-medium"
-                : "border-transparent text-muted-foreground hover:text-foreground"
+                ? "border-primary text-foreground font-semibold bg-muted/50 px-3 py-2 rounded-t"
+                : "border-transparent text-muted-foreground hover:text-foreground font-medium"
             }`}
-            style={{ fontSize: 'var(--font-body)' }}
           >
             Speakers
           </button>
           <button
             onClick={() => setSelectedTab("applications")}
-            className={`pb-4 pt-4 border-b-2 transition-colors ${
+            className={`pb-3 border-b-2 transition-colors text-sm ${
               selectedTab === "applications"
-                ? "border-primary text-primary font-medium"
-                : "border-transparent text-muted-foreground hover:text-foreground"
+                ? "border-primary text-foreground font-semibold bg-muted/50 px-3 py-2 rounded-t"
+                : "border-transparent text-muted-foreground hover:text-foreground font-medium"
             }`}
-            style={{ fontSize: 'var(--font-body)' }}
           >
             Applications
           </button>
           <button
             onClick={() => setSelectedTab("forms")}
-            className={`pb-4 pt-4 border-b-2 transition-colors ${
+            className={`pb-3 border-b-2 transition-colors text-sm ${
               selectedTab === "forms"
-                ? "border-primary text-primary font-medium"
-                : "border-transparent text-muted-foreground hover:text-foreground"
+                ? "border-primary text-foreground font-semibold bg-muted/50 px-3 py-2 rounded-t"
+                : "border-transparent text-muted-foreground hover:text-foreground font-medium"
             }`}
-            style={{ fontSize: 'var(--font-body)' }}
           >
             Forms
           </button>
           <button
             onClick={() => setSelectedTab("embed-builder")}
-            className={`pb-4 pt-4 border-b-2 transition-colors ${
+            className={`pb-3 border-b-2 transition-colors text-sm ${
               selectedTab === "embed-builder"
-                ? "border-primary text-primary font-medium"
-                : "border-transparent text-muted-foreground hover:text-foreground"
+                ? "border-primary text-foreground font-semibold bg-muted/50 px-3 py-2 rounded-t"
+                : "border-transparent text-muted-foreground hover:text-foreground font-medium"
             }`}
-            style={{ fontSize: 'var(--font-body)' }}
           >
             Embed Builder
           </button>
@@ -150,15 +147,15 @@ export default function SpeakerModule() {
 
       {/* Speakers Tab Content */}
       {selectedTab === "speakers" && (
-        <div className="space-y-6">
-          {/* Explainer */}
+        <div className="space-y-6 pt-6">
+          {/* Header and Action */}
           <div className="flex justify-between items-center">
-            <p style={{ fontSize: 'var(--font-body)' }} className="text-muted-foreground">
-              Add new speakers by approving an application or directly adding a speaker
-            </p>
+            <div>
+              <p className="text-sm text-muted-foreground">Manage and approve event speakers</p>
+            </div>
             <Dialog open={addOpen} onOpenChange={setAddOpen}>
               <DialogTrigger asChild>
-                <Button variant="outline" className="border-[1.5px]">
+                <Button variant="default" size="sm">
                   <Plus className="h-4 w-4 mr-2" />
                   Add Speaker
                 </Button>
@@ -221,26 +218,18 @@ export default function SpeakerModule() {
           </div>
 
           {/* Table Container */}
-          <div className="rounded-lg border border-border bg-card">
-            {/* Table Header */}
-            <div className="flex justify-between items-center p-4 border-b border-border">
-              <div className="flex items-center gap-3">
-                <h3 style={{ fontSize: 'var(--font-h3)', fontWeight: 600 }}>
-                  All Speakers ({totalCount})
-                </h3>
-                {pendingCount > 0 && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="bg-warning text-white border-warning hover:bg-warning/90 hover:text-white"
-                  >
-                    ⚠ {pendingCount} Pending
-                  </Button>
-                )}
-              </div>
+          <div className="space-y-4">
+            {/* Controls Bar */}
+            <div className="flex justify-between items-center">
               <div className="flex gap-3">
+                <Input
+                  placeholder="Search speakers…"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-[280px] h-9 text-sm"
+                />
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-[160px]">
+                  <SelectTrigger className="w-[150px] h-9 text-sm">
                     <SelectValue placeholder="All Statuses" />
                   </SelectTrigger>
                   <SelectContent>
@@ -249,66 +238,67 @@ export default function SpeakerModule() {
                     <SelectItem value="approved">Approved</SelectItem>
                   </SelectContent>
                 </Select>
-                <Input
-                  placeholder="Search speakers..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-[240px]"
-                />
+              </div>
+              <div className="text-sm text-muted-foreground">
+                {totalCount} speaker{totalCount !== 1 ? 's' : ''}
+                {pendingCount > 0 && (
+                  <span className="ml-3 inline-flex items-center gap-1 px-2 py-1 bg-warning/10 text-warning rounded text-xs font-medium">
+                    ⚠ {pendingCount} pending
+                  </span>
+                )}
               </div>
             </div>
 
             {/* Table */}
-            {isLoading ? (
-              <div className="py-16 text-center text-muted-foreground">Loading speakers…</div>
-            ) : filteredSpeakers.length === 0 ? (
-              <div className="py-16 text-center text-muted-foreground">
-                No speakers found. Add some speakers to get started.
-              </div>
-            ) : (
-              <table className="w-full">
-                <thead className="border-b border-border">
-                  <tr className="text-left">
-                    <th className="p-4 font-medium text-muted-foreground" style={{ fontSize: 'var(--font-small)' }}>Speaker</th>
-                    <th className="p-4 font-medium text-muted-foreground" style={{ fontSize: 'var(--font-small)' }}>Company</th>
-                    <th className="p-4 font-medium text-muted-foreground" style={{ fontSize: 'var(--font-small)' }}>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
+            <div className="rounded-lg border border-border overflow-hidden">
+              {isLoading ? (
+                <div className="py-12 text-center text-sm text-muted-foreground">Loading speakers…</div>
+              ) : filteredSpeakers.length === 0 ? (
+                <div className="py-12 text-center text-sm text-muted-foreground">No speakers found</div>
+              ) : (
+                <table className="w-full">
+                  <thead className="border-b border-border bg-muted/30">
+                    <tr>
+                      <th className="px-5 py-3 text-left text-xs font-medium text-muted-foreground">Speaker</th>
+                      <th className="px-5 py-3 text-left text-xs font-medium text-muted-foreground">Company</th>
+                      <th className="px-5 py-3 text-left text-xs font-medium text-muted-foreground">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
                   {filteredSpeakers.map((speaker) => (
                     <tr
                       key={speaker.id}
-                      className="border-b border-border hover:bg-muted/5 cursor-pointer transition-colors"
+                      className="border-b border-border hover:bg-muted/40 cursor-pointer transition-colors"
                       onClick={() => window.location.href = `/organizer/event/${id}/speakers/${speaker.id}`}
                     >
-                      <td className="p-4">
+                      <td className="px-5 py-4">
                         <div className="flex items-center gap-3">
                           <Avatar className="h-8 w-8">
-                            <AvatarFallback className="text-sm">{speaker.name.charAt(0).toUpperCase()}</AvatarFallback>
+                            <AvatarFallback className="text-sm font-medium bg-muted">{speaker.name.charAt(0).toUpperCase()}</AvatarFallback>
                             <AvatarImage src={speaker.avatarUrl} alt={speaker.name} />
                           </Avatar>
                           <div>
-                            <div style={{ fontSize: 'var(--font-body)', fontWeight: 500 }}>
+                            <div className="text-sm font-medium text-foreground">
                               {speaker.name}
                             </div>
-                            <div style={{ fontSize: 'var(--font-small)' }} className="text-muted-foreground">
+                            <div className="text-xs text-muted-foreground">
                               {speaker.email}
                             </div>
                           </div>
                         </div>
                       </td>
-                      <td className="p-4" style={{ fontSize: 'var(--font-body)' }}>
+                      <td className="px-5 py-4 text-sm text-foreground">
                         {speaker.company || "-"}
                       </td>
-                      <td className="p-4">
+                      <td className="px-5 py-4">
                         <Badge
                           variant="outline"
-                          className={`capitalize ${
+                          className={`text-xs font-medium capitalize ${
                             speaker.intakeFormStatus === "approved"
-                              ? "bg-success/10 text-success border-success/20"
+                              ? "bg-success/10 text-success border-success/30"
                               : speaker.intakeFormStatus === "pending"
-                              ? "bg-warning/10 text-warning border-warning/20"
-                              : "bg-muted/10 text-muted-foreground"
+                              ? "bg-warning/10 text-warning border-warning/30"
+                              : "bg-muted/50 text-muted-foreground border-muted/50"
                           }`}
                         >
                           {speaker.intakeFormStatus}
@@ -319,14 +309,53 @@ export default function SpeakerModule() {
                 </tbody>
               </table>
             )}
+            </div>
           </div>
         </div>
       )}
 
       {/* Applications Tab */}
       {selectedTab === "applications" && (
-        <div className="py-16 text-center text-muted-foreground">
-          Applications tab coming soon...
+        <div className="space-y-6 pt-6">
+          {/* Header */}
+          <div>
+            <h2 className="text-2xl font-semibold text-foreground">Applications</h2>
+            <p className="text-sm text-muted-foreground mt-1">Review and approve speaker applications</p>
+          </div>
+
+          {/* Applications Table */}
+          <div className="space-y-4">
+            {/* Controls Bar */}
+            <div className="flex justify-between items-center">
+              <div className="flex gap-3">
+                <Input
+                  placeholder="Search applications…"
+                  className="w-[280px] h-9 text-sm"
+                />
+                <Select>
+                  <SelectTrigger className="w-[150px] h-9 text-sm">
+                    <SelectValue placeholder="All Statuses" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="approved">Approved</SelectItem>
+                    <SelectItem value="rejected">Rejected</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="text-sm text-muted-foreground">
+                0 applications
+              </div>
+            </div>
+
+            {/* Table */}
+            <div className="rounded-lg border border-border overflow-hidden">
+              <div className="py-12 text-center text-sm text-muted-foreground">
+                No applications yet. Share the application form link with potential speakers.
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -473,34 +502,23 @@ function EmbedBuilderContent({ eventId }: { eventId: string | undefined }) {
   };
 
   return (
-    <div>
+    <div className="space-y-6 pt-6">
       {/* Header */}
-      <div className="flex justify-between items-start mb-8">
-        <div>
-          <h2 style={{ fontSize: 'var(--font-h2)', fontWeight: 600, marginBottom: '8px' }}>Embed Builder</h2>
-          <p style={{ fontSize: 'var(--font-body)', color: 'var(--text-secondary)' }}>
-            Create and manage embeds for your website, newsletters, and partner pages
-          </p>
-        </div>
-        <Button variant="outline" className="border-[1.5px]" onClick={openCreateModal}>
-          + Create New Embed
-        </Button>
+      <div>
+        <h2 className="text-2xl font-semibold text-foreground">Embed Builder</h2>
+        <p className="text-sm text-muted-foreground mt-1">Create and manage embeds for your website, newsletters, and partner pages</p>
       </div>
 
       {/* Info box */}
-      <div className="p-4 bg-primary/5 rounded-lg border border-primary/20 mb-8">
-        <p style={{ fontSize: 'var(--font-small)', color: 'var(--primary)', fontWeight: 500 }}>
-          ✓ Only approved speakers will appear in embeds
-        </p>
-        <p style={{ fontSize: 'var(--font-small)', color: 'var(--text-secondary)', marginTop: '4px' }}>
-          Approve speakers on their individual portal page to include them in the embed
-        </p>
+      <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
+        <p className="text-sm font-medium text-primary">✓ Only approved speakers will appear in embeds</p>
+        <p className="text-sm text-muted-foreground mt-1">Approve speakers on their individual portal page to include them in the embed</p>
       </div>
 
       {/* Embed Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {embeds.map((embed) => (
-          <Card key={embed.id}>
+          <Card key={embed.id} className="hover:shadow-sm hover:border-primary transition-all duration-200">
             <CardContent className="p-6">
               <div className="flex justify-between items-start mb-4">
                 <div>
@@ -750,26 +768,113 @@ function EmbedBuilderContent({ eventId }: { eventId: string | undefined }) {
 }
 
 function FormsTabContent({ eventId }: { eventId: string | undefined }) {
-  if (!eventId) return null;
+  const [editingForm, setEditingForm] = useState<string | null>(null);
+
+  const forms = [
+    {
+      id: "speaker-info",
+      name: "Event Speaker Information",
+      type: "Speaker Information Form",
+      description: "For confirmed speakers - submissions go directly to Speakers",
+      submissions: 12,
+      badge: "success",
+    },
+    {
+      id: "call-for-speakers",
+      name: "Event Call for Speakers",
+      type: "Application Form",
+      description: "Applications require approval - submissions go to Applications tab",
+      submissions: 6,
+      badge: "warning",
+    },
+  ];
+
+  if (editingForm) {
+    return (
+      <div className="space-y-6 pt-6">
+        <div className="flex items-center gap-2 mb-6">
+          <button
+            onClick={() => setEditingForm(null)}
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Forms
+          </button>
+          <span className="text-muted-foreground">/</span>
+          <span className="text-sm font-medium text-foreground">
+            {forms.find(f => f.id === editingForm)?.name}
+          </span>
+        </div>
+        <SpeakerFormBuilder
+          eventId={eventId}
+          onSave={(config) => {
+            toast({ title: "Form saved successfully" });
+            setEditingForm(null);
+          }}
+        />
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pt-6">
+      {/* Header */}
       <div>
-        <h3 style={{ fontSize: 'var(--font-h2)', fontWeight: 600 }} className="mb-1">
-          Speaker Intake Form
-        </h3>
-        <p className="text-muted-foreground" style={{ fontSize: 'var(--font-body)' }}>
-          Customize the fields that speakers fill out when registering for your event
-        </p>
+        <h2 className="text-2xl font-semibold text-foreground">Speaker Information Forms</h2>
+        <p className="text-sm text-muted-foreground mt-1">Create and manage forms to collect speaker information</p>
       </div>
 
-      <SpeakerFormBuilder
-        eventId={eventId}
-        onSave={(config) => {
-          // TODO: Save to backend when API is ready
-          toast({ title: "Form configuration saved" });
-        }}
-      />
+      {/* Forms Grid */}
+      <div className="grid gap-6 md:grid-cols-2">
+        {forms.map((form) => (
+          <Card key={form.id} className="hover:shadow-sm hover:border-primary transition-all duration-200 cursor-pointer">
+            <CardContent className="pt-6">
+              <div className="space-y-4">
+                {/* Header */}
+                <div className="flex justify-between items-start gap-3">
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold text-foreground">{form.name}</h3>
+                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button className="text-muted-foreground hover:text-foreground transition-colors p-1">
+                        <MoreVertical className="h-4 w-4" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => setEditingForm(form.id)}>
+                        Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuItem>Duplicate</DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+
+                {/* Stats */}
+                <div className="space-y-2">
+                  <div className="flex items-baseline gap-2">
+                    <div className="text-2xl font-semibold text-foreground">{form.submissions}</div>
+                    <div className="text-sm text-muted-foreground">submission{form.submissions !== 1 ? 's' : ''}</div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">{form.description}</p>
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-2 pt-2">
+                  <Button variant="outline" size="sm" className="flex-1" onClick={() => setEditingForm(form.id)}>
+                    Edit Form
+                  </Button>
+                  <Button variant="outline" size="sm" className="flex-1">
+                    <Copy className="h-3 w-3 mr-1" />
+                    Get Link
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
     </div>
   );
 }

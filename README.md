@@ -8,6 +8,8 @@ A Vite + React + TypeScript frontend for Seamless Events, an operational event m
 
 **Current Status:** Beta phase - actively migrating features from offline prototype to production-ready app.
 
+⚠️ **IMPORTANT:** When making changes to this codebase, proceed carefully and do not make any structural changes (component refactors, major integrations, routing changes) without first requesting approval. Major changes can impact data flow and backend connectivity. Always test thoroughly and communicate changes clearly.
+
 ## Quick start
 
 Requirements:
@@ -69,3 +71,12 @@ Open http://localhost:5173.
 - `npm run lint` — run ESLint
 
 For design system, routing, and architecture details see `CLAUDE.md`.
+
+##GitHub Push
+- git status
+- git add .
+- git commit -m"account, speaker portal updates" 
+- git push origin beta
+
+##GitHub Pull
+- git pull origin beta

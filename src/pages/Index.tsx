@@ -3,6 +3,8 @@ import { Event } from "@/types/event";
 import { useQuery } from "@tanstack/react-query";
 import { getJson, getMe } from "@/lib/api";
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 
 async function fetchEvents(): Promise<Event[]> {
   const res = await getJson<any>(`/events`);
@@ -40,11 +42,16 @@ export default function Index() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 style={{ fontSize: 'var(--font-h1)', fontWeight: 600 }}>
-          Welcome back{(me?.firstName ?? me?.first_name) ? `, ${me?.firstName ?? me?.first_name}` : ""}
-        </h1>
-      </div>
+			<div className="flex items-center justify-between">
+				<div>
+					<h1 style={{ fontSize: 'var(--font-h1)', fontWeight: 600 }}>
+						Welcome back{(me?.firstName ?? me?.first_name) ? `, ${me?.firstName ?? me?.first_name}` : ""}
+					</h1>
+				</div>
+				<Button variant="default" size="lg" asChild>
+					<Link to="/organizer/events/new">Create Event</Link>
+				</Button>
+			</div>
 
       {/* Tabs */}
       <div className="border-b border-border">

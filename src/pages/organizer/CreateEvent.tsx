@@ -82,6 +82,8 @@ export default function CreateEvent() {
 		startDate: "",
 		endDate: "",
 		location: "",
+		eventWebsite: "",
+		fromName: "",
 		fromEmail: "",
 		replyToEmail: "",
 		emailSignature: "",
@@ -514,6 +516,25 @@ export default function CreateEvent() {
 									}
 								/>
 							</div>
+
+							<div className="space-y-2">
+								<Label htmlFor="eventWebsite">
+									<LinkIcon className="h-4 w-4 inline mr-1" />
+									Event Website
+								</Label>
+								<Input
+									id="eventWebsite"
+								type="text"
+								placeholder="https://example.com/event (optional)"
+									value={formData.eventWebsite}
+									onChange={(e) =>
+										setFormData((prev) => ({
+											...prev,
+											eventWebsite: e.target.value,
+										}))
+									}
+								/>
+							</div>
 						</CardContent>
 					</Card>
 
@@ -526,6 +547,21 @@ export default function CreateEvent() {
 							</CardTitle>
 						</CardHeader>
 						<CardContent className="space-y-4">
+							<div className="space-y-2">
+								<Label htmlFor="fromName">'From' Name</Label>
+								<Input
+									id="fromName"
+									placeholder="e.g., Your Company Events"
+									value={formData.fromName}
+									onChange={(e) =>
+										setFormData((prev) => ({
+											...prev,
+											fromName: e.target.value,
+										}))
+									}
+								/>
+							</div>
+
 							<div className="grid gap-4 sm:grid-cols-2">
 								<div className="space-y-2">
 									<Label htmlFor="fromEmail">'From' Email</Label>

@@ -1,0 +1,4146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Seamless Events - Clickable Demo</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    /* === DESIGN SYSTEM TOKENS === */
+    :root {
+      /* Colors */
+      --primary: #4E5BA6;
+      --primary-hover: #3D4A8F;
+      --primary-subtle: #E8EAF6;
+
+      --bg-app: #FAFAF9;
+      --bg-surface: #FFFFFF;
+      --border-default: #E5E7EB;
+
+      --text-primary: #111827;
+      --text-secondary: #6B7280;
+
+      --success: #16A34A;
+      --warning: #F59E0B;
+      --danger: #DC2626;
+      --info: #2563EB;
+
+      /* Typography Scale */
+      --font-h1: 28px;
+      --font-h2: 20px;
+      --font-h3: 16px;
+      --font-body: 14px;
+      --font-small: 13px;
+      --font-tiny: 11px;
+
+      /* Spacing (8px scale) */
+      --space-xs: 4px;
+      --space-sm: 8px;
+      --space-md: 16px;
+      --space-lg: 24px;
+      --space-xl: 32px;
+      --space-2xl: 48px;
+
+      /* Borders & Radius */
+      --radius-card: 8px;
+      --radius-btn: 6px;
+      --border-width: 1px;
+
+      /* Shadows */
+      --shadow-card: 0 1px 2px rgba(0,0,0,0.06);
+    }
+
+    /* === RESET & BASE === */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+      color: var(--text-primary);
+      background: var(--bg-app);
+    }
+
+    /* === SCREEN MANAGEMENT === */
+    .screen {
+      display: none;
+    }
+
+    .screen.active {
+      display: block;
+    }
+
+    /* === LOGIN SCREEN === */
+    #screen-login {
+      min-height: 100vh;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, var(--primary-subtle) 0%, var(--bg-app) 100%);
+    }
+
+    #screen-login.active {
+      display: flex;
+    }
+
+    .login-container {
+      background: var(--bg-surface);
+      padding: var(--space-2xl);
+      border-radius: var(--radius-card);
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      width: 90%;
+      max-width: 420px;
+    }
+
+    .login-logo {
+      margin-bottom: var(--space-lg);
+      cursor: pointer;
+      text-decoration: none;
+      display: block;
+      line-height: 1;
+      text-align: center;
+    }
+
+    .login-logo .logo-seamless {
+      font-size: 36px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--primary);
+      display: block;
+    }
+
+    .login-logo .logo-events {
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      display: block;
+      margin-top: 4px;
+    }
+
+    .login-logo:hover .logo-seamless {
+      color: var(--primary-hover);
+    }
+
+    .login-logo:hover .logo-events {
+      color: var(--primary);
+    }
+
+    .login-flow-decoration {
+      position: fixed;
+      left: 0;
+      width: 100%;
+      height: 60px;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .login-flow-decoration.top {
+      top: 0;
+    }
+
+    .login-flow-decoration.bottom {
+      bottom: 0;
+      transform: rotate(180deg);
+    }
+
+    .login-flow-decoration svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    .login-flow-decoration path {
+      stroke: var(--primary);
+      stroke-width: 4;
+      fill: none;
+      stroke-linecap: round;
+      opacity: 0.25;
+    }
+
+    .login-container h1 {
+      font-size: var(--font-h2);
+      font-weight: 400;
+      color: var(--text-secondary);
+      margin-bottom: var(--space-xl);
+      text-align: center;
+    }
+
+    .login-container p {
+      color: var(--text-secondary);
+      margin-bottom: var(--space-xl);
+    }
+
+    .login-form {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-md);
+    }
+
+    .form-group {
+      text-align: left;
+    }
+
+    .form-group label {
+      display: block;
+      font-weight: 500;
+      margin-bottom: var(--space-sm);
+      font-size: 13px;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 12px var(--space-md);
+      border: var(--border-width) solid var(--border-default);
+      border-radius: var(--radius-btn);
+      font-family: inherit;
+      font-size: 14px;
+    }
+
+    .form-group input:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    .btn {
+      padding: 10px 20px;
+      border-radius: var(--radius-btn);
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    /* Option A: Outline style (subtle, professional) */
+    .btn-primary {
+      background: white;
+      color: var(--primary);
+      border: 1.5px solid var(--primary);
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-subtle);
+    }
+
+    /* Option B: Subtle fill style (soft, modern) */
+    .btn-primary-alt {
+      background: var(--primary-subtle);
+      color: var(--primary);
+      border: none;
+    }
+
+    .btn-primary-alt:hover {
+      background: #D5D9F0;
+    }
+
+    .btn-secondary {
+      background: var(--bg-surface);
+      color: var(--text-primary);
+      border: var(--border-width) solid var(--border-default);
+    }
+
+    .btn-secondary:hover {
+      background: var(--bg-app);
+    }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      margin: var(--space-lg) 0;
+      color: var(--text-secondary);
+      font-size: 13px;
+    }
+
+    .divider::before,
+    .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border-default);
+    }
+
+    .divider span {
+      padding: 0 var(--space-md);
+    }
+
+    .sso-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-md);
+    }
+
+    .forgot-password {
+      text-align: right;
+      margin-top: calc(-1 * var(--space-sm));
+      margin-bottom: var(--space-md);
+    }
+
+    .forgot-password a {
+      color: var(--primary);
+      text-decoration: none;
+      font-size: 13px;
+    }
+
+    .forgot-password a:hover {
+      text-decoration: underline;
+    }
+
+    .login-help {
+      margin-top: var(--space-lg);
+      text-align: center;
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .login-help a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+
+    .login-help a:hover {
+      text-decoration: underline;
+    }
+
+    .login-footer {
+      position: fixed;
+      bottom: var(--space-lg);
+      right: var(--space-lg);
+    }
+
+    .btn-arrow {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: white;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      transition: all 0.15s ease;
+    }
+
+    .btn-arrow:hover {
+      background: var(--primary-hover);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 8px rgba(0,0,0,0.15);
+    }
+
+    /* === MAIN APP LAYOUT === */
+    .app-layout {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* === SIDEBAR === */
+    .sidebar {
+      width: 220px;
+      background: var(--bg-surface);
+      border-right: var(--border-width) solid var(--border-default);
+      padding: var(--space-lg);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sidebar-logo {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+      margin-bottom: var(--space-xl);
+      padding-bottom: var(--space-lg);
+      border-bottom: var(--border-width) solid var(--border-default);
+    }
+
+    .sidebar-logo-icon {
+      width: 32px;
+      height: 32px;
+      background: var(--primary);
+      border-radius: var(--radius-btn);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 600;
+    }
+
+    .sidebar-logo-text {
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .sidebar-section {
+      margin-bottom: var(--space-xl);
+    }
+
+    .sidebar-section-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      margin-bottom: var(--space-md);
+      letter-spacing: 0.5px;
+    }
+
+    .sidebar-nav {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-xs);
+    }
+
+    .sidebar-nav-item {
+      padding: var(--space-sm) var(--space-md);
+      border-radius: var(--radius-btn);
+      color: var(--text-primary);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      transition: all 0.15s ease;
+      cursor: pointer;
+      border: none;
+      background: none;
+      font-family: inherit;
+      font-size: 14px;
+      width: 100%;
+      text-align: left;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .sidebar-nav-item:hover {
+      background: var(--bg-app);
+    }
+
+    .sidebar-nav-item.active {
+      background: var(--primary-subtle);
+      color: var(--primary);
+      font-weight: 500;
+    }
+
+    /* Event list items - cleaner styling */
+    .sidebar-event-item {
+      padding: 10px var(--space-md);
+      border-radius: var(--radius-btn);
+      color: var(--text-primary);
+      text-decoration: none;
+      transition: all 0.15s ease;
+      cursor: pointer;
+      border: none;
+      background: none;
+      font-family: inherit;
+      font-size: 13px;
+      width: 100%;
+      text-align: left;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.3;
+    }
+
+    .sidebar-event-item:hover {
+      background: var(--bg-app);
+      color: var(--primary);
+    }
+
+    .sidebar-footer {
+      margin-top: auto;
+      padding-top: var(--space-lg);
+      border-top: var(--border-width) solid var(--border-default);
+    }
+
+    /* === MAIN CONTENT === */
+    .main-content {
+      flex: 1;
+      overflow-x: hidden;
+      overflow-y: auto;
+      height: 100vh;
+    }
+
+    /* === HEADER === */
+    .header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--bg-surface);
+      border-bottom: var(--border-width) solid var(--border-default);
+      padding: var(--space-md) var(--space-xl);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header-breadcrumbs {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      color: var(--text-secondary);
+      font-size: 13px;
+    }
+
+    .breadcrumb-link {
+      color: var(--text-secondary);
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .breadcrumb-link:hover {
+      color: var(--primary);
+    }
+
+    .header-user {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+    }
+
+    .user-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .user-name {
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    /* === PAGE CONTENT === */
+    .page-content {
+      padding: var(--space-xl);
+    }
+
+    .page-header {
+      margin-bottom: var(--space-xl);
+    }
+
+    .page-title {
+      font-size: var(--font-h1);
+      font-weight: 600;
+      margin-bottom: var(--space-sm);
+    }
+
+    .page-subtitle {
+      color: var(--text-secondary);
+      font-size: var(--font-body);
+    }
+
+    /* === CARDS === */
+    .card {
+      background: var(--bg-surface);
+      border: var(--border-width) solid var(--border-default);
+      border-radius: var(--radius-card);
+      padding: var(--space-lg);
+      box-shadow: var(--shadow-card);
+    }
+
+    .card-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: var(--space-md);
+    }
+
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: var(--space-lg);
+      margin-bottom: var(--space-xl);
+    }
+
+    .stat-card {
+      background: var(--bg-surface);
+      border: var(--border-width) solid var(--border-default);
+      border-radius: var(--radius-card);
+      padding: var(--space-lg);
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+    }
+
+    .stat-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: var(--radius-btn);
+      background: var(--primary-subtle);
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+
+    .stat-content {
+      flex: 1;
+    }
+
+    .stat-label {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: var(--space-xs);
+    }
+
+    .stat-value {
+      font-size: 28px;
+      font-weight: 600;
+    }
+
+    .stat-sublabel {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: var(--space-xs);
+    }
+
+    /* === EVENT CARDS === */
+    .event-card {
+      background: var(--bg-surface);
+      border: var(--border-width) solid var(--border-default);
+      border-radius: var(--radius-card);
+      padding: var(--space-lg);
+      margin-bottom: var(--space-md);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .event-card:hover {
+      border-color: var(--primary);
+      box-shadow: 0 2px 8px rgba(78, 91, 166, 0.1);
+    }
+
+    .event-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: var(--space-md);
+    }
+
+    .event-card-title {
+      font-size: var(--font-h2);
+      font-weight: 600;
+      margin-bottom: var(--space-sm);
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      transition: color 0.15s ease;
+    }
+
+    .event-card-title::after {
+      content: '→';
+      opacity: 0;
+      transition: all 0.15s ease;
+      font-size: 18px;
+    }
+
+    .event-card:hover .event-card-title {
+      color: var(--primary);
+    }
+
+    .event-card:hover .event-card-title::after {
+      opacity: 1;
+      transform: translateX(4px);
+    }
+
+    .event-card-meta {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-xs);
+      color: var(--text-secondary);
+      font-size: 13px;
+    }
+
+    .event-card-meta span {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+    }
+
+    .event-card-modules {
+      display: flex;
+      gap: var(--space-sm);
+      margin-bottom: var(--space-md);
+      flex-wrap: wrap;
+    }
+
+    .module-badge {
+      padding: 4px var(--space-md);
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .module-badge.active {
+      background: linear-gradient(135deg, rgba(78, 91, 166, 0.85) 0%, rgba(255, 255, 255, 0.3) 100%), var(--primary);
+      color: white;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    }
+
+    .module-badge.inactive {
+      background: var(--bg-app);
+      color: var(--text-secondary);
+    }
+
+    .event-card-actions {
+      display: flex;
+      gap: var(--space-md);
+    }
+
+    .btn-icon {
+      padding: var(--space-sm);
+      border-radius: var(--radius-btn);
+      border: var(--border-width) solid var(--border-default);
+      background: var(--bg-surface);
+      cursor: pointer;
+      font-size: 16px;
+      color: var(--text-secondary);
+    }
+
+    .btn-icon:hover {
+      background: var(--bg-app);
+      color: var(--text-primary);
+    }
+
+    /* === MODULE CARDS === */
+    .module-card {
+      background: var(--bg-surface);
+      border: var(--border-width) solid var(--border-default);
+      border-radius: var(--radius-card);
+      padding: var(--space-lg);
+      position: relative;
+    }
+
+    .module-card.disabled {
+      opacity: 0.6;
+    }
+
+    .module-card-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: var(--radius-btn);
+      background: var(--primary);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      margin-bottom: var(--space-md);
+    }
+
+    .module-card.disabled .module-card-icon {
+      background: var(--bg-app);
+      color: var(--text-secondary);
+    }
+
+    .module-card-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: var(--space-sm);
+    }
+
+    .module-card-description {
+      color: var(--text-secondary);
+      font-size: 14px;
+      margin-bottom: var(--space-md);
+      line-height: 1.6;
+    }
+
+    .module-card-stat {
+      background: var(--primary-subtle);
+      color: var(--primary);
+      padding: var(--space-sm) var(--space-md);
+      border-radius: var(--radius-btn);
+      display: inline-block;
+      font-weight: 500;
+      font-size: 13px;
+      margin-bottom: var(--space-md);
+    }
+
+    .module-card.disabled .module-card-stat {
+      background: var(--bg-app);
+      color: var(--text-secondary);
+    }
+
+    .module-card-footer {
+      margin-top: var(--space-md);
+    }
+
+    .upgrade-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-sm);
+      padding: var(--space-xs) var(--space-md);
+      background: var(--bg-app);
+      border-radius: 12px;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    /* === TABLE === */
+    .table-container {
+      background: var(--bg-surface);
+      border: var(--border-width) solid var(--border-default);
+      border-radius: var(--radius-card);
+      overflow: hidden;
+    }
+
+    .table-header {
+      padding: var(--space-md) var(--space-lg);
+      border-bottom: var(--border-width) solid var(--border-default);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .table-header-title {
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .table-search {
+      padding: var(--space-sm) var(--space-md);
+      border: var(--border-width) solid var(--border-default);
+      border-radius: var(--radius-btn);
+      font-family: inherit;
+      font-size: 14px;
+      width: 300px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    thead {
+      background: var(--bg-app);
+    }
+
+    th {
+      padding: var(--space-md) var(--space-lg);
+      text-align: left;
+      font-weight: 600;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-secondary);
+    }
+
+    tbody tr {
+      border-bottom: var(--border-width) solid var(--border-default);
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    tbody tr:hover {
+      background: var(--bg-app);
+    }
+
+    td {
+      padding: var(--space-md) var(--space-lg);
+    }
+
+    .table-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--primary-subtle);
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      margin-right: var(--space-md);
+    }
+
+    .table-user {
+      display: flex;
+      align-items: center;
+    }
+
+    .table-user-info {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .table-user-name {
+      font-weight: 500;
+    }
+
+    .table-user-email {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .status-badge {
+      padding: 4px var(--space-md);
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .status-badge.pending {
+      background: #FEF3C7;
+      color: #92400E;
+    }
+
+    .status-badge.approved {
+      background: #D1FAE5;
+      color: #065F46;
+    }
+
+    /* === INFO TOOLTIP === */
+    .info-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--bg-app);
+      color: var(--text-secondary);
+      font-size: 11px;
+      font-weight: 600;
+      cursor: help;
+      margin-left: var(--space-xs);
+    }
+
+    .info-icon:hover {
+      background: var(--primary);
+      color: white;
+    }
+
+    /* === DETAIL VIEW === */
+    .detail-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: var(--space-xl);
+    }
+
+    .detail-back {
+      color: var(--primary);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      font-weight: 500;
+      margin-bottom: var(--space-lg);
+      cursor: pointer;
+    }
+
+    .detail-back:hover {
+      text-decoration: underline;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: var(--space-xl);
+    }
+
+    .detail-sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-lg);
+    }
+
+    .detail-avatar {
+      width: 100%;
+      aspect-ratio: 1;
+      border-radius: var(--radius-card);
+      background: var(--primary-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 48px;
+      font-weight: 600;
+      color: var(--primary);
+    }
+
+    .detail-main {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-lg);
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: var(--space-lg);
+    }
+
+    .info-item label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      letter-spacing: 0.5px;
+      margin-bottom: var(--space-sm);
+    }
+
+    .info-item p {
+      color: var(--text-primary);
+      font-size: 14px;
+    }
+
+    /* === USER DROPDOWN === */
+    .user-dropdown {
+      position: relative;
+    }
+
+    .user-dropdown-toggle {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+      cursor: pointer;
+      padding: var(--space-sm);
+      border-radius: var(--radius-btn);
+      transition: background 0.15s ease;
+    }
+
+    .user-dropdown-toggle:hover {
+      background: var(--bg-app);
+    }
+
+    .user-info {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+    }
+
+    .user-info-name {
+      font-weight: 500;
+      font-size: 14px;
+    }
+
+    .user-info-account {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .user-dropdown-menu {
+      position: absolute;
+      top: 100%;
+      right: 0;
+      margin-top: var(--space-sm);
+      background: var(--bg-surface);
+      border: var(--border-width) solid var(--border-default);
+      border-radius: var(--radius-card);
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      min-width: 200px;
+      display: none;
+      z-index: 1000;
+    }
+
+    .user-dropdown-menu.active {
+      display: block;
+    }
+
+    .user-dropdown-item {
+      padding: var(--space-md);
+      cursor: pointer;
+      transition: background 0.15s ease;
+      border-bottom: var(--border-width) solid var(--border-default);
+    }
+
+    .user-dropdown-item:last-child {
+      border-bottom: none;
+    }
+
+    .user-dropdown-item:hover {
+      background: var(--bg-app);
+    }
+
+    .user-dropdown-divider {
+      height: 1px;
+      background: var(--border-default);
+      margin: var(--space-xs) 0;
+    }
+
+    /* === QUICK ACTIONS SIDEBAR === */
+    .sidebar-quick-actions {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-xs);
+      margin-top: var(--space-lg);
+    }
+
+    .quick-action-btn {
+      padding: var(--space-sm) var(--space-md);
+      border-radius: var(--radius-btn);
+      border: var(--border-width) solid var(--border-default);
+      background: var(--bg-surface);
+      cursor: pointer;
+      transition: all 0.15s ease;
+      font-family: inherit;
+      font-size: 13px;
+      text-align: left;
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+    }
+
+    .quick-action-btn:hover {
+      background: var(--bg-app);
+      border-color: var(--primary);
+    }
+
+    /* === EVENT CARD MENU === */
+    .event-card-menu {
+      position: relative;
+    }
+
+    .event-card-menu-toggle {
+      padding: var(--space-sm);
+      border-radius: var(--radius-btn);
+      border: var(--border-width) solid var(--border-default);
+      background: var(--bg-surface);
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    .event-card-menu-toggle:hover {
+      background: var(--bg-app);
+    }
+
+    .event-card-menu-dropdown {
+      position: absolute;
+      top: 100%;
+      right: 0;
+      margin-top: var(--space-sm);
+      background: var(--bg-surface);
+      border: var(--border-width) solid var(--border-default);
+      border-radius: var(--radius-card);
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      min-width: 160px;
+      display: none;
+      z-index: 100;
+    }
+
+    .event-card-menu-dropdown.active {
+      display: block;
+    }
+
+    .event-card-menu-item {
+      padding: var(--space-md);
+      cursor: pointer;
+      transition: background 0.15s ease;
+      font-size: 14px;
+    }
+
+    .event-card-menu-item:hover {
+      background: var(--bg-app);
+    }
+
+    .event-card-menu-item.danger {
+      color: var(--danger);
+    }
+
+    /* === TABS === */
+    .tabs {
+      display: flex;
+      gap: var(--space-md);
+      border-bottom: var(--border-width) solid var(--border-default);
+      margin-bottom: var(--space-xl);
+    }
+
+    .tab {
+      padding: var(--space-md) var(--space-lg);
+      border: none;
+      background: none;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      transition: all 0.15s ease;
+    }
+
+    .tab:hover {
+      color: var(--text-primary);
+    }
+
+    .tab.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    /* === MODAL === */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      padding: var(--space-lg);
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal-container {
+      background: var(--bg-surface);
+      border-radius: var(--radius-card);
+      width: 100%;
+      max-width: 600px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+
+    .modal-header {
+      padding: var(--space-lg) var(--space-xl);
+      border-bottom: var(--border-width) solid var(--border-default);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .modal-title {
+      font-size: 24px;
+      font-weight: 600;
+      margin-bottom: var(--space-xs);
+    }
+
+    .modal-subtitle {
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 24px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      padding: 0;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--radius-btn);
+      transition: all 0.15s ease;
+    }
+
+    .modal-close:hover {
+      background: var(--bg-app);
+      color: var(--text-primary);
+    }
+
+    .modal-body {
+      padding: var(--space-xl);
+    }
+
+    .modal-footer {
+      padding: var(--space-lg) var(--space-xl);
+      border-top: var(--border-width) solid var(--border-default);
+      display: flex;
+      justify-content: flex-end;
+      gap: var(--space-md);
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-md);
+    }
+
+    .checkbox-group {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-sm);
+    }
+
+    .checkbox-item {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      padding: var(--space-sm);
+      border-radius: var(--radius-btn);
+      transition: background 0.15s ease;
+    }
+
+    .checkbox-item:hover {
+      background: var(--bg-app);
+    }
+
+    .checkbox-item input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+
+    .checkbox-item label {
+      cursor: pointer;
+      margin-bottom: 0;
+      font-weight: 400;
+    }
+
+    .file-upload-area {
+      border: 2px dashed var(--border-default);
+      border-radius: var(--radius-btn);
+      padding: var(--space-xl);
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .file-upload-area:hover {
+      border-color: var(--primary);
+      background: var(--primary-subtle);
+    }
+
+    .file-upload-icon {
+      font-size: 32px;
+      margin-bottom: var(--space-sm);
+    }
+
+    .file-upload-text {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-bottom: var(--space-xs);
+    }
+
+    .file-upload-hint {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    /* === UTILITY === */
+    .text-center { text-align: center; }
+    .mb-0 { margin-bottom: 0; }
+    .mt-xl { margin-top: var(--space-xl); }
+
+    /* === SECTION === */
+    .section {
+      margin-bottom: var(--space-2xl);
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: var(--space-lg);
+    }
+
+    .section-title {
+      font-size: var(--font-h2);
+      font-weight: 600;
+    }
+
+    .section-action {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .section-action:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ===== SCREEN 1: LOGIN ===== -->
+  <div id="screen-login" class="screen active">
+    <!-- Decorative flow - top -->
+    <div class="login-flow-decoration top">
+      <svg viewBox="0 0 1200 60" preserveAspectRatio="none">
+        <path d="M0 35 Q150 15, 300 28 Q450 42, 600 25 Q750 12, 900 35 Q1050 48, 1200 30" />
+        <path d="M0 20 Q150 38, 300 22 Q450 8, 600 25 Q750 40, 900 18 Q1050 5, 1200 25" opacity="0.5"/>
+      </svg>
+    </div>
+
+    <div class="login-container">
+      <a href="#" class="login-logo" onclick="alert('Demo: Links to seamlessevents.io'); return false;">
+        <span class="logo-seamless">Seamless</span>
+        <span class="logo-events">Events</span>
+      </a>
+      <h1>Sign in to manage your events</h1>
+
+      <form class="login-form">
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" placeholder="you@example.com">
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" placeholder="••••••••">
+        </div>
+        <div class="forgot-password">
+          <a href="#" onclick="alert('Demo: Forgot password flow'); return false;">Forgot password?</a>
+        </div>
+        <button type="button" class="btn btn-primary">Sign In</button>
+      </form>
+
+      <div class="divider">
+        <span>or continue with</span>
+      </div>
+
+      <div class="sso-buttons">
+        <button class="btn btn-secondary">Continue with Google</button>
+        <button class="btn btn-secondary">Continue with Microsoft</button>
+      </div>
+
+      <div class="login-help">
+        Need help? <a href="mailto:contact@seamlessevents.io">Contact contact@seamlessevents.io</a>
+      </div>
+
+      <div class="login-help" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-default);">
+        New to Seamless Events? <a href="#" onclick="alert('Demo: Request demo / Learn more page'); return false;">Learn more</a>
+      </div>
+    </div>
+
+    <!-- Decorative flow - bottom -->
+    <div class="login-flow-decoration bottom">
+      <svg viewBox="0 0 1200 60" preserveAspectRatio="none">
+        <path d="M0 35 Q150 15, 300 28 Q450 42, 600 25 Q750 12, 900 35 Q1050 48, 1200 30" />
+        <path d="M0 20 Q150 38, 300 22 Q450 8, 600 25 Q750 40, 900 18 Q1050 5, 1200 25" opacity="0.5"/>
+      </svg>
+    </div>
+
+    <div class="login-footer">
+      <button class="btn-arrow" onclick="showScreen('screen-account-dashboard')">→</button>
+    </div>
+  </div>
+
+  <!-- ===== SCREEN 2: ACCOUNT OVERVIEW ===== -->
+  <div id="screen-account-dashboard" class="screen">
+    <div class="app-layout">
+      <aside class="sidebar">
+        <a href="#" class="sidebar-logo" onclick="alert('Demo: Links to seamlessevents.io'); return false;" style="text-decoration: none; display: block; margin-bottom: 32px; line-height: 1;">
+          <span style="font-size: 18px; font-weight: 700; letter-spacing: -0.02em; color: var(--primary); display: block;">Seamless</span>
+          <span style="font-size: 11px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-secondary); display: block; margin-top: 2px;">Events</span>
+        </a>
+
+        <div style="margin-top: 8px;">
+          <div style="font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 12px; letter-spacing: 0.5px;">TidyOps</div>
+          <nav class="sidebar-nav">
+            <button class="sidebar-nav-item active" onclick="showScreen('screen-account-dashboard')">
+              Overview
+            </button>
+            <button class="sidebar-nav-item" onclick="openTeamModal()">
+              Team
+            </button>
+            <button class="sidebar-nav-item" onclick="alert('Demo: Billing - not yet briefed')">
+              Billing
+            </button>
+            <button class="sidebar-nav-item" onclick="alert('Demo: Organization settings - not yet briefed')">
+              Settings
+            </button>
+          </nav>
+        </div>
+
+        <div style="margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border-default);">
+          <div style="font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 12px; letter-spacing: 0.5px;">Upcoming Events</div>
+          <div style="display: flex; flex-direction: column; gap: 2px;">
+            <button class="sidebar-event-item" onclick="showScreen('screen-event-dashboard')" title="ROI Forum 2026">
+              ROI Forum 2026
+            </button>
+            <button class="sidebar-event-item" onclick="alert('Demo: Navigate to Activation Lab event')" title="Activation Lab">
+              Activation Lab
+            </button>
+            <button class="sidebar-event-item" onclick="alert('Demo: Navigate to Partner Summit event')" title="Partner Summit 2027">
+              Partner Summit 2027
+            </button>
+          </div>
+        </div>
+
+        <div style="margin-top: auto; padding-top: 24px; border-top: 1px solid var(--border-default);">
+          <button class="sidebar-nav-item" onclick="alert('Demo: Help & Support - not yet briefed')">
+            Help & Support
+          </button>
+        </div>
+      </aside>
+
+      <main class="main-content">
+        <header class="header">
+          <div class="header-breadcrumbs">
+            <h1 style="font-size: var(--font-h2); font-weight: 600; color: var(--text-primary); margin: 0;">Welcome back, James</h1>
+          </div>
+          <div class="header-user">
+            <div class="user-dropdown">
+              <div class="user-dropdown-toggle" onclick="toggleUserMenu(event)">
+                <div class="user-info">
+                  <div class="user-info-name">James Stafford</div>
+                  <div class="user-info-account">TidyOps Account</div>
+                </div>
+                <div class="user-avatar">J</div>
+              </div>
+              <div class="user-dropdown-menu" id="userMenu">
+                <div class="user-dropdown-item" onclick="alert('Demo: My Profile - personal settings (name, email, password)')">My Profile</div>
+                <div class="user-dropdown-item" onclick="alert('Demo: Notification preferences - not yet briefed')">Notifications</div>
+                <div class="user-dropdown-item" onclick="alert('Demo: Switch Organization - not yet briefed')">Switch Organization</div>
+                <div class="user-dropdown-divider"></div>
+                <div class="user-dropdown-item" onclick="alert('Demo: Log out')">Log Out</div>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <div class="page-content">
+
+          <!-- Events Section -->
+          <div class="section">
+            <!-- Tabs with Create Event button -->
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-default); margin-bottom: 32px;">
+              <div class="tabs" style="border-bottom: none; margin-bottom: 0;">
+                <button class="tab active" onclick="switchTab('current')">Current</button>
+                <button class="tab" onclick="switchTab('past')">Past</button>
+              </div>
+              <button class="btn btn-primary" onclick="openCreateEventModal()">+ Create New Event</button>
+            </div>
+
+            <!-- Current Events Tab -->
+            <div class="tab-content active" id="tab-current">
+              <div class="event-card" onclick="showScreen('screen-event-dashboard')">
+              <div class="event-card-header">
+                <div style="flex: 1;">
+                  <h3 class="event-card-title">ROI Forum 2026</h3>
+                  <div class="event-card-meta">
+                    <span>April 21-23, 2026</span>
+                    <span>Pittsburgh, PA</span>
+                  </div>
+                </div>
+                <div class="event-card-menu">
+                  <button class="event-card-menu-toggle" onclick="event.stopPropagation(); toggleEventMenu('menu1')">⋯</button>
+                  <div class="event-card-menu-dropdown" id="menu1">
+                    <div class="event-card-menu-item" onclick="alert('Demo: Duplicate event')">Duplicate</div>
+                    <div class="event-card-menu-item" onclick="alert('Demo: Archive event')">Archive</div>
+                    <div class="event-card-menu-item danger" onclick="alert('Demo: Delete event')">Delete</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="event-card-modules">
+                <span class="module-badge active">Speakers</span>
+                <span class="module-badge active">Schedule</span>
+                <span class="module-badge active">Content</span>
+                <span class="module-badge active">Partners</span>
+              </div>
+            </div>
+
+            <div class="event-card" onclick="alert('Demo: Navigate to Activation Lab')">
+              <div class="event-card-header">
+                <div style="flex: 1;">
+                  <h3 class="event-card-title">Activation Lab</h3>
+                  <div class="event-card-meta">
+                    <span>July 21-23, 2026</span>
+                    <span>Vancouver, BC</span>
+                  </div>
+                </div>
+                <div class="event-card-menu">
+                  <button class="event-card-menu-toggle" onclick="event.stopPropagation(); toggleEventMenu('menu2')">⋯</button>
+                  <div class="event-card-menu-dropdown" id="menu2">
+                    <div class="event-card-menu-item" onclick="alert('Demo: Duplicate event')">Duplicate</div>
+                    <div class="event-card-menu-item" onclick="alert('Demo: Archive event')">Archive</div>
+                    <div class="event-card-menu-item danger" onclick="alert('Demo: Delete event')">Delete</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="event-card-modules">
+                <span class="module-badge active">Speakers</span>
+                <span class="module-badge active">Schedule</span>
+                <span class="module-badge inactive">Content</span>
+                <span class="module-badge inactive">Partners</span>
+                <span class="module-badge inactive">Attendees</span>
+              </div>
+            </div>
+
+              <div class="event-card" onclick="alert('Demo: Setup Partner Summit')" style="opacity: 0.6;">
+                <div class="event-card-header">
+                  <div style="flex: 1;">
+                    <h3 class="event-card-title">Partner Summit 2027</h3>
+                    <div class="event-card-meta">
+                      <span>March 10-12, 2027</span>
+                      <span>Austin, TX</span>
+                    </div>
+                  </div>
+                  <div class="event-card-menu">
+                    <button class="event-card-menu-toggle" onclick="event.stopPropagation(); toggleEventMenu('menu3')">⋯</button>
+                    <div class="event-card-menu-dropdown" id="menu3">
+                      <div class="event-card-menu-item" onclick="alert('Demo: Duplicate event')">Duplicate</div>
+                      <div class="event-card-menu-item" onclick="alert('Demo: Archive event')">Archive</div>
+                      <div class="event-card-menu-item danger" onclick="alert('Demo: Delete event')">Delete</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="event-card-modules">
+                  <span class="module-badge inactive">No modules enabled</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Past Events Tab -->
+            <div class="tab-content" id="tab-past">
+              <div class="event-card" onclick="alert('Demo: View past event')" style="opacity: 0.7;">
+                <div class="event-card-header">
+                  <div style="flex: 1;">
+                    <h3 class="event-card-title">Growth Summit 2025</h3>
+                    <div class="event-card-meta">
+                      <span>September 15-17, 2025</span>
+                      <span>San Francisco, CA</span>
+                    </div>
+                  </div>
+                  <div class="event-card-menu">
+                    <button class="event-card-menu-toggle" onclick="event.stopPropagation(); toggleEventMenu('menu-past1')">⋯</button>
+                    <div class="event-card-menu-dropdown" id="menu-past1">
+                      <div class="event-card-menu-item" onclick="alert('Demo: Duplicate event')">Duplicate</div>
+                      <div class="event-card-menu-item" onclick="alert('Demo: Export data')">Export Data</div>
+                      <div class="event-card-menu-item danger" onclick="alert('Demo: Delete event')">Delete</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="event-card-modules">
+                  <span class="module-badge active">Speakers</span>
+                  <span class="module-badge active">Schedule</span>
+                  <span class="module-badge inactive">Content</span>
+                  <span class="module-badge inactive">Partners</span>
+                  <span class="module-badge inactive">Attendees</span>
+                </div>
+              </div>
+
+              <div class="event-card" onclick="alert('Demo: View past event')" style="opacity: 0.7;">
+                <div class="event-card-header">
+                  <div style="flex: 1;">
+                    <h3 class="event-card-title">Innovation Week 2024</h3>
+                    <div class="event-card-meta">
+                      <span>November 4-8, 2024</span>
+                      <span>Boston, MA</span>
+                    </div>
+                  </div>
+                  <div class="event-card-menu">
+                    <button class="event-card-menu-toggle" onclick="event.stopPropagation(); toggleEventMenu('menu-past2')">⋯</button>
+                    <div class="event-card-menu-dropdown" id="menu-past2">
+                      <div class="event-card-menu-item" onclick="alert('Demo: Duplicate event')">Duplicate</div>
+                      <div class="event-card-menu-item" onclick="alert('Demo: Export data')">Export Data</div>
+                      <div class="event-card-menu-item danger" onclick="alert('Demo: Delete event')">Delete</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="event-card-modules">
+                  <span class="module-badge active">Speakers</span>
+                  <span class="module-badge inactive">Schedule</span>
+                  <span class="module-badge inactive">Content</span>
+                  <span class="module-badge inactive">Partners</span>
+                  <span class="module-badge inactive">Attendees</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- ===== SCREEN 3: EVENT DASHBOARD ===== -->
+  <div id="screen-event-dashboard" class="screen">
+    <div class="app-layout">
+      <aside class="sidebar">
+        <a href="#" class="sidebar-logo" onclick="showScreen('screen-account-dashboard'); return false;" style="text-decoration: none; display: block; margin-bottom: 32px; line-height: 1; cursor: pointer;">
+          <span style="font-size: 18px; font-weight: 700; letter-spacing: -0.02em; color: var(--primary); display: block;">Seamless</span>
+          <span style="font-size: 11px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-secondary); display: block; margin-top: 2px;">Events</span>
+        </a>
+
+        <!-- Quick Actions Section -->
+        <div style="margin-top: 8px;">
+          <nav style="display: flex; flex-direction: column; gap: 4px;">
+            <a onclick="alert('Demo: Download full event report')" style="padding: 8px 12px; font-size: var(--font-small); color: var(--primary); cursor: pointer; text-decoration: none; border-radius: 4px; transition: background 0.15s ease;" onmouseover="this.style.background='var(--primary-subtle)'" onmouseout="this.style.background='transparent'">Download Report</a>
+            <a onclick="copyEventDashboard()" style="padding: 8px 12px; font-size: var(--font-small); color: var(--primary); cursor: pointer; text-decoration: none; border-radius: 4px; transition: background 0.15s ease;" onmouseover="this.style.background='var(--primary-subtle)'" onmouseout="this.style.background='transparent'">Copy Dashboard</a>
+          </nav>
+        </div>
+
+        <div style="margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border-default);">
+          <div style="font-size: var(--font-body); font-weight: 600; color: var(--text-primary); margin-bottom: 12px;">ROI Forum 2026</div>
+          <nav class="sidebar-nav">
+            <button class="sidebar-nav-item active" onclick="showScreen('screen-event-dashboard')">
+              Overview
+            </button>
+            <button class="sidebar-nav-item" onclick="showScreen('screen-speaker-list')">
+              Speakers
+            </button>
+            <button class="sidebar-nav-item" onclick="alert('Demo: Schedule module - not yet briefed')">
+              Schedule
+            </button>
+            <button class="sidebar-nav-item" onclick="alert('Demo: Content module - not yet briefed')">
+              Content
+            </button>
+            <button class="sidebar-nav-item" onclick="alert('Demo: Partners module - not yet briefed')">
+              Partners
+            </button>
+            <button class="sidebar-nav-item" onclick="alert('Demo: Attendees module coming soon')" style="opacity: 0.5;">
+              Attendees
+            </button>
+          </nav>
+        </div>
+
+        <div style="margin-top: auto; padding-top: 24px; border-top: 1px solid var(--border-default);">
+          <button class="sidebar-nav-item" onclick="alert('Demo: Event settings - not yet briefed')">
+            Settings
+          </button>
+        </div>
+      </aside>
+
+      <main class="main-content">
+        <header class="header">
+          <div class="header-breadcrumbs">
+            <div style="display: flex; align-items: center; gap: 8px; font-size: var(--font-h3); color: var(--text-secondary);">
+              <a onclick="showScreen('screen-account-dashboard')" style="color: var(--primary); cursor: pointer; text-decoration: none;">TidyOps</a>
+              <span>›</span>
+              <span style="color: var(--text-primary); font-weight: 600;">ROI Forum 2026</span>
+            </div>
+          </div>
+          <div class="header-user">
+            <div class="user-dropdown">
+              <div class="user-dropdown-toggle" onclick="toggleUserMenu(event)">
+                <div class="user-info">
+                  <div class="user-info-name">James Stafford</div>
+                  <div class="user-info-account">TidyOps Account</div>
+                </div>
+                <div class="user-avatar">J</div>
+              </div>
+              <div class="user-dropdown-menu" id="userMenu">
+                <div class="user-dropdown-item" onclick="alert('Demo: My Profile - personal settings (name, email, password)')">My Profile</div>
+                <div class="user-dropdown-item" onclick="alert('Demo: Notification preferences - not yet briefed')">Notifications</div>
+                <div class="user-dropdown-item" onclick="alert('Demo: Switch Organization - not yet briefed')">Switch Organization</div>
+                <div class="user-dropdown-divider"></div>
+                <div class="user-dropdown-item" onclick="alert('Demo: Log out')">Log Out</div>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <div class="page-content">
+          <!-- Modules - Compact -->
+          <div style="margin-bottom: 32px;">
+            <h3 style="font-size: var(--font-h3); font-weight: 600; margin-bottom: 16px; color: var(--text-secondary);">Modules</h3>
+            <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
+              <button onclick="showScreen('screen-speaker-list')" class="btn btn-secondary" style="padding: 8px 16px;">Speakers</button>
+              <button onclick="alert('Demo: Schedule module - not yet briefed')" class="btn btn-secondary" style="padding: 8px 16px;">Schedule</button>
+              <button onclick="alert('Demo: Content module - not yet briefed')" class="btn btn-secondary" style="padding: 8px 16px;">Content</button>
+              <button onclick="alert('Demo: Partners module - not yet briefed')" class="btn btn-secondary" style="padding: 8px 16px;">Partners</button>
+              <button onclick="alert('Demo: Attendees module coming soon')" style="padding: 8px 16px; background: var(--bg-app); border: 1px solid var(--border-default); border-radius: 6px; color: var(--text-secondary); cursor: pointer; font-size: var(--font-body); font-weight: 500; position: relative; transition: all 0.15s ease;" onmouseover="this.style.background='var(--bg-surface)'; document.getElementById('attendees-badge').style.display='inline-block'" onmouseout="this.style.background='var(--bg-app)'; document.getElementById('attendees-badge').style.display='none'">
+                Attendees
+                <span id="attendees-badge" style="display: none; position: absolute; top: -8px; right: -8px; font-size: 10px; padding: 2px 6px; background: var(--text-secondary); color: white; border-radius: 3px; font-weight: 600; white-space: nowrap;">Coming Soon</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Event Dashboard Summary -->
+          <div>
+            <h2 style="font-size: var(--font-h2); font-weight: 600; margin-bottom: 24px;">Event Dashboard</h2>
+
+            <!-- Speaker Module Summary -->
+            <div class="card" style="margin-bottom: 24px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border-default);">
+                <h3 style="font-size: var(--font-h3); font-weight: 600; margin: 0;">Speakers</h3>
+                <button onclick="showScreen('screen-speaker-list')" class="btn btn-secondary" style="padding: 6px 12px;">View Module</button>
+              </div>
+
+              <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; margin-bottom: 20px;">
+                <div>
+                  <div style="font-size: var(--font-small); color: var(--text-secondary); margin-bottom: 4px;">Total Speakers</div>
+                  <div style="font-size: 24px; font-weight: 600; color: var(--text-primary);">25</div>
+                </div>
+                <div>
+                  <div style="font-size: var(--font-small); color: var(--text-secondary); margin-bottom: 4px;">Approved</div>
+                  <div style="font-size: 24px; font-weight: 600; color: var(--success);">17</div>
+                  <div style="font-size: var(--font-small); color: var(--text-secondary);">68%</div>
+                </div>
+                <div>
+                  <div style="font-size: var(--font-small); color: var(--text-secondary); margin-bottom: 4px;">Pending Review</div>
+                  <div style="font-size: 24px; font-weight: 600; color: var(--warning);">8</div>
+                </div>
+                <div>
+                  <div style="font-size: var(--font-small); color: var(--text-secondary); margin-bottom: 4px;">Applications</div>
+                  <div style="font-size: 24px; font-weight: 600; color: var(--text-primary);">6</div>
+                  <div style="font-size: var(--font-small); color: var(--text-secondary);">4 pending</div>
+                </div>
+              </div>
+
+              <div style="padding: 12px; background: var(--primary-subtle); border-radius: 6px; border-left: 3px solid var(--primary);">
+                <div style="font-weight: 600; font-size: var(--font-body); margin-bottom: 4px;">Published Embeds</div>
+                <div style="font-size: var(--font-small); color: var(--text-secondary); line-height: 1.6;">
+                  • All Speakers: 15 speakers live<br>
+                  • Newsletter Feature: 3 speakers live<br>
+                  • 2 approved speakers not yet published
+                </div>
+              </div>
+            </div>
+
+            <!-- Schedule Module Summary -->
+            <div class="card" style="margin-bottom: 24px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border-default);">
+                <h3 style="font-size: var(--font-h3); font-weight: 600; margin: 0;">Schedule</h3>
+                <button onclick="alert('Demo: Schedule module - not yet briefed')" class="btn btn-secondary" style="padding: 6px 12px;">View Module</button>
+              </div>
+              <div style="font-size: var(--font-body); color: var(--text-secondary);">Schedule module data will appear here once configured</div>
+            </div>
+
+            <!-- Content Module Summary -->
+            <div class="card" style="margin-bottom: 24px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border-default);">
+                <h3 style="font-size: var(--font-h3); font-weight: 600; margin: 0;">Content</h3>
+                <button onclick="alert('Demo: Content module - not yet briefed')" class="btn btn-secondary" style="padding: 6px 12px;">View Module</button>
+              </div>
+              <div style="font-size: var(--font-body); color: var(--text-secondary);">Content module data will appear here once configured</div>
+            </div>
+
+            <!-- Partners Module Summary -->
+            <div class="card" style="margin-bottom: 24px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border-default);">
+                <h3 style="font-size: var(--font-h3); font-weight: 600; margin: 0;">Partners</h3>
+                <button onclick="alert('Demo: Partners module - not yet briefed')" class="btn btn-secondary" style="padding: 6px 12px;">View Module</button>
+              </div>
+              <div style="font-size: var(--font-body); color: var(--text-secondary);">Partners module data will appear here once configured</div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- ===== SCREEN 4: SPEAKER LIST ===== -->
+  <div id="screen-speaker-list" class="screen">
+    <div class="app-layout">
+      <aside class="sidebar">
+        <a href="#" class="sidebar-logo" onclick="showScreen('screen-account-dashboard'); return false;" style="text-decoration: none; display: block; margin-bottom: 32px; line-height: 1; cursor: pointer;">
+          <span style="font-size: 18px; font-weight: 700; letter-spacing: -0.02em; color: var(--primary); display: block;">Seamless</span>
+          <span style="font-size: 11px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-secondary); display: block; margin-top: 2px;">Events</span>
+        </a>
+
+        <!-- Quick Actions Section -->
+        <div style="margin-top: 8px;">
+          <nav style="display: flex; flex-direction: column; gap: 4px;">
+            <a onclick="document.getElementById('modal-add-speaker').style.display='flex'" style="padding: 8px 12px; font-size: var(--font-small); color: var(--primary); cursor: pointer; text-decoration: none; border-radius: 4px; transition: background 0.15s ease;" onmouseover="this.style.background='var(--primary-subtle)'" onmouseout="this.style.background='transparent'">Add Speaker</a>
+            <a onclick="alert('Demo: Email all speakers')" style="padding: 8px 12px; font-size: var(--font-small); color: var(--primary); cursor: pointer; text-decoration: none; border-radius: 4px; transition: background 0.15s ease;" onmouseover="this.style.background='var(--primary-subtle)'" onmouseout="this.style.background='transparent'">Email All Speakers</a>
+          </nav>
+        </div>
+
+        <div style="margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border-default);">
+          <div style="font-size: var(--font-body); font-weight: 600; color: var(--text-primary); margin-bottom: 12px;">ROI Forum 2026</div>
+          <nav class="sidebar-nav">
+            <button class="sidebar-nav-item" onclick="showScreen('screen-event-dashboard')">
+              Overview
+            </button>
+            <button class="sidebar-nav-item active" onclick="showScreen('screen-speaker-list')">
+              Speakers
+            </button>
+            <button class="sidebar-nav-item" onclick="alert('Demo: Schedule module - not yet briefed')">
+              Schedule
+            </button>
+            <button class="sidebar-nav-item" onclick="alert('Demo: Content module - not yet briefed')">
+              Content
+            </button>
+            <button class="sidebar-nav-item" onclick="alert('Demo: Partners module - not yet briefed')">
+              Partners
+            </button>
+            <button class="sidebar-nav-item" onclick="alert('Demo: Attendees module coming soon')" style="opacity: 0.5;">
+              Attendees
+            </button>
+          </nav>
+        </div>
+
+        <div style="margin-top: auto; padding-top: 24px; border-top: 1px solid var(--border-default);">
+          <button class="sidebar-nav-item" onclick="alert('Demo: Event settings - not yet briefed')">
+            Settings
+          </button>
+        </div>
+      </aside>
+
+      <main class="main-content">
+        <header class="header">
+          <div class="header-breadcrumbs">
+            <div style="display: flex; align-items: center; gap: 8px; font-size: var(--font-h3); color: var(--text-secondary);">
+              <a onclick="showScreen('screen-account-dashboard')" style="color: var(--primary); cursor: pointer; text-decoration: none;">TidyOps</a>
+              <span>›</span>
+              <a onclick="showScreen('screen-event-dashboard')" style="color: var(--primary); cursor: pointer; text-decoration: none;">ROI Forum 2026</a>
+              <span>›</span>
+              <span style="color: var(--text-primary); font-weight: 600;">Speakers</span>
+            </div>
+          </div>
+          <div class="header-user">
+            <!-- Help Icon -->
+            <button onclick="alert('Demo: Help & Documentation - contextual help, guides, and support contact')" style="width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--border-default); background: var(--bg-surface); color: var(--text-secondary); font-size: 16px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s ease; margin-right: 16px;" onmouseover="this.style.borderColor='var(--primary)'; this.style.color='var(--primary)'" onmouseout="this.style.borderColor='var(--border-default)'; this.style.color='var(--text-secondary)'">?</button>
+
+            <div class="user-dropdown">
+              <div class="user-dropdown-toggle" onclick="toggleUserMenu(event)">
+                <div class="user-info">
+                  <div class="user-info-name">James Stafford</div>
+                  <div class="user-info-account">TidyOps Account</div>
+                </div>
+                <div class="user-avatar">J</div>
+              </div>
+              <div class="user-dropdown-menu" id="userMenu">
+                <div class="user-dropdown-item" onclick="alert('Demo: My Profile - personal settings (name, email, password)')">My Profile</div>
+                <div class="user-dropdown-item" onclick="alert('Demo: Notification preferences - not yet briefed')">Notifications</div>
+                <div class="user-dropdown-item" onclick="alert('Demo: Switch Organization - not yet briefed')">Switch Organization</div>
+                <div class="user-dropdown-divider"></div>
+                <div class="user-dropdown-item" onclick="alert('Demo: Log out')">Log Out</div>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <!-- Tabs Navigation -->
+        <div style="border-bottom: 1px solid var(--border-default); background: var(--bg-surface); padding: 0 32px;">
+          <div style="display: flex; gap: 32px;">
+            <button id="tab-speakers" onclick="showSpeakerTab('speakers')" style="padding: 16px 0; border: none; background: none; font-size: var(--font-body); font-weight: 500; color: var(--primary); border-bottom: 2px solid var(--primary); cursor: pointer;">Speakers</button>
+            <button id="tab-applications" onclick="showSpeakerTab('applications')" style="padding: 16px 0; border: none; background: none; font-size: var(--font-body); font-weight: 500; color: var(--text-secondary); border-bottom: 2px solid transparent; cursor: pointer; transition: all 0.15s ease;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-secondary)'">Applications</button>
+            <button id="tab-forms" onclick="showSpeakerTab('forms')" style="padding: 16px 0; border: none; background: none; font-size: var(--font-body); font-weight: 500; color: var(--text-secondary); border-bottom: 2px solid transparent; cursor: pointer; transition: all 0.15s ease;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-secondary)'">Forms</button>
+            <button id="tab-embed-builder" onclick="showSpeakerTab('embed-builder')" style="padding: 16px 0; border: none; background: none; font-size: var(--font-body); font-weight: 500; color: var(--text-secondary); border-bottom: 2px solid transparent; cursor: pointer; transition: all 0.15s ease;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-secondary)'">Embed Builder</button>
+          </div>
+        </div>
+
+        <div class="page-content">
+          <!-- Tab Content: Speakers -->
+          <div id="speaker-tab-speakers">
+          <!-- All Speakers Explainer -->
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px 0; margin-bottom: 16px;">
+            <p style="font-size: var(--font-body); color: var(--text-secondary); margin: 0;">Add new speakers by approving an application or directly adding a speaker</p>
+            <button onclick="document.getElementById('modal-add-speaker').style.display='flex'" class="btn btn-primary">+ Add Speaker</button>
+          </div>
+
+          <!-- All Speakers List -->
+          <div class="table-container">
+            <div class="table-header">
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <div class="table-header-title">All Speakers (25)</div>
+                <!-- Status Badge for Speaker List -->
+                <button onclick="document.getElementById('modal-speakers-status').style.display='flex'" style="display: flex; align-items: center; gap: 8px; padding: 6px 12px; background: var(--warning); border: 1px solid var(--warning); border-radius: 6px; color: white; font-size: var(--font-small); font-weight: 500; cursor: pointer; transition: all 0.15s ease;" onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'">
+                  <span>⚠ 8 Pending</span>
+                  <span style="font-size: 10px;">▼</span>
+                </button>
+              </div>
+              <div style="display: flex; gap: 12px; align-items: center;">
+                <select id="statusFilter" onchange="filterSpeakers()" style="padding: 8px 12px; border: 1px solid var(--border-default); border-radius: var(--radius-btn); font-size: var(--font-body); background: var(--bg-surface); cursor: pointer;">
+                  <option value="all">All Statuses</option>
+                  <option value="pending">Pending</option>
+                  <option value="approved">Approved</option>
+                </select>
+                <input type="text" class="table-search" placeholder="Search speakers...">
+              </div>
+            </div>
+
+            <table>
+              <thead>
+                <tr>
+                  <th>Speaker</th>
+                  <th>Company</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr data-status="approved" onclick="showScreen('screen-speaker-detail')" style="cursor: pointer;">
+                  <td>
+                    <div class="table-user">
+                      <div class="table-avatar">J</div>
+                      <div class="table-user-info">
+                        <div class="table-user-name">James Stafford</div>
+                        <div class="table-user-email">jamesmartinstafford@gmail.com</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>TidyOps</td>
+                  <td><span class="status-badge approved">Approved</span></td>
+                </tr>
+
+                <tr data-status="pending" onclick="alert('Demo: View Sarah Chen speaker detail')" style="cursor: pointer;">
+                  <td>
+                    <div class="table-user">
+                      <div class="table-avatar">S</div>
+                      <div class="table-user-info">
+                        <div class="table-user-name">Sarah Chen</div>
+                        <div class="table-user-email">sarah.chen@techcorp.com</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>TechCorp</td>
+                  <td><span class="status-badge pending">Pending</span></td>
+                </tr>
+
+                <tr data-status="approved" onclick="alert('Demo: View speaker detail')" style="cursor: pointer;">
+                  <td>
+                    <div class="table-user">
+                      <div class="table-avatar">M</div>
+                      <div class="table-user-info">
+                        <div class="table-user-name">Marcus Johnson</div>
+                        <div class="table-user-email">marcus@innovate.io</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>Innovate.io</td>
+                  <td><span class="status-badge approved">Approved</span></td>
+                </tr>
+
+                <tr data-status="approved" onclick="alert('Demo: View speaker detail')" style="cursor: pointer;">
+                  <td>
+                    <div class="table-user">
+                      <div class="table-avatar">A</div>
+                      <div class="table-user-info">
+                        <div class="table-user-name">Alex Kim</div>
+                        <div class="table-user-email">alex@datasync.io</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>DataSync</td>
+                  <td><span class="status-badge approved">Approved</span></td>
+                </tr>
+
+                <tr data-status="approved" onclick="alert('Demo: View speaker detail')" style="cursor: pointer;">
+                  <td>
+                    <div class="table-user">
+                      <div class="table-avatar">R</div>
+                      <div class="table-user-info">
+                        <div class="table-user-name">Rachel Torres</div>
+                        <div class="table-user-email">rachel.torres@cloudnine.com</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>CloudNine</td>
+                  <td><span class="status-badge approved">Approved</span></td>
+                </tr>
+
+                <tr data-status="pending" onclick="alert('Demo: View speaker detail')" style="cursor: pointer;">
+                  <td>
+                    <div class="table-user">
+                      <div class="table-avatar">D</div>
+                      <div class="table-user-info">
+                        <div class="table-user-name">David Patel</div>
+                        <div class="table-user-email">d.patel@nexgen.ai</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>NexGen AI</td>
+                  <td><span class="status-badge pending">Pending</span></td>
+                </tr>
+
+                <tr data-status="approved" onclick="alert('Demo: View speaker detail')" style="cursor: pointer;">
+                  <td>
+                    <div class="table-user">
+                      <div class="table-avatar">L</div>
+                      <div class="table-user-info">
+                        <div class="table-user-name">Lisa Anderson</div>
+                        <div class="table-user-email">lisa@growthlab.com</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>GrowthLab</td>
+                  <td><span class="status-badge approved">Approved</span></td>
+                </tr>
+
+                <tr data-status="approved" onclick="alert('Demo: View speaker detail')" style="cursor: pointer;">
+                  <td>
+                    <div class="table-user">
+                      <div class="table-avatar">M</div>
+                      <div class="table-user-info">
+                        <div class="table-user-name">Michael Rodriguez</div>
+                        <div class="table-user-email">michael.r@techventures.io</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>TechVentures</td>
+                  <td><span class="status-badge approved">Approved</span></td>
+                </tr>
+
+                <tr data-status="pending" onclick="alert('Demo: View speaker detail')" style="cursor: pointer;">
+                  <td>
+                    <div class="table-user">
+                      <div class="table-avatar">E</div>
+                      <div class="table-user-info">
+                        <div class="table-user-name">Emily Watson</div>
+                        <div class="table-user-email">emily@futuresystems.com</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>FutureSystems</td>
+                  <td><span class="status-badge pending">Pending</span></td>
+                </tr>
+
+                <tr data-status="approved" onclick="alert('Demo: View speaker detail')" style="cursor: pointer;">
+                  <td>
+                    <div class="table-user">
+                      <div class="table-avatar">J</div>
+                      <div class="table-user-info">
+                        <div class="table-user-name">Jennifer Martinez</div>
+                        <div class="table-user-email">j.martinez@innovatesolutions.com</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>InnovateSolutions</td>
+                  <td><span class="status-badge approved">Approved</span></td>
+                </tr>
+
+                <tr data-status="approved" onclick="alert('Demo: View speaker detail')" style="cursor: pointer;">
+                  <td>
+                    <div class="table-user">
+                      <div class="table-avatar">K</div>
+                      <div class="table-user-info">
+                        <div class="table-user-name">Kevin Chang</div>
+                        <div class="table-user-email">kevin@brightpath.io</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>BrightPath</td>
+                  <td><span class="status-badge approved">Approved</span></td>
+                </tr>
+
+                <tr data-status="pending" onclick="alert('Demo: View speaker detail')" style="cursor: pointer;">
+                  <td>
+                    <div class="table-user">
+                      <div class="table-avatar">N</div>
+                      <div class="table-user-info">
+                        <div class="table-user-name">Nina Kowalski</div>
+                        <div class="table-user-email">nina@quantumleap.com</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>QuantumLeap</td>
+                  <td><span class="status-badge pending">Pending</span></td>
+                </tr>
+
+                <tr data-status="approved" onclick="alert('Demo: View speaker detail')" style="cursor: pointer;">
+                  <td>
+                    <div class="table-user">
+                      <div class="table-avatar">T</div>
+                      <div class="table-user-info">
+                        <div class="table-user-name">Thomas Wright</div>
+                        <div class="table-user-email">twright@accelerate.io</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>Accelerate</td>
+                  <td><span class="status-badge approved">Approved</span></td>
+                </tr>
+
+                <tr data-status="approved" onclick="alert('Demo: View speaker detail')" style="cursor: pointer;">
+                  <td>
+                    <div class="table-user">
+                      <div class="table-avatar">P</div>
+                      <div class="table-user-info">
+                        <div class="table-user-name">Priya Sharma</div>
+                        <div class="table-user-email">priya@digitalcore.com</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>DigitalCore</td>
+                  <td><span class="status-badge approved">Approved</span></td>
+                </tr>
+
+                <tr data-status="pending" onclick="alert('Demo: View speaker detail')" style="cursor: pointer;">
+                  <td>
+                    <div class="table-user">
+                      <div class="table-avatar">B</div>
+                      <div class="table-user-info">
+                        <div class="table-user-name">Brandon Lee</div>
+                        <div class="table-user-email">brandon@strategyplus.io</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>StrategyPlus</td>
+                  <td><span class="status-badge pending">Pending</span></td>
+                </tr>
+
+                <tr data-status="approved" onclick="alert('Demo: View speaker detail')" style="cursor: pointer;">
+                  <td>
+                    <div class="table-user">
+                      <div class="table-avatar">O</div>
+                      <div class="table-user-info">
+                        <div class="table-user-name">Olivia Bennett</div>
+                        <div class="table-user-email">olivia@momentum.tech</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>Momentum</td>
+                  <td><span class="status-badge approved">Approved</span></td>
+                </tr>
+
+                <tr data-status="approved" onclick="alert('Demo: View speaker detail')" style="cursor: pointer;">
+                  <td>
+                    <div class="table-user">
+                      <div class="table-avatar">C</div>
+                      <div class="table-user-info">
+                        <div class="table-user-name">Carlos Rivera</div>
+                        <div class="table-user-email">carlos@visionary.io</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>Visionary</td>
+                  <td><span class="status-badge approved">Approved</span></td>
+                </tr>
+
+                <tr data-status="pending" onclick="alert('Demo: View speaker detail')" style="cursor: pointer;">
+                  <td>
+                    <div class="table-user">
+                      <div class="table-avatar">H</div>
+                      <div class="table-user-info">
+                        <div class="table-user-name">Hannah Foster</div>
+                        <div class="table-user-email">hannah@nextwave.com</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>NextWave</td>
+                  <td><span class="status-badge pending">Pending</span></td>
+                </tr>
+
+                <tr data-status="approved" onclick="alert('Demo: View speaker detail')" style="cursor: pointer;">
+                  <td>
+                    <div class="table-user">
+                      <div class="table-avatar">G</div>
+                      <div class="table-user-info">
+                        <div class="table-user-name">Gregory Thompson</div>
+                        <div class="table-user-email">greg@alphagroup.io</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>AlphaGroup</td>
+                  <td><span class="status-badge approved">Approved</span></td>
+                </tr>
+
+                <tr data-status="approved" onclick="alert('Demo: View speaker detail')" style="cursor: pointer;">
+                  <td>
+                    <div class="table-user">
+                      <div class="table-avatar">V</div>
+                      <div class="table-user-info">
+                        <div class="table-user-name">Victoria Hayes</div>
+                        <div class="table-user-email">victoria@elitetech.com</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>EliteTech</td>
+                  <td><span class="status-badge approved">Approved</span></td>
+                </tr>
+
+                <tr data-status="pending" onclick="alert('Demo: View speaker detail')" style="cursor: pointer;">
+                  <td>
+                    <div class="table-user">
+                      <div class="table-avatar">I</div>
+                      <div class="table-user-info">
+                        <div class="table-user-name">Isaac Moore</div>
+                        <div class="table-user-email">isaac@pioneersys.io</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>PioneerSys</td>
+                  <td><span class="status-badge pending">Pending</span></td>
+                </tr>
+
+                <tr data-status="approved" onclick="alert('Demo: View speaker detail')" style="cursor: pointer;">
+                  <td>
+                    <div class="table-user">
+                      <div class="table-avatar">S</div>
+                      <div class="table-user-info">
+                        <div class="table-user-name">Sophia Nguyen</div>
+                        <div class="table-user-email">sophia@breakthrough.com</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>Breakthrough</td>
+                  <td><span class="status-badge approved">Approved</span></td>
+                </tr>
+
+                <tr data-status="approved" onclick="alert('Demo: View speaker detail')" style="cursor: pointer;">
+                  <td>
+                    <div class="table-user">
+                      <div class="table-avatar">Z</div>
+                      <div class="table-user-info">
+                        <div class="table-user-name">Zachary Cooper</div>
+                        <div class="table-user-email">zach@summitgroup.io</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>SummitGroup</td>
+                  <td><span class="status-badge approved">Approved</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          </div>
+          <!-- End Tab Content: Speakers -->
+
+          <!-- Tab Content: Applications -->
+          <div id="speaker-tab-applications" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px;">
+              <div>
+                <h2 style="font-size: var(--font-h2); font-weight: 600; margin-bottom: 8px;">Applications</h2>
+                <p style="font-size: var(--font-body); color: var(--text-secondary);">Review and approve speaker applications</p>
+              </div>
+            </div>
+
+            <!-- Applications Table -->
+            <div class="table-container">
+              <div class="table-header">
+                <div class="table-header-title">Applications (6)</div>
+                <div style="display: flex; gap: 12px; align-items: center;">
+                  <select style="padding: 8px 12px; border: 1px solid var(--border-default); border-radius: var(--radius-btn); font-size: var(--font-body); background: var(--bg-surface); cursor: pointer;">
+                    <option value="all">All Statuses</option>
+                    <option value="pending">Pending</option>
+                    <option value="approved">Approved</option>
+                    <option value="rejected">Rejected</option>
+                  </select>
+                  <input type="text" class="table-search" placeholder="Search applications...">
+                </div>
+              </div>
+
+              <table>
+                <thead>
+                  <tr>
+                    <th>Speaker</th>
+                    <th>Company</th>
+                    <th>Topic</th>
+                    <th>Status</th>
+                    <th style="text-align: right;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr style="cursor: pointer;" onclick="alert('Demo: View Amy Patterson application detail')">
+                    <td>
+                      <div class="table-user">
+                        <div class="table-avatar">A</div>
+                        <div class="table-user-info">
+                          <div class="table-user-name">Amy Patterson</div>
+                          <div class="table-user-email">amy@techflow.io</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>TechFlow</td>
+                    <td style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">AI-Powered Operations at Scale</td>
+                    <td><span class="status-badge pending">Pending</span></td>
+                    <td style="text-align: right;">
+                      <button onclick="event.stopPropagation(); alert('Demo: Application approved')" class="btn btn-secondary" style="padding: 6px 12px; margin-right: 8px;">Approve</button>
+                      <button onclick="event.stopPropagation(); alert('Demo: Application rejected')" class="btn btn-secondary" style="padding: 6px 12px; color: var(--danger); border-color: var(--danger);">Reject</button>
+                    </td>
+                  </tr>
+
+                  <tr style="cursor: pointer;">
+                    <td>
+                      <div class="table-user">
+                        <div class="table-avatar">R</div>
+                        <div class="table-user-info">
+                          <div class="table-user-name">Robert Chen</div>
+                          <div class="table-user-email">robert@dataplus.com</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>DataPlus</td>
+                    <td style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Building Resilient Data Infrastructure</td>
+                    <td><span class="status-badge pending">Pending</span></td>
+                    <td style="text-align: right;">
+                      <button onclick="alert('Demo: Application approved')" class="btn btn-secondary" style="padding: 6px 12px; margin-right: 8px;">Approve</button>
+                      <button onclick="alert('Demo: Application rejected')" class="btn btn-secondary" style="padding: 6px 12px; color: var(--danger); border-color: var(--danger);">Reject</button>
+                    </td>
+                  </tr>
+
+                  <tr style="cursor: pointer;">
+                    <td>
+                      <div class="table-user">
+                        <div class="table-avatar">M</div>
+                        <div class="table-user-info">
+                          <div class="table-user-name">Maria Garcia</div>
+                          <div class="table-user-email">maria@innovatehub.com</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>InnovateHub</td>
+                    <td style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Product-Led Growth Strategies</td>
+                    <td><span class="status-badge approved">Approved</span></td>
+                    <td style="text-align: right;">
+                      <span style="font-size: var(--font-small); color: var(--text-secondary);">Moved to Speakers</span>
+                    </td>
+                  </tr>
+
+                  <tr style="cursor: pointer;">
+                    <td>
+                      <div class="table-user">
+                        <div class="table-avatar">J</div>
+                        <div class="table-user-info">
+                          <div class="table-user-name">James Wilson</div>
+                          <div class="table-user-email">j.wilson@cloudscale.io</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>CloudScale</td>
+                    <td style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Scaling Teams Through Automation</td>
+                    <td><span class="status-badge pending">Pending</span></td>
+                    <td style="text-align: right;">
+                      <button onclick="alert('Demo: Application approved')" class="btn btn-secondary" style="padding: 6px 12px; margin-right: 8px;">Approve</button>
+                      <button onclick="alert('Demo: Application rejected')" class="btn btn-secondary" style="padding: 6px 12px; color: var(--danger); border-color: var(--danger);">Reject</button>
+                    </td>
+                  </tr>
+
+                  <tr style="cursor: pointer;">
+                    <td>
+                      <div class="table-user">
+                        <div class="table-avatar">L</div>
+                        <div class="table-user-info">
+                          <div class="table-user-name">Laura Mitchell</div>
+                          <div class="table-user-email">laura@nextstep.ai</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>NextStep AI</td>
+                    <td style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Machine Learning in Production</td>
+                    <td><span class="status-badge" style="background: var(--danger); color: white;">Rejected</span></td>
+                    <td style="text-align: right;">
+                      <span style="font-size: var(--font-small); color: var(--text-secondary);">Not a fit</span>
+                    </td>
+                  </tr>
+
+                  <tr style="cursor: pointer;">
+                    <td>
+                      <div class="table-user">
+                        <div class="table-avatar">D</div>
+                        <div class="table-user-info">
+                          <div class="table-user-name">David Park</div>
+                          <div class="table-user-email">david@strategysuite.com</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>StrategySuite</td>
+                    <td style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Customer Success at Enterprise Scale</td>
+                    <td><span class="status-badge pending">Pending</span></td>
+                    <td style="text-align: right;">
+                      <button onclick="alert('Demo: Application approved')" class="btn btn-secondary" style="padding: 6px 12px; margin-right: 8px;">Approve</button>
+                      <button onclick="alert('Demo: Application rejected')" class="btn btn-secondary" style="padding: 6px 12px; color: var(--danger); border-color: var(--danger);">Reject</button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <!-- End Tab Content: Applications -->
+
+          <!-- Tab Content: Forms -->
+          <div id="speaker-tab-forms" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px;">
+              <div>
+                <h2 style="font-size: var(--font-h2); font-weight: 600; margin-bottom: 8px;">Speaker Information Forms</h2>
+                <p style="font-size: var(--font-body); color: var(--text-secondary);">Create and manage forms to collect speaker information</p>
+              </div>
+              <button onclick="document.getElementById('modal-create-form').style.display='flex'" class="btn btn-primary">+ Create New Form</button>
+            </div>
+
+            <!-- Forms Cards Grid -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 24px;">
+
+              <!-- Form Card 1: Speaker Info -->
+              <div class="card" style="padding: 24px;">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 16px;">
+                  <div>
+                    <h3 style="font-size: var(--font-h3); font-weight: 600; margin-bottom: 8px;">ROI Forum 2026 Speaker Info</h3>
+                    <span style="display: inline-block; padding: 4px 8px; background: var(--success); color: white; border-radius: 4px; font-size: var(--font-small); font-weight: 500; margin-bottom: 12px;">Speaker Information Form</span>
+                  </div>
+                  <div style="position: relative;">
+                    <button onclick="toggleEmbedMenu('form1', event)" style="width: 32px; height: 32px; border-radius: 6px; border: 1px solid var(--border-default); background: var(--bg-surface); color: var(--text-secondary); font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s ease;" onmouseover="this.style.borderColor='var(--primary)'; this.style.background='var(--primary-subtle)'" onmouseout="this.style.borderColor='var(--border-default)'; this.style.background='var(--bg-surface)'">⋮</button>
+                    <div id="form1-menu" style="display: none; position: absolute; top: 40px; right: 0; background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); min-width: 160px; z-index: 1000;">
+                      <div onclick="editForm('ROI Forum 2026 Speaker Info', 'speaker-info', ['bio', 'headshot', 'logo']); document.getElementById('form1-menu').style.display='none'" style="padding: 12px 16px; font-size: var(--font-small); color: var(--text-primary); cursor: pointer; border-bottom: 1px solid var(--border-default); transition: background 0.15s;" onmouseover="this.style.background='var(--bg-app)'" onmouseout="this.style.background='transparent'">Edit</div>
+                      <div onclick="alert('Demo: Duplicate form')" style="padding: 12px 16px; font-size: var(--font-small); color: var(--text-primary); cursor: pointer; border-bottom: 1px solid var(--border-default); transition: background 0.15s;" onmouseover="this.style.background='var(--bg-app)'" onmouseout="this.style.background='transparent'">Duplicate</div>
+                      <div onclick="if(confirm('Delete this form?')) alert('Demo: Form deleted')" style="padding: 12px 16px; font-size: var(--font-small); color: var(--danger); cursor: pointer; transition: background 0.15s;" onmouseover="this.style.background='#FEF2F2'" onmouseout="this.style.background='transparent'">Delete</div>
+                    </div>
+                  </div>
+                </div>
+                <div style="font-size: var(--font-body); color: var(--text-secondary); margin-bottom: 8px;">
+                  <strong style="color: var(--text-primary); font-size: var(--font-h3);">12</strong> submissions
+                </div>
+                <div style="font-size: var(--font-small); color: var(--text-secondary); margin-bottom: 20px;">For confirmed speakers - submissions go directly to Speakers</div>
+                <button onclick="document.getElementById('modal-get-form-link').style.display='flex'" class="btn btn-primary" style="width: 100%;">Get Form Link</button>
+              </div>
+
+              <!-- Form Card 2: Application -->
+              <div class="card" style="padding: 24px;">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 16px;">
+                  <div>
+                    <h3 style="font-size: var(--font-h3); font-weight: 600; margin-bottom: 8px;">ROI Forum 2026 Call for Speakers</h3>
+                    <span style="display: inline-block; padding: 4px 8px; background: var(--warning); color: white; border-radius: 4px; font-size: var(--font-small); font-weight: 500; margin-bottom: 12px;">Application Form</span>
+                  </div>
+                  <div style="position: relative;">
+                    <button onclick="toggleEmbedMenu('form2', event)" style="width: 32px; height: 32px; border-radius: 6px; border: 1px solid var(--border-default); background: var(--bg-surface); color: var(--text-secondary); font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s ease;" onmouseover="this.style.borderColor='var(--primary)'; this.style.background='var(--primary-subtle)'" onmouseout="this.style.borderColor='var(--border-default)'; this.style.background='var(--bg-surface)'">⋮</button>
+                    <div id="form2-menu" style="display: none; position: absolute; top: 40px; right: 0; background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); min-width: 160px; z-index: 1000;">
+                      <div onclick="editForm('ROI Forum 2026 Call for Speakers', 'application', ['bio', 'headshot', 'logo', 'topic']); document.getElementById('form2-menu').style.display='none'" style="padding: 12px 16px; font-size: var(--font-small); color: var(--text-primary); cursor: pointer; border-bottom: 1px solid var(--border-default); transition: background 0.15s;" onmouseover="this.style.background='var(--bg-app)'" onmouseout="this.style.background='transparent'">Edit</div>
+                      <div onclick="alert('Demo: Duplicate form')" style="padding: 12px 16px; font-size: var(--font-small); color: var(--text-primary); cursor: pointer; border-bottom: 1px solid var(--border-default); transition: background 0.15s;" onmouseover="this.style.background='var(--bg-app)'" onmouseout="this.style.background='transparent'">Duplicate</div>
+                      <div onclick="if(confirm('Delete this form?')) alert('Demo: Form deleted')" style="padding: 12px 16px; font-size: var(--font-small); color: var(--danger); cursor: pointer; transition: background 0.15s;" onmouseover="this.style.background='#FEF2F2'" onmouseout="this.style.background='transparent'">Delete</div>
+                    </div>
+                  </div>
+                </div>
+                <div style="font-size: var(--font-body); color: var(--text-secondary); margin-bottom: 8px;">
+                  <strong style="color: var(--text-primary); font-size: var(--font-h3);">6</strong> submissions
+                </div>
+                <div style="font-size: var(--font-small); color: var(--text-secondary); margin-bottom: 20px;">Applications require approval - submissions go to Applications tab</div>
+                <button onclick="document.getElementById('modal-get-form-link').style.display='flex'" class="btn btn-primary" style="width: 100%;">Get Form Link</button>
+              </div>
+
+            </div>
+          </div>
+          <!-- End Tab Content: Forms -->
+
+          <!-- Tab Content: Embed Builder -->
+          <div id="speaker-tab-embed-builder" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px;">
+              <div>
+                <h2 style="font-size: var(--font-h2); font-weight: 600; margin-bottom: 8px;">Embed Builder</h2>
+                <p style="font-size: var(--font-body); color: var(--text-secondary);">Create and manage embeds for your website, newsletters, and partner pages</p>
+              </div>
+              <button onclick="document.getElementById('modal-create-embed').style.display='flex'" class="btn btn-primary">+ Create New Embed</button>
+            </div>
+
+            <!-- Embed Cards Grid -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 24px;">
+
+              <!-- Embed Card 1: All Speakers -->
+              <div class="card" style="padding: 24px;">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 16px;">
+                  <div>
+                    <h3 style="font-size: var(--font-h3); font-weight: 600; margin-bottom: 8px;">All Speakers</h3>
+                    <span style="display: inline-block; padding: 4px 8px; background: var(--primary-subtle); color: var(--primary); border-radius: 4px; font-size: var(--font-small); font-weight: 500; margin-bottom: 12px;">Website Cards</span>
+                  </div>
+                  <div style="position: relative;">
+                    <button onclick="toggleEmbedMenu('embed1', event)" style="width: 32px; height: 32px; border-radius: 6px; border: 1px solid var(--border-default); background: var(--bg-surface); color: var(--text-secondary); font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s ease;" onmouseover="this.style.borderColor='var(--primary)'; this.style.background='var(--primary-subtle)'" onmouseout="this.style.borderColor='var(--border-default)'; this.style.background='var(--bg-surface)'">⋮</button>
+                    <div id="embed1-menu" style="display: none; position: absolute; top: 40px; right: 0; background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); min-width: 160px; z-index: 1000;">
+                      <div onclick="editEmbed('All Speakers', 'website', ['james','marcus','alex','rachel','lisa','kevin'])" style="padding: 12px 16px; font-size: var(--font-small); color: var(--text-primary); cursor: pointer; border-bottom: 1px solid var(--border-default); transition: background 0.15s;" onmouseover="this.style.background='var(--bg-app)'" onmouseout="this.style.background='transparent'">Edit</div>
+                      <div onclick="alert('Demo: Duplicate embed')" style="padding: 12px 16px; font-size: var(--font-small); color: var(--text-primary); cursor: pointer; border-bottom: 1px solid var(--border-default); transition: background 0.15s;" onmouseover="this.style.background='var(--bg-app)'" onmouseout="this.style.background='transparent'">Duplicate</div>
+                      <div onclick="if(confirm('Delete this embed?')) alert('Demo: Embed deleted')" style="padding: 12px 16px; font-size: var(--font-small); color: var(--danger); cursor: pointer; transition: background 0.15s;" onmouseover="this.style.background='#FEF2F2'" onmouseout="this.style.background='transparent'">Delete</div>
+                    </div>
+                  </div>
+                </div>
+                <div style="font-size: var(--font-body); color: var(--text-secondary); margin-bottom: 20px;">
+                  <strong style="color: var(--text-primary); font-size: var(--font-h3);">15</strong> speakers live
+                </div>
+                <button onclick="document.getElementById('modal-get-embed-code').style.display='flex'" class="btn btn-primary" style="width: 100%;">&lt;&gt; Get Embed Code</button>
+              </div>
+
+              <!-- Embed Card 2: Newsletter Feature -->
+              <div class="card" style="padding: 24px;">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 16px;">
+                  <div>
+                    <h3 style="font-size: var(--font-h3); font-weight: 600; margin-bottom: 8px;">Newsletter Feature</h3>
+                    <span style="display: inline-block; padding: 4px 8px; background: var(--primary-subtle); color: var(--primary); border-radius: 4px; font-size: var(--font-small); font-weight: 500; margin-bottom: 12px;">Promo Cards</span>
+                  </div>
+                  <div style="position: relative;">
+                    <button onclick="toggleEmbedMenu('embed2', event)" style="width: 32px; height: 32px; border-radius: 6px; border: 1px solid var(--border-default); background: var(--bg-surface); color: var(--text-secondary); font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s ease;" onmouseover="this.style.borderColor='var(--primary)'; this.style.background='var(--primary-subtle)'" onmouseout="this.style.borderColor='var(--border-default)'; this.style.background='var(--bg-surface)'">⋮</button>
+                    <div id="embed2-menu" style="display: none; position: absolute; top: 40px; right: 0; background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); min-width: 160px; z-index: 1000;">
+                      <div onclick="editEmbed('Newsletter Feature', 'promo', ['james','marcus','alex'])" style="padding: 12px 16px; font-size: var(--font-small); color: var(--text-primary); cursor: pointer; border-bottom: 1px solid var(--border-default); transition: background 0.15s;" onmouseover="this.style.background='var(--bg-app)'" onmouseout="this.style.background='transparent'">Edit</div>
+                      <div onclick="alert('Demo: Duplicate embed')" style="padding: 12px 16px; font-size: var(--font-small); color: var(--text-primary); cursor: pointer; border-bottom: 1px solid var(--border-default); transition: background 0.15s;" onmouseover="this.style.background='var(--bg-app)'" onmouseout="this.style.background='transparent'">Duplicate</div>
+                      <div onclick="if(confirm('Delete this embed?')) alert('Demo: Embed deleted')" style="padding: 12px 16px; font-size: var(--font-small); color: var(--danger); cursor: pointer; transition: background 0.15s;" onmouseover="this.style.background='#FEF2F2'" onmouseout="this.style.background='transparent'">Delete</div>
+                    </div>
+                  </div>
+                </div>
+                <div style="font-size: var(--font-body); color: var(--text-secondary); margin-bottom: 20px;">
+                  <strong style="color: var(--text-primary); font-size: var(--font-h3);">3</strong> speakers live
+                </div>
+                <button onclick="document.getElementById('modal-get-embed-code').style.display='flex'" class="btn btn-primary" style="width: 100%;">&lt;&gt; Get Embed Code</button>
+              </div>
+
+            </div>
+          </div>
+          <!-- End Tab Content: Embed Builder -->
+
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- ===== SCREEN 5: SPEAKER DETAIL ===== -->
+  <div id="screen-speaker-detail" class="screen">
+    <div class="app-layout">
+      <aside class="sidebar">
+        <a href="#" class="sidebar-logo" onclick="showScreen('screen-account-dashboard'); return false;" style="text-decoration: none; display: block; margin-bottom: 32px; line-height: 1; cursor: pointer;">
+          <span style="font-size: 18px; font-weight: 700; letter-spacing: -0.02em; color: var(--primary); display: block;">Seamless</span>
+          <span style="font-size: 11px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-secondary); display: block; margin-top: 2px;">Events</span>
+        </a>
+
+        <!-- Quick Actions Section -->
+        <div style="margin-top: 8px;">
+          <nav style="display: flex; flex-direction: column; gap: 8px;">
+            <a href="mailto:jamesmartinstafford@gmail.com" style="padding: 8px 12px; font-size: var(--font-small); color: var(--primary); cursor: pointer; text-decoration: none; border-radius: 4px; transition: background 0.15s ease;" onmouseover="this.style.background='var(--primary-subtle)'" onmouseout="this.style.background='transparent'">Email Speaker</a>
+            <a onclick="alert('Demo: Send reminder email to speaker')" style="padding: 8px 12px; font-size: var(--font-small); color: var(--primary); cursor: pointer; text-decoration: none; border-radius: 4px; transition: background 0.15s ease;" onmouseover="this.style.background='var(--primary-subtle)'" onmouseout="this.style.background='transparent'">Send Reminder Email</a>
+
+            <!-- Download Section -->
+            <div style="margin-top: 4px;">
+              <div style="font-size: var(--font-small); font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; padding-left: 12px;">Download</div>
+              <div style="display: flex; flex-direction: column; gap: 2px;">
+                <a onclick="alert('Demo: Download promo card PNG')" style="padding: 8px 12px 8px 24px; font-size: var(--font-small); color: var(--primary); cursor: pointer; text-decoration: none; border-radius: 4px; transition: background 0.15s ease;" onmouseover="this.style.background='var(--primary-subtle)'" onmouseout="this.style.background='transparent'">Promo Card</a>
+                <a onclick="alert('Demo: Download website card PNG')" style="padding: 8px 12px 8px 24px; font-size: var(--font-small); color: var(--primary); cursor: pointer; text-decoration: none; border-radius: 4px; transition: background 0.15s ease;" onmouseover="this.style.background='var(--primary-subtle)'" onmouseout="this.style.background='transparent'">Website Card</a>
+              </div>
+            </div>
+
+            <!-- Embed Section -->
+            <div style="margin-top: 4px;">
+              <div style="font-size: var(--font-small); font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; padding-left: 12px;">Embed</div>
+              <div style="display: flex; flex-direction: column; gap: 2px;">
+                <a onclick="alert('Demo: Copy promo embed code')" style="padding: 8px 12px 8px 24px; font-size: var(--font-small); color: var(--primary); cursor: pointer; text-decoration: none; border-radius: 4px; transition: background 0.15s ease;" onmouseover="this.style.background='var(--primary-subtle)'" onmouseout="this.style.background='transparent'">Promo Card</a>
+                <a onclick="alert('Demo: Copy website embed code')" style="padding: 8px 12px 8px 24px; font-size: var(--font-small); color: var(--primary); cursor: pointer; text-decoration: none; border-radius: 4px; transition: background 0.15s ease;" onmouseover="this.style.background='var(--primary-subtle)'" onmouseout="this.style.background='transparent'">Website Card</a>
+              </div>
+            </div>
+          </nav>
+        </div>
+
+        <div style="margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border-default);">
+          <div style="font-size: var(--font-body); font-weight: 600; color: var(--text-primary); margin-bottom: 12px;">ROI Forum 2026</div>
+          <nav class="sidebar-nav">
+            <button class="sidebar-nav-item" onclick="showScreen('screen-event-dashboard')">
+              Overview
+            </button>
+            <button class="sidebar-nav-item active" onclick="showScreen('screen-speaker-list')">
+              Speakers
+            </button>
+            <button class="sidebar-nav-item" onclick="alert('Demo: Schedule module - not yet briefed')">
+              Schedule
+            </button>
+            <button class="sidebar-nav-item" onclick="alert('Demo: Content module - not yet briefed')">
+              Content
+            </button>
+            <button class="sidebar-nav-item" onclick="alert('Demo: Partners module - not yet briefed')">
+              Partners
+            </button>
+            <button class="sidebar-nav-item" onclick="alert('Demo: Attendees module coming soon')" style="opacity: 0.5;">
+              Attendees
+            </button>
+          </nav>
+        </div>
+
+        <div style="margin-top: auto; padding-top: 24px; border-top: 1px solid var(--border-default);">
+          <button class="sidebar-nav-item" onclick="alert('Demo: Event settings - not yet briefed')">
+            Settings
+          </button>
+        </div>
+      </aside>
+
+      <main class="main-content">
+        <header class="header">
+          <div class="header-breadcrumbs">
+            <div style="display: flex; align-items: center; gap: 16px;">
+              <div style="display: flex; align-items: center; gap: 8px; font-size: var(--font-h3); color: var(--text-secondary);">
+                <a onclick="showScreen('screen-account-dashboard')" style="color: var(--primary); cursor: pointer; text-decoration: none;">TidyOps</a>
+                <span>›</span>
+                <a onclick="showScreen('screen-event-dashboard')" style="color: var(--primary); cursor: pointer; text-decoration: none;">ROI Forum 2026</a>
+                <span>›</span>
+                <a onclick="showScreen('screen-speaker-list')" style="color: var(--primary); cursor: pointer; text-decoration: none;">Speakers</a>
+                <span>›</span>
+                <span style="color: var(--text-primary); font-weight: 600;">James Stafford</span>
+              </div>
+
+              <!-- Speaker Options Menu -->
+              <div style="position: relative;">
+                <button onclick="toggleSpeakerMenu(event)" style="width: 32px; height: 32px; border-radius: 6px; border: 1px solid var(--border-default); background: var(--bg-surface); color: var(--text-secondary); font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s ease;" onmouseover="this.style.borderColor='var(--primary)'; this.style.background='var(--primary-subtle)'" onmouseout="this.style.borderColor='var(--border-default)'; this.style.background='var(--bg-surface)'">⋮</button>
+
+                <div id="speakerMenu" style="display: none; position: absolute; top: 40px; right: 0; background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); min-width: 220px; z-index: 1000;">
+                  <div onclick="if(confirm('Archive James Stafford? Speaker will be removed from the event list but data is retained.')) alert('Demo: Speaker archived');" style="padding: 12px 16px; font-size: var(--font-small); color: var(--text-primary); cursor: pointer; border-bottom: 1px solid var(--border-default); transition: background 0.15s;" onmouseover="this.style.background='var(--bg-app)'" onmouseout="this.style.background='transparent'">
+                    <div style="font-weight: 500; margin-bottom: 4px;">Archive Speaker</div>
+                    <div style="font-size: 12px; color: var(--text-secondary); line-height: 1.4;">Remove from event list, data retained</div>
+                  </div>
+                  <div onclick="if(confirm('Delete James Stafford? This action cannot be undone. All speaker data will be permanently deleted.')) alert('Demo: Speaker deleted');" style="padding: 12px 16px; font-size: var(--font-small); color: var(--danger); cursor: pointer; transition: background 0.15s;" onmouseover="this.style.background='#FEF2F2'" onmouseout="this.style.background='transparent'">
+                    <div style="font-weight: 500;">Delete Speaker</div>
+                    <div style="font-size: 12px; color: var(--text-secondary); line-height: 1.4;">Permanently delete all data</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="header-user">
+            <!-- Help Icon -->
+            <button onclick="alert('Demo: Help & Documentation - contextual help, guides, and support contact')" style="width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--border-default); background: var(--bg-surface); color: var(--text-secondary); font-size: 16px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s ease; margin-right: 16px;" onmouseover="this.style.borderColor='var(--primary)'; this.style.color='var(--primary)'" onmouseout="this.style.borderColor='var(--border-default)'; this.style.color='var(--text-secondary)'">?</button>
+
+            <div class="user-dropdown">
+              <div class="user-dropdown-toggle" onclick="toggleUserMenu(event)">
+                <div class="user-info">
+                  <div class="user-info-name">James Stafford</div>
+                  <div class="user-info-account">TidyOps Account</div>
+                </div>
+                <div class="user-avatar">J</div>
+              </div>
+              <div class="user-dropdown-menu" id="userMenu">
+                <div class="user-dropdown-item" onclick="alert('Demo: My Profile - personal settings (name, email, password)')">My Profile</div>
+                <div class="user-dropdown-item" onclick="alert('Demo: Notification preferences - not yet briefed')">Notifications</div>
+                <div class="user-dropdown-item" onclick="alert('Demo: Switch Organization - not yet briefed')">Switch Organization</div>
+                <div class="user-dropdown-divider"></div>
+                <div class="user-dropdown-item" onclick="alert('Demo: Log out')">Log Out</div>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <div class="page-content">
+          <!-- Section 1: Speaker Information + Assets -->
+          <div class="card" style="margin-bottom: 24px;">
+            <!-- Status Badge and Card Header -->
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border-default);">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <h3 style="font-size: var(--font-h3); font-weight: 600; margin: 0;">Speaker Information</h3>
+                <span onclick="document.getElementById('modal-speaker-information').style.display='flex'" style="cursor: pointer; opacity: 0.6; transition: opacity 0.15s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'">✏️</span>
+              </div>
+              <button onclick="document.getElementById('modal-speaker-status').style.display='flex'" style="display: flex; align-items: center; gap: 8px; padding: 6px 12px; background: var(--success); border: 1px solid var(--success); border-radius: 6px; color: white; font-size: var(--font-small); font-weight: 500; cursor: pointer; transition: all 0.15s ease;" onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'">
+                <span>✓ Ready</span>
+                <span style="font-size: 10px;">▼</span>
+              </button>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr auto auto; gap: 32px; align-items: start;">
+
+              <!-- Speaker Information -->
+              <div>
+                <div style="display: flex; flex-direction: column; gap: 16px;">
+                  <div>
+                    <div style="font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; font-size: var(--font-small);">First Name</div>
+                    <div style="color: var(--text-primary); font-size: var(--font-body);">James</div>
+                  </div>
+
+                  <div>
+                    <div style="font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; font-size: var(--font-small);">Last Name</div>
+                    <div style="color: var(--text-primary); font-size: var(--font-body);">Stafford</div>
+                  </div>
+
+                  <div>
+                    <div style="font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; font-size: var(--font-small);">Email</div>
+                    <a href="mailto:jamesmartinstafford@gmail.com" style="color: var(--primary); font-size: var(--font-body); text-decoration: none; cursor: pointer;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">jamesmartinstafford@gmail.com</a>
+                  </div>
+
+                  <div>
+                    <div style="font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; font-size: var(--font-small);">Title</div>
+                    <div style="color: var(--text-primary); font-size: var(--font-body);">Founder & CEO</div>
+                  </div>
+
+                  <div>
+                    <div style="font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; font-size: var(--font-small);">Company</div>
+                    <div style="color: var(--text-primary); font-size: var(--font-body);">TidyOps</div>
+                  </div>
+
+                  <div>
+                    <div style="font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; font-size: var(--font-small);">LinkedIn</div>
+                    <div style="color: var(--text-primary); font-size: var(--font-body);">linkedin.com/in/jamesstafford</div>
+                  </div>
+
+                  <div>
+                    <div style="font-weight: 600; color: var(--text-secondary); margin-bottom: 8px; font-size: var(--font-small);">Bio</div>
+                    <button class="btn btn-secondary" style="padding: 8px 16px; font-size: var(--font-small);" onclick="document.getElementById('modal-bio').style.display='flex'">View Bio</button>
+                  </div>
+
+                  <div>
+                    <div style="font-weight: 600; color: var(--text-secondary); margin-bottom: 8px; font-size: var(--font-small);">Internal Notes</div>
+                    <button class="btn btn-secondary" style="padding: 8px 16px; font-size: var(--font-small);" onclick="document.getElementById('modal-notes').style.display='flex'">View/Edit Notes</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Headshot -->
+              <div style="text-align: center; min-width: 150px;">
+                <div style="font-weight: 600; color: var(--text-secondary); margin-bottom: 8px; font-size: var(--font-small);">Headshot</div>
+                <img src="https://ui-avatars.com/api/?name=James+Stafford&size=200&background=4E5BA6&color=fff&bold=true" style="width: 150px; height: 150px; border-radius: 6px; border: 2px solid var(--border-default); margin-bottom: 8px; object-fit: cover; cursor: pointer;" onclick="alert('Demo: View full size')">
+                <button class="btn btn-secondary" style="width: 100%; padding: 6px; font-size: var(--font-small);" onclick="alert('Demo: Replace')">Replace</button>
+              </div>
+
+              <!-- Company Logo -->
+              <div style="text-align: center; min-width: 150px;">
+                <div style="font-weight: 600; color: var(--text-secondary); margin-bottom: 8px; font-size: var(--font-small);">Logo</div>
+                <div style="width: 150px; height: 150px; background: white; border-radius: 6px; border: 2px solid var(--border-default); display: flex; align-items: center; justify-content: center; margin-bottom: 8px; padding: 16px; cursor: pointer;" onclick="alert('Demo: View full size')">
+                  <div style="font-size: 20px; font-weight: 700; color: var(--primary); text-align: center; line-height: 1.2;">TidyOps</div>
+                </div>
+                <button class="btn btn-secondary" style="width: 100%; padding: 6px; font-size: var(--font-small);" onclick="alert('Demo: Replace')">Replace</button>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Section 2: Preview Cards (Side by Side) -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; align-items: start;">
+
+              <!-- Website Card -->
+              <div class="card" style="display: flex; flex-direction: column; height: 100%;">
+                <div style="margin-bottom: 16px;">
+                  <h3 style="font-size: var(--font-h3); font-weight: 600; margin: 0;">Website Card</h3>
+                </div>
+                <div style="background: var(--bg-app); padding: 20px; border-radius: 8px; border: 2px dashed var(--border-default); flex: 1; display: flex; flex-direction: column;">
+                  <div style="font-size: var(--font-small); color: var(--text-secondary); text-align: center; margin-bottom: 12px;">Final output: 600x280px</div>
+
+                  <!-- Preview Card (Horizontal) -->
+                  <div style="background: white; border-radius: 8px; padding: 20px; display: flex; gap: 20px; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 16px;">
+                    <img src="https://ui-avatars.com/api/?name=James+Stafford&size=200&background=4E5BA6&color=fff&bold=true" style="width: 100px; height: 100px; flex-shrink: 0; border-radius: 6px; object-fit: cover;">
+                    <div style="flex: 1;">
+                      <div style="font-size: 18px; font-weight: 600; margin-bottom: 6px;">James Stafford</div>
+                      <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 2px;">Founder & CEO</div>
+                      <div style="font-size: 13px; font-weight: 500; color: var(--text-primary);">TidyOps</div>
+                      <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-default); font-size: 18px; font-weight: 700; color: var(--primary);">TidyOps</div>
+                    </div>
+                  </div>
+
+                  <div style="display: flex; gap: 8px; margin-top: auto;">
+                    <button class="btn btn-primary" style="flex: 1; background: var(--success); border-color: var(--success); color: white; font-size: var(--font-body); cursor: default;" onclick="alert('Demo: Card already approved')">✓ Approved</button>
+                    <button class="btn btn-secondary" style="padding: 10px 16px; font-size: var(--font-body);" onclick="alert('Demo: Download website card PNG')">Download</button>
+                    <button class="btn btn-secondary" style="padding: 10px 16px; font-size: var(--font-body);" onclick="alert('Demo: Copy website embed code')">Embed</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Promo Card -->
+              <div class="card" style="display: flex; flex-direction: column; height: 100%;">
+                <div style="margin-bottom: 16px;">
+                  <h3 style="font-size: var(--font-h3); font-weight: 600; margin: 0;">Promo Card</h3>
+                </div>
+                <div style="background: var(--bg-app); padding: 20px; border-radius: 8px; border: 2px dashed var(--border-default); flex: 1; display: flex; flex-direction: column;">
+                  <div style="font-size: var(--font-small); color: var(--text-secondary); text-align: center; margin-bottom: 12px;">Final output: 1080x1080px</div>
+
+                  <!-- Preview Card (Square - Smaller) -->
+                  <div style="background: white; border: 3px solid var(--primary); border-radius: 8px; width: 200px; aspect-ratio: 1; margin: 0 auto 16px auto; position: relative; overflow: hidden;">
+                    <!-- Centered Layout -->
+                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; width: 100%; padding: 16px;">
+                      <img src="https://ui-avatars.com/api/?name=James+Stafford&size=200&background=4E5BA6&color=fff&bold=true" style="width: 60px; height: 60px; border-radius: 4px; margin: 0 auto 10px auto; object-fit: cover;">
+                      <div style="font-size: 13px; font-weight: 700; margin-bottom: 3px;">James Stafford</div>
+                      <div style="font-size: 10px; color: var(--text-secondary); margin-bottom: 2px;">Founder & CEO</div>
+                      <div style="font-size: 10px; font-weight: 600; color: var(--text-primary);">TidyOps</div>
+                      <div style="margin-top: 10px; font-size: 12px; font-weight: 700; color: var(--primary);">TidyOps</div>
+                    </div>
+                  </div>
+
+                  <div style="display: flex; gap: 8px; margin-top: auto;">
+                    <button class="btn btn-primary" style="flex: 1; background: var(--success); border-color: var(--success); color: white; font-size: var(--font-body); cursor: default;" onclick="alert('Demo: Card already approved')">✓ Approved</button>
+                    <button class="btn btn-secondary" style="padding: 10px 16px; font-size: var(--font-body);" onclick="alert('Demo: Download promo card PNG')">Download</button>
+                    <button class="btn btn-secondary" style="padding: 10px 16px; font-size: var(--font-body);" onclick="alert('Demo: Copy promo embed code')">Embed</button>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+
+          <!-- Section 3: Content (Full Width) -->
+          <div class="card">
+            <h3 style="font-size: var(--font-h3); font-weight: 600; margin-bottom: 20px;">Content</h3>
+            <div style="padding: 32px; background: var(--bg-app); border-radius: 6px; text-align: center;">
+              <div style="font-size: var(--font-body); color: var(--text-secondary);">No active sessions</div>
+              <div style="font-size: var(--font-small); color: var(--text-secondary); margin-top: 4px;">Sessions will appear here when synced from Schedule module</div>
+            </div>
+          </div>
+
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- ===== TEAM MODAL ===== -->
+  <div id="modal-team" class="modal-overlay">
+    <div class="modal-container">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title">Team</h2>
+          <p class="modal-subtitle">Manage TidyOps team members</p>
+        </div>
+        <button class="modal-close" onclick="closeTeamModal()">×</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="table-container" style="border: none; box-shadow: none;">
+          <table>
+            <thead>
+              <tr>
+                <th>Member</th>
+                <th>Role</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <div class="table-user">
+                    <div class="table-avatar">J</div>
+                    <div class="table-user-info">
+                      <div class="table-user-name">James Stafford</div>
+                      <div class="table-user-email">jamesmartinstafford@gmail.com</div>
+                    </div>
+                  </div>
+                </td>
+                <td><span class="status-badge" style="background: #DBEAFE; color: #1E40AF;">Admin</span></td>
+                <td>
+                  <button class="btn-icon" onclick="alert('Demo: Cannot remove yourself')" disabled style="opacity: 0.5; cursor: not-allowed;">⋯</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-primary" onclick="alert('Demo: Add team member - not yet briefed')">+ Add Member</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== CREATE EVENT MODAL ===== -->
+  <div id="modal-create-event" class="modal-overlay">
+    <div class="modal-container">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title">Create New Event</h2>
+          <p class="modal-subtitle">Event will be added to TidyOps</p>
+        </div>
+        <button class="modal-close" onclick="closeCreateEventModal()">×</button>
+      </div>
+
+      <div class="modal-body">
+        <form id="create-event-form">
+          <!-- Event Name -->
+          <div class="form-group">
+            <label>Event Name *</label>
+            <input type="text" placeholder="Event Name" required>
+          </div>
+
+          <!-- Location -->
+          <div class="form-group">
+            <label>Location *</label>
+            <input type="text" placeholder="Location" required>
+          </div>
+
+          <!-- Date Range -->
+          <div class="form-row">
+            <div class="form-group">
+              <label>Start Date *</label>
+              <input type="date" required>
+            </div>
+            <div class="form-group">
+              <label>End Date *</label>
+              <input type="date" required>
+            </div>
+          </div>
+
+          <!-- Lead Contact -->
+          <div class="form-group">
+            <label>Lead Contact *</label>
+            <input type="text" placeholder="Lead Contact" required>
+          </div>
+
+          <!-- Contact Email -->
+          <div class="form-group">
+            <label>Contact Email *</label>
+            <input type="email" placeholder="contact@yourevent.com" required>
+          </div>
+
+          <!-- Event Website -->
+          <div class="form-group">
+            <label>Event Website</label>
+            <input type="url" placeholder="https://yourevent.com">
+          </div>
+
+          <!-- Event Logo -->
+          <div class="form-group">
+            <label>Event Logo</label>
+            <div class="file-upload-area" onclick="alert('Demo: File upload would open here')">
+              <div class="file-upload-icon">📸</div>
+              <div class="file-upload-text">Click to upload or drag and drop</div>
+              <div class="file-upload-hint">PNG, JPG or SVG (max 5MB)</div>
+            </div>
+          </div>
+
+          <!-- Modules Selection -->
+          <div class="form-group">
+            <label>Select Modules</label>
+            <div class="checkbox-group">
+              <div class="checkbox-item">
+                <input type="checkbox" id="module-speakers" value="speakers">
+                <label for="module-speakers">Speaker Management</label>
+              </div>
+              <div class="checkbox-item">
+                <input type="checkbox" id="module-schedule" value="schedule">
+                <label for="module-schedule">Schedule Builder</label>
+              </div>
+              <div class="checkbox-item">
+                <input type="checkbox" id="module-content" value="content">
+                <label for="module-content">Content Management</label>
+              </div>
+              <div class="checkbox-item">
+                <input type="checkbox" id="module-partners" value="partners">
+                <label for="module-partners">Partners & Exhibitors</label>
+              </div>
+              <div class="checkbox-item">
+                <input type="checkbox" id="module-attendees" value="attendees">
+                <label for="module-attendees">Attendee Management</label>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeCreateEventModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="submitCreateEvent()">Create Event</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== BIO MODAL ===== -->
+  <div id="modal-bio" class="modal-overlay" style="display: none;" onclick="if(event.target.id==='modal-bio') this.style.display='none'">
+    <div class="modal-container" style="max-width: 600px;">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title">Bio</h2>
+          <p class="modal-subtitle">James Stafford</p>
+        </div>
+        <button class="modal-close" onclick="document.getElementById('modal-bio').style.display='none'">×</button>
+      </div>
+
+      <div class="modal-body">
+        <div style="padding: 20px; background: var(--bg-app); border-radius: 6px; margin-bottom: 16px;">
+          <p id="bio-text" style="font-size: var(--font-body); line-height: 1.6; color: var(--text-primary); margin: 0;">
+            James is a seasoned event operations expert with over 10 years of experience building tools that help teams run better conferences. He founded TidyOps to simplify event management for small and medium-sized event teams, focusing on clarity, reliability, and ease of use. Prior to TidyOps, James led operations for multiple industry summits and community events across Europe and North America.
+          </p>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="document.getElementById('modal-bio').style.display='none'">Close</button>
+        <button class="btn btn-primary" onclick="copyBioToClipboard()">Copy Bio</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SPEAKER INFORMATION MODAL ===== -->
+  <div id="modal-speaker-information" class="modal-overlay" style="display: none;" onclick="if(event.target.id==='modal-speaker-information') this.style.display='none'">
+    <div class="modal-container" style="max-width: 600px;">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title">Speaker Information</h2>
+          <p class="modal-subtitle">Edit speaker details</p>
+        </div>
+        <button class="modal-close" onclick="document.getElementById('modal-speaker-information').style.display='none'">×</button>
+      </div>
+
+      <div class="modal-body">
+        <form style="display: flex; flex-direction: column; gap: 20px;">
+          <div>
+            <label style="display: block; font-size: var(--font-small); font-weight: 600; margin-bottom: 8px; color: var(--text-primary);">First Name</label>
+            <input type="text" value="James" style="width: 100%; padding: 12px 16px; border: 1px solid var(--border-default); border-radius: var(--radius-btn); font-size: var(--font-body);">
+          </div>
+
+          <div>
+            <label style="display: block; font-size: var(--font-small); font-weight: 600; margin-bottom: 8px; color: var(--text-primary);">Last Name</label>
+            <input type="text" value="Stafford" style="width: 100%; padding: 12px 16px; border: 1px solid var(--border-default); border-radius: var(--radius-btn); font-size: var(--font-body);">
+          </div>
+
+          <div>
+            <label style="display: block; font-size: var(--font-small); font-weight: 600; margin-bottom: 8px; color: var(--text-primary);">Email</label>
+            <input type="email" value="jamesmartinstafford@gmail.com" style="width: 100%; padding: 12px 16px; border: 1px solid var(--border-default); border-radius: var(--radius-btn); font-size: var(--font-body);">
+          </div>
+
+          <div>
+            <label style="display: block; font-size: var(--font-small); font-weight: 600; margin-bottom: 8px; color: var(--text-primary);">Title</label>
+            <input type="text" value="Founder & CEO" style="width: 100%; padding: 12px 16px; border: 1px solid var(--border-default); border-radius: var(--radius-btn); font-size: var(--font-body);">
+          </div>
+
+          <div>
+            <label style="display: block; font-size: var(--font-small); font-weight: 600; margin-bottom: 8px; color: var(--text-primary);">Company</label>
+            <input type="text" value="TidyOps" style="width: 100%; padding: 12px 16px; border: 1px solid var(--border-default); border-radius: var(--radius-btn); font-size: var(--font-body);">
+          </div>
+
+          <div>
+            <label style="display: block; font-size: var(--font-small); font-weight: 600; margin-bottom: 8px; color: var(--text-primary);">LinkedIn</label>
+            <input type="text" value="linkedin.com/in/jamesstafford" style="width: 100%; padding: 12px 16px; border: 1px solid var(--border-default); border-radius: var(--radius-btn); font-size: var(--font-body);">
+          </div>
+        </form>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="document.getElementById('modal-speaker-information').style.display='none'">Cancel</button>
+        <button class="btn btn-primary" onclick="alert('Demo: Save speaker information'); document.getElementById('modal-speaker-information').style.display='none'">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== INTERNAL NOTES MODAL ===== -->
+  <div id="modal-notes" class="modal-overlay" style="display: none;" onclick="if(event.target.id==='modal-notes') this.style.display='none'">
+    <div class="modal-container" style="max-width: 600px;">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title">Internal Notes</h2>
+          <p class="modal-subtitle">For internal use only - not visible to speaker</p>
+        </div>
+        <button class="modal-close" onclick="document.getElementById('modal-notes').style.display='none'">×</button>
+      </div>
+
+      <div class="modal-body">
+        <textarea id="internal-notes-text" style="width: 100%; min-height: 200px; padding: 16px; border: 1px solid var(--border-default); border-radius: var(--radius-btn); font-size: var(--font-body); font-family: inherit; line-height: 1.6; resize: vertical;" placeholder="Add internal notes about this speaker (e.g., travel requirements, special requests, dietary restrictions, communication preferences...)">Confirmed attendance via email on Jan 10. Requires vegetarian meal option. Prefers morning speaking slots.</textarea>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="document.getElementById('modal-notes').style.display='none'">Cancel</button>
+        <button class="btn btn-primary" onclick="alert('Demo: Notes saved'); document.getElementById('modal-notes').style.display='none'">Save Notes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SPEAKERS STATUS MODAL (LIST VIEW) ===== -->
+  <div id="modal-speakers-status" class="modal-overlay" style="display: none;" onclick="if(event.target.id==='modal-speakers-status') this.style.display='none'">
+    <div class="modal-container" style="max-width: 550px;">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title">Speaker Status Report</h2>
+          <p class="modal-subtitle">ROI Forum 2026</p>
+        </div>
+        <button class="modal-close" onclick="document.getElementById('modal-speakers-status').style.display='none'">×</button>
+      </div>
+
+      <div class="modal-body">
+        <div style="display: flex; flex-direction: column; gap: 24px;">
+
+          <!-- Summary Stats -->
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;">
+            <div style="text-align: center; padding: 16px; background: var(--bg-app); border-radius: 8px;">
+              <div style="font-size: 28px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px;">25</div>
+              <div style="font-size: var(--font-small); color: var(--text-secondary);">Total Speakers</div>
+            </div>
+            <div style="text-align: center; padding: 16px; background: #FFF7ED; border-radius: 8px;">
+              <div style="font-size: 28px; font-weight: 700; color: var(--warning); margin-bottom: 4px;">8</div>
+              <div style="font-size: var(--font-small); color: var(--text-secondary);">Pending</div>
+            </div>
+            <div style="text-align: center; padding: 16px; background: #F0FDF4; border-radius: 8px;">
+              <div style="font-size: 28px; font-weight: 700; color: var(--success); margin-bottom: 4px;">17</div>
+              <div style="font-size: var(--font-small); color: var(--text-secondary);">Approved</div>
+            </div>
+          </div>
+
+          <!-- EMBEDS Section -->
+          <div>
+            <div style="font-weight: 600; font-size: var(--font-body); color: var(--text-primary); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid var(--primary);">EMBEDS</div>
+
+            <ul style="margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px;">
+              <li style="font-size: var(--font-body); color: var(--text-primary);">All Speakers: <span style="color: var(--text-secondary);">15 speakers live</span></li>
+              <li style="font-size: var(--font-body); color: var(--text-primary);">Newsletter Feature: <span style="color: var(--text-secondary);">3 speakers live</span></li>
+            </ul>
+
+            <div style="margin-top: 16px; padding: 12px; background: var(--primary-subtle); border-radius: 6px;">
+              <div style="font-weight: 600; font-size: var(--font-small); color: var(--text-primary); margin-bottom: 4px;">NOT PUBLISHED</div>
+              <div style="font-size: var(--font-small); color: var(--text-secondary);">2 approved speakers not on any embed</div>
+            </div>
+          </div>
+
+          <!-- PENDING Section -->
+          <div>
+            <div style="font-weight: 600; font-size: var(--font-body); color: var(--text-primary); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid var(--warning);">PENDING (8)</div>
+
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <div style="font-size: var(--font-body); color: var(--text-primary);">Sarah Chen - <span style="font-size: var(--font-small); color: var(--text-secondary);">Website Card & Promo Card</span></div>
+              <div style="font-size: var(--font-body); color: var(--text-primary);">David Patel</div>
+              <div style="font-size: var(--font-body); color: var(--text-primary);">Emily Watson</div>
+              <div style="font-size: var(--font-body); color: var(--text-primary);">Nina Kowalski</div>
+              <div style="font-size: var(--font-body); color: var(--text-primary);">Brandon Lee</div>
+              <div style="font-size: var(--font-body); color: var(--text-primary);">Hannah Foster</div>
+              <div style="font-size: var(--font-body); color: var(--text-primary);">Isaac Moore</div>
+            </div>
+          </div>
+
+          <!-- APPROVED Section -->
+          <div>
+            <div style="font-weight: 600; font-size: var(--font-body); color: var(--text-primary); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid var(--success);">APPROVED (17)</div>
+
+            <div style="font-size: var(--font-small); color: var(--text-secondary);">James Stafford, Marcus Johnson, Alex Kim, Rachel Torres, Lisa Anderson, Michael Rodriguez, Jennifer Martinez, Kevin Chang, Thomas Wright, Priya Sharma, Olivia Bennett, Carlos Rivera, Gregory Thompson, Victoria Hayes, Sophia Nguyen, Zachary Cooper, and 1 more</div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="modal-footer" style="display: flex; gap: 8px;">
+        <button class="btn btn-secondary" style="flex: 1;" onclick="copySpeakerReportToClipboard()">Copy Report</button>
+        <button class="btn btn-secondary" style="flex: 1;" onclick="alert('Demo: Send reminder email to Sarah Chen about pending approvals')">Send Reminder</button>
+        <button class="btn btn-primary" onclick="document.getElementById('modal-speakers-status').style.display='none'">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SPEAKER STATUS MODAL (INDIVIDUAL) ===== -->
+  <div id="modal-speaker-status" class="modal-overlay" style="display: none;" onclick="if(event.target.id==='modal-speaker-status') this.style.display='none'">
+    <div class="modal-container" style="max-width: 500px;">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title">Speaker Status</h2>
+          <p class="modal-subtitle">James Stafford</p>
+        </div>
+        <button class="modal-close" onclick="document.getElementById('modal-speaker-status').style.display='none'">×</button>
+      </div>
+
+      <div class="modal-body">
+        <div style="display: flex; flex-direction: column; gap: 20px;">
+
+          <!-- Speaker Information -->
+          <div style="display: flex; align-items: start; gap: 12px;">
+            <div style="width: 24px; height: 24px; background: var(--success); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 14px; flex-shrink: 0; margin-top: 2px;">✓</div>
+            <div style="flex: 1;">
+              <div style="font-weight: 600; font-size: var(--font-body); margin-bottom: 4px;">Speaker Information</div>
+              <div style="font-size: var(--font-small); color: var(--text-secondary);">Profile complete · All required fields submitted</div>
+            </div>
+          </div>
+
+          <!-- Website Card -->
+          <div style="display: flex; align-items: start; gap: 12px;">
+            <div style="width: 24px; height: 24px; background: var(--success); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 14px; flex-shrink: 0; margin-top: 2px;">✓</div>
+            <div style="flex: 1;">
+              <div style="font-weight: 600; font-size: var(--font-body); margin-bottom: 4px;">Website Card</div>
+              <div style="font-size: var(--font-small); color: var(--text-secondary);">Approved · Ready for download and embed</div>
+            </div>
+          </div>
+
+          <!-- Promo Card -->
+          <div style="display: flex; align-items: start; gap: 12px;">
+            <div style="width: 24px; height: 24px; background: var(--success); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 14px; flex-shrink: 0; margin-top: 2px;">✓</div>
+            <div style="flex: 1;">
+              <div style="font-weight: 600; font-size: var(--font-body); margin-bottom: 4px;">Promo Card</div>
+              <div style="font-size: var(--font-small); color: var(--text-secondary);">Approved · Ready for download and embed</div>
+            </div>
+          </div>
+
+          <!-- Content Section -->
+          <div style="display: flex; align-items: start; gap: 12px;">
+            <div style="width: 24px; height: 24px; background: var(--border-default); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); font-size: 14px; flex-shrink: 0; margin-top: 2px;">—</div>
+            <div style="flex: 1;">
+              <div style="font-weight: 600; font-size: var(--font-body); margin-bottom: 4px;">Content</div>
+              <div style="font-size: var(--font-small); color: var(--text-secondary);">No sessions assigned yet</div>
+            </div>
+          </div>
+
+          <!-- Divider -->
+          <div style="border-top: 1px solid var(--border-default); margin: 8px 0;"></div>
+
+          <!-- Communication -->
+          <div>
+            <div style="font-weight: 600; font-size: var(--font-small); color: var(--text-secondary); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Communication</div>
+            <div style="display: flex; flex-direction: column; gap: 6px; font-size: var(--font-small);">
+              <div style="display: flex; justify-content: space-between;">
+                <span style="color: var(--text-secondary);">Last Activity</span>
+                <span style="color: var(--text-primary); font-weight: 500;">Jan 14, 2026</span>
+              </div>
+              <div style="display: flex; justify-content: space-between;">
+                <span style="color: var(--text-secondary);">Last Email Sent</span>
+                <span style="color: var(--text-primary); font-weight: 500;">Jan 10, 2026</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-primary" onclick="document.getElementById('modal-speaker-status').style.display='none'">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== CREATE EMBED MODAL ===== -->
+  <div id="modal-create-embed" class="modal-overlay" style="display: none;" onclick="if(event.target.id==='modal-create-embed') this.style.display='none'">
+    <div class="modal-container" style="max-width: 700px;">
+      <div class="modal-header">
+        <div>
+          <h2 id="embed-modal-title" class="modal-title">Create New Embed</h2>
+          <p class="modal-subtitle">Select speakers to include in your embed</p>
+        </div>
+        <button class="modal-close" onclick="document.getElementById('modal-create-embed').style.display='none'">×</button>
+      </div>
+
+      <div class="modal-body">
+        <div style="display: flex; flex-direction: column; gap: 24px;">
+
+          <!-- Embed Name -->
+          <div>
+            <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: var(--font-body);">Embed Name</label>
+            <input id="embed-name-input" type="text" placeholder="e.g., All Speakers, Newsletter Feature, Keynote Speakers" style="width: 100%; padding: 10px 12px; border: 1px solid var(--border-default); border-radius: 6px; font-size: var(--font-body);" />
+          </div>
+
+          <!-- Card Type -->
+          <div>
+            <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: var(--font-body);">Card Type</label>
+            <div style="display: flex; gap: 12px;">
+              <label id="card-type-website-label" style="flex: 1; display: flex; align-items: center; gap: 8px; padding: 12px; border: 2px solid var(--primary); background: var(--primary-subtle); border-radius: 6px; cursor: pointer;">
+                <input id="card-type-website" type="radio" name="card-type" value="website" checked style="width: 18px; height: 18px;" />
+                <span style="font-weight: 500; font-size: var(--font-body);">Website Cards</span>
+              </label>
+              <label id="card-type-promo-label" style="flex: 1; display: flex; align-items: center; gap: 8px; padding: 12px; border: 2px solid var(--border-default); background: var(--bg-surface); border-radius: 6px; cursor: pointer;">
+                <input id="card-type-promo" type="radio" name="card-type" value="promo" style="width: 18px; height: 18px;" />
+                <span style="font-weight: 500; font-size: var(--font-body);">Promo Cards</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Select Speakers -->
+          <div>
+            <label style="display: block; font-weight: 600; margin-bottom: 12px; font-size: var(--font-body);">Select Speakers <span style="color: var(--text-secondary); font-weight: 400;">(Only approved speakers shown)</span></label>
+
+            <div style="max-height: 400px; overflow-y: auto; border: 1px solid var(--border-default); border-radius: 6px;">
+              <!-- Speaker Checkbox List -->
+              <label onclick="toggleSpeakerCheckbox('james')" style="display: flex; align-items: center; gap: 12px; padding: 12px; border-bottom: 1px solid var(--border-default); cursor: pointer; transition: background 0.15s;" onmouseover="this.style.background='var(--bg-app)'" onmouseout="this.style.background='transparent'">
+                <input type="checkbox" id="speaker-checkbox-james" checked style="width: 18px; height: 18px; cursor: pointer;" onclick="event.stopPropagation()" />
+                <div class="table-avatar" style="width: 36px; height: 36px; font-size: 14px;">J</div>
+                <div style="flex: 1;">
+                  <div style="font-weight: 500; font-size: var(--font-body);">James Stafford</div>
+                  <div style="font-size: var(--font-small); color: var(--text-secondary);">TidyOps</div>
+                </div>
+              </label>
+
+              <label onclick="toggleSpeakerCheckbox('marcus')" style="display: flex; align-items: center; gap: 12px; padding: 12px; border-bottom: 1px solid var(--border-default); cursor: pointer; transition: background 0.15s;" onmouseover="this.style.background='var(--bg-app)'" onmouseout="this.style.background='transparent'">
+                <input type="checkbox" id="speaker-checkbox-marcus" checked style="width: 18px; height: 18px; cursor: pointer;" onclick="event.stopPropagation()" />
+                <div class="table-avatar" style="width: 36px; height: 36px; font-size: 14px;">M</div>
+                <div style="flex: 1;">
+                  <div style="font-weight: 500; font-size: var(--font-body);">Marcus Johnson</div>
+                  <div style="font-size: var(--font-small); color: var(--text-secondary);">Innovate.io</div>
+                </div>
+              </label>
+
+              <label onclick="toggleSpeakerCheckbox('alex')" style="display: flex; align-items: center; gap: 12px; padding: 12px; border-bottom: 1px solid var(--border-default); cursor: pointer; transition: background 0.15s;" onmouseover="this.style.background='var(--bg-app)'" onmouseout="this.style.background='transparent'">
+                <input type="checkbox" id="speaker-checkbox-alex" checked style="width: 18px; height: 18px; cursor: pointer;" onclick="event.stopPropagation()" />
+                <div class="table-avatar" style="width: 36px; height: 36px; font-size: 14px;">A</div>
+                <div style="flex: 1;">
+                  <div style="font-weight: 500; font-size: var(--font-body);">Alex Kim</div>
+                  <div style="font-size: var(--font-small); color: var(--text-secondary);">DataSync</div>
+                </div>
+              </label>
+
+              <label onclick="toggleSpeakerCheckbox('rachel')" style="display: flex; align-items: center; gap: 12px; padding: 12px; border-bottom: 1px solid var(--border-default); cursor: pointer; transition: background 0.15s;" onmouseover="this.style.background='var(--bg-app)'" onmouseout="this.style.background='transparent'">
+                <input type="checkbox" id="speaker-checkbox-rachel" checked style="width: 18px; height: 18px; cursor: pointer;" onclick="event.stopPropagation()" />
+                <div class="table-avatar" style="width: 36px; height: 36px; font-size: 14px;">R</div>
+                <div style="flex: 1;">
+                  <div style="font-weight: 500; font-size: var(--font-body);">Rachel Torres</div>
+                  <div style="font-size: var(--font-small); color: var(--text-secondary);">CloudNine</div>
+                </div>
+              </label>
+
+              <label onclick="toggleSpeakerCheckbox('lisa')" style="display: flex; align-items: center; gap: 12px; padding: 12px; border-bottom: 1px solid var(--border-default); cursor: pointer; transition: background 0.15s;" onmouseover="this.style.background='var(--bg-app)'" onmouseout="this.style.background='transparent'">
+                <input type="checkbox" id="speaker-checkbox-lisa" checked style="width: 18px; height: 18px; cursor: pointer;" onclick="event.stopPropagation()" />
+                <div class="table-avatar" style="width: 36px; height: 36px; font-size: 14px;">L</div>
+                <div style="flex: 1;">
+                  <div style="font-weight: 500; font-size: var(--font-body);">Lisa Anderson</div>
+                  <div style="font-size: var(--font-small); color: var(--text-secondary);">GrowthLab</div>
+                </div>
+              </label>
+
+              <label onclick="toggleSpeakerCheckbox('michael')" style="display: flex; align-items: center; gap: 12px; padding: 12px; border-bottom: 1px solid var(--border-default); cursor: pointer; transition: background 0.15s;" onmouseover="this.style.background='var(--bg-app)'" onmouseout="this.style.background='transparent'">
+                <input type="checkbox" id="speaker-checkbox-michael" style="width: 18px; height: 18px; cursor: pointer;" onclick="event.stopPropagation()" />
+                <div class="table-avatar" style="width: 36px; height: 36px; font-size: 14px;">M</div>
+                <div style="flex: 1;">
+                  <div style="font-weight: 500; font-size: var(--font-body);">Michael Rodriguez</div>
+                  <div style="font-size: var(--font-small); color: var(--text-secondary);">TechVentures</div>
+                </div>
+              </label>
+
+              <label onclick="toggleSpeakerCheckbox('jennifer')" style="display: flex; align-items: center; gap: 12px; padding: 12px; border-bottom: 1px solid var(--border-default); cursor: pointer; transition: background 0.15s;" onmouseover="this.style.background='var(--bg-app)'" onmouseout="this.style.background='transparent'">
+                <input type="checkbox" id="speaker-checkbox-jennifer" style="width: 18px; height: 18px; cursor: pointer;" onclick="event.stopPropagation()" />
+                <div class="table-avatar" style="width: 36px; height: 36px; font-size: 14px;">J</div>
+                <div style="flex: 1;">
+                  <div style="font-weight: 500; font-size: var(--font-body);">Jennifer Martinez</div>
+                  <div style="font-size: var(--font-small); color: var(--text-secondary);">InnovateSolutions</div>
+                </div>
+              </label>
+
+              <label onclick="toggleSpeakerCheckbox('kevin')" style="display: flex; align-items: center; gap: 12px; padding: 12px; border-bottom: 1px solid var(--border-default); cursor: pointer; transition: background 0.15s;" onmouseover="this.style.background='var(--bg-app)'" onmouseout="this.style.background='transparent'">
+                <input type="checkbox" id="speaker-checkbox-kevin" checked style="width: 18px; height: 18px; cursor: pointer;" onclick="event.stopPropagation()" />
+                <div class="table-avatar" style="width: 36px; height: 36px; font-size: 14px;">K</div>
+                <div style="flex: 1;">
+                  <div style="font-weight: 500; font-size: var(--font-body);">Kevin Chang</div>
+                  <div style="font-size: var(--font-small); color: var(--text-secondary);">BrightPath</div>
+                </div>
+              </label>
+
+              <div style="padding: 12px; font-size: var(--font-small); color: var(--text-secondary); text-align: center; background: var(--bg-app);">+ 9 more approved speakers available</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="document.getElementById('modal-create-embed').style.display='none'">Cancel</button>
+        <button id="embed-save-button" class="btn btn-primary" onclick="alert('Demo: Embed saved successfully'); document.getElementById('modal-create-embed').style.display='none'">Save Embed</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== GET EMBED CODE MODAL ===== -->
+  <div id="modal-get-embed-code" class="modal-overlay" style="display: none;" onclick="if(event.target.id==='modal-get-embed-code') this.style.display='none'">
+    <div class="modal-container" style="max-width: 600px;">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title">Get Embed Code</h2>
+          <p class="modal-subtitle">Copy this code and paste it into your website</p>
+        </div>
+        <button class="modal-close" onclick="document.getElementById('modal-get-embed-code').style.display='none'">×</button>
+      </div>
+
+      <div class="modal-body">
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+
+          <!-- Instructions -->
+          <div style="padding: 12px; background: var(--primary-subtle); border-left: 3px solid var(--primary); border-radius: 4px;">
+            <div style="font-weight: 600; font-size: var(--font-body); margin-bottom: 4px;">How to use:</div>
+            <ul style="margin: 0; padding-left: 20px; font-size: var(--font-small); color: var(--text-secondary); line-height: 1.6;">
+              <li>Copy the code below</li>
+              <li>Paste it into your website's HTML where you want the speakers to appear</li>
+              <li>This embed updates automatically when you add or remove speakers</li>
+            </ul>
+          </div>
+
+          <!-- Embed Code -->
+          <div>
+            <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: var(--font-body);">Embed Code</label>
+            <textarea id="embed-code-textarea" readonly style="width: 100%; min-height: 120px; padding: 12px; border: 1px solid var(--border-default); border-radius: 6px; font-family: 'Courier New', monospace; font-size: 13px; background: var(--bg-app); resize: vertical;"><script src="https://cdn.seamlessevents.io/embed.js"></script>
+<div class="seamless-embed" data-event="roi-forum-2026" data-embed="all-speakers"></div></textarea>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="document.getElementById('modal-get-embed-code').style.display='none'">Close</button>
+        <button class="btn btn-primary" onclick="copyEmbedCode()">Copy Code</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== CREATE FORM MODAL ===== -->
+  <div id="modal-create-form" class="modal-overlay" style="display: none;" onclick="if(event.target.id==='modal-create-form') this.style.display='none'">
+    <div class="modal-container" style="max-width: 700px;">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title" id="form-modal-title">Create New Form</h2>
+          <p class="modal-subtitle">Configure fields and settings for your speaker information form</p>
+        </div>
+        <button class="modal-close" onclick="document.getElementById('modal-create-form').style.display='none'">×</button>
+      </div>
+
+      <div class="modal-body">
+        <div style="display: flex; flex-direction: column; gap: 24px;">
+
+          <!-- Form Name -->
+          <div>
+            <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: var(--font-body);">Form Name</label>
+            <input id="form-name-input" type="text" placeholder="e.g., ROI Forum 2026 Speaker Info" style="width: 100%; padding: 10px 12px; border: 1px solid var(--border-default); border-radius: 6px; font-size: var(--font-body);" />
+          </div>
+
+          <!-- Form Type -->
+          <div>
+            <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: var(--font-body);">Form Type</label>
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+              <label id="form-type-speaker-info-label" style="display: flex; align-items: start; gap: 12px; padding: 16px; border: 2px solid var(--primary); background: var(--primary-subtle); border-radius: 6px; cursor: pointer;">
+                <input id="form-type-speaker-info" type="radio" name="form-type" value="speaker-info" checked style="width: 18px; height: 18px; margin-top: 2px;" />
+                <div>
+                  <div style="font-weight: 600; font-size: var(--font-body); margin-bottom: 4px;">Speaker Information Form</div>
+                  <div style="font-size: var(--font-small); color: var(--text-secondary);">For confirmed speakers - submissions go directly to Speakers</div>
+                </div>
+              </label>
+              <label id="form-type-application-label" style="display: flex; align-items: start; gap: 12px; padding: 16px; border: 2px solid var(--border-default); background: var(--bg-surface); border-radius: 6px; cursor: pointer;">
+                <input id="form-type-application" type="radio" name="form-type" value="application" style="width: 18px; height: 18px; margin-top: 2px;" />
+                <div>
+                  <div style="font-weight: 600; font-size: var(--font-body); margin-bottom: 4px;">Application Form</div>
+                  <div style="font-size: var(--font-small); color: var(--text-secondary);">Use for open calls - you'll review and approve submissions in Applications tab</div>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <!-- Standard Fields -->
+          <div style="padding: 16px; background: var(--bg-app); border-radius: 8px;">
+            <div style="font-weight: 600; font-size: var(--font-body); margin-bottom: 8px;">Standard Fields</div>
+            <div style="font-size: var(--font-small); color: var(--text-secondary); margin-bottom: 12px;">These fields are always included</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: var(--font-small);">
+              <div>• First Name</div>
+              <div>• Last Name</div>
+              <div>• Email</div>
+              <div>• Title</div>
+              <div>• Company</div>
+            </div>
+          </div>
+
+          <!-- Optional Fields -->
+          <div>
+            <label style="display: block; font-weight: 600; margin-bottom: 12px; font-size: var(--font-body);">Optional Fields</label>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+              <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                <input id="field-bio-checkbox" type="checkbox" checked style="width: 18px; height: 18px;" />
+                <span style="font-size: var(--font-body);">Bio (textarea)</span>
+              </label>
+              <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                <input id="field-headshot-checkbox" type="checkbox" checked style="width: 18px; height: 18px;" />
+                <span style="font-size: var(--font-body);">Headshot (file upload)</span>
+              </label>
+              <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                <input id="field-logo-checkbox" type="checkbox" checked style="width: 18px; height: 18px;" />
+                <span style="font-size: var(--font-body);">Company Logo (file upload)</span>
+              </label>
+              <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                <input id="field-website-checkbox" type="checkbox" style="width: 18px; height: 18px;" />
+                <span style="font-size: var(--font-body);">Website URL</span>
+              </label>
+              <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                <input id="field-linkedin-checkbox" type="checkbox" style="width: 18px; height: 18px;" />
+                <span style="font-size: var(--font-body);">LinkedIn URL</span>
+              </label>
+              <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                <input id="field-topic-checkbox" type="checkbox" checked style="width: 18px; height: 18px;" />
+                <span style="font-size: var(--font-body);">What would you like to speak about? (textarea)</span>
+                <span style="font-size: var(--font-small); color: var(--text-secondary); margin-left: auto;">For applications</span>
+              </label>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="document.getElementById('modal-create-form').style.display='none'">Cancel</button>
+        <button id="form-save-button" class="btn btn-primary" onclick="alert('Demo: Form created successfully'); document.getElementById('modal-create-form').style.display='none'">Save Form</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== GET FORM LINK MODAL ===== -->
+  <div id="modal-get-form-link" class="modal-overlay" style="display: none;" onclick="if(event.target.id==='modal-get-form-link') this.style.display='none'">
+    <div class="modal-container" style="max-width: 600px;">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title">Get Form Link</h2>
+          <p class="modal-subtitle">Share this link to collect speaker information</p>
+        </div>
+        <button class="modal-close" onclick="document.getElementById('modal-get-form-link').style.display='none'">×</button>
+      </div>
+
+      <div class="modal-body">
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+
+          <!-- Instructions -->
+          <div style="padding: 12px; background: var(--primary-subtle); border-left: 3px solid var(--primary); border-radius: 4px;">
+            <div style="font-weight: 600; font-size: var(--font-body); margin-bottom: 4px;">How to use:</div>
+            <ul style="margin: 0; padding-left: 20px; font-size: var(--font-small); color: var(--text-secondary); line-height: 1.6;">
+              <li>Copy the link below</li>
+              <li>Share it via email, social media, or your event website</li>
+              <li>Submissions will appear in the appropriate tab based on form type</li>
+            </ul>
+          </div>
+
+          <!-- Form Link -->
+          <div>
+            <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: var(--font-body);">Form Link</label>
+            <div style="display: flex; gap: 8px;">
+              <input id="form-link-input" type="text" readonly value="https://forms.seamlessevents.io/roi-forum-2026/speakers" style="flex: 1; padding: 10px 12px; border: 1px solid var(--border-default); border-radius: 6px; font-size: var(--font-small); background: var(--bg-app);" />
+              <button onclick="copyFormLink()" class="btn btn-primary">Copy</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-primary" onclick="document.getElementById('modal-get-form-link').style.display='none'">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== ADD SPEAKER MODAL ===== -->
+  <div id="modal-add-speaker" class="modal-overlay" style="display: none;" onclick="if(event.target.id==='modal-add-speaker') this.style.display='none'">
+    <div class="modal-container" style="max-width: 600px;">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title">Add Speaker</h2>
+          <p class="modal-subtitle">Send speaker information form</p>
+        </div>
+        <button class="modal-close" onclick="document.getElementById('modal-add-speaker').style.display='none'">×</button>
+      </div>
+
+      <div class="modal-body">
+        <div style="display: flex; flex-direction: column; gap: 20px;">
+
+          <!-- Explainer -->
+          <div style="padding: 12px; background: var(--primary-subtle); border-left: 3px solid var(--primary); border-radius: 4px;">
+            <div style="font-size: var(--font-body); color: var(--text-primary); line-height: 1.6;">
+              This form will be sent to the speaker to collect their information. Once they submit, they'll be added directly to your Speakers list.
+            </div>
+          </div>
+
+          <!-- Speaker Email -->
+          <div>
+            <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: var(--font-body);">Speaker Email</label>
+            <input type="email" placeholder="speaker@example.com" style="width: 100%; padding: 10px 12px; border: 1px solid var(--border-default); border-radius: 6px; font-size: var(--font-body);" />
+            <div style="font-size: var(--font-small); color: var(--text-secondary); margin-top: 4px;">We'll send the form to this email address</div>
+          </div>
+
+          <!-- Personal Message (Optional) -->
+          <div>
+            <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: var(--font-body);">Personal Message <span style="font-weight: 400; color: var(--text-secondary);">(Optional)</span></label>
+            <textarea placeholder="Add a personal note to include with the form..." rows="3" style="width: 100%; padding: 10px 12px; border: 1px solid var(--border-default); border-radius: 6px; font-size: var(--font-body); font-family: inherit; resize: vertical;"></textarea>
+          </div>
+
+          <!-- Form Preview -->
+          <div style="padding: 16px; background: var(--bg-app); border-radius: 8px; border: 1px solid var(--border-default);">
+            <div style="font-weight: 600; font-size: var(--font-body); margin-bottom: 12px;">Form will include:</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: var(--font-small); color: var(--text-secondary);">
+              <div>• First Name</div>
+              <div>• Last Name</div>
+              <div>• Email</div>
+              <div>• Title</div>
+              <div>• Company</div>
+              <div>• Bio</div>
+              <div>• Headshot</div>
+              <div>• Company Logo</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="document.getElementById('modal-add-speaker').style.display='none'">Cancel</button>
+        <button class="btn btn-primary" onclick="alert('Demo: Form sent to speaker'); document.getElementById('modal-add-speaker').style.display='none'">Send to Speaker</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ========================================
+    // CLIPBOARD UTILITIES
+    // ========================================
+
+    /**
+     * Copies speaker bio text to clipboard
+     * Used in Speaker Detail page bio modal
+     */
+    function copyBioToClipboard() {
+      const bioText = document.getElementById('bio-text').innerText;
+      navigator.clipboard.writeText(bioText).then(() => {
+        alert('Bio copied to clipboard!');
+      }).catch(err => {
+        alert('Failed to copy bio');
+      });
+    }
+
+    /**
+     * Copies formatted speaker status report to clipboard
+     * Report includes: total/pending/approved counts, embed status, and speaker lists
+     * DEV NOTE: In production, this should be generated dynamically from actual data
+     */
+    function copySpeakerReportToClipboard() {
+      const report = `Speaker Status Report - ROI Forum 2026
+
+Total Speakers: 25
+Pending: 8
+Approved: 17
+
+EMBEDS
+- All Speakers: 15 speakers live
+- Newsletter Feature: 3 speakers live
+- NOT PUBLISHED: 2 approved speakers not on any embed
+
+PENDING (8)
+- Sarah Chen (Website Card & Promo Card)
+- David Patel
+- Emily Watson
+- Nina Kowalski
+- Brandon Lee
+- Hannah Foster
+- Isaac Moore
+
+APPROVED (17)
+James Stafford, Marcus Johnson, Alex Kim, Rachel Torres, Lisa Anderson, Michael Rodriguez, Jennifer Martinez, Kevin Chang, Thomas Wright, Priya Sharma, Olivia Bennett, Carlos Rivera, Gregory Thompson, Victoria Hayes, Sophia Nguyen, Zachary Cooper, and 1 more
+
+Generated: ${new Date().toLocaleDateString()}`;
+
+      navigator.clipboard.writeText(report).then(() => {
+        alert('Report copied to clipboard!');
+      }).catch(err => {
+        alert('Failed to copy report');
+      });
+    }
+
+    /**
+     * Copies event dashboard summary to clipboard
+     * Includes aggregated data from all active modules
+     * DEV NOTE: In production, this should be generated dynamically from actual module data
+     */
+    function copyEventDashboard() {
+      const dashboard = `ROI Forum 2026 - Event Dashboard
+Generated: ${new Date().toLocaleDateString()}
+
+===== SPEAKERS =====
+Total Speakers: 25
+Approved: 17 (68%)
+Pending Review: 8
+Applications: 6 (4 pending)
+
+Published Embeds:
+• All Speakers: 15 speakers live
+• Newsletter Feature: 3 speakers live
+• 2 approved speakers not yet published
+
+===== SCHEDULE =====
+Schedule module data pending
+
+===== CONTENT =====
+Content module data pending
+
+===== PARTNERS =====
+Partners module data pending`;
+
+      navigator.clipboard.writeText(dashboard).then(() => {
+        alert('Dashboard copied to clipboard!');
+      }).catch(err => {
+        alert('Failed to copy dashboard');
+      });
+    }
+
+    // ========================================
+    // SCREEN NAVIGATION
+    // ========================================
+
+    /**
+     * Switches between main app screens (Login, Dashboard, Event Detail, Speaker List, etc.)
+     * DEV NOTE: Uses classList for screen management (preferred pattern)
+     * @param {string} screenId - ID of screen to show (e.g., 'screen-login', 'screen-dashboard')
+     */
+    function showScreen(screenId) {
+      // Hide all screens
+      document.querySelectorAll('.screen').forEach(screen => {
+        screen.classList.remove('active');
+      });
+
+      // Show target screen
+      document.getElementById(screenId).classList.add('active');
+
+      // Close any open menus
+      document.querySelectorAll('.user-dropdown-menu, .event-card-menu-dropdown').forEach(menu => {
+        menu.classList.remove('active');
+      });
+
+      // Scroll to top
+      window.scrollTo(0, 0);
+    }
+
+    // ========================================
+    // MENU & DROPDOWN MANAGEMENT
+    // ========================================
+
+    /**
+     * Toggles user dropdown menu (top right)
+     * DEV NOTE: Finds menu relative to clicked element to work across all screens
+     * @param {Event} event - Click event from the toggle button
+     */
+    function toggleUserMenu(event) {
+      // Find the menu within the same user-dropdown container
+      const dropdown = event ? event.currentTarget.closest('.user-dropdown') : document.querySelector('.user-dropdown');
+      const menu = dropdown.querySelector('.user-dropdown-menu');
+      menu.classList.toggle('active');
+    }
+
+    /**
+     * Toggles event card ⋮ menu (3-dot menu on event cards)
+     * Closes other open event menus to maintain single-menu UX
+     * DEV NOTE: Uses classList.toggle for consistency with toggleUserMenu
+     * @param {string} menuId - ID of menu to toggle
+     */
+    function toggleEventMenu(menuId) {
+      event.stopPropagation();
+      const menu = document.getElementById(menuId);
+
+      // Close other menus
+      document.querySelectorAll('.event-card-menu-dropdown').forEach(m => {
+        if (m.id !== menuId) m.classList.remove('active');
+      });
+
+      menu.classList.toggle('active');
+    }
+
+    /**
+     * Toggles speaker detail ⋮ menu (3-dot menu on speaker detail page)
+     * DEV NOTE: Uses style.display instead of classList (inconsistent pattern - can be refactored)
+     * TODO: Standardize to classList approach for consistency
+     * @param {Event} event - Click event (needed for stopPropagation)
+     */
+    function toggleSpeakerMenu(event) {
+      event.stopPropagation();
+      const menu = document.getElementById('speakerMenu');
+
+      if (menu.style.display === 'none' || menu.style.display === '') {
+        menu.style.display = 'block';
+      } else {
+        menu.style.display = 'none';
+      }
+    }
+
+    /**
+     * Toggles embed/form card ⋮ menu (used in Forms and Embed Builder tabs)
+     * DEV NOTE: Similar to toggleSpeakerMenu but generic for any menu ID
+     * @param {string} menuId - ID of menu to toggle
+     * @param {Event} event - Click event (needed for stopPropagation)
+     */
+    function toggleEmbedMenu(menuId, event) {
+      event.stopPropagation();
+      const menu = document.getElementById(menuId + '-menu');
+
+      // Close other menus
+      document.querySelectorAll('[id$="-menu"]').forEach(m => {
+        if (m.id !== menuId + '-menu') m.style.display = 'none';
+      });
+
+      if (menu.style.display === 'none' || menu.style.display === '') {
+        menu.style.display = 'block';
+      } else {
+        menu.style.display = 'none';
+      }
+    }
+
+    // ========================================
+    // SPEAKER LIST FILTERING
+    // ========================================
+
+    /**
+     * Filters speaker table rows by status (All, Pending, Approved)
+     * Used in All Speakers table view
+     * DEV NOTE: Uses data-status attribute on <tr> elements for filtering
+     */
+    function filterSpeakers() {
+      const filter = document.getElementById('statusFilter').value;
+      const rows = document.querySelectorAll('tbody tr[data-status]');
+
+      rows.forEach(row => {
+        const status = row.getAttribute('data-status');
+        if (filter === 'all' || filter === status) {
+          row.style.display = '';
+        } else {
+          row.style.display = 'none';
+        }
+      });
+    }
+
+    // ========================================
+    // TAB SWITCHING
+    // ========================================
+
+    /**
+     * Switches between Speaker module tabs (Speakers, Applications, Forms, Embed Builder)
+     * DEV NOTE: Uses style.display instead of classList for tab content visibility
+     * TODO: Consider refactoring to match switchTab() pattern (uses classList and querySelectorAll)
+     * @param {string} tabName - One of: 'speakers', 'applications', 'forms', 'embed-builder'
+     */
+    function showSpeakerTab(tabName) {
+      // Hide all tab content
+      document.getElementById('speaker-tab-speakers').style.display = 'none';
+      document.getElementById('speaker-tab-applications').style.display = 'none';
+      document.getElementById('speaker-tab-forms').style.display = 'none';
+      document.getElementById('speaker-tab-embed-builder').style.display = 'none';
+
+      // Show selected tab content
+      document.getElementById('speaker-tab-' + tabName).style.display = 'block';
+
+      // Update tab button styles
+      const speakersTab = document.getElementById('tab-speakers');
+      const applicationsTab = document.getElementById('tab-applications');
+      const formsTab = document.getElementById('tab-forms');
+      const embedBuilderTab = document.getElementById('tab-embed-builder');
+
+      // Reset all tabs
+      [speakersTab, applicationsTab, formsTab, embedBuilderTab].forEach(tab => {
+        tab.style.color = 'var(--text-secondary)';
+        tab.style.borderBottomColor = 'transparent';
+      });
+
+      // Highlight selected tab
+      if (tabName === 'speakers') {
+        speakersTab.style.color = 'var(--primary)';
+        speakersTab.style.borderBottomColor = 'var(--primary)';
+      } else if (tabName === 'applications') {
+        applicationsTab.style.color = 'var(--primary)';
+        applicationsTab.style.borderBottomColor = 'var(--primary)';
+      } else if (tabName === 'forms') {
+        formsTab.style.color = 'var(--primary)';
+        formsTab.style.borderBottomColor = 'var(--primary)';
+      } else if (tabName === 'embed-builder') {
+        embedBuilderTab.style.color = 'var(--primary)';
+        embedBuilderTab.style.borderBottomColor = 'var(--primary)';
+      }
+    }
+
+    // NOTE: toggleEmbedMenu is defined above in MENU & DROPDOWN MANAGEMENT section
+    // Duplicate function definition removed to avoid conflicts
+
+    // ========================================
+    // EMBED BUILDER UTILITIES
+    // ========================================
+
+    /**
+     * Toggles speaker checkbox selection in Embed Builder
+     * DEV NOTE: Wrapper function to allow clicking on label to toggle checkbox
+     * @param {string} speakerId - Speaker ID (e.g., 'james', 'marcus')
+     */
+    function toggleSpeakerCheckbox(speakerId) {
+      const checkbox = document.getElementById('speaker-checkbox-' + speakerId);
+      checkbox.checked = !checkbox.checked;
+    }
+
+    /**
+     * Copies embed code snippet to clipboard
+     * Used in "Get Embed Code" modal
+     */
+    function copyEmbedCode() {
+      const code = document.getElementById('embed-code-textarea').value;
+      navigator.clipboard.writeText(code).then(() => {
+        alert('Embed code copied to clipboard!');
+      });
+    }
+
+    /**
+     * Opens Create Embed modal in edit mode with pre-filled data
+     * DEV NOTE: Reuses Create Embed modal - changes title and button text to indicate editing
+     * Pattern: Modal reuse is intentional to reduce code duplication
+     *
+     * @param {string} name - Embed name to pre-fill
+     * @param {string} cardType - 'website' or 'promo'
+     * @param {Array} selectedSpeakers - Array of speaker IDs to pre-select (e.g., ['james', 'marcus'])
+     *
+     * IMPORTANT: allCheckboxes array is hardcoded to 8 speakers.
+     * TODO: In production, query DOM dynamically: document.querySelectorAll('[id^="speaker-checkbox-"]')
+     */
+    function editEmbed(name, cardType, selectedSpeakers) {
+      // Update modal title
+      document.getElementById('embed-modal-title').textContent = 'Edit Embed';
+
+      // Pre-fill embed name
+      document.getElementById('embed-name-input').value = name;
+
+      // Select card type and update radio button styling
+      // DEV NOTE: Radio button labels require manual style updates (not handled by CSS :checked)
+      if (cardType === 'website') {
+        document.getElementById('card-type-website').checked = true;
+        document.getElementById('card-type-website-label').style.borderColor = 'var(--primary)';
+        document.getElementById('card-type-website-label').style.background = 'var(--primary-subtle)';
+        document.getElementById('card-type-promo-label').style.borderColor = 'var(--border-default)';
+        document.getElementById('card-type-promo-label').style.background = 'var(--bg-surface)';
+      } else {
+        document.getElementById('card-type-promo').checked = true;
+        document.getElementById('card-type-promo-label').style.borderColor = 'var(--primary)';
+        document.getElementById('card-type-promo-label').style.background = 'var(--primary-subtle)';
+        document.getElementById('card-type-website-label').style.borderColor = 'var(--border-default)';
+        document.getElementById('card-type-website-label').style.background = 'var(--bg-surface)';
+      }
+
+      // Uncheck all speakers first (reset to clean state)
+      // HARDCODED: Only 8 speakers listed (demo has 25 total speakers)
+      const allCheckboxes = ['james', 'marcus', 'alex', 'rachel', 'lisa', 'michael', 'jennifer', 'kevin'];
+      allCheckboxes.forEach(id => {
+        const checkbox = document.getElementById('speaker-checkbox-' + id);
+        if (checkbox) checkbox.checked = false;
+      });
+
+      // Check selected speakers
+      selectedSpeakers.forEach(id => {
+        const checkbox = document.getElementById('speaker-checkbox-' + id);
+        if (checkbox) checkbox.checked = true;
+      });
+
+      // Update button text to indicate editing mode
+      document.getElementById('embed-save-button').textContent = 'Update Embed';
+
+      // Open modal (uses style.display because modals need 'flex' for centering)
+      document.getElementById('modal-create-embed').style.display = 'flex';
+    }
+
+    // ========================================
+    // FORM BUILDER UTILITIES
+    // ========================================
+
+    /**
+     * Copies form link to clipboard
+     * Used in "Get Form Link" modal
+     */
+    function copyFormLink() {
+      const link = document.getElementById('form-link-input').value;
+      navigator.clipboard.writeText(link).then(() => {
+        alert('Form link copied to clipboard!');
+      });
+    }
+
+    /**
+     * Opens Create Form modal in edit mode with pre-filled data
+     * DEV NOTE: Pattern identical to editEmbed() - modal reuse is intentional
+     *
+     * @param {string} formName - Form name to pre-fill
+     * @param {string} formType - 'speaker-info' or 'application'
+     * @param {Array} enabledFields - Array of enabled field IDs (e.g., ['bio', 'headshot', 'logo', 'topic'])
+     */
+    function editForm(formName, formType, enabledFields) {
+      // Update modal title
+      document.getElementById('form-modal-title').textContent = 'Edit Form';
+
+      // Pre-fill form name
+      document.getElementById('form-name-input').value = formName;
+
+      // Select form type and update styling
+      const speakerInfoLabel = document.getElementById('form-type-speaker-info-label');
+      const applicationLabel = document.getElementById('form-type-application-label');
+      const speakerInfoRadio = document.getElementById('form-type-speaker-info');
+      const applicationRadio = document.getElementById('form-type-application');
+
+      if (formType === 'speaker-info') {
+        speakerInfoRadio.checked = true;
+        speakerInfoLabel.style.borderColor = 'var(--primary)';
+        speakerInfoLabel.style.background = 'var(--primary-subtle)';
+        applicationLabel.style.borderColor = 'var(--border-default)';
+        applicationLabel.style.background = 'var(--bg-surface)';
+      } else {
+        applicationRadio.checked = true;
+        applicationLabel.style.borderColor = 'var(--primary)';
+        applicationLabel.style.background = 'var(--primary-subtle)';
+        speakerInfoLabel.style.borderColor = 'var(--border-default)';
+        speakerInfoLabel.style.background = 'var(--bg-surface)';
+      }
+
+      // Reset all checkboxes first
+      document.getElementById('field-bio-checkbox').checked = false;
+      document.getElementById('field-headshot-checkbox').checked = false;
+      document.getElementById('field-logo-checkbox').checked = false;
+      document.getElementById('field-website-checkbox').checked = false;
+      document.getElementById('field-linkedin-checkbox').checked = false;
+      document.getElementById('field-topic-checkbox').checked = false;
+
+      // Check enabled fields
+      enabledFields.forEach(field => {
+        const checkbox = document.getElementById('field-' + field + '-checkbox');
+        if (checkbox) checkbox.checked = true;
+      });
+
+      // Update button text
+      document.getElementById('form-save-button').textContent = 'Update Form';
+
+      // Open modal
+      document.getElementById('modal-create-form').style.display = 'flex';
+    }
+
+    // ========================================
+    // GLOBAL EVENT LISTENERS
+    // ========================================
+
+    /**
+     * Click-outside-to-close behavior for dropdown menus
+     * DEV NOTE: Uses event delegation on document to handle all menus
+     */
+    document.addEventListener('click', function(e) {
+      // Close user dropdown and event card menus when clicking outside
+      if (!e.target.closest('.user-dropdown') && !e.target.closest('.event-card-menu')) {
+        document.querySelectorAll('.user-dropdown-menu, .event-card-menu-dropdown').forEach(menu => {
+          menu.classList.remove('active');
+        });
+      }
+
+      // Close speaker menu if clicking outside
+      // DEV NOTE: Uses style.display (inconsistent with other menus - could be refactored)
+      const speakerMenu = document.getElementById('speakerMenu');
+      if (speakerMenu && !e.target.closest('#speakerMenu') && e.target.getAttribute('onclick') !== 'toggleSpeakerMenu(event)') {
+        speakerMenu.style.display = 'none';
+      }
+    });
+
+    /**
+     * Switches between Account Dashboard tabs (Current Events / Past Events)
+     * DEV NOTE: Uses classList approach (cleaner than showSpeakerTab's style.display approach)
+     * Pattern: This is the preferred tab switching pattern for refactoring
+     * @param {string} tabName - Tab identifier (e.g., 'current', 'past')
+     */
+    function switchTab(tabName) {
+      // Update tab buttons
+      document.querySelectorAll('.tab').forEach(tab => {
+        tab.classList.remove('active');
+      });
+      event.target.classList.add('active');
+
+      // Update tab content
+      document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.remove('active');
+      });
+      document.getElementById('tab-' + tabName).classList.add('active');
+    }
+
+    // ========================================
+    // MODAL MANAGEMENT (Create Event, Team)
+    // ========================================
+
+    /**
+     * Opens Create Event modal
+     * DEV NOTE: Uses classList.add (cleaner pattern than style.display='flex')
+     */
+    function openCreateEventModal() {
+      document.getElementById('modal-create-event').classList.add('active');
+    }
+
+    /**
+     * Closes Create Event modal and resets form
+     */
+    function closeCreateEventModal() {
+      document.getElementById('modal-create-event').classList.remove('active');
+      document.getElementById('create-event-form').reset();
+    }
+
+    /**
+     * Handles Create Event form submission (demo only)
+     * DEV NOTE: In production, this would POST form data to API
+     */
+    function submitCreateEvent() {
+      alert('Demo: Event would be created here. Form data would be submitted to backend.');
+      closeCreateEventModal();
+    }
+
+    /**
+     * Opens Team modal (shows organization team members)
+     */
+    function openTeamModal() {
+      document.getElementById('modal-team').classList.add('active');
+    }
+
+    /**
+     * Closes Team modal
+     */
+    function closeTeamModal() {
+      document.getElementById('modal-team').classList.remove('active');
+    }
+
+    /**
+     * Click-outside-to-close behavior for Create Event modal
+     * DEV NOTE: Uses classList pattern (consistent with modal open/close functions)
+     */
+    document.getElementById('modal-create-event').addEventListener('click', function(e) {
+      if (e.target === this) {
+        closeCreateEventModal();
+      }
+    });
+
+    /**
+     * Click-outside-to-close behavior for Team modal
+     */
+    document.getElementById('modal-team').addEventListener('click', function(e) {
+      if (e.target === this) {
+        closeTeamModal();
+      }
+    });
+  </script>
+
+</body>
+</html>

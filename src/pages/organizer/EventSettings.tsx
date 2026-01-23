@@ -10,10 +10,9 @@ import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { FolderOpen, Calendar, MapPin, Mail, FileText, Mic2, Users, Link as LinkIcon, FormInput } from "lucide-react";
+import { FolderOpen, Calendar, MapPin, Mail, FileText, Mic2, Users, Link as LinkIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import SpeakerFormBuilder, { FormFieldConfig } from "@/components/SpeakerFormBuilder";
 
 const availableModules = [
   {
@@ -74,6 +73,7 @@ export default function EventSettings() {
     startDate: "",
     endDate: "",
     location: "",
+    eventWebsite: "",
     fromName: "",
     fromEmail: "",
     replyToEmail: "",
@@ -93,7 +93,6 @@ export default function EventSettings() {
   const [promoTemplatePreview, setPromoTemplatePreview] = useState<string | null>(null);
   const { data: me } = useQuery<any>({ queryKey: ["me"], queryFn: () => getMe() });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formConfig, setFormConfig] = useState<FormFieldConfig[] | undefined>(undefined);
 
   useEffect(() => {
     if (!rawEvent) return;
@@ -123,6 +122,7 @@ export default function EventSettings() {
       startDate: toDateInput(rawEvent.start_date ?? rawEvent.startDate ?? ""),
       endDate: toDateInput(rawEvent.end_date ?? rawEvent.endDate ?? ""),
       location: rawEvent.location ?? "",
+      eventWebsite: rawEvent.event_website ?? rawEvent.eventWebsite ?? "",
       fromName: rawEvent.from_name ?? rawEvent.fromName ?? "",
       fromEmail: rawEvent.from_email ?? rawEvent.fromEmail ?? "",
       replyToEmail: rawEvent.reply_to_email ?? rawEvent.replyToEmail ?? "",
@@ -272,7 +272,7 @@ export default function EventSettings() {
     );
 
     const value = selectedFolderPath[currentDepth] ?? "";
-    return (
+  return (
       <div>
         <div className="text-xs text-muted-foreground mb-1">{currentDepth === 0 ? "Top level" : `Level ${currentDepth + 1}`}</div>
         <Select value={value} aria-label={`Folder level ${currentDepth + 1}`} onValueChange={(val) => handleSelectAtDepth(currentDepth, val)}>
@@ -310,6 +310,7 @@ export default function EventSettings() {
         start_date: formData.startDate || undefined,
         end_date: formData.endDate || undefined,
         location: formData.location || undefined,
+        event_website: formData.eventWebsite || undefined,
         from_name: formData.fromName || undefined,
         from_email: formData.fromEmail || undefined,
         reply_to_email: formData.replyToEmail || undefined,
@@ -371,7 +372,7 @@ export default function EventSettings() {
 
   if (!rawEvent && error) return <div className="py-16 text-center text-destructive">Error loading event: {String(error.message)}</div>;
 
-    return (
+  return (
       <div className="max-w-4xl mx-auto space-y-6">
         <div>
           <h1 style={{ fontSize: 'var(--font-h1)', fontWeight: 600 }}>Edit Event</h1>
@@ -475,6 +476,11 @@ export default function EventSettings() {
               <div className="space-y-2">
                 <Label>Location</Label>
                 <Input placeholder="e.g., San Francisco, CA" value={formData.location} onChange={(e) => setFormData((prev) => ({ ...prev, location: e.target.value }))} />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Event Website</Label>
+                <Input type="text" placeholder="https://example.com/event (optional)" value={formData.eventWebsite} onChange={(e) => setFormData((prev) => ({ ...prev, eventWebsite: e.target.value }))} />
               </div>
             </CardContent>
           </Card>
@@ -588,28 +594,6 @@ export default function EventSettings() {
             <Button variant="outline" type="submit" className="border-[1.5px]" disabled={isSubmitting}>{isSubmitting ? "Saving…" : "Save Changes"}</Button>
           </div>
         </form>
-
-        {/* Speaker Intake Form Builder */}
-        {selectedModules.includes("speaker") && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2" style={{ fontSize: 'var(--font-h3)', fontWeight: 600 }}>
-                <FormInput className="h-5 w-5 text-primary" />
-                Speaker Intake Form
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <SpeakerFormBuilder
-                eventId={id!}
-                initialConfig={formConfig}
-                onSave={(config) => {
-                  setFormConfig(config);
-                  // TODO: Save to backend when API is ready
-                }}
-              />
-            </CardContent>
-          </Card>
-        )}
       </div>
   );
 }
