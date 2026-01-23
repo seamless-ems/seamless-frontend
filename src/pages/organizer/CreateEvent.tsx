@@ -34,7 +34,7 @@ import {
 const availableModules = [
 	{
 		id: "speaker",
-		name: "Speaker Management",
+		name: "Speakers",
 		description: "Manage speakers, intake forms, and promo cards",
 		icon: Mic2,
 		color: "speaker",
@@ -42,7 +42,7 @@ const availableModules = [
 	},
 	{
 		id: "schedule",
-		name: "Schedule Management",
+		name: "Schedule",
 		description: "Create and publish event schedules",
 		icon: Calendar,
 		color: "schedule",
@@ -50,16 +50,23 @@ const availableModules = [
 	},
 	{
 		id: "content",
-		name: "Content Management",
+		name: "Content",
 		description: "Centralized hub for presentations and files",
 		icon: FileText,
 		color: "content",
-		available: false,
-		comingSoon: true,
+		available: true,
+	},
+	{
+		id: "partners",
+		name: "Partners",
+		description: "Manage sponsors and partners",
+		icon: Users,
+		color: "primary",
+		available: true,
 	},
 	{
 		id: "attendee",
-		name: "Attendee Management",
+		name: "Attendees",
 		description: "Manage registrations and communications",
 		icon: Users,
 		color: "attendee",
@@ -75,6 +82,8 @@ export default function CreateEvent() {
 		startDate: "",
 		endDate: "",
 		location: "",
+		eventWebsite: "",
+		fromName: "",
 		fromEmail: "",
 		replyToEmail: "",
 		emailSignature: "",
@@ -328,21 +337,11 @@ export default function CreateEvent() {
 	return (
 		<div className="space-y-8">
 			<div className="max-w-4xl mx-auto space-y-6">
-				{/* Header */}
-				<div className="flex items-center gap-4">
-					<Button variant="ghost" size="sm" asChild>
-						<Link to="/organizer/events">
-							<ChevronLeft className="h-4 w-4" />
-							Back to Events
-						</Link>
-					</Button>
-				</div>
-
 				<div>
-					<h1 className="font-display text-3xl font-bold text-foreground">
+					<h1 style={{ fontSize: 'var(--font-h1)', fontWeight: 600 }}>
 						Create New Event
 					</h1>
-					<p className="text-muted-foreground mt-1">
+					<p className="text-muted-foreground mt-2" style={{ fontSize: 'var(--font-body)' }}>
 						Set up your event details and choose which modules to enable
 					</p>
 				</div>
@@ -517,6 +516,25 @@ export default function CreateEvent() {
 									}
 								/>
 							</div>
+
+							<div className="space-y-2">
+								<Label htmlFor="eventWebsite">
+									<LinkIcon className="h-4 w-4 inline mr-1" />
+									Event Website
+								</Label>
+								<Input
+									id="eventWebsite"
+								type="text"
+								placeholder="https://example.com/event (optional)"
+									value={formData.eventWebsite}
+									onChange={(e) =>
+										setFormData((prev) => ({
+											...prev,
+											eventWebsite: e.target.value,
+										}))
+									}
+								/>
+							</div>
 						</CardContent>
 					</Card>
 
@@ -529,6 +547,21 @@ export default function CreateEvent() {
 							</CardTitle>
 						</CardHeader>
 						<CardContent className="space-y-4">
+							<div className="space-y-2">
+								<Label htmlFor="fromName">'From' Name</Label>
+								<Input
+									id="fromName"
+									placeholder="e.g., Your Company Events"
+									value={formData.fromName}
+									onChange={(e) =>
+										setFormData((prev) => ({
+											...prev,
+											fromName: e.target.value,
+										}))
+									}
+								/>
+							</div>
+
 							<div className="grid gap-4 sm:grid-cols-2">
 								<div className="space-y-2">
 									<Label htmlFor="fromEmail">'From' Email</Label>
@@ -586,7 +619,7 @@ export default function CreateEvent() {
 							<CardTitle className="text-lg">Select Modules</CardTitle>
 						</CardHeader>
 						<CardContent>
-							<div className="grid gap-4 sm:grid-cols-2">
+							<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
 								{availableModules.map((module) => {
 									const Icon = module.icon;
 									const isSelected = selectedModules.includes(module.id);
@@ -595,7 +628,7 @@ export default function CreateEvent() {
 										<div
 											key={module.id}
 											className={cn(
-												"rounded-xl border-2 p-4 transition-all duration-200 cursor-pointer",
+												"rounded-lg border p-3 transition-all duration-200 cursor-pointer",
 												isSelected
 													? "border-primary bg-primary/5"
 													: "border-border hover:border-primary/30",
@@ -605,20 +638,20 @@ export default function CreateEvent() {
 												module.available && toggleModule(module.id)
 											}
 										>
-											<div className="flex items-start justify-between mb-3">
+											<div className="flex items-center justify-between mb-2">
 												<div
 													className={cn(
-														"flex h-10 w-10 items-center justify-center rounded-lg",
+														"flex h-8 w-8 items-center justify-center rounded",
 														isSelected
 															? "bg-primary text-primary-foreground"
 															: "bg-muted text-muted-foreground"
 													)}
 												>
-													<Icon className="h-5 w-5" />
+													<Icon className="h-4 w-4" />
 												</div>
 												{module.comingSoon ? (
 													<Badge variant="secondary" className="text-xs">
-														Coming Soon
+														Soon
 													</Badge>
 												) : (
 													<Switch
@@ -627,10 +660,10 @@ export default function CreateEvent() {
 													/>
 												)}
 											</div>
-											<h4 className="font-semibold text-foreground mb-1">
+											<h4 className="font-medium text-foreground text-sm mb-1">
 												{module.name}
 											</h4>
-											<p className="text-sm text-muted-foreground">
+											<p className="text-xs text-muted-foreground">
 												{module.description}
 											</p>
 										</div>
@@ -640,16 +673,16 @@ export default function CreateEvent() {
 						</CardContent>
 					</Card>
 
-					{/* Submit */}
+					{/* Images & Templates */}
 					<Card>
 						<CardHeader>
 							<CardTitle className="text-lg">Images & Templates</CardTitle>
 						</CardHeader>
-						<CardContent className="space-y-4">
-							<div className="grid gap-4 sm:grid-cols-2 items-start">
+						<CardContent>
+							<div className="grid gap-6 sm:grid-cols-2">
 								<div className="space-y-2">
 									<Label htmlFor="eventImage">Event Image</Label>
-									<input
+									<Input
 										id="eventImage"
 										type="file"
 										accept="image/*"
@@ -659,15 +692,16 @@ export default function CreateEvent() {
 											if (f) setEventImagePreview(URL.createObjectURL(f));
 											else setEventImagePreview(null);
 										}}
+										className="cursor-pointer"
 									/>
 									{eventImagePreview && (
-										<img src={eventImagePreview} alt="Event" className="mt-2 max-h-40 rounded" />
+										<img src={eventImagePreview} alt="Event preview" className="mt-3 max-h-32 rounded border" />
 									)}
 								</div>
 
 								<div className="space-y-2">
-									<Label htmlFor="promoTemplate">Promo Card Template (PNG/PDF)</Label>
-									<input
+									<Label htmlFor="promoTemplate">Promo Card Template</Label>
+									<Input
 										id="promoTemplate"
 										type="file"
 										accept="image/*,application/pdf"
@@ -677,22 +711,23 @@ export default function CreateEvent() {
 											if (f && f.type.startsWith("image/")) setPromoTemplatePreview(URL.createObjectURL(f));
 											else setPromoTemplatePreview(null);
 										}}
+										className="cursor-pointer"
 									/>
 									{promoTemplatePreview && (
-										<img src={promoTemplatePreview} alt="Promo template" className="mt-2 max-h-40 rounded" />
+										<img src={promoTemplatePreview} alt="Template preview" className="mt-3 max-h-32 rounded border" />
 									)}
 								</div>
 							</div>
 						</CardContent>
 					</Card>
 					<div className="flex justify-end gap-4">
-						<Button variant="outline" type="button" asChild>
+						<Button variant="outline" type="button" className="border-[1.5px]" asChild>
 							<Link to="/organizer/events">Cancel</Link>
 						</Button>
-						<Button variant="teal" type="submit" size="lg" disabled={isSubmitting}>
+						<Button variant="outline" type="submit" className="border-[1.5px]" disabled={isSubmitting}>
 							{isSubmitting ? (
 								<>
-									<svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+									<svg className="h-4 w-4 animate-spin mr-2" viewBox="0 0 24 24" fill="none">
 										<circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
 										<path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
 									</svg>

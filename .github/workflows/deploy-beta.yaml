@@ -37,22 +37,29 @@ jobs:
         run: npm ci
 
       - name: Build
+        # add all the VITE_ env vars if using Vite
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
         run: npm run build --if-present
 
       - name: Ensure jq is available
         run: sudo apt-get update && sudo apt-get install -y jq
 
       - name: Configure Firebase service account
-        if: secrets.FIREBASE_SERVICE_ACCOUNT
         env:
-          FIREBASE_SERVICE_ACCOUNT: secrets.FIREBASE_SERVICE_ACCOUNT
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: |
           echo "Writing Firebase service account to file"
           printf "%s" "$FIREBASE_SERVICE_ACCOUNT" | base64 --decode > "${{ github.workspace }}/firebase-service-account.json" 2>/dev/null || printf "%s" "$FIREBASE_SERVICE_ACCOUNT" > "${{ github.workspace }}/firebase-service-account.json"
           echo "firebase-service-account.json written"
 
       - name: Export credentials for Firebase tooling
-        if: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: echo "GOOGLE_APPLICATION_CREDENTIALS=${{ github.workspace }}/firebase-service-account.json" >> $GITHUB_ENV
 
       - name: Determine branch and preview channel name
@@ -74,17 +81,41 @@ jobs:
         env:
           FIREBASE_PROJECT: ${{ secrets.FIREBASE_PROJECT_ID_BETA }}
         run: |
+          set -euo pipefail
           if [ -z "$FIREBASE_PROJECT" ]; then
             echo "Missing secret FIREBASE_PROJECT_ID_BETA. Set this to your beta Firebase project id." >&2
             exit 1
           fi
           CHANNEL=${{ steps.channel.outputs.channel }}
           echo "Deploying to project $FIREBASE_PROJECT channel $CHANNEL"
-          # Deploy and capture JSON output
-          npx firebase-tools hosting:channel:deploy "$CHANNEL" --project "$FIREBASE_PROJECT" --expires 7d --json > deploy.json
-          cat deploy.json
+          # install firebase-tools explicitly so we have a consistent CLI
+          echo "Installing firebase-tools"
+          npm install -g firebase-tools@latest
+
+          # Deploy and capture JSON + verbose logs (stdout+stderr)
+          DEPLOY_OUT=deploy.json
+          DEPLOY_LOG=deploy.log
+          echo "Running firebase-tools with debug output"
+          # run with --debug and capture both stdout and stderr
+          if npx firebase-tools hosting:channel:deploy "$CHANNEL" --project "$FIREBASE_PROJECT" --expires 7d --json --debug >"$DEPLOY_OUT" 2>"$DEPLOY_LOG"; then
+            echo "Deploy command exited successfully"
+          else
+            echo "Deploy command failed; dumping logs for debugging" >&2
+            echo "---- deploy.json ----"
+            [ -f "$DEPLOY_OUT" ] && sed -n '1,200p' "$DEPLOY_OUT" || echo "(no deploy.json)"
+            echo "---- deploy.log ----"
+            [ -f "$DEPLOY_LOG" ] && sed -n '1,400p' "$DEPLOY_LOG" || echo "(no deploy.log)"
+            echo "Failing the step" >&2
+            exit 1
+          fi
+
+          echo "---- deploy.json ----"
+          sed -n '1,200p' "$DEPLOY_OUT" || true
+          echo "---- deploy.log ----"
+          sed -n '1,400p' "$DEPLOY_LOG" || true
+
           # extract a preview URL from the JSON (try a few common places)
-          PREVIEW_URL=$(jq -r '..|.preview_url? // .url? // empty' deploy.json | head -n1)
+          PREVIEW_URL=$(jq -r '..|.preview_url? // .url? // empty' "$DEPLOY_OUT" | head -n1)
           if [ -z "$PREVIEW_URL" ] || [ "$PREVIEW_URL" = "null" ]; then
             echo "Failed to extract preview URL from deploy output" >&2
             exit 1

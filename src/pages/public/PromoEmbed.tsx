@@ -32,8 +32,17 @@ export default function PromoEmbed() {
         return [];
     }, [rawSpeakers]);
 
+    const { data: eventData } = useQuery<any>({
+        queryKey: ["event", id],
+        queryFn: () => getJson<any>(`/events/${id}`),
+        enabled: Boolean(id),
+    });
+
     const visibleSpeakers = speakerList.filter((s: any) => {
-        return Boolean(s?.promoCardTemplate || s?.promo_card_template || s?.headshot || s?.firstName || s?.name);
+        // Only show approved speakers
+        const isApproved = (s?.website_card_approved || s?.websiteCardApproved) && (s?.promo_card_approved || s?.promoCardApproved);
+        const hasRequiredData = Boolean(s?.headshot || s?.firstName || s?.name);
+        return isApproved && hasRequiredData;
     });
 
     return (
@@ -50,18 +59,14 @@ export default function PromoEmbed() {
                         {visibleSpeakers.map((speaker: any) => {
                             const headshot = speaker.headshot ?? speaker.headshotUrl ?? speaker.headshot_url ?? null;
                             const name = speaker.firstName ? `${speaker.firstName} ${speaker.lastName ?? ""}`.trim() : speaker.name ?? "";
-                            const companyRole = speaker.companyRole ?? speaker.title ?? "";
-                            const companyName = speaker.companyName ?? speaker.company ?? "";
-                            // Prefer the event's promo_card_template when speaker.events contains multiple events
-                            let promoTemplate = speaker.promoCardTemplate ?? speaker.promo_card_template ?? null;
-                            if (!promoTemplate && Array.isArray(speaker.events) && id) {
-                                const ev = speaker.events.find((e: any) => String(e.id) === String(id));
-                                if (ev) promoTemplate = ev.promoCardTemplate ?? ev.promo_card_template ?? null;
-                            }
+                            const companyRole = speaker.companyRole ?? speaker.company_role ?? speaker.title ?? "";
+                            const companyName = speaker.companyName ?? speaker.company_name ?? speaker.company ?? "";
+                            // Use event's promo_card_template as the background
+                            const promoTemplate = eventData?.promo_card_template ?? eventData?.promoCardTemplate ?? null;
                             const companyLogo = speaker.companyLogo ?? speaker.company_logo ?? null;
                             const containerStyle: React.CSSProperties = promoTemplate
-                                ? { backgroundImage: `url(${promoTemplate})`, backgroundSize: "contain", backgroundPosition: "center", backgroundRepeat: "no-repeat" }
-                                : { background: "linear-gradient(180deg,#fff,#f7f7f9)" };
+                                ? { backgroundImage: `url('${promoTemplate}')`, backgroundSize: "cover", backgroundPosition: "center", backgroundRepeat: "no-repeat" }
+                                : { background: "linear-gradient(135deg, #4E5BA6 0%, #3D4A8F 100%)" };
                             return (
                                 <div key={speaker.id} className="rounded-xl overflow-hidden flex flex-col" style={{ ...containerStyle, width: 400, minWidth: 400, height: 490 }}>
                                     <div className="relative w-full h-full flex items-end justify-center text-center p-6 overflow-hidden">

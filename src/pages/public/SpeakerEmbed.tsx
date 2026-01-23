@@ -33,30 +33,18 @@ export default function SpeakerEmbed() {
     return [];
   }, [rawSpeakers]);
 
-  const visibleSpeakers = speakerList.filter((s: any) => {
-    return Boolean(s?.promoCardTemplate || s?.promo_card_template || s?.headshot || s?.firstName || s?.name);
+  const { data: eventData } = useQuery<any>({
+    queryKey: ["event", id],
+    queryFn: () => getJson<any>(`/events/${id}`),
+    enabled: Boolean(id),
   });
 
-  const [dims, setDims] = React.useState<Record<string, { w: number; h: number }>>({});
-
-  React.useEffect(() => {
-    visibleSpeakers.forEach((speaker: any) => {
-      const promoTemplate = speaker.promo_card_template ?? (speaker as any).promoCardTemplate ?? (speaker.event && (speaker.event as any).promo_card_template) ?? null;
-      if (!promoTemplate) return;
-      if (dims[speaker.id]) return;
-
-      const img = new Image();
-      img.onload = () => {
-        const w = img.naturalWidth || img.width || 1;
-        const h = img.naturalHeight || img.height || 1;
-        setDims((prev) => ({ ...prev, [speaker.id]: { w, h } }));
-      };
-      img.onerror = () => {
-        setDims((prev) => ({ ...prev, [speaker.id]: { w: 6, h: 7 } }));
-      };
-      img.src = promoTemplate;
-    });
-  }, [visibleSpeakers, dims]);
+  const visibleSpeakers = speakerList.filter((s: any) => {
+    // Only show approved speakers (both website and promo cards must be approved)
+    const isApproved = (s?.website_card_approved || s?.websiteCardApproved) && (s?.promo_card_approved || s?.promoCardApproved);
+    const hasRequiredData = Boolean(s?.headshot || s?.firstName || s?.name);
+    return isApproved && hasRequiredData;
+  });
 
   return (
     <div className="min-h-screen bg-white text-black p-4">
@@ -73,36 +61,57 @@ export default function SpeakerEmbed() {
               const headshot = speaker.headshot ?? speaker.headshotUrl ?? speaker.headshot_url ?? null;
               const firstName = speaker.firstName ?? (speaker as any).first_name ?? null;
               const lastName = speaker.lastName ?? (speaker as any).last_name ?? null;
-              const promoTemplate = speaker.promoCardTemplate ?? speaker.promo_card_template ?? (speaker.event && (speaker.event as any).promoCardTemplate) ?? null;
+              const companyRole = speaker.companyRole ?? speaker.company_role ?? speaker.title ?? "";
+              const companyName = speaker.companyName ?? speaker.company_name ?? speaker.company ?? "";
+              const companyLogo = speaker.companyLogo ?? speaker.company_logo ?? null;
 
-              const d = dims[speaker.id];
-              const aspectStyle: React.CSSProperties = d
-                ? { aspectRatio: `${d.w}/${d.h}` }
-                : { aspectRatio: `6/7` };
+              // Use event's promo_card_template as the background
+              const promoTemplate = eventData?.promo_card_template ?? eventData?.promoCardTemplate ?? null;
 
               const bgStyle: React.CSSProperties = promoTemplate
-                ? { backgroundImage: `url(${promoTemplate})`, backgroundSize: "contain", backgroundPosition: "center", backgroundRepeat: "no-repeat" }
-                : {};
+                ? {
+                    backgroundImage: `url('${promoTemplate}')`,
+                    backgroundSize: "cover",
+                    backgroundPosition: "center",
+                    backgroundRepeat: "no-repeat"
+                  }
+                : {
+                    background: "linear-gradient(135deg, #4E5BA6 0%, #3D4A8F 100%)"
+                  };
 
               return (
-                <div key={speaker.id} className="rounded-xl overflow-hidden border border-border bg-card">
+                <div key={speaker.id} className="rounded-xl overflow-hidden shadow-md">
                   <div
-                    className="relative w-full bg-center bg-no-repeat flex items-end justify-center text-center p-6"
-                    style={{ ...aspectStyle, ...bgStyle }}
+                    className="relative w-full aspect-square bg-center bg-no-repeat flex flex-col items-center justify-center text-center p-6"
+                    style={bgStyle}
                   >
+                    {/* Overlay for better text readability */}
+                    <div className="absolute inset-0 bg-black/10"></div>
+
                     {headshot && (
                       <img
                         src={headshot}
                         alt={`${firstName ?? speaker.name ?? ""} headshot`}
-                        className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 h-36 w-36 rounded-full object-cover border-4 border-white z-10"
+                        className="relative z-10 h-32 w-32 rounded-lg object-cover border-4 border-white shadow-lg mb-4"
                       />
                     )}
 
-                    <div className="z-20 pb-4">
-                      <h3 className="text-lg font-bold text-black">
+                    <div className="relative z-20">
+                      <h3 className="text-xl font-bold text-white drop-shadow-md mb-1">
                         {firstName ? `${firstName} ${lastName ?? ""}` : speaker.name}
                       </h3>
-                      {speaker.title && <p className="text-sm text-black">{speaker.title}{speaker.company ? ` • ${speaker.company}` : ""}</p>}
+                      <p className="text-sm text-white drop-shadow-sm mb-1">{companyRole}</p>
+                      <p className="text-sm font-semibold text-white drop-shadow-sm">{companyName}</p>
+                      {companyLogo && (
+                        <div className="mt-3">
+                          <img
+                            src={companyLogo}
+                            alt="Company logo"
+                            className="h-8 mx-auto opacity-90"
+                            style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }}
+                          />
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

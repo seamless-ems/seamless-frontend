@@ -11,7 +11,52 @@ import { toast } from "@/hooks/use-toast";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { FolderOpen, Calendar, MapPin, Mail, FileText, Mic2, Users, Link as LinkIcon } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
+const availableModules = [
+  {
+    id: "speaker",
+    name: "Speakers",
+    description: "Manage speakers, intake forms, and promo cards",
+    icon: Mic2,
+    color: "speaker",
+    available: true,
+  },
+  {
+    id: "schedule",
+    name: "Schedule",
+    description: "Create and publish event schedules",
+    icon: Calendar,
+    color: "schedule",
+    available: true,
+  },
+  {
+    id: "content",
+    name: "Content",
+    description: "Centralized hub for presentations and files",
+    icon: FileText,
+    color: "content",
+    available: true,
+  },
+  {
+    id: "partners",
+    name: "Partners",
+    description: "Manage sponsors and partners",
+    icon: Users,
+    color: "primary",
+    available: true,
+  },
+  {
+    id: "attendee",
+    name: "Attendees",
+    description: "Manage registrations and communications",
+    icon: Users,
+    color: "attendee",
+    available: false,
+    comingSoon: true,
+  },
+];
 
 export default function EventSettings() {
   const { id } = useParams();
@@ -28,6 +73,8 @@ export default function EventSettings() {
     startDate: "",
     endDate: "",
     location: "",
+    eventWebsite: "",
+    fromName: "",
     fromEmail: "",
     replyToEmail: "",
     emailSignature: "",
@@ -75,6 +122,8 @@ export default function EventSettings() {
       startDate: toDateInput(rawEvent.start_date ?? rawEvent.startDate ?? ""),
       endDate: toDateInput(rawEvent.end_date ?? rawEvent.endDate ?? ""),
       location: rawEvent.location ?? "",
+      eventWebsite: rawEvent.event_website ?? rawEvent.eventWebsite ?? "",
+      fromName: rawEvent.from_name ?? rawEvent.fromName ?? "",
       fromEmail: rawEvent.from_email ?? rawEvent.fromEmail ?? "",
       replyToEmail: rawEvent.reply_to_email ?? rawEvent.replyToEmail ?? "",
       emailSignature: rawEvent.email_signature ?? rawEvent.emailSignature ?? "",
@@ -223,7 +272,7 @@ export default function EventSettings() {
     );
 
     const value = selectedFolderPath[currentDepth] ?? "";
-    return (
+  return (
       <div>
         <div className="text-xs text-muted-foreground mb-1">{currentDepth === 0 ? "Top level" : `Level ${currentDepth + 1}`}</div>
         <Select value={value} aria-label={`Folder level ${currentDepth + 1}`} onValueChange={(val) => handleSelectAtDepth(currentDepth, val)}>
@@ -261,18 +310,24 @@ export default function EventSettings() {
         start_date: formData.startDate || undefined,
         end_date: formData.endDate || undefined,
         location: formData.location || undefined,
+        event_website: formData.eventWebsite || undefined,
+        from_name: formData.fromName || undefined,
         from_email: formData.fromEmail || undefined,
-  reply_to_email: formData.replyToEmail || undefined,
+        reply_to_email: formData.replyToEmail || undefined,
         email_signature: formData.emailSignature || undefined,
         modules: modulesObj,
-        team_id: selectedTeamId,
       };
+
+      // Only include team_id if it's actually set
+      if (selectedTeamId) {
+        payload.team_id = selectedTeamId;
+      }
 
       try {
         if (eventImageFile) {
           const res = await uploadFile(eventImageFile, "user", me?.id ?? "", undefined, eventId);
           const imageValue = res?.public_url ?? res?.publicUrl ?? res?.url ?? res?.id ?? null;
-          if (imageValue) payload.eventImage = imageValue;
+          if (imageValue) payload.event_image = imageValue;
         }
       } catch (err: any) {
         console.error("Event image upload failed", err);
@@ -283,19 +338,31 @@ export default function EventSettings() {
         if (promoTemplateFile) {
           const res2 = await uploadFile(promoTemplateFile, "user", me?.id ?? "", undefined, eventId);
           const promoValue = res2?.public_url ?? res2?.publicUrl ?? res2?.url ?? res2?.id ?? null;
-          if (promoValue) payload.promoCardTemplate = promoValue;
+          if (promoValue) (payload as any).promo_card_template = promoValue;
         }
       } catch (err: any) {
         console.error("Promo template upload failed", err);
         toast({ title: "Promo template upload failed", description: String(err?.message || err) });
       }
 
+      // Remove undefined values from payload
+      Object.keys(payload).forEach(key => {
+        if (payload[key] === undefined) {
+          delete payload[key];
+        }
+      });
+
       await updateEvent(id, payload);
       queryClient.invalidateQueries({ queryKey: ["event", id] });
       toast({ title: "Event updated" });
     } catch (err: any) {
       console.error("Update event failed", err);
-      toast({ title: "Failed to update event", description: String(err?.message || err) });
+      const errorMsg = err?.message || String(err);
+      toast({
+        title: "Failed to update event",
+        description: errorMsg.includes('fetch') ? 'Network error - check console for details' : errorMsg,
+        variant: "destructive"
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -305,11 +372,11 @@ export default function EventSettings() {
 
   if (!rawEvent && error) return <div className="py-16 text-center text-destructive">Error loading event: {String(error.message)}</div>;
 
-    return (
+  return (
       <div className="max-w-4xl mx-auto space-y-6">
         <div>
-          <h1 className="font-display text-3xl font-bold text-foreground">Edit Event</h1>
-          <p className="text-muted-foreground mt-1">Update your event details and assets</p>
+          <h1 style={{ fontSize: 'var(--font-h1)', fontWeight: 600 }}>Edit Event</h1>
+          <p className="text-muted-foreground mt-1" style={{ fontSize: 'var(--font-body)' }}>Update your event details and assets</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -317,7 +384,7 @@ export default function EventSettings() {
           {/* Google Drive */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2" style={{ fontSize: 'var(--font-h3)', fontWeight: 600 }}>
                 <FolderOpen className="h-5 w-5 text-primary" />
                 Google Drive Integration
               </CardTitle>
@@ -384,7 +451,7 @@ export default function EventSettings() {
           {/* Basic Info */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2" style={{ fontSize: 'var(--font-h3)', fontWeight: 600 }}>
                 <Calendar className="h-5 w-5 text-primary" />
                 Event Details
               </CardTitle>
@@ -410,18 +477,78 @@ export default function EventSettings() {
                 <Label>Location</Label>
                 <Input placeholder="e.g., San Francisco, CA" value={formData.location} onChange={(e) => setFormData((prev) => ({ ...prev, location: e.target.value }))} />
               </div>
+
+              <div className="space-y-2">
+                <Label>Event Website</Label>
+                <Input type="text" placeholder="https://example.com/event (optional)" value={formData.eventWebsite} onChange={(e) => setFormData((prev) => ({ ...prev, eventWebsite: e.target.value }))} />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Module Selection */}
+          <Card>
+            <CardHeader>
+              <CardTitle style={{ fontSize: 'var(--font-h3)', fontWeight: 600 }}>Event Modules</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {availableModules.map((module) => {
+                  const Icon = module.icon;
+                  const isSelected = selectedModules.includes(module.id);
+
+                  return (
+                    <div
+                      key={module.id}
+                      className={cn(
+                        "rounded-lg border p-3 transition-all duration-200 cursor-pointer",
+                        isSelected ? "border-primary bg-primary/5" : "border-border hover:border-primary/30",
+                        !module.available && "opacity-50 cursor-not-allowed"
+                      )}
+                      onClick={() => module.available && toggleModule(module.id)}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div
+                          className={cn(
+                            "flex h-8 w-8 items-center justify-center rounded",
+                            isSelected ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                          )}
+                        >
+                          <Icon className="h-4 w-4" />
+                        </div>
+                        {module.comingSoon ? (
+                          <Badge variant="secondary" className="text-xs">Soon</Badge>
+                        ) : (
+                          <div onClick={(e) => e.stopPropagation()}>
+                            <Switch
+                              checked={isSelected}
+                              disabled={!module.available}
+                              onCheckedChange={() => module.available && toggleModule(module.id)}
+                            />
+                          </div>
+                        )}
+                      </div>
+                      <h4 className="font-medium text-foreground text-sm mb-1">{module.name}</h4>
+                      <p className="text-xs text-muted-foreground">{module.description}</p>
+                    </div>
+                  );
+                })}
+              </div>
             </CardContent>
           </Card>
 
           {/* Email Settings */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2" style={{ fontSize: 'var(--font-h3)', fontWeight: 600 }}>
                 <Mail className="h-5 w-5 text-primary" />
                 Email Settings
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>'From' Name</Label>
+                <Input placeholder="Your Company Name" value={formData.fromName} onChange={(e) => setFormData((prev) => ({ ...prev, fromName: e.target.value }))} />
+              </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label>'From' Email</Label>
@@ -443,7 +570,7 @@ export default function EventSettings() {
           {/* Images & Templates */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Images & Templates</CardTitle>
+              <CardTitle style={{ fontSize: 'var(--font-h3)', fontWeight: 600 }}>Images & Templates</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2 items-start">
@@ -464,7 +591,7 @@ export default function EventSettings() {
 
           <div className="flex justify-end gap-4">
             <Button variant="outline" type="button" onClick={() => navigate(`/organizer/event/${id}`)}>Cancel</Button>
-            <Button variant="teal" type="submit" size="lg" disabled={isSubmitting}>{isSubmitting ? "Saving…" : "Save Changes"}</Button>
+            <Button variant="outline" type="submit" className="border-[1.5px]" disabled={isSubmitting}>{isSubmitting ? "Saving…" : "Save Changes"}</Button>
           </div>
         </form>
       </div>
