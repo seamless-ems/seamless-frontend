@@ -34,6 +34,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getJson, createSpeaker } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 import SpeakerFormBuilder from "@/components/SpeakerFormBuilder";
+import PromoCardBuilder from "@/components/PromoCardBuilder";
 
 export default function SpeakerModule() {
   const { id } = useParams();
@@ -159,6 +160,16 @@ export default function SpeakerModule() {
             }`}
           >
             Embed Builder
+          </button>
+          <button
+            onClick={() => setSelectedTab("promo-builder")}
+            className={`pb-3 border-b-2 transition-colors text-sm ${
+              selectedTab === "promo-builder"
+                ? "border-primary text-foreground font-semibold bg-muted/50 px-3 py-2 rounded-t"
+                : "border-transparent text-muted-foreground hover:text-foreground font-medium"
+            }`}
+          >
+            Website & Promo Card Builder
           </button>
         </div>
       </div>
@@ -399,6 +410,11 @@ export default function SpeakerModule() {
       {/* Embed Builder Tab */}
       {selectedTab === "embed-builder" && (
         <EmbedBuilderContent eventId={id} />
+      )}
+
+      {/* Website & Promo Card Builder Tab */}
+      {selectedTab === "promo-builder" && (
+        <PromoCardBuilder eventId={id} />
       )}
     </div>
   );
