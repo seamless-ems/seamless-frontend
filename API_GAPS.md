@@ -3,7 +3,98 @@
 This document tracks any data or endpoints we need that aren't currently available in the API.
 Share this list with the backend developer to coordinate changes.
 
-**Last Updated:** January 21, 2026
+**Last Updated:** January 27, 2026
+
+---
+
+## 🔴 CRITICAL: Promo Card Template Not Saving
+
+**Status:** 🚨 BLOCKING - Currently broken
+
+**Issue:**
+The promo card template upload in Event Settings appears to work (preview shows the uploaded image), but when clicking "Save Changes", the endpoint fails and the template is not persisted.
+
+**What's Happening:**
+1. User uploads PNG/PDF template in Event Settings → Preview appears ✅
+2. User clicks "Save Changes" → API call fails ❌
+3. Error: `PATCH /events/{event_id}` returns CORS error + fetch failure
+4. Template is NOT saved to the backend
+5. When user navigates to speaker portal, template does NOT appear on promo card preview
+
+**Error Details:**
+```
+Failed to load resource: net::ERR_NAME_NOT_RESOLVED
+CORS policy: No 'Access-Control-Allow-Origin' header
+TypeError: Failed to fetch
+```
+
+**Backend Fix Required:**
+1. Verify `PATCH /api/v1/events/{event_id}` endpoint accepts `promo_card_template` field
+2. Confirm the file URL from upload is being stored correctly in the database
+3. Verify the field is being returned in `GET /api/v1/events/{event_id}` response
+4. Check CORS headers are properly configured for local development
+
+**Frontend Implementation (Already Complete):**
+- ✅ File upload input accepts PNG/PDF
+- ✅ Preview image displays after selection
+- ✅ Sends `promo_card_template` field in PATCH request
+- ✅ Query cache invalidation triggers after save
+
+**Testing After Backend Fix:**
+1. Go to Event Settings
+2. Upload a PNG or PDF template
+3. Verify preview appears
+4. Click "Save Changes"
+5. No errors should appear
+6. Navigate to speaker portal → Template should appear as background on promo card
+7. Refresh page → Template should persist
+8. Check database → `promo_card_template` field should contain the file URL
+
+---
+
+## 🔴 CRITICAL: Speaker Intake Endpoint Not Storing Extended Fields
+
+**Status:** 🚨 BLOCKING - Currently broken
+
+**Issue:**
+The `POST /api/v1/events/{event_id}/intake` endpoint accepts `companyName`, `companyRole`, and `bio` fields in the request payload, but is not storing or returning them when the speaker is fetched.
+
+**What's Broken:**
+1. Frontend submits complete payload with all fields:
+   ```json
+   {
+     "firstName": "Speaker",
+     "lastName": "Name",
+     "email": "speaker@example.com",
+     "companyName": "Acme Corp",
+     "companyRole": "CEO",
+     "bio": "Speaker bio text",
+     "linkedin": "https://linkedin.com/in/speaker",
+     "headshot": "/uploads/proxy/headshot.jpg",
+     "company_logo": "/uploads/proxy/logo.jpg"
+   }
+   ```
+
+2. Intake endpoint receives the payload (no 400 errors), but when speaker is fetched via `GET /api/v1/events/{event_id}/speakers/{speaker_id}`, only these fields are returned:
+   - `firstName` ✅
+   - `lastName` ✅
+   - `email` ✅
+   - `headshot` ✅
+   - `company_logo` ✅
+   - `companyName` ❌ (missing)
+   - `companyRole` ❌ (missing)
+   - `bio` ❌ (missing)
+   - `linkedin` ❌ (missing)
+
+**Backend Fix Required:**
+1. Verify the intake endpoint is storing `companyName`, `companyRole`, `bio`, and `linkedin` in the database
+2. Confirm the speaker GET endpoint returns these fields
+3. Check if intake endpoint uses a different schema that excludes these fields
+
+**Testing:**
+1. Submit speaker via intake form with all fields filled in
+2. Fetch speaker via GET `/api/v1/events/{event_id}/speakers/{speaker_id}`
+3. All submitted fields should appear in response
 
 ---
 

@@ -157,6 +157,9 @@ export default function SpeakerFormBuilder({
   };
 
   const proceedWithSave = () => {
+    // Save to localStorage as bridge until backend API endpoint is ready
+    localStorage.setItem(`speaker_form_config_${eventId}`, JSON.stringify(fields));
+    
     if (onSave) {
       onSave(fields);
     }

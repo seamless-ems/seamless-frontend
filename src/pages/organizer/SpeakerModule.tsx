@@ -40,6 +40,7 @@ export default function SpeakerModule() {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [sortBy, setSortBy] = useState("newest");
   const [selectedTab, setSelectedTab] = useState("speakers");
   const [addOpen, setAddOpen] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -68,6 +69,7 @@ export default function SpeakerModule() {
       const company = it.company_name ?? it.company ?? it.companyName ?? "";
       const headshot = it.headshot ?? it.headshot_url ?? it.avatar_url ?? null;
       const intakeFormStatus = it.intake_form_status ?? it.intakeFormStatus ?? "pending";
+      const createdAt = it.created_at ?? it.createdAt ?? null;
       const name = `${firstName} ${lastName}`.trim() || email;
 
       return {
@@ -78,21 +80,37 @@ export default function SpeakerModule() {
         company,
         avatarUrl: headshot,
         intakeFormStatus,
+        createdAt,
         name,
       };
     });
   })();
 
-  const filteredSpeakers = speakerList.filter((speaker) => {
-    const matchesSearch =
-      speaker.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      speaker.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      speaker.company.toLowerCase().includes(searchQuery.toLowerCase());
+  const filteredSpeakers = speakerList
+    .filter((speaker) => {
+      const matchesSearch =
+        speaker.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        speaker.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        speaker.company.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchesStatus = statusFilter === "all" || speaker.intakeFormStatus === statusFilter;
+      const matchesStatus = statusFilter === "all" || speaker.intakeFormStatus === statusFilter;
 
-    return matchesSearch && matchesStatus;
-  });
+      return matchesSearch && matchesStatus;
+    })
+    .sort((a, b) => {
+      if (sortBy === "newest") {
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return dateB - dateA;
+      } else if (sortBy === "oldest") {
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return dateA - dateB;
+      } else if (sortBy === "name") {
+        return a.name.localeCompare(b.name);
+      }
+      return 0;
+    });
 
   const pendingCount = speakerList.filter(s => s.intakeFormStatus === "pending").length;
   const totalCount = speakerList.length;
@@ -120,7 +138,7 @@ export default function SpeakerModule() {
                 : "border-transparent text-muted-foreground hover:text-foreground font-medium"
             }`}
           >
-            Applications
+            Call for Speakers
           </button>
           <button
             onClick={() => setSelectedTab("forms")}
@@ -238,6 +256,16 @@ export default function SpeakerModule() {
                     <SelectItem value="approved">Approved</SelectItem>
                   </SelectContent>
                 </Select>
+                <Select value={sortBy} onValueChange={setSortBy}>
+                  <SelectTrigger className="w-[140px] h-9 text-sm">
+                    <SelectValue placeholder="Sort by" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="newest">Newest First</SelectItem>
+                    <SelectItem value="oldest">Oldest First</SelectItem>
+                    <SelectItem value="name">Name A-Z</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="text-sm text-muted-foreground">
                 {totalCount} speaker{totalCount !== 1 ? 's' : ''}
@@ -261,6 +289,7 @@ export default function SpeakerModule() {
                     <tr>
                       <th className="px-5 py-3 text-left text-xs font-medium text-muted-foreground">Speaker</th>
                       <th className="px-5 py-3 text-left text-xs font-medium text-muted-foreground">Company</th>
+                      <th className="px-5 py-3 text-left text-xs font-medium text-muted-foreground">Submitted</th>
                       <th className="px-5 py-3 text-left text-xs font-medium text-muted-foreground">Status</th>
                     </tr>
                   </thead>
@@ -289,6 +318,9 @@ export default function SpeakerModule() {
                       </td>
                       <td className="px-5 py-4 text-sm text-foreground">
                         {speaker.company || "-"}
+                      </td>
+                      <td className="px-5 py-4 text-sm text-muted-foreground">
+                        {speaker.createdAt ? new Date(speaker.createdAt).toLocaleDateString() : "-"}
                       </td>
                       <td className="px-5 py-4">
                         <Badge
@@ -319,7 +351,7 @@ export default function SpeakerModule() {
         <div className="space-y-6 pt-6">
           {/* Header */}
           <div>
-            <h2 className="text-2xl font-semibold text-foreground">Applications</h2>
+            <h2 className="text-2xl font-semibold text-foreground">Call for Speakers</h2>
             <p className="text-sm text-muted-foreground mt-1">Review and approve speaker applications</p>
           </div>
 
@@ -769,25 +801,65 @@ function EmbedBuilderContent({ eventId }: { eventId: string | undefined }) {
 
 function FormsTabContent({ eventId }: { eventId: string | undefined }) {
   const [editingForm, setEditingForm] = useState<string | null>(null);
+  const [copiedForm, setCopiedForm] = useState<string | null>(null);
+
+  // Fetch event data for event name
+  const { data: eventData } = useQuery<any>({
+    queryKey: ["event", eventId],
+    queryFn: () => getJson<any>(`/events/${eventId}`),
+    enabled: Boolean(eventId),
+  });
+
+  const eventName = eventData?.title ?? eventData?.name ?? "Event";
+
+  // Fetch speakers to get real submission counts
+  const { data: rawSpeakers } = useQuery<any, Error>({
+    queryKey: ["event", eventId, "speakers"],
+    queryFn: () => getJson<any>(`/events/${eventId}/speakers`),
+    enabled: Boolean(eventId),
+  });
+
+  // Normalize speakers list
+  const speakerList: any[] = (() => {
+    if (!rawSpeakers) return [];
+    let arr: any[] = [];
+    if (Array.isArray(rawSpeakers)) arr = rawSpeakers;
+    else if (Array.isArray(rawSpeakers.items)) arr = rawSpeakers.items;
+    else if (Array.isArray(rawSpeakers.results)) arr = rawSpeakers.results;
+    else if (Array.isArray(rawSpeakers.speakers)) arr = rawSpeakers.speakers;
+    else if (Array.isArray(rawSpeakers.data)) arr = rawSpeakers.data;
+    return arr;
+  })();
+
+  // Count confirmed speakers (those submitted via speaker intake form)
+  const confirmedSpeakersCount = speakerList.length;
 
   const forms = [
     {
       id: "speaker-info",
-      name: "Event Speaker Information",
+      name: `Speaker Information | ${eventName}`,
       type: "Speaker Information Form",
-      description: "For confirmed speakers - submissions go directly to Speakers",
-      submissions: 12,
+      description: "",
+      submissions: confirmedSpeakersCount,
       badge: "success",
     },
     {
       id: "call-for-speakers",
-      name: "Event Call for Speakers",
+      name: `Call for Speakers | ${eventName}`,
       type: "Application Form",
-      description: "Applications require approval - submissions go to Applications tab",
-      submissions: 6,
+      description: "Applications require approval - submissions go to Call for Speakers tab",
+      submissions: 0,
       badge: "warning",
     },
   ];
+
+  const handleGetLink = (formId: string) => {
+    const url = `${window.location.origin}/speaker-intake/${eventId}`;
+    navigator.clipboard.writeText(url);
+    setCopiedForm(formId);
+    toast({ title: "Link copied to clipboard!" });
+    setTimeout(() => setCopiedForm(null), 2000);
+  };
 
   if (editingForm) {
     return (
@@ -819,8 +891,7 @@ function FormsTabContent({ eventId }: { eventId: string | undefined }) {
     <div className="space-y-6 pt-6">
       {/* Header */}
       <div>
-        <h2 className="text-2xl font-semibold text-foreground">Speaker Information Forms</h2>
-        <p className="text-sm text-muted-foreground mt-1">Create and manage forms to collect speaker information</p>
+        <h2 className="text-2xl font-semibold text-foreground">Speaker Forms</h2>
       </div>
 
       {/* Forms Grid */}
@@ -851,13 +922,21 @@ function FormsTabContent({ eventId }: { eventId: string | undefined }) {
                   </DropdownMenu>
                 </div>
 
+                {/* Description */}
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    {form.id === "speaker-info"
+                      ? "Share this form link with speakers to collect information you customize. Submissions appear instantly in your Speakers list."
+                      : "Accept speaker applications. Share the form link, customize your fields, and review submissions in your Call for Speakers tab."}
+                  </p>
+                </div>
+
                 {/* Stats */}
                 <div className="space-y-2">
                   <div className="flex items-baseline gap-2">
-                    <div className="text-2xl font-semibold text-foreground">{form.submissions}</div>
-                    <div className="text-sm text-muted-foreground">submission{form.submissions !== 1 ? 's' : ''}</div>
+                    <div className="text-sm font-semibold text-foreground">{form.submissions}</div>
+                    <div className="text-xs text-muted-foreground">submission{form.submissions !== 1 ? 's' : ''}</div>
                   </div>
-                  <p className="text-xs text-muted-foreground">{form.description}</p>
                 </div>
 
                 {/* Actions */}
@@ -865,9 +944,23 @@ function FormsTabContent({ eventId }: { eventId: string | undefined }) {
                   <Button variant="outline" size="sm" className="flex-1" onClick={() => setEditingForm(form.id)}>
                     Edit Form
                   </Button>
-                  <Button variant="outline" size="sm" className="flex-1">
-                    <Copy className="h-3 w-3 mr-1" />
-                    Get Link
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="flex-1"
+                    onClick={() => handleGetLink(form.id)}
+                  >
+                    {copiedForm === form.id ? (
+                      <>
+                        <Check className="h-3 w-3 mr-1" />
+                        Copied
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-3 w-3 mr-1" />
+                        Get Link
+                      </>
+                    )}
                   </Button>
                 </div>
               </div>

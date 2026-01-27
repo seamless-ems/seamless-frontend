@@ -45,6 +45,7 @@ export default function SpeakerPortal() {
       return data;
     },
     enabled: Boolean(id),
+    staleTime: 0, // Always refetch when component mounts
   });
 
   const s = speaker
