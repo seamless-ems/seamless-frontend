@@ -118,6 +118,7 @@ The complete speaker workflow has been implemented and is ready for testing:
 - `website_card_approved` - Approval flag (assumed to exist)
 - `promo_card_approved` - Approval flag (assumed to exist)
 - `promo_card_template` on Event model (assumed to exist)
+- `registered_at` - Timestamp when speaker was created/submitted (should be auto-set on creation)
 
 ### User Account Creation:
 - 🚨 **CRITICAL** - Speaker user accounts not created when speakers are added (see "Speaker User Account Creation" section)
@@ -817,4 +818,320 @@ Not yet supported but planned:
 - [ ] File fields marked required prevent submission without file
 - [ ] Custom fields with select/checkbox/radio types work (when implemented)
 - [ ] Form configuration persists across sessions
+
+---
+
+## Promo Card Template Configuration Storage (P1 - High Priority)
+
+**Context:** PromoCardBuilder component allows organizers to design a template layout (drag-drop zones for headshot, logo, name, title, company, etc.). Currently, the template configuration is saved to localStorage, but it needs to be stored in the database and flow through to all speakers in the event.
+
+**Current State:**
+- ✅ PromoCardBuilder UI complete with Fabric.js canvas
+- ✅ Saves template configuration to localStorage (`promo-card-config-{eventId}`)
+- ✅ Configuration includes:
+  - Element positions (x, y coordinates)
+  - Element sizes and styles (fontSize, fontWeight, color, opacity)
+  - Headshot shape (circle, square, horizontal rectangle, vertical rectangle)
+  - Template background image (base64 data URL)
+  - Drop zone definitions (WHERE content goes, NOT the actual content)
+- ❌ Configuration is NOT stored in database
+- ❌ Configuration does NOT flow to speaker previews
+
+**🆕 UPDATE:** Backend API Structure Already Exists
+According to user clarification, the following API structure is already in place:
+
+**GET /api/v1/events/{event_id}** returns:
+- `promo_card_template` field - Contains the background template image
+
+**GET /api/v1/speakers/{speaker_id}** returns:
+- `headshot` - Speaker headshot image URL
+- `firstName`, `lastName` - Speaker name
+- `companyRole` - Speaker title
+- `company_name` - Company name
+
+**Current promo card preview implementation:**
+- Uses `eventData.promo_card_template` for background
+- Uses speaker fields for content overlay
+
+**✅ CONFIRMED - Current Implementation:**
+
+After reviewing the code (`src/pages/organizer/SpeakerPortal.tsx:436-475`):
+
+1. **`promo_card_template`** - Stores ONLY the background image (URL)
+2. **Layout is hardcoded** - All speaker data is centered with fixed sizes:
+   - Headshot: 60x60px, centered, rounded
+   - Name: 13px bold, centered
+   - Title: 10px, centered
+   - Company: 10px bold, centered
+   - Logo: centered below text
+
+**🎯 WHAT'S NEEDED:**
+
+We need to store the PromoCardBuilder configuration and use it to render promo cards dynamically.
+
+**Backend Changes Required:**
+
+Add a NEW field to the Event model:
+```python
+promo_template_config: Optional[dict] = Field(None, description="PromoCardBuilder layout configuration")
+```
+
+This field should store the complete configuration object from PromoCardBuilder (see detailed structure below in "Field Details").
+
+**API Endpoint Updates:**
+- `PATCH /api/v1/events/{event_id}` - Accept `promo_template_config` field
+- `GET /api/v1/events/{event_id}` - Return `promo_template_config` field
+
+**Frontend Changes Required:**
+
+1. **PromoCardBuilder.tsx** - Update save logic:
+   - Instead of saving to localStorage, send to backend via `PATCH /api/v1/events/{event_id}`
+   - Send `promo_template_config` (configuration object) + `promo_card_template` (background image URL)
+
+2. **SpeakerPortal.tsx** - Update promo card preview:
+   - Instead of hardcoded centered layout, read `eventData.promo_template_config`
+   - Render elements dynamically based on configuration positions, sizes, colors, etc.
+   - Use Fabric.js or CSS positioning to render the preview
+
+3. **PromoEmbed.tsx** / **PromoEmbedSingle.tsx** - Same updates as SpeakerPortal for public-facing promo cards
+
+**Required Backend Implementation:**
+
+### 1. Event Model - Add Template Configuration Fields
+
+Add two new fields to the Event model:
+
+```python
+promo_template_config: Optional[dict] = Field(None, description="PromoCardBuilder template configuration (element positions, sizes, styles)")
+promo_template_background: Optional[str] = Field(None, description="Template background image (data URL or file URL)")
+```
+
+**Field Details:**
+
+**`promo_template_config`** (JSON object):
+```json
+{
+  "headshot": {
+    "label": "Headshot",
+    "type": "image-dropzone",
+    "x": 50,
+    "y": 50,
+    "size": 120,
+    "shape": "circle",
+    "visible": true,
+    "opacity": 1,
+    "zIndex": 1
+  },
+  "name": {
+    "label": "Name",
+    "x": 200,
+    "y": 50,
+    "fontSize": 32,
+    "fontFamily": "Inter",
+    "color": "#000000",
+    "fontWeight": 700,
+    "visible": true,
+    "textAlign": "left",
+    "width": 300,
+    "zIndex": 2
+  },
+  "title": {
+    "label": "Title",
+    "x": 200,
+    "y": 90,
+    "fontSize": 20,
+    "fontFamily": "Inter",
+    "color": "#000000",
+    "fontWeight": 500,
+    "visible": true,
+    "textAlign": "left",
+    "width": 300,
+    "zIndex": 3
+  },
+  "company": {
+    "label": "Company",
+    "x": 200,
+    "y": 120,
+    "fontSize": 18,
+    "fontFamily": "Inter",
+    "color": "#000000",
+    "fontWeight": 400,
+    "visible": true,
+    "textAlign": "left",
+    "width": 300,
+    "zIndex": 4
+  },
+  "companyLogo": {
+    "label": "Company Logo",
+    "type": "image-dropzone",
+    "x": 500,
+    "y": 50,
+    "size": 80,
+    "shape": "square",
+    "visible": true,
+    "opacity": 1,
+    "zIndex": 5
+  }
+}
+```
+
+**`promo_template_background`** (string):
+- Data URL format: `data:image/png;base64,iVBORw0KG...`
+- OR file URL format: `https://cdn.seamlessevents.io/templates/event_123/background.png`
+- Max size recommendation: 2MB for performance
+- Suggested dimensions: 600x600px (PromoCardBuilder default canvas size)
+
+### 2. API Endpoints - Update Event Endpoints
+
+**PATCH `/events/{event_id}`** - Add support for template fields:
+```json
+{
+  "promo_template_config": { "headshot": {...}, "name": {...}, ... },
+  "promo_template_background": "data:image/png;base64,..."
+}
+```
+
+**GET `/events/{event_id}`** - Include template fields in response:
+```json
+{
+  "id": "event_123",
+  "name": "Tech Conference 2026",
+  "promo_template_config": { ... },
+  "promo_template_background": "data:image/png;base64,....."
+  // ... other event fields
+}
+```
+
+### 3. Frontend Integration Points
+
+**PromoCardBuilder** (`/test/promo-builder`):
+- Currently: Saves to `localStorage.setItem('promo-card-config-{eventId}', ...)`
+- **Update to**: Call `PATCH /events/{eventId}` with template config
+- Save button should:
+  1. Convert template background blob URL to base64 (already implemented)
+  2. Call `updateEvent(eventId, { promo_template_config: config, promo_template_background: templateUrl })`
+  3. Show success toast
+  4. Mark as saved (no unsaved changes)
+
+**SpeakerModule** (`/organizer/event/{id}/speakers`):
+- Load event with template: `GET /events/{id}`
+- For each speaker row, render preview card using:
+  - `event.promo_template_config` (defines layout)
+  - `event.promo_template_background` (background image)
+  - `speaker.firstName`, `speaker.lastName`, `speaker.companyRole`, `speaker.companyName`
+  - `speaker.headshot` (actual speaker photo)
+  - `speaker.company_logo` (actual company logo)
+
+**Preview Component** (new: `SpeakerPromoPreview.tsx`):
+```typescript
+interface SpeakerPromoPreviewProps {
+  speaker: {
+    firstName: string;
+    lastName: string;
+    companyRole?: string;
+    companyName?: string;
+    headshot?: string;
+    company_logo?: string;
+  };
+  templateConfig: any; // from event.promo_template_config
+  templateBackground: string; // from event.promo_template_background
+  size?: "small" | "medium" | "large"; // for different contexts (thumbnail vs full)
+}
+```
+
+### 4. Data Flow Diagram
+
+```
+1. Admin designs template in PromoCardBuilder
+   ↓
+2. Clicks "Save Configuration"
+   ↓
+3. Frontend: PATCH /events/{id} with promo_template_config + promo_template_background
+   ↓
+4. Backend: Stores in Event table
+   ↓
+5. Speaker List loads: GET /events/{id} → includes template config
+   ↓
+6. For each speaker: Render preview using template + speaker data
+   ↓
+7. Preview shows: Background + positioned headshot + name/title/company overlay
+```
+
+### 5. Important Notes
+
+**Template vs Content Separation:**
+- Template defines WHERE things go (positions, sizes, colors)
+- Speaker data provides WHAT goes there (actual names, photos, logos)
+- Test images in PromoCardBuilder are preview-only and NOT saved
+
+**One Template Per Event:**
+- All speakers in an event share the same promo card template
+- Individual speaker customization not needed for Phase 1
+- Each speaker's actual data (name, photo, etc.) populates the template
+
+**Backward Compatibility:**
+- If `promo_template_config` is null/undefined, show fallback gradient background
+- Existing events without templates should continue working
+
+### 6. Database Schema Updates
+
+```sql
+-- Add columns to events table
+ALTER TABLE events
+  ADD COLUMN promo_template_config JSONB NULL,
+  ADD COLUMN promo_template_background TEXT NULL;
+
+-- Add index for events with templates (optional, for performance)
+CREATE INDEX idx_events_has_template
+  ON events((promo_template_config IS NOT NULL))
+  WHERE promo_template_config IS NOT NULL;
+```
+
+### 7. Testing Checklist
+
+**Save Template:**
+- [ ] PromoCardBuilder "Save Configuration" button calls PATCH `/events/{id}`
+- [ ] Template config with all elements saves to database
+- [ ] Template background image (base64) saves correctly
+- [ ] Success toast appears after save
+- [ ] Page refresh loads saved template from database (not localStorage)
+
+**Load Template in Speaker List:**
+- [ ] GET `/events/{id}` returns `promo_template_config` and `promo_template_background`
+- [ ] Speaker list displays preview cards using event template
+- [ ] Each speaker's name/photo/company overlays correctly on template
+- [ ] Missing fields (e.g., no company logo) handled gracefully
+- [ ] Events without templates show fallback design
+
+**Edge Cases:**
+- [ ] Very large template backgrounds (>2MB) handled or rejected
+- [ ] Invalid/corrupt JSON in promo_template_config handled
+- [ ] Speaker with missing headshot shows placeholder on template
+- [ ] Template with optional elements (e.g., no LinkedIn button) renders correctly
+- [ ] Template persists across event updates (doesn't get lost on other PATCH calls)
+
+### 8. Questions for Backend
+
+1. **File storage:** Should `promo_template_background` be stored as data URL (base64) or uploaded to file storage (S3/CDN)?
+   - Data URL: Simpler, but larger database payload (~2MB)
+   - File storage: Better performance, requires upload endpoint
+
+2. **Size limits:** What's the max size for `promo_template_background`?
+   - Recommended: 2MB for data URLs, or resize/compress on upload
+
+3. **Validation:** Should backend validate the structure of `promo_template_config` JSON?
+   - Or trust frontend to always send valid config?
+
+4. **Partial updates:** Can organizer update template without affecting other event fields?
+   - Should PATCH allow partial updates or require full payload?
+
+5. **Template versioning:** Should we track template history (who changed it, when)?
+   - Useful for large events with multiple admins
+
+**Priority:** P1 (High) - This is a core feature for the promo card flow. Without it, templates can't be shared across speakers.
+
+**Frontend Status:** ✅ UI complete, ready for API integration
+**Backend Status:** ❌ Not yet implemented
+
+---
 

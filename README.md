@@ -63,6 +63,43 @@ Open http://localhost:5173.
 - `src/` — app source (components, pages, hooks, lib, types)
 - `public/` — static assets
 
+## Components & Features
+
+### PromoCardBuilder (`src/components/PromoCardBuilder.tsx`)
+**Status:** ✅ Complete & Stable (Phase 2 refactor finished)
+
+Professional Canva-like design tool built with Fabric.js:
+
+**Architecture:**
+- **Drop zone system**: Templates define WHERE content goes (position, size, shape), NOT the actual content
+- **Test images**: Preview-only (never saved to config) - upload samples to see how layout looks
+- **Template config**: Saves layout positions, sizes, shapes, colors (NOT image URLs)
+- **Multi-select**: Batch edit multiple elements at once (Shift+click)
+
+**3-Column Layout:**
+- **Left (50%):** Canvas with visual snap guides (pink dashed lines)
+- **Middle (25%):** Element library (click to add) + test image uploads + layers panel
+- **Right (25%):** Properties panel with number inputs for precision
+
+**Key Features:**
+- Visual alignment snapping (edges, centers, adjacent elements)
+- Multi-select batch editing (font size, weight, color, opacity)
+- Layers panel with drag-to-reorder and z-index management
+- Alignment toolbar (6 quick-align buttons)
+- Undo/Redo (Ctrl+Z/Y) with 50-state history
+- Zoom controls (10%-300%)
+- Number inputs for precise positioning/sizing
+- Headshot shape toggle (circle/square/rectangle)
+- Empty canvas start with click-to-add elements
+- PNG export with proper clipping paths
+- localStorage persistence
+
+**Test Route:** `http://localhost:5173/test/promo-builder` (no auth required)
+
+**Known Limitations:**
+- Backend team/account nesting API needed to access PromoCardBuilder from normal event flow
+- Currently only accessible via organizer event speaker module once team structure is in place
+
 ## Scripts
 
 - `npm run dev` — start dev server

@@ -12,7 +12,9 @@ interface ImageCropDialogProps {
   onCropComplete: (croppedImageBlob: Blob) => void;
   title?: string;
   instructions?: string;
-  cropShape?: "circle" | "square";
+  cropShape?: "circle" | "square" | "horizontal" | "vertical";
+  imageFormat?: "jpeg" | "png"; // Image format for output (default: jpeg)
+  imageQuality?: number; // Quality for JPEG (0-1, default: 0.95)
 }
 
 export function ImageCropDialog({
@@ -24,6 +26,8 @@ export function ImageCropDialog({
   title = "Crop Image",
   instructions = "Drag to reposition, scroll to zoom, adjust to fit perfectly.",
   cropShape = "square",
+  imageFormat = "jpeg",
+  imageQuality = 0.95,
 }: ImageCropDialogProps) {
   const cropperRef = useRef<any>(null);
 
@@ -93,8 +97,8 @@ export function ImageCropDialog({
           console.error('Failed to convert canvas to blob');
         }
       },
-      "image/jpeg",
-      0.95
+      imageFormat === "png" ? "image/png" : "image/jpeg",
+      imageFormat === "png" ? undefined : imageQuality
     );
   };
 

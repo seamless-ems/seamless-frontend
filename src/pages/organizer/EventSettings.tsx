@@ -88,9 +88,7 @@ export default function EventSettings() {
   const { data: teams } = useQuery<any[]>({ queryKey: ["teams"], queryFn: () => getTeam() });
   const [selectedTeamId, setSelectedTeamId] = useState<string | undefined>(undefined);
   const [eventImageFile, setEventImageFile] = useState<File | null>(null);
-  const [promoTemplateFile, setPromoTemplateFile] = useState<File | null>(null);
   const [eventImagePreview, setEventImagePreview] = useState<string | null>(null);
-  const [promoTemplatePreview, setPromoTemplatePreview] = useState<string | null>(null);
   const { data: me } = useQuery<any>({ queryKey: ["me"], queryFn: () => getMe() });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -144,7 +142,6 @@ export default function EventSettings() {
     setSelectedModules(modulesArray.map((m: any) => m.name || m.id));
 
   setEventImagePreview(rawEvent.eventImage ?? rawEvent.event_image ?? null);
-  setPromoTemplatePreview(rawEvent.promoCardTemplate ?? rawEvent.promo_card_template ?? null);
   setSelectedTeamId(rawEvent.teamId ?? rawEvent.team_id ?? undefined);
   }, [rawEvent]);
 
@@ -332,17 +329,6 @@ export default function EventSettings() {
       } catch (err: any) {
         console.error("Event image upload failed", err);
         toast({ title: "Event image upload failed", description: String(err?.message || err) });
-      }
-
-      try {
-        if (promoTemplateFile) {
-          const res2 = await uploadFile(promoTemplateFile, "user", me?.id ?? "", undefined, eventId);
-          const promoValue = res2?.public_url ?? res2?.publicUrl ?? res2?.url ?? res2?.id ?? null;
-          if (promoValue) (payload as any).promo_card_template = promoValue;
-        }
-      } catch (err: any) {
-        console.error("Promo template upload failed", err);
-        toast({ title: "Promo template upload failed", description: String(err?.message || err) });
       }
 
       // Remove undefined values from payload
@@ -581,9 +567,10 @@ export default function EventSettings() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Promo Card Template (PNG/PDF)</Label>
-                  <input id="promoTemplate" type="file" accept="image/*,application/pdf" onChange={(e) => { const f = e.target.files?.[0] ?? null; setPromoTemplateFile(f); if (f && f.type.startsWith("image/")) setPromoTemplatePreview(URL.createObjectURL(f)); else setPromoTemplatePreview(null); }} />
-                  {promoTemplatePreview && (<img src={promoTemplatePreview} alt="Promo template" className="mt-2 max-h-40 rounded" />)}
+                  <div className="p-3 bg-muted/50 rounded-lg border border-border">
+                    <Label className="text-sm font-medium">Promo Card Template</Label>
+                    <p className="text-xs text-muted-foreground mt-2">Use the Promo Card Builder to design and customize speaker cards.</p>
+                  </div>
                 </div>
               </div>
             </CardContent>

@@ -70,7 +70,7 @@ export default function SpeakerModule() {
       const company = it.company_name ?? it.company ?? it.companyName ?? "";
       const headshot = it.headshot ?? it.headshot_url ?? it.avatar_url ?? null;
       const intakeFormStatus = it.intake_form_status ?? it.intakeFormStatus ?? "pending";
-      const createdAt = it.created_at ?? it.createdAt ?? null;
+      const createdAt = it.registered_at ?? it.created_at ?? it.createdAt ?? null;
       const name = `${firstName} ${lastName}`.trim() || email;
 
       return {
@@ -94,7 +94,15 @@ export default function SpeakerModule() {
         speaker.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
         speaker.company.toLowerCase().includes(searchQuery.toLowerCase());
 
-      const matchesStatus = statusFilter === "all" || speaker.intakeFormStatus === statusFilter;
+      const isArchived = speaker.status === "archived";
+      let matchesStatus = true;
+      if (statusFilter === "active") {
+        matchesStatus = !isArchived;
+      } else if (statusFilter === "archived") {
+        matchesStatus = isArchived;
+      } else if (statusFilter !== "all") {
+        matchesStatus = speaker.intakeFormStatus === statusFilter;
+      }
 
       return matchesSearch && matchesStatus;
     })
@@ -201,11 +209,11 @@ export default function SpeakerModule() {
                     setCreating(true);
                     try {
                       await createSpeaker(id, {
-                        firstName: newSpeaker.firstName,
-                        lastName: newSpeaker.lastName,
+                        first_name: newSpeaker.firstName,
+                        last_name: newSpeaker.lastName,
                         email: newSpeaker.email,
-                        companyName: newSpeaker.companyName,
-                        companyRole: newSpeaker.companyRole,
+                        company_name: newSpeaker.companyName,
+                        company_role: newSpeaker.companyRole,
                       });
                       toast({ title: "Speaker added" });
                       queryClient.invalidateQueries({ queryKey: ["event", id, "speakers"] });
@@ -263,8 +271,10 @@ export default function SpeakerModule() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Statuses</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
                     <SelectItem value="pending">Pending</SelectItem>
                     <SelectItem value="approved">Approved</SelectItem>
+                    <SelectItem value="archived">Archived</SelectItem>
                   </SelectContent>
                 </Select>
                 <Select value={sortBy} onValueChange={setSortBy}>
@@ -308,11 +318,83 @@ export default function SpeakerModule() {
                   {filteredSpeakers.map((speaker) => (
                     <tr
                       key={speaker.id}
-                      className="border-b border-border hover:bg-muted/40 cursor-pointer transition-colors"
-                      onClick={() => window.location.href = `/organizer/event/${id}/speakers/${speaker.id}`}
+                      className="border-b border-border hover:bg-muted/40 transition-colors group"
                     >
+                      <td className="px-5 py-4 text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                            <button className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-muted rounded">
+                              <MoreVertical className="h-4 w-4 text-muted-foreground" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start">
+                            <DropdownMenuItem onClick={() => window.location.href = `/organizer/event/${id}/speakers/${speaker.id}`}>
+                              View Details
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            {!speaker.status || speaker.status !== "archived" ? (
+                              <>
+                                <DropdownMenuItem
+                                  className="text-warning"
+                                  onClick={async () => {
+                                    if (confirm(`Archive ${speaker.name}?\n\nSpeaker will be hidden from the active list, but their data is retained. You can restore them anytime.`)) {
+                                      try {
+                                        await updateSpeaker(id, speaker.id, { status: "archived" });
+                                        toast({ 
+                                          title: "Speaker archived", 
+                                          description: `${speaker.name} archived. Filter by "Archived" to restore.`
+                                        });
+                                        queryClient.invalidateQueries({ queryKey: ["event", id, "speakers"] });
+                                      } catch (err: any) {
+                                        toast({ title: "Failed to archive speaker", description: String(err?.message || err) });
+                                      }
+                                    }
+                                  }}
+                                >
+                                  Archive Speaker
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="text-destructive"
+                                  onClick={async () => {
+                                    if (confirm(`Permanently delete ${speaker.name}?\n\nThis action cannot be undone. All speaker data will be permanently deleted.`)) {
+                                      try {
+                                        await deleteSpeaker(id, speaker.id);
+                                        toast({ title: "Speaker deleted", description: `${speaker.name} has been permanently deleted` });
+                                        queryClient.invalidateQueries({ queryKey: ["event", id, "speakers"] });
+                                      } catch (err: any) {
+                                        toast({ title: "Failed to delete speaker", description: String(err?.message || err) });
+                                      }
+                                    }
+                                  }}
+                                >
+                                  Delete Speaker
+                                </DropdownMenuItem>
+                              </>
+                            ) : (
+                              <DropdownMenuItem
+                                onClick={async () => {
+                                  if (confirm(`Restore ${speaker.name} to active speakers?`)) {
+                                    try {
+                                      await updateSpeaker(id, speaker.id, { status: "active" });
+                                      toast({ title: "Speaker restored", description: `${speaker.name} has been restored` });
+                                      queryClient.invalidateQueries({ queryKey: ["event", id, "speakers"] });
+                                    } catch (err: any) {
+                                      toast({ title: "Failed to restore speaker", description: String(err?.message || err) });
+                                    }
+                                  }
+                                }}
+                              >
+                                Restore Speaker
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </td>
                       <td className="px-5 py-4">
-                        <div className="flex items-center gap-3">
+                        <div 
+                          className="flex items-center gap-3 cursor-pointer"
+                          onClick={() => window.location.href = `/organizer/event/${id}/speakers/${speaker.id}`}
+                        >
                           <Avatar className="h-8 w-8">
                             <AvatarFallback className="text-sm font-medium bg-muted">{speaker.name.charAt(0).toUpperCase()}</AvatarFallback>
                             <AvatarImage src={speaker.avatarUrl} alt={speaker.name} />
@@ -327,22 +409,23 @@ export default function SpeakerModule() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-5 py-4 text-sm text-foreground">
+                      <td className="px-5 py-4 text-sm text-foreground cursor-pointer" onClick={() => window.location.href = `/organizer/event/${id}/speakers/${speaker.id}`}>
                         {speaker.company || "-"}
                       </td>
-                      <td className="px-5 py-4 text-sm text-muted-foreground">
+                      <td className="px-5 py-4 text-sm text-muted-foreground cursor-pointer" onClick={() => window.location.href = `/organizer/event/${id}/speakers/${speaker.id}`}>
                         {speaker.createdAt ? new Date(speaker.createdAt).toLocaleDateString() : "-"}
                       </td>
                       <td className="px-5 py-4">
                         <Badge
                           variant="outline"
-                          className={`text-xs font-medium capitalize ${
+                          className={`text-xs font-medium capitalize cursor-pointer ${
                             speaker.intakeFormStatus === "approved"
                               ? "bg-success/10 text-success border-success/30"
                               : speaker.intakeFormStatus === "pending"
                               ? "bg-warning/10 text-warning border-warning/30"
                               : "bg-muted/50 text-muted-foreground border-muted/50"
                           }`}
+                          onClick={() => window.location.href = `/organizer/event/${id}/speakers/${speaker.id}`}
                         >
                           {speaker.intakeFormStatus}
                         </Badge>
