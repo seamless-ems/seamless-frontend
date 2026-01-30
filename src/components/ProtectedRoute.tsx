@@ -1,12 +1,14 @@
 import React from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { getToken } from "@/lib/auth";
+import { isOnboardingCompleted } from "@/lib/onboarding";
 
 type Props = {
   children: React.ReactElement;
 };
 
 export default function ProtectedRoute({ children }: Props) {
+  const location = useLocation();
   const [checking, setChecking] = React.useState(true);
   const [token, setTokenState] = React.useState<string | null>(null);
 
@@ -53,6 +55,12 @@ export default function ProtectedRoute({ children }: Props) {
 
   if (!token) {
     return <Navigate to="/login" replace />;
+  }
+
+  // If user hasn't completed onboarding and is not already on the onboarding page, redirect
+  const isOnOnboardingPage = location.pathname === "/onboarding";
+  if (!isOnOnboardingPage && !isOnboardingCompleted()) {
+    return <Navigate to="/onboarding" replace />;
   }
 
   return children;

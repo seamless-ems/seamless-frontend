@@ -28,6 +28,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import PromoEmbed from "./pages/public/PromoEmbed";
 import PromoCardBuilderTest from "./pages/PromoCardBuilderTest";
 import WebsiteCardBuilderTest from "./pages/WebsiteCardBuilderTest";
+import Onboarding from "./components/onboarding/Onboarding";
 
 // Helper component for root redirect
 function RootRedirect() {
@@ -62,6 +63,11 @@ const App = () => {
             <Route path="/" element={<RootRedirect />} />
             <Route path="/login" element={<Auth />} />
             <Route path="/signup" element={<Auth />} />
+            <Route path="/onboarding" element={
+              <ProtectedRoute>
+                <Onboarding />
+              </ProtectedRoute>
+            } />
 
             <Route
               path="/organizer"

@@ -10,6 +10,7 @@ import { useLogin, useSignup } from "@/hooks/useAuth";
 import { signInWithGooglePopup, signInWithMicrosoftPopup } from "@/lib/firebase";
 import { exchangeFirebaseToken } from "@/lib/api";
 import { setToken } from "@/lib/auth";
+import { isOnboardingCompleted } from "@/lib/onboarding";
 
 const loginSchema = z.object({
     email: z.string().email(),
@@ -144,7 +145,12 @@ const Auth: React.FC = () => {
     const navigate = useNavigate();
 
     const navigateAfterAuth = () => {
-        navigate("/organizer", { replace: true });
+        // Check if user needs onboarding (only for new signups)
+        if (mode === "signup" || !isOnboardingCompleted()) {
+            navigate("/onboarding", { replace: true });
+        } else {
+            navigate("/organizer", { replace: true });
+        }
     };
 
     return (
