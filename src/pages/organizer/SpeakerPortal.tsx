@@ -1,7 +1,7 @@
 import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import SpeakerForm from "@/components/SpeakerForm";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { ImageCropDialog } from "@/components/ImageCropDialog";
@@ -11,7 +11,7 @@ import {
   Edit,
   AlertCircle,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+// utils intentionally not used here
 import { Speaker } from "@/types/event";
 import { useState, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -23,11 +23,15 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogTrigger,
+    
 } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { getJson } from "@/lib/api";
+import SpeakerInfoCard from "@/components/organizer/SpeakerInfoCard";
+import SpeakerAssets from "@/components/organizer/SpeakerAssets";
+import SpeakerApproval from "@/components/organizer/SpeakerApproval";
+import SpeakerPreviews from "@/components/organizer/SpeakerPreviews";
 
 export default function SpeakerPortal() {
   const { id, speakerId } = useParams();
@@ -194,294 +198,46 @@ export default function SpeakerPortal() {
             </Button>
           </div>
 
-          {/* Three-column grid: Info | Headshot | Logo */}
+          {/* Three-column grid: Info | Headshot | Logo (extracted) */}
           <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto] gap-8">
-            {/* Column 1: Speaker Information */}
-            <div className="space-y-4">
-              <div>
-                <div style={{ fontSize: 'var(--font-small)', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '4px' }}>First Name</div>
-                <div style={{ fontSize: 'var(--font-body)', color: 'var(--text-primary)' }}>{s?.firstName ?? "-"}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: 'var(--font-small)', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '4px' }}>Last Name</div>
-                <div style={{ fontSize: 'var(--font-body)', color: 'var(--text-primary)' }}>{s?.lastName ?? "-"}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: 'var(--font-small)', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '4px' }}>Email</div>
-                <a
-                  href={`mailto:${s?.email ?? ""}`}
-                  style={{ fontSize: 'var(--font-body)', color: 'var(--primary)', textDecoration: 'none' }}
-                  className="hover:underline"
-                >
-                  {s?.email ?? "-"}
-                </a>
-              </div>
-              <div>
-                <div style={{ fontSize: 'var(--font-small)', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '4px' }}>Title</div>
-                <div style={{ fontSize: 'var(--font-body)', color: 'var(--text-primary)' }}>{s?.companyRole ?? "-"}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: 'var(--font-small)', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '4px' }}>Company</div>
-                <div style={{ fontSize: 'var(--font-body)', color: 'var(--text-primary)' }}>{s?.companyName ?? "-"}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: 'var(--font-small)', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '4px' }}>LinkedIn</div>
-                <div style={{ fontSize: 'var(--font-body)', color: 'var(--text-primary)' }}>{s?.linkedin ?? "-"}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: 'var(--font-small)', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px' }}>Bio</div>
-                <Button variant="outline" size="sm" onClick={() => setBioOpen(true)}>View Bio</Button>
-              </div>
-              <div>
-                <div style={{ fontSize: 'var(--font-small)', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px' }}>Internal Notes</div>
-                <Button variant="outline" size="sm" onClick={() => setNotesOpen(true)}>View/Edit Notes</Button>
-              </div>
+            <div>
+              <SpeakerInfoCard
+                s={s}
+                onEdit={() => setEditOpen(true)}
+                onViewBio={() => setBioOpen(true)}
+                onViewNotes={() => setNotesOpen(true)}
+              />
             </div>
 
-            {/* Column 2: Headshot */}
-            <div className="text-center" style={{ minWidth: '150px' }}>
-              <div style={{ fontSize: 'var(--font-small)', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px' }}>Headshot</div>
-              <div
-                className="relative w-[150px] h-[150px] rounded-lg border-2 border-border mb-2 overflow-hidden cursor-pointer bg-muted flex items-center justify-center"
-                onClick={() => s?.headshot && window.open(s.headshot, '_blank')}
-              >
-                {s?.headshot ? (
-                  <img src={s.headshot} alt="Headshot" className="w-full h-full object-cover" />
-                ) : (
-                  <Avatar className="w-24 h-24">
-                    <AvatarFallback className="bg-primary/10 text-primary text-2xl">{s?.firstName?.[0] ?? "?"}</AvatarFallback>
-                  </Avatar>
-                )}
-              </div>
-              <input
-                ref={headshotInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  const reader = new FileReader();
-                  reader.onloadend = () => {
-                    setCropImageUrl(reader.result as string);
-                    setCropType("headshot");
-                  };
-                  reader.readAsDataURL(file);
-                }}
-              />
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full"
-                onClick={() => headshotInputRef.current?.click()}
-                disabled={uploadingHeadshot}
-              >
-                {uploadingHeadshot ? "Uploading..." : "Replace"}
-              </Button>
-            </div>
-
-            {/* Column 3: Company Logo */}
-            <div className="text-center" style={{ minWidth: '150px' }}>
-              <div style={{ fontSize: 'var(--font-small)', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px' }}>Logo</div>
-              <div
-                className="w-[150px] h-[150px] rounded-lg border-2 border-border mb-2 bg-white flex items-center justify-center p-4 cursor-pointer"
-                onClick={() => s?.companyLogo && window.open(s.companyLogo, '_blank')}
-              >
-                {s?.companyLogo ? (
-                  <img src={s.companyLogo} alt="Company Logo" className="max-w-full max-h-full object-contain" />
-                ) : (
-                  <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--primary)', textAlign: 'center', lineHeight: 1.2 }}>
-                    {s?.companyName ?? "No Logo"}
-                  </div>
-                )}
-              </div>
-              <input
-                ref={logoInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  const reader = new FileReader();
-                  reader.onloadend = () => {
-                    setCropImageUrl(reader.result as string);
-                    setCropType("logo");
-                  };
-                  reader.readAsDataURL(file);
-                }}
-              />
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full"
-                onClick={() => logoInputRef.current?.click()}
-                disabled={uploadingLogo}
-              >
-                {uploadingLogo ? "Uploading..." : "Replace"}
-              </Button>
-            </div>
+            <SpeakerAssets
+              s={s}
+              headshotInputRef={headshotInputRef}
+              logoInputRef={logoInputRef}
+              uploadingHeadshot={uploadingHeadshot}
+              uploadingLogo={uploadingLogo}
+              onSelectFile={(type, dataUrl) => {
+                setCropImageUrl(dataUrl);
+                setCropType(type);
+              }}
+            />
           </div>
         </CardContent>
       </Card>
 
-      {/* Card Approval Section */}
+      {/* Card Approval (extracted) */}
       <Card>
         <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 style={{ fontSize: 'var(--font-h3)', fontWeight: 600, marginBottom: '4px' }}>
-                Card Approval
-              </h3>
-              <p style={{ fontSize: 'var(--font-small)', color: 'var(--text-secondary)' }}>
-                Approve this speaker to appear in public embeds (website and promo cards)
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              {isApproved ? (
-                <Button
-                  variant="outline"
-                  className="bg-success text-white border-success hover:bg-success/90 hover:text-white"
-                  onClick={handleApproval}
-                >
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                  Approved for Embed
-                </Button>
-              ) : (
-                <Button
-                  variant="outline"
-                  onClick={handleApproval}
-                  disabled={!canApprove}
-                >
-                  {canApprove ? (
-                    <>
-                      <CheckCircle className="h-4 w-4 mr-2" />
-                      Approve for Embed
-                    </>
-                  ) : (
-                    <>
-                      <AlertCircle className="h-4 w-4 mr-2" />
-                      Upload headshot to approve
-                    </>
-                  )}
-                </Button>
-              )}
-            </div>
-          </div>
+          <SpeakerApproval
+            isApproved={isApproved}
+            canApprove={canApprove}
+            onToggleApproval={handleApproval}
+            onOpenStatus={() => setStatusOpen(true)}
+          />
         </CardContent>
       </Card>
 
-      {/* Cards 2-3: Website Card + Promo Card (Side by Side) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Website Card */}
-        <Card className="flex flex-col">
-          <CardHeader>
-            <CardTitle style={{ fontSize: 'var(--font-h3)', fontWeight: 600 }}>Website Card</CardTitle>
-          </CardHeader>
-          <CardContent className="flex-1 flex flex-col">
-            <div className="bg-muted p-5 rounded-lg border-2 border-dashed border-border flex-1 flex flex-col">
-              <div style={{ fontSize: 'var(--font-small)', color: 'var(--text-secondary)', textAlign: 'center', marginBottom: '12px' }}>
-                Final output: 600x280px
-              </div>
-
-              {/* Preview Card (Horizontal) */}
-              <div className="bg-white rounded-lg p-5 flex gap-5 items-center shadow-sm mb-4">
-                <div className="w-[100px] h-[100px] flex-shrink-0 rounded-lg overflow-hidden bg-muted">
-                  {s?.headshot ? (
-                    <img src={s.headshot} alt="Headshot" className="w-full h-full object-cover" />
-                  ) : (
-                    <Avatar className="w-full h-full">
-                      <AvatarFallback className="bg-primary/10 text-primary text-2xl">{s?.firstName?.[0] ?? "?"}</AvatarFallback>
-                    </Avatar>
-                  )}
-                </div>
-                <div className="flex-1">
-                  <div style={{ fontSize: '18px', fontWeight: 600, marginBottom: '6px' }}>
-                    {s?.firstName ? `${s.firstName} ${s.lastName ?? ""}` : ""}
-                  </div>
-                  <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '2px' }}>
-                    {s?.companyRole ?? ""}
-                  </div>
-                  <div style={{ fontSize: '13px', fontWeight: 500, marginBottom: '12px' }}>
-                    {s?.companyName ?? ""}
-                  </div>
-                  {s?.companyLogo && (
-                    <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border-default)' }}>
-                      <img src={s.companyLogo} alt="Company Logo" style={{ height: '24px', objectFit: 'contain' }} />
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex gap-2 mt-auto">
-                <Button variant="outline" className="flex-1">Download</Button>
-                <Button variant="outline" className="flex-1">Embed</Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Promo Card */}
-        <Card className="flex flex-col">
-          <CardHeader>
-            <CardTitle style={{ fontSize: 'var(--font-h3)', fontWeight: 600 }}>Promo Card</CardTitle>
-          </CardHeader>
-          <CardContent className="flex-1 flex flex-col">
-            <div className="bg-muted p-5 rounded-lg border-2 border-dashed border-border flex-1 flex flex-col">
-              <div style={{ fontSize: 'var(--font-small)', color: 'var(--text-secondary)', textAlign: 'center', marginBottom: '12px' }}>
-                Final output: 1080x1080px
-              </div>
-
-              {/* Preview Card (Square) */}
-              <div
-                className="border-3 border-primary rounded-lg w-[200px] aspect-square mx-auto mb-4 relative overflow-hidden"
-                style={{
-                  backgroundImage: (eventData?.promo_card_template || eventData?.promoCardTemplate)
-                    ? `url('${eventData?.promo_card_template ?? eventData?.promoCardTemplate}')`
-                    : 'linear-gradient(135deg, #4E5BA6 0%, #3D4A8F 100%)',
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center',
-                  backgroundRepeat: 'no-repeat',
-                }}
-              >
-                {/* Optional overlay for better text readability */}
-                <div className="absolute inset-0 bg-black/10"></div>
-
-                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center w-full px-4 z-10">
-                  <div className="w-[60px] h-[60px] rounded-lg mx-auto mb-2.5 overflow-hidden bg-white/90 border-2 border-white">
-                    {s?.headshot ? (
-                      <img src={s.headshot} alt="Headshot" className="w-full h-full object-cover" />
-                    ) : (
-                      <Avatar className="w-full h-full">
-                        <AvatarFallback className="bg-primary/10 text-primary">{s?.firstName?.[0] ?? "?"}</AvatarFallback>
-                      </Avatar>
-                    )}
-                  </div>
-                  <div style={{ fontSize: '13px', fontWeight: 700, marginBottom: '3px', color: 'white', textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
-                    {s?.firstName ? `${s.firstName} ${s.lastName ?? ""}` : ""}
-                  </div>
-                  <div style={{ fontSize: '10px', marginBottom: '2px', color: 'white', textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
-                    {s?.companyRole ?? ""}
-                  </div>
-                  <div style={{ fontSize: '10px', fontWeight: 600, color: 'white', textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
-                    {s?.companyName ?? ""}
-                  </div>
-                  {s?.companyLogo && (
-                    <div className="mt-2">
-                      <img src={s.companyLogo} alt="Logo" className="h-6 mx-auto opacity-90" style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }} />
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex gap-2 mt-auto">
-                <Button variant="outline" className="flex-1">Download</Button>
-                <Button variant="outline" className="flex-1">Embed</Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Cards 2-3: Website Card + Promo Card (extracted) */}
+      <SpeakerPreviews s={s} eventData={eventData} />
 
       {/* Card 4: Content (Full Width) */}
       <Card>

@@ -30,6 +30,8 @@ import {
 	SelectContent,
 	SelectItem,
 } from "@/components/ui/select";
+import GoogleDriveFolderPicker from "@/components/organizer/GoogleDriveFolderPicker";
+import EventMediaUploader from "@/components/organizer/EventMediaUploader";
 
 const availableModules = [
 	{
@@ -92,9 +94,9 @@ export default function CreateEvent() {
 	});
 
 	const [selectedModules, setSelectedModules] = useState<string[]>(["speaker"]);
-			const [driveFolders, setDriveFolders] = useState<any[]>([]);
-			// array of selected folder ids at each depth level, e.g. [topId, childId, grandChildId]
-			const [selectedFolderPath, setSelectedFolderPath] = useState<string[]>([]);
+	const [driveFolders, setDriveFolders] = useState<any[]>([]);
+	// array of selected folder ids at each depth level, e.g. [topId, childId, grandChildId]
+	const [selectedFolderPath, setSelectedFolderPath] = useState<string[]>([]);
 	const { data: teams } = useQuery<any[]>({ queryKey: ["teams"], queryFn: () => getTeam() });
 	const location = useLocation();
 
@@ -151,170 +153,7 @@ export default function CreateEvent() {
 		})();
 	}, []);
 
-		// Find path of ids from root to targetId if present
-		const findPathToFolder = (folders: any[], targetId: string): string[] => {
-			if (!folders || !targetId) return [];
-			for (const f of folders) {
-				if (f.id === targetId) return [f.id];
-				if (f.children && f.children.length) {
-					const childPath = findPathToFolder(f.children, targetId);
-					if (childPath.length) return [f.id, ...childPath];
-				}
-			}
-			return [];
-		};
-
-		// helper to find folder object by id
-		const findFolderById = (folders: any[], id?: string): any | null => {
-			if (!id) return null;
-			for (const f of folders) {
-				if (f.id === id) return f;
-				if (f.children && f.children.length) {
-					const res = findFolderById(f.children, id);
-					if (res) return res;
-				}
-			}
-			return null;
-		};
-
-		const getBreadcrumb = () => {
-			if (!selectedFolderPath || !selectedFolderPath.length) return "";
-			const names = selectedFolderPath.map((id) => findFolderById(driveFolders, id)?.name ?? id);
-			return names.join(" / ");
-		};
-
-		// Get folder list for a particular depth level based on current selectedFolderPath
-		const getFoldersForDepth = (depth: number): any[] => {
-			if (depth === 0) return driveFolders;
-			let current = null as any;
-			for (let i = 0; i < depth; i++) {
-				const id = selectedFolderPath[i];
-				if (!id) return [];
-				const list = current ? current.children ?? [] : driveFolders;
-				current = list.find((x: any) => x.id === id);
-				if (!current) return [];
-			}
-			return current?.children ?? [];
-		};
-
-		// Build cascading Select components for each depth until no further children
-
-		const [currentDepth, setCurrentDepth] = useState<number>(0);
-		const [newFolderName, setNewFolderName] = useState<string>("");
-		const [creatingFolder, setCreatingFolder] = useState<boolean>(false);
-
-		// Insert a new folder into the nested folder tree at the given parent
-		const addFolderToTree = (folders: any[], parentId: string | null | undefined, folderToAdd: any): any[] => {
-			if (!parentId) {
-				// top-level insert
-				return [folderToAdd, ...folders];
-			}
-
-			let changed = false;
-			const walk = (items: any[]): any[] => {
-				return items.map((it) => {
-					if (it.id === parentId) {
-						changed = true;
-						const children = it.children ? [folderToAdd, ...it.children] : [folderToAdd];
-						return { ...it, children };
-					}
-					if (it.children && it.children.length) {
-						const updated = walk(it.children);
-						if (updated !== it.children) {
-							changed = true;
-							return { ...it, children: updated };
-						}
-					}
-					return it;
-				});
-			};
-
-			const result = walk(folders);
-			return changed ? result : folders;
-		};
-
-		const handleCreateFolder = async () => {
-			if (!newFolderName || newFolderName.trim().length === 0) {
-				toast({ title: "Folder name required", description: "Please enter a folder name" });
-				return;
-			}
-
-			setCreatingFolder(true);
-			try {
-				// parent is the currently-selected folder at previous level (if any)
-				const parentId = currentDepth > 0 ? selectedFolderPath[currentDepth - 1] ?? null : null;
-				const res = await createGoogleDriveFolder({ folder_name: newFolderName.trim(), parent_folder_id: parentId });
-				const newFolder = res?.folder ?? res;
-
-				if (!newFolder || !newFolder.id) {
-					throw new Error("Invalid folder returned from server");
-				}
-
-				// merge into folder tree
-				setDriveFolders((prev) => addFolderToTree(prev, parentId, newFolder));
-
-				// select the newly created folder at the appropriate depth
-				setSelectedFolderPath((prev) => {
-					const next = prev.slice(0, currentDepth);
-					next[currentDepth] = newFolder.id;
-					return next;
-				});
-				setFormData((f) => ({ ...f, rootFolder: newFolder.id }));
-				setCurrentDepth((d) => d + 1);
-				setNewFolderName("");
-				toast({ title: "Folder created", description: `Created ${newFolder.name}` });
-			} catch (err: any) {
-				console.error("Failed to create folder", err);
-				toast({ title: "Failed to create folder", description: String(err?.message || err) });
-			} finally {
-				setCreatingFolder(false);
-			}
-		};
-
-		const handleSelectAtDepth = (depth: number, val: string) => {
-			setSelectedFolderPath((prev) => {
-				const next = prev.slice(0, depth);
-				next[depth] = val;
-				return next;
-			});
-			setFormData((f) => ({ ...f, rootFolder: val }));
-			// if selected folder has children, advance depth; otherwise trim
-			const opts = getFoldersForDepth(depth);
-			const selected = opts.find((o: any) => o.id === val);
-			if (selected && selected.children && selected.children.length) setCurrentDepth(depth + 1);
-			else setCurrentDepth(depth);
-		};
-
-		const renderCascadingSelects = () => {
-			const options = getFoldersForDepth(currentDepth);
-			if (!options || options.length === 0) return (
-				<Select>
-					<SelectTrigger className="w-full sm:w-[300px]">
-						<SelectValue placeholder="No folders available" />
-					</SelectTrigger>
-					<SelectContent>
-						<SelectItem value="no-folders" disabled>No folders available</SelectItem>
-					</SelectContent>
-				</Select>
-			);
-
-			const value = selectedFolderPath[currentDepth] ?? "";
-			return (
-				<div>
-					<div className="text-xs text-muted-foreground mb-1">{currentDepth === 0 ? "Top level" : `Level ${currentDepth + 1}`}</div>
-					<Select value={value} aria-label={`Folder level ${currentDepth + 1}`} onValueChange={(val) => handleSelectAtDepth(currentDepth, val)}>
-						<SelectTrigger className="w-full sm:w-[300px]">
-							<SelectValue placeholder={currentDepth === 0 ? "Select folder" : "Select subfolder"} />
-						</SelectTrigger>
-						<SelectContent>
-							{options.map((f: any) => (
-								<SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
-				</div>
-			);
-		};
+	// Google Drive folder picker moved to separate component
 
 	const toggleModule = (moduleId: string) => {
 		setSelectedModules((prev) =>
@@ -487,38 +326,15 @@ export default function CreateEvent() {
 
 							{formData.googleDriveConnected && (
 								<div className="space-y-2">
-									<Label htmlFor="rootFolder">Root Event Folder</Label>
-									{renderCascadingSelects()}
-									{/* Create new folder inline */}
-									<div className="flex gap-2 items-center mt-2">
-										<Input
-											placeholder="New folder name"
-											value={newFolderName}
-											onChange={(e) => setNewFolderName(e.target.value)}
-											className="sm:w-[240px]"
-										/>
-										<Button size="sm" type="button" onClick={handleCreateFolder} disabled={creatingFolder}>
-											{creatingFolder ? (
-												<>
-													<svg className="h-4 w-4 animate-spin mr-2" viewBox="0 0 24 24" fill="none">
-														<circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-														<path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
-													</svg>
-												Creating…
-											</>
-											) : (
-												"Create folder"
-											)}
-										</Button>
-									</div>
-									<div className="flex items-center gap-3 mt-2">
-										<div className="text-sm text-muted-foreground">{getBreadcrumb() || "No folder selected"}</div>
-										{selectedFolderPath && selectedFolderPath.length > 0 && (
-											<Button variant="ghost" size="sm" type="button" onClick={() => { setSelectedFolderPath([]); setFormData((f) => ({ ...f, rootFolder: "" })); setCurrentDepth(0); }}>
-											Clear selection
-											</Button>
-										)}
-									</div>
+									<GoogleDriveFolderPicker
+										driveFolders={driveFolders}
+										setDriveFolders={setDriveFolders}
+										selectedFolderPath={selectedFolderPath}
+										setSelectedFolderPath={setSelectedFolderPath}
+										formData={formData}
+										setFormData={setFormData}
+									/>
+									{/* Folder selection handled by GoogleDriveFolderPicker */}
 								</div>
 							)}
 						</CardContent>
@@ -616,8 +432,8 @@ export default function CreateEvent() {
 								</Label>
 								<Input
 									id="eventWebsite"
-								type="text"
-								placeholder="https://example.com/event (optional)"
+									type="text"
+									placeholder="https://example.com/event (optional)"
 									value={formData.eventWebsite}
 									onChange={(e) =>
 										setFormData((prev) => ({
@@ -765,51 +581,23 @@ export default function CreateEvent() {
 						</CardContent>
 					</Card>
 
-					{/* Images & Templates */}
+					{/* Images & Templates (extracted) */}
 					<Card>
 						<CardHeader>
 							<CardTitle className="text-lg">Images & Templates</CardTitle>
 						</CardHeader>
 						<CardContent>
-							<div className="grid gap-6 sm:grid-cols-2">
-								<div className="space-y-2">
-									<Label htmlFor="eventImage">Event Image</Label>
-									<Input
-										id="eventImage"
-										type="file"
-										accept="image/*"
-										onChange={(e) => {
-											const f = e.target.files?.[0] ?? null;
-											setEventImageFile(f);
-											if (f) setEventImagePreview(URL.createObjectURL(f));
-											else setEventImagePreview(null);
-										}}
-										className="cursor-pointer"
-									/>
-									{eventImagePreview && (
-										<img src={eventImagePreview} alt="Event preview" className="mt-3 max-h-32 rounded border" />
-									)}
-								</div>
-
-								{/* <div className="space-y-2">
-									<Label htmlFor="promoTemplate">Promo Card Template</Label>
-									<Input
-										id="promoTemplate"
-										type="file"
-										accept="image/*,application/pdf"
-										onChange={(e) => {
-											const f = e.target.files?.[0] ?? null;
-											setPromoTemplateFile(f);
-											if (f && f.type.startsWith("image/")) setPromoTemplatePreview(URL.createObjectURL(f));
-											else setPromoTemplatePreview(null);
-										}}
-										className="cursor-pointer"
-									/>
-									{promoTemplatePreview && (
-										<img src={promoTemplatePreview} alt="Template preview" className="mt-3 max-h-32 rounded border" />
-									)}
-								</div> */}
-							</div>
+							{/* EventMediaUploader handles image + promo template inputs and previews */}
+							<EventMediaUploader
+								eventImageFile={eventImageFile}
+								setEventImageFile={setEventImageFile}
+								eventImagePreview={eventImagePreview}
+								setEventImagePreview={setEventImagePreview}
+								promoTemplateFile={promoTemplateFile}
+								setPromoTemplateFile={setPromoTemplateFile}
+								promoTemplatePreview={promoTemplatePreview}
+								setPromoTemplatePreview={setPromoTemplatePreview}
+							/>
 						</CardContent>
 					</Card>
 					<div className="flex justify-end gap-4">

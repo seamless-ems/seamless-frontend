@@ -16,8 +16,6 @@ import SpeakerDashboard from "./pages/speaker/SpeakerDashboard";
 import SpeakerProfile from "./pages/speaker/Profile";
 import { DashboardLayout } from "./components/layout/DashboardLayout";
 import SpeakerIntakeForm from "./pages/public/SpeakerIntakeForm";
-import Team from "./pages/organizer/Team";
-import Subscription from "./pages/organizer/Subscription";
 import CreateEvent from "./pages/organizer/CreateEvent";
 import Settings from "./pages/organizer/Settings";
 import EventSettings from "./pages/organizer/EventSettings";
@@ -150,28 +148,6 @@ const App = () => {
                   <EventLayoutWrapper mode="organizer">
                     <SpeakerPortal />
                   </EventLayoutWrapper>
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="/organizer/team"
-              element={
-                <ProtectedRoute>
-                  <DashboardLayout mode="organizer">
-                    <Team />
-                  </DashboardLayout>
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="/organizer/subscription"
-              element={
-                <ProtectedRoute>
-                  <DashboardLayout mode="organizer">
-                    <Subscription />
-                  </DashboardLayout>
                 </ProtectedRoute>
               }
             />
