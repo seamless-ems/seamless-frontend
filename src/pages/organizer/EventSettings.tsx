@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getJson, updateEvent, uploadFile, getGoogleDriveStatus, getIntegrationUrl, deleteIntegration, getTeam, getMe } from "@/lib/api";
+import { getJson, updateEvent, uploadFile, getGoogleDriveStatus, getIntegrationUrl, deleteIntegration, getTeam, getMe, createGoogleDriveFolder } from "@/lib/api";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -241,6 +241,61 @@ export default function EventSettings() {
   };
 
   const [currentDepth, setCurrentDepth] = useState<number>(0);
+  const [newFolderName, setNewFolderName] = useState<string>("");
+  const [creatingFolder, setCreatingFolder] = useState<boolean>(false);
+
+  const addFolderToTree = (folders: any[], parentId: string | null | undefined, folderToAdd: any): any[] => {
+    if (!parentId) return [folderToAdd, ...folders];
+    let changed = false;
+    const walk = (items: any[]): any[] => {
+      return items.map((it) => {
+        if (it.id === parentId) {
+          changed = true;
+          const children = it.children ? [folderToAdd, ...it.children] : [folderToAdd];
+          return { ...it, children };
+        }
+        if (it.children && it.children.length) {
+          const updated = walk(it.children);
+          if (updated !== it.children) {
+            changed = true;
+            return { ...it, children: updated };
+          }
+        }
+        return it;
+      });
+    };
+    const result = walk(folders);
+    return changed ? result : folders;
+  };
+
+  const handleCreateFolder = async () => {
+    if (!newFolderName || newFolderName.trim().length === 0) {
+      toast({ title: "Folder name required", description: "Please enter a folder name" });
+      return;
+    }
+    setCreatingFolder(true);
+    try {
+      const parentId = currentDepth > 0 ? selectedFolderPath[currentDepth - 1] ?? null : null;
+      const res = await createGoogleDriveFolder({ folder_name: newFolderName.trim(), parent_folder_id: parentId });
+      const newFolder = res?.folder ?? res;
+      if (!newFolder || !newFolder.id) throw new Error("Invalid folder returned from server");
+      setDriveFolders((prev) => addFolderToTree(prev, parentId, newFolder));
+      setSelectedFolderPath((prev) => {
+        const next = prev.slice(0, currentDepth);
+        next[currentDepth] = newFolder.id;
+        return next;
+      });
+      setFormData((f) => ({ ...f, rootFolder: newFolder.id }));
+      setCurrentDepth((d) => d + 1);
+      setNewFolderName("");
+      toast({ title: "Folder created", description: `Created ${newFolder.name}` });
+    } catch (err: any) {
+      console.error("Failed to create folder", err);
+      toast({ title: "Failed to create folder", description: String(err?.message || err) });
+    } finally {
+      setCreatingFolder(false);
+    }
+  };
 
   const handleSelectAtDepth = (depth: number, val: string) => {
     setSelectedFolderPath((prev) => {
@@ -421,6 +476,23 @@ export default function EventSettings() {
                 <div className="space-y-2">
                   <Label>Root Event Folder</Label>
                   {renderCascadingSelects()}
+                  {/* Create new folder inline */}
+                  <div className="flex gap-2 items-center mt-2">
+                    <Input placeholder="New folder name" value={newFolderName} onChange={(e) => setNewFolderName(e.target.value)} className="sm:w-[240px]" />
+                    <Button size="sm" type="button" onClick={handleCreateFolder} disabled={creatingFolder}>
+                      {creatingFolder ? (
+                        <>
+                          <svg className="h-4 w-4 animate-spin mr-2" viewBox="0 0 24 24" fill="none">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                          </svg>
+                          Creating…
+                        </>
+                      ) : (
+                        "Create folder"
+                      )}
+                    </Button>
+                  </div>
                   <div className="flex items-center gap-3 mt-2">
                     <div className="text-sm text-muted-foreground">{selectedFolderPath && selectedFolderPath.length ? selectedFolderPath.map(id => findFolderById(driveFolders, id)?.name ?? id).join(" / ") : "No folder selected"}</div>
                       {selectedFolderPath && selectedFolderPath.length > 0 && (

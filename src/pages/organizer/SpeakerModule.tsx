@@ -308,6 +308,7 @@ export default function SpeakerModule() {
                 <table className="w-full">
                   <thead className="border-b border-border bg-muted/30">
                     <tr>
+                      <th className="px-2 py-3 text-left text-xs font-bold text-muted-foreground">Actions</th>
                       <th className="px-5 py-3 text-left text-xs font-medium text-muted-foreground">Speaker</th>
                       <th className="px-5 py-3 text-left text-xs font-medium text-muted-foreground">Company</th>
                       <th className="px-5 py-3 text-left text-xs font-medium text-muted-foreground">Submitted</th>
@@ -320,7 +321,7 @@ export default function SpeakerModule() {
                       key={speaker.id}
                       className="border-b border-border hover:bg-muted/40 transition-colors group"
                     >
-                      <td className="px-5 py-4 text-right">
+                      <td className="px-2 py-2 text-center">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                             <button className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-muted rounded">
@@ -470,8 +471,21 @@ export default function SpeakerModule() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="text-sm text-muted-foreground">
-                0 applications
+              <div className="flex items-center gap-3">
+                <div className="text-sm text-muted-foreground">0 applications</div>
+                {id && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const origin = typeof window !== 'undefined' ? window.location.origin : '';
+                      const url = `${origin}/speaker-intake/${id}`;
+                      window.open(url, '_blank', 'noopener');
+                    }}
+                  >
+                    Open public intake form
+                  </Button>
+                )}
               </div>
             </div>
 

@@ -19,7 +19,7 @@ import {
 	FolderOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { createEvent, getIntegrationUrl, getGoogleDriveStatus, deleteIntegration, getTeam, uploadFile, getMe } from "@/lib/api";
+import { createEvent, getIntegrationUrl, getGoogleDriveStatus, deleteIntegration, getTeam, uploadFile, getMe, createGoogleDriveFolder } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
@@ -200,6 +200,76 @@ export default function CreateEvent() {
 		// Build cascading Select components for each depth until no further children
 
 		const [currentDepth, setCurrentDepth] = useState<number>(0);
+		const [newFolderName, setNewFolderName] = useState<string>("");
+		const [creatingFolder, setCreatingFolder] = useState<boolean>(false);
+
+		// Insert a new folder into the nested folder tree at the given parent
+		const addFolderToTree = (folders: any[], parentId: string | null | undefined, folderToAdd: any): any[] => {
+			if (!parentId) {
+				// top-level insert
+				return [folderToAdd, ...folders];
+			}
+
+			let changed = false;
+			const walk = (items: any[]): any[] => {
+				return items.map((it) => {
+					if (it.id === parentId) {
+						changed = true;
+						const children = it.children ? [folderToAdd, ...it.children] : [folderToAdd];
+						return { ...it, children };
+					}
+					if (it.children && it.children.length) {
+						const updated = walk(it.children);
+						if (updated !== it.children) {
+							changed = true;
+							return { ...it, children: updated };
+						}
+					}
+					return it;
+				});
+			};
+
+			const result = walk(folders);
+			return changed ? result : folders;
+		};
+
+		const handleCreateFolder = async () => {
+			if (!newFolderName || newFolderName.trim().length === 0) {
+				toast({ title: "Folder name required", description: "Please enter a folder name" });
+				return;
+			}
+
+			setCreatingFolder(true);
+			try {
+				// parent is the currently-selected folder at previous level (if any)
+				const parentId = currentDepth > 0 ? selectedFolderPath[currentDepth - 1] ?? null : null;
+				const res = await createGoogleDriveFolder({ folder_name: newFolderName.trim(), parent_folder_id: parentId });
+				const newFolder = res?.folder ?? res;
+
+				if (!newFolder || !newFolder.id) {
+					throw new Error("Invalid folder returned from server");
+				}
+
+				// merge into folder tree
+				setDriveFolders((prev) => addFolderToTree(prev, parentId, newFolder));
+
+				// select the newly created folder at the appropriate depth
+				setSelectedFolderPath((prev) => {
+					const next = prev.slice(0, currentDepth);
+					next[currentDepth] = newFolder.id;
+					return next;
+				});
+				setFormData((f) => ({ ...f, rootFolder: newFolder.id }));
+				setCurrentDepth((d) => d + 1);
+				setNewFolderName("");
+				toast({ title: "Folder created", description: `Created ${newFolder.name}` });
+			} catch (err: any) {
+				console.error("Failed to create folder", err);
+				toast({ title: "Failed to create folder", description: String(err?.message || err) });
+			} finally {
+				setCreatingFolder(false);
+			}
+		};
 
 		const handleSelectAtDepth = (depth: number, val: string) => {
 			setSelectedFolderPath((prev) => {
@@ -419,6 +489,28 @@ export default function CreateEvent() {
 								<div className="space-y-2">
 									<Label htmlFor="rootFolder">Root Event Folder</Label>
 									{renderCascadingSelects()}
+									{/* Create new folder inline */}
+									<div className="flex gap-2 items-center mt-2">
+										<Input
+											placeholder="New folder name"
+											value={newFolderName}
+											onChange={(e) => setNewFolderName(e.target.value)}
+											className="sm:w-[240px]"
+										/>
+										<Button size="sm" type="button" onClick={handleCreateFolder} disabled={creatingFolder}>
+											{creatingFolder ? (
+												<>
+													<svg className="h-4 w-4 animate-spin mr-2" viewBox="0 0 24 24" fill="none">
+														<circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+														<path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+													</svg>
+												Creating…
+											</>
+											) : (
+												"Create folder"
+											)}
+										</Button>
+									</div>
 									<div className="flex items-center gap-3 mt-2">
 										<div className="text-sm text-muted-foreground">{getBreadcrumb() || "No folder selected"}</div>
 										{selectedFolderPath && selectedFolderPath.length > 0 && (
@@ -699,7 +791,7 @@ export default function CreateEvent() {
 									)}
 								</div>
 
-								<div className="space-y-2">
+								{/* <div className="space-y-2">
 									<Label htmlFor="promoTemplate">Promo Card Template</Label>
 									<Input
 										id="promoTemplate"
@@ -716,7 +808,7 @@ export default function CreateEvent() {
 									{promoTemplatePreview && (
 										<img src={promoTemplatePreview} alt="Template preview" className="mt-3 max-h-32 rounded border" />
 									)}
-								</div>
+								</div> */}
 							</div>
 						</CardContent>
 					</Card>

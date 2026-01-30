@@ -248,6 +248,10 @@ export function getGoogleDriveStatus(): Promise<{ connected: boolean; root_folde
   return getJson<{ connected: boolean; root_folder?: string }>(`/google/drive/status`);
 }
 
+// Create a new folder in the connected Google Drive for the current user
+export function createGoogleDriveFolder(body: { folder_name: string; parent_folder_id?: string | null }): Promise<any> {
+  return postJson<typeof body, any>(`/google/drive/folder`, body);
+}
 export async function deleteIntegration(provider: string): Promise<void> {
   const res = await fetch(`${API_BASE}/integrations/${encodeURIComponent(provider)}`, {
     method: "DELETE",
