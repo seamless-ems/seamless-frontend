@@ -37,7 +37,15 @@ Current priority (single source of truth)
   - Template system: Saves layout config (positions, sizes, shapes) NOT content
   - Test images are preview-only, never saved to config
   - See README for full feature list and PROMO_CARD_REFACTOR_PLAN.md for details
-- **Backend blocker:** Team/account nesting API required to fully integrate PromoCardBuilder into event flow
+- **WebsiteCardBuilder component** — 🚧 IN PROGRESS (tldraw experiment)
+  - New component using tldraw instead of Fabric.js (testing alternative approach)
+  - Same drop-zone architecture as PromoCardBuilder (test images preview-only)
+  - Features: Background upload with crop, headshot with shape options (circle/square/rectangle), logo upload, text elements with test data
+  - Uses tldraw's native tools for editing (minimal custom code)
+  - Text elements use geo shapes with text labels (tldraw doesn't support standalone text shapes)
+  - Test route: `http://localhost:5173/test/website-builder`
+  - Location: `src/components/WebsiteCardBuilder.tsx`, `src/pages/WebsiteCardBuilderTest.tsx`
+- **Backend blocker:** Team/account nesting API required to fully integrate builders into event flow
 
 Immediate next steps (for the next agent)
 - Verify speaker list and portal UI against the local prototype (`Local Prototype/Seamless Demo/index.html`).
@@ -52,6 +60,8 @@ Where to look first
 - `src/pages/organizer/SpeakerModule.tsx`
 - `src/pages/organizer/SpeakerPortal.tsx`
 - `src/components/SpeakerForm.tsx`
+- `src/components/PromoCardBuilder.tsx` (Fabric.js - complete & stable)
+- `src/components/WebsiteCardBuilder.tsx` (tldraw - in progress)
 - `src/lib/api.ts` and `openapi.json` (API reference)
 
 Mandatory agent check
@@ -88,9 +98,19 @@ End of briefing.
 ---
 
 ## Recent Changes
-1. ✅ **CRITICAL RULE ADDED** - NO completion/summary documents (burns credits). Just do work, test, report verbally.
-2. ✅ **PromoCardBuilder UX Fixes** (2026-01-28) - Fixed multi-select bug, all number inputs use onBlur (no deselection), moved Undo/Redo to canvas controls, added background to layers panel
-3. ✅ **Documentation Update** - Added critical frontend-only guidelines
+1. 🚧 **WebsiteCardBuilder - Initial Build** (2026-01-29) - Created new component using tldraw as alternative to Fabric.js
+   - Installed tldraw package
+   - Built component with same drop-zone architecture as PromoCardBuilder
+   - Features: Background upload (with crop), headshot upload (with crop + shape options), logo upload (with crop), test data elements (Name/Title/Company)
+   - Uses tldraw native tools for all editing (drag, resize, rotate, style)
+   - Text elements use geo shapes with text labels (tldraw API requirement)
+   - Save/load template to localStorage, PNG export
+   - ImageCropDialog integration for all uploads
+   - Test route added: `/test/website-builder`
+   - Next: Test functionality, fix any bugs, evaluate tldraw vs Fabric.js for this use case
+2. ✅ **CRITICAL RULE ADDED** - NO completion/summary documents (burns credits). Just do work, test, report verbally.
+3. ✅ **PromoCardBuilder UX Fixes** (2026-01-28) - Fixed multi-select bug, all number inputs use onBlur (no deselection), moved Undo/Redo to canvas controls, added background to layers panel
+4. ✅ **Documentation Update** - Added critical frontend-only guidelines
 2. ✅ **PromoCardBuilder Migration** - Migrated from react-draggable to Fabric.js (2026-01-28)
    - Professional canvas-based editor with snapping to edges, centers, and other elements
    - Direct manipulation of images and text with resize/drag handles

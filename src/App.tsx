@@ -27,6 +27,7 @@ import Auth from "./pages/Auth";
 import ProtectedRoute from "./components/ProtectedRoute";
 import PromoEmbed from "./pages/public/PromoEmbed";
 import PromoCardBuilderTest from "./pages/PromoCardBuilderTest";
+import WebsiteCardBuilderTest from "./pages/WebsiteCardBuilderTest";
 
 // Helper component for root redirect
 function RootRedirect() {
@@ -223,8 +224,9 @@ const App = () => {
               }
             />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            {/* Dev/Test route for PromoCardBuilder */}
+            {/* Dev/Test routes for builders */}
             <Route path="/test/promo-builder" element={<PromoCardBuilderTest />} />
+            <Route path="/test/website-builder" element={<WebsiteCardBuilderTest />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
