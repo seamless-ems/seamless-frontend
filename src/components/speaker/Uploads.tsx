@@ -15,6 +15,9 @@ type Props = {
   uploadingLogo: boolean;
   setCropImageUrl: (url: string | null) => void;
   setCropType: (t: "headshot" | "logo" | null) => void;
+  // custom file handlers
+  customFilePreviews?: Record<string, string | null>;
+  onCustomFileSelected?: (fieldId: string, file: File) => void;
 };
 
 export default function Uploads(props: Props) {
@@ -29,6 +32,8 @@ export default function Uploads(props: Props) {
     uploadingLogo,
     setCropImageUrl,
     setCropType,
+    customFilePreviews,
+    onCustomFileSelected,
   } = props;
 
   return (
@@ -130,6 +135,61 @@ export default function Uploads(props: Props) {
             </Button>
           </div>
         )}
+      </div>
+      {/* Generic custom file fields (not headshot/company_logo) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-4">
+        {fileFields
+          .filter(f => f.id !== "headshot" && f.id !== "company_logo")
+          .map((field) => (
+            <div key={field.id} className="text-center">
+              <Label className="text-xs font-medium block mb-3">
+                {field.label}
+                {formConfig.find(f => f.id === field.id)?.required && <span className="text-destructive ml-1">*</span>}
+              </Label>
+
+              <div className="relative w-full aspect-square rounded-lg border-2 border-border mb-3 overflow-hidden cursor-pointer bg-muted flex items-center justify-center">
+                {customFilePreviews && customFilePreviews[field.id] ? (
+                  // If preview looks like a data URL or an image URL, show an image; otherwise show filename
+                  (customFilePreviews[field.id] || "").startsWith("data:") ? (
+                    <img src={customFilePreviews[field.id] as string} alt={`${field.label} preview`} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="text-center px-4">
+                      <p className="text-sm text-muted-foreground">{customFilePreviews[field.id]}</p>
+                    </div>
+                  )
+                ) : (
+                  <div className="text-center">
+                    <Upload className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
+                    <p className="text-xs text-muted-foreground">No image selected</p>
+                  </div>
+                )}
+              </div>
+
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                id={`custom-file-${field.id}`}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  onCustomFileSelected?.(field.id, file);
+                }}
+              />
+
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  const el = document.getElementById(`custom-file-${field.id}`) as HTMLInputElement | null;
+                  el?.click();
+                }}
+              >
+                {customFilePreviews && customFilePreviews[field.id] ? "Replace" : "Upload"}
+              </Button>
+            </div>
+          ))}
       </div>
     </div>
   );

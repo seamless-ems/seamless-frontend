@@ -31,8 +31,13 @@ export default function SpeakerModule() {
   const [addOpen, setAddOpen] = useState(false);
 
   const { data: rawSpeakers, isLoading } = useQuery<any, Error>({
-    queryKey: ["event", id, "speakers"],
-    queryFn: () => getJson<any>(`/events/${id}/speakers`),
+    queryKey: ["event", id, "speakers", selectedTab],
+    queryFn: () => {
+      // Filter by form_type: speakers tab should show speaker-info, applications tab should show call-for-speakers
+      const formType = selectedTab === "speakers" ? "speaker-info" : (selectedTab === "applications" ? "call-for-speakers" : "speaker-info");
+      const qs = `?form_type=${encodeURIComponent(formType)}`;
+      return getJson<any>(`/events/${id}/speakers${qs}`);
+    },
     enabled: Boolean(id),
   });
 
@@ -208,34 +213,12 @@ export default function SpeakerModule() {
       {selectedTab === "applications" && (
         <div className="space-y-6 pt-6">
           {/* Header */}
-          <div>
-            <h2 className="text-2xl font-semibold text-foreground">Call for Speakers</h2>
-            <p className="text-sm text-muted-foreground mt-1">Review and approve speaker applications</p>
-          </div>
-
-          {/* Applications Table */}
           <div className="space-y-4">
-            {/* Controls Bar */}
             <div className="flex justify-between items-center">
-              <div className="flex gap-3">
-                <Input
-                  placeholder="Search applications…"
-                  className="w-[280px] h-9 text-sm"
-                />
-                <Select>
-                  <SelectTrigger className="w-[150px] h-9 text-sm">
-                    <SelectValue placeholder="All Statuses" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Statuses</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="approved">Approved</SelectItem>
-                    <SelectItem value="rejected">Rejected</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              <p className="text-sm text-muted-foreground mt-1">Review and approve speaker applications</p>
+
               <div className="flex items-center gap-3">
-                <div className="text-sm text-muted-foreground">0 applications</div>
+                <div className="text-sm text-muted-foreground">{totalCount} applications</div>
                 {id && (
                   <Button
                     variant="outline"
@@ -252,11 +235,21 @@ export default function SpeakerModule() {
               </div>
             </div>
 
-            {/* Table */}
+            {/* Applications Table (reuse speakers controls + table but data is filtered by form_type) */}
+            <SpeakersControls
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              statusFilter={statusFilter}
+              setStatusFilter={setStatusFilter}
+              sortBy={sortBy}
+              setSortBy={setSortBy}
+              totalCount={totalCount}
+              pendingCount={pendingCount}
+            />
+
             <div className="rounded-lg border border-border overflow-hidden">
-              <div className="py-12 text-center text-sm text-muted-foreground">
-                No applications yet. Share the application form link with potential speakers.
-              </div>
+              {/* @ts-ignore */}
+              <SpeakersTable speakers={filteredSpeakers} isLoading={isLoading} eventId={id} />
             </div>
           </div>
         </div>

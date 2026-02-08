@@ -13,6 +13,12 @@ export default function EventDashboard() {
 		enabled: Boolean(id),
 	});
 
+	const { data: speakersOverview } = useQuery<any, Error>({
+		queryKey: ["event", id, "speakers", "overview"],
+		queryFn: () => getJson<any>(`/events/${id}/speakers/overview`),
+		enabled: Boolean(id),
+	});
+
 	// Normalize API response (snake_case fields, modules array) into a shape the UI expects
 	const event = (() => {
 		if (!rawEvent) return null;
@@ -139,27 +145,27 @@ export default function EventDashboard() {
 								<div style={{ fontSize: 'var(--font-small)' }} className="text-muted-foreground mb-1">
 									Total Speakers
 								</div>
-								<div className="text-2xl font-semibold">{event?.speakerCount ?? 0}</div>
+								<div className="text-2xl font-semibold">{speakersOverview?.totalSpeakers ?? event?.speakerCount ?? 0}</div>
 							</div>
 							<div>
 								<div style={{ fontSize: 'var(--font-small)' }} className="text-muted-foreground mb-1">
 									Approved
 								</div>
-								<div className="text-2xl font-semibold text-success">0</div>
-								<div style={{ fontSize: 'var(--font-small)' }} className="text-muted-foreground">0%</div>
+								<div className="text-2xl font-semibold text-success">{speakersOverview?.totalApproved ?? 0}</div>
+								<div style={{ fontSize: 'var(--font-small)' }} className="text-muted-foreground">{speakersOverview?.totalSpeakers ? `${Math.round(((speakersOverview.totalApproved ?? 0) / Math.max(1, speakersOverview.totalSpeakers)) * 100)}%` : '0%'}</div>
 							</div>
 							<div>
 								<div style={{ fontSize: 'var(--font-small)' }} className="text-muted-foreground mb-1">
 									Pending Review
 								</div>
-								<div className="text-2xl font-semibold text-warning">0</div>
+								<div className="text-2xl font-semibold text-warning">{speakersOverview?.totalPending ?? 0}</div>
 							</div>
 							<div>
 								<div style={{ fontSize: 'var(--font-small)' }} className="text-muted-foreground mb-1">
 									Applications
 								</div>
-								<div className="text-2xl font-semibold">0</div>
-								<div style={{ fontSize: 'var(--font-small)' }} className="text-muted-foreground">0 pending</div>
+								<div className="text-2xl font-semibold">{speakersOverview?.totalCallForSpeakers ?? 0}</div>
+								<div style={{ fontSize: 'var(--font-small)' }} className="text-muted-foreground">{(speakersOverview?.totalCallForSpeakersPending ?? 0)} pending</div>
 							</div>
 						</div>
 

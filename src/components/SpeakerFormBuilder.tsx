@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,6 +36,7 @@ export interface FormFieldConfig {
 interface SpeakerFormBuilderProps {
   eventId: string;
   initialConfig?: FormFieldConfig[];
+  formType?: string;
   onSave?: (config: FormFieldConfig[]) => void;
 }
 
@@ -54,6 +55,7 @@ const DEFAULT_FIELDS: FormFieldConfig[] = [
 export default function SpeakerFormBuilder({
   eventId,
   initialConfig,
+  formType = "speaker-info",
   onSave,
 }: SpeakerFormBuilderProps) {
   const [fields, setFields] = useState<FormFieldConfig[]>(
@@ -68,6 +70,37 @@ export default function SpeakerFormBuilder({
     required: true,
   });
   const [copied, setCopied] = useState(false);
+
+  // Load server-saved config for this event/form type when available
+  useEffect(() => {
+    let mounted = true;
+    if (!eventId || !formType) return;
+
+    import("@/lib/api").then(({ getFormConfigForEvent }) => {
+      getFormConfigForEvent(eventId, formType)
+        .then((res: any) => {
+          if (!mounted) return;
+          if (!res || !Array.isArray(res.config)) {
+            setFields(DEFAULT_FIELDS);
+            return;
+          }
+          try {
+            setFields(res.config as FormFieldConfig[]);
+          } catch (e) {
+            console.error("Invalid config format", e);
+            setFields(DEFAULT_FIELDS);
+          }
+        })
+        .catch((err: any) => {
+          console.error("Failed to load form config", err);
+          setFields(DEFAULT_FIELDS);
+        });
+    });
+
+    return () => {
+      mounted = false;
+    };
+  }, [eventId, formType]);
 
   const toggleField = (fieldId: string) => {
     setFields((prev) =>
@@ -156,15 +189,19 @@ export default function SpeakerFormBuilder({
     proceedWithSave();
   };
 
-  const proceedWithSave = () => {
-    // Save to localStorage as bridge until backend API endpoint is ready
-    localStorage.setItem(`speaker_form_config_${eventId}`, JSON.stringify(fields));
-    
-    if (onSave) {
-      onSave(fields);
+  const proceedWithSave = async () => {
+    // Try saving to backend; fallback to localStorage on error
+    try {
+      const { createFormConfig } = await import("@/lib/api");
+      await createFormConfig({ eventId, formType: formType ?? "speaker-info", config: fields });
+      toast({ title: "Form configuration saved" });
+      if (onSave) onSave(fields);
+    } catch (err) {
+      console.error("Failed to save form config to server", err);
+      toast({ title: "Failed to save form configuration", variant: "destructive" });
+    } finally {
+      setSaveWarningOpen(false);
     }
-    toast({ title: "Form configuration saved" });
-    setSaveWarningOpen(false);
   };
 
   const enabledFields = fields.filter((f) => f.enabled);

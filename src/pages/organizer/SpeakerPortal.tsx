@@ -59,6 +59,7 @@ export default function SpeakerPortal() {
       firstName: (speaker as any).firstName ?? (speaker as any).first_name ?? undefined,
       lastName: (speaker as any).lastName ?? (speaker as any).last_name ?? undefined,
       email: (speaker as any).email ?? (speaker as any).email_address ?? "",
+      formType: (speaker as any).formType ?? (speaker as any).form_type ?? "",
       companyName: (speaker as any).companyName ?? (speaker as any).company_name ?? "",
       companyRole: (speaker as any).companyRole ?? (speaker as any).company_role ?? "",
       headshot: (speaker as any).headshot ?? (speaker as any).headshotUrl ?? (speaker as any).headshot_url ?? null,
@@ -68,6 +69,7 @@ export default function SpeakerPortal() {
       intakeFormStatus: (speaker as any).intakeFormStatus ?? (speaker as any).intake_form_status ?? "",
       websiteCardApproved: (speaker as any).websiteCardApproved ?? (speaker as any).website_card_approved ?? false,
       promoCardApproved: (speaker as any).promoCardApproved ?? (speaker as any).promo_card_approved ?? false,
+      internalNotes: (speaker as any).internalNotes ?? (speaker as any).internal_notes ?? "",
     }
     : null;
 
@@ -106,28 +108,18 @@ export default function SpeakerPortal() {
       const url = res?.public_url ?? res?.publicUrl ?? res?.url ?? null;
       if (!url) throw new Error("Upload did not return a file url");
 
-      const payload: any = {
-        first_name: (speaker as any)?.first_name ?? (speaker as any)?.firstName ?? "",
-        last_name: (speaker as any)?.last_name ?? (speaker as any)?.lastName ?? "",
-        email: (speaker as any)?.email ?? "",
-        company_name: (speaker as any)?.company ?? (speaker as any)?.company_name ?? "",
-        company_role: (speaker as any)?.company_role ?? (speaker as any)?.companyRole ?? "",
-        bio: (speaker as any)?.bio ?? "",
-        linkedin: (speaker as any)?.linkedin ?? "",
-      };
-
       if (isHeadshot) {
-        payload.headshot = url;
+        s.headshot = url;
         // Reset approval when new headshot is uploaded
-        payload.website_card_approved = false;
-        payload.promo_card_approved = false;
+        s.websiteCardApproved = false;
+        s.promoCardApproved = false;
       } else {
-        payload.company_logo = url;
+        s.companyLogo = url;
       }
 
-      await updateSpeaker(id, speakerId, payload);
+      await updateSpeaker(id, speakerId, s);
       queryClient.invalidateQueries({ queryKey: ["event", id, "speaker", speakerId] });
-      queryClient.invalidateQueries({ queryKey: ["event", id, "speakers"] });
+      queryClient.invalidateQueries({ queryKey: ["event", id, "speakers"], exact: false });
       toast({ title: `${isHeadshot ? "Headshot" : "Company logo"} updated${isHeadshot ? " - approval reset" : ""}` });
     } catch (err: any) {
       toast({ title: `Failed to upload ${isHeadshot ? "headshot" : "logo"}`, description: String(err?.message || err) });
@@ -148,21 +140,11 @@ export default function SpeakerPortal() {
     if (!id || !speakerId || !canApprove) return;
 
     try {
-      const payload: any = {
-        first_name: (speaker as any)?.first_name ?? (speaker as any)?.firstName ?? "",
-        last_name: (speaker as any)?.last_name ?? (speaker as any)?.lastName ?? "",
-        email: (speaker as any)?.email ?? "",
-        company_name: (speaker as any)?.company ?? (speaker as any)?.company_name ?? "",
-        company_role: (speaker as any)?.company_role ?? (speaker as any)?.companyRole ?? "",
-        bio: (speaker as any)?.bio ?? "",
-        linkedin: (speaker as any)?.linkedin ?? "",
-        website_card_approved: !isApproved,
-        promo_card_approved: !isApproved,
-      };
-
-      await updateSpeaker(id, speakerId, payload);
+      s.websiteCardApproved = !isApproved;
+      s.promoCardApproved = !isApproved; // Both cards approved together
+      await updateSpeaker(id, speakerId, s);
       queryClient.invalidateQueries({ queryKey: ["event", id, "speaker", speakerId] });
-      queryClient.invalidateQueries({ queryKey: ["event", id, "speakers"] });
+      queryClient.invalidateQueries({ queryKey: ["event", id, "speakers"], exact: false });
       toast({ title: isApproved ? "Cards unapproved" : "Cards approved for embed" });
     } catch (err: any) {
       toast({ title: "Failed to update approval", description: String(err?.message || err) });
@@ -288,7 +270,7 @@ export default function SpeakerPortal() {
                   bio: values.bio,
                 });
                 queryClient.invalidateQueries({ queryKey: ["event", id, "speaker", speakerId] });
-                queryClient.invalidateQueries({ queryKey: ["event", id, "speakers"] });
+                queryClient.invalidateQueries({ queryKey: ["event", id, "speakers"], exact: false });
                 setEditOpen(false);
                 toast({ title: "Speaker updated" });
               } catch (err: any) {
@@ -326,9 +308,21 @@ export default function SpeakerPortal() {
           />
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setNotesOpen(false)}>Cancel</Button>
-            <Button onClick={() => {
-              toast({ title: "Internal notes feature coming soon", description: "Backend support needed" });
-              setNotesOpen(false);
+            <Button onClick={async () => {
+              if (!id || !speakerId) {
+                toast({ title: "No event or speaker selected" });
+                return;
+              }
+              try {
+                s.internalNotes = internalNotes; // Optimistically update notes in UI
+                await updateSpeaker(id, speakerId, s);
+                queryClient.invalidateQueries({ queryKey: ["event", id, "speaker", speakerId] });
+                queryClient.invalidateQueries({ queryKey: ["event", id, "speakers"], exact: false });
+                toast({ title: "Internal notes saved" });
+                setNotesOpen(false);
+              } catch (err: any) {
+                toast({ title: "Failed to save notes", description: String(err?.message || err) });
+              }
             }}>Save Notes</Button>
           </div>
         </DialogContent>

@@ -113,8 +113,7 @@ export async function uploadFile(
 export type SignupRequest = {
   email: string;
   password: string;
-  first_name?: string;
-  last_name?: string;
+  name?: string;
 };
 
 export type LoginRequest = {
@@ -146,6 +145,19 @@ export function getTeam(): Promise<any[]> {
   return getJson<any[]>(`/account/team`);
 }
 
+export function createTeam(body: { name: string; description?: string; organizationId: string }): Promise<any> {
+  // Backend expects the organization id to associate the team with.
+  return postJson<typeof body, any>(`/account/team`, body);
+}
+
+export function getOrganization(): Promise<any> {
+  return getJson<any>(`/account/organization`);
+}
+
+export function createOrganization(body: { name: string; domain?: string; description?: string }): Promise<any> {
+  return postJson<typeof body, any>(`/account/organization`, body);
+}
+
 export function inviteTeamMember(body: any): Promise<any> {
   return postJson<any, any>(`/account/team/invite`, body);
 }
@@ -171,7 +183,7 @@ export function updateTeamDetails(teamId: string, body: { name?: string; descrip
 }
 
 export async function deleteTeamMember(memberId: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/account/team/${encodeURIComponent(memberId)}`, {
+  const res = await fetch(`${API_BASE}/account/team/member/${encodeURIComponent(memberId)}`, {
     method: "DELETE",
     headers: authHeaders(),
     credentials: "include",
@@ -251,6 +263,17 @@ export function getGoogleDriveStatus(): Promise<{ connected: boolean; root_folde
 // Create a new folder in the connected Google Drive for the current user
 export function createGoogleDriveFolder(body: { folder_name: string; parent_folder_id?: string | null }): Promise<any> {
   return postJson<typeof body, any>(`/google/drive/folder`, body);
+}
+
+// Forms config endpoints
+export function getFormConfigForEvent(eventId: string, formType: string): Promise<any> {
+  const qs = `?form_type=${encodeURIComponent(formType)}`;
+  return getJson<any>(`/forms/config/${encodeURIComponent(eventId)}${qs}`);
+}
+
+export function createFormConfig(body: { eventId: string; formType: string; config: any[] }): Promise<any> {
+  // Backend expects eventId, formType and config (array)
+  return postJson<typeof body, any>(`/forms/config`, body);
 }
 export async function deleteIntegration(provider: string): Promise<void> {
   const res = await fetch(`${API_BASE}/integrations/${encodeURIComponent(provider)}`, {

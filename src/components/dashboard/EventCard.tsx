@@ -1,5 +1,5 @@
-import { Link } from "react-router-dom";
-import { MoreVertical } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { MoreVertical, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,6 +9,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { deleteEvent } from "@/lib/api";
+import { toast } from "@/hooks/use-toast";
+import React from "react";
 import { Event } from "@/types/event";
 
 interface EventCardProps {
@@ -41,6 +53,9 @@ const formatDateRange = (start?: string, end?: string) => {
 };
 
 export function EventCard({ event, index = 0, onDelete }: EventCardProps) {
+  const navigate = useNavigate();
+  const [confirmOpen, setConfirmOpen] = React.useState(false);
+  const [deleting, setDeleting] = React.useState(false);
   return (
     <Link
       to={`/organizer/event/${event.id}`}
@@ -53,7 +68,14 @@ export function EventCard({ event, index = 0, onDelete }: EventCardProps) {
         </h3>
 
         <DropdownMenu>
-          <DropdownMenuTrigger asChild onClick={(e) => e.preventDefault()}>
+          <DropdownMenuTrigger
+            asChild
+            onClick={(e) => {
+              e.preventDefault();
+              // Stop the click from bubbling to the parent Link which would navigate
+              e.stopPropagation();
+            }}
+          >
             <Button
               variant="ghost"
               size="icon"
@@ -62,7 +84,13 @@ export function EventCard({ event, index = 0, onDelete }: EventCardProps) {
               <MoreVertical className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+          <DropdownMenuContent
+            align="end"
+            onClick={(e) => {
+              // Prevent clicks inside the menu from triggering the parent Link
+              e.stopPropagation();
+            }}
+          >
             <DropdownMenuItem asChild>
               <Link to={`/organizer/event/${event.id}`}>Open Event</Link>
             </DropdownMenuItem>
@@ -71,18 +99,55 @@ export function EventCard({ event, index = 0, onDelete }: EventCardProps) {
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              className="text-destructive"
-              onSelect={async (e) => {
+              className="text-destructive flex items-center gap-2"
+              onSelect={(e) => {
                 e.preventDefault();
-                if (typeof onDelete === "function") {
-                  await onDelete(event.id);
-                }
+                // stop propagation so the Link doesn't handle this click
+                (e as any).stopPropagation?.();
+                setConfirmOpen(true);
               }}
             >
+              <Trash2 className="h-4 w-4" />
               Delete Event
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+
+        <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+          <AlertDialogContent>
+            <AlertDialogTitle>Delete event</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this event? This action cannot be undone.
+            </AlertDialogDescription>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setConfirmOpen(false)}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                asChild
+                onClick={async () => {
+                  try {
+                    setDeleting(true);
+                    if (typeof onDelete === "function") {
+                      await onDelete(event.id);
+                    } else {
+                      await deleteEvent(event.id);
+                    }
+                    toast({ title: "Event deleted" });
+                    setConfirmOpen(false);
+                    // If no onDelete handler provided, navigate back to events list
+                    if (typeof onDelete !== "function") navigate('/organizer/events');
+                  } catch (err: any) {
+                    console.error("Failed to delete event", err);
+                    toast({ title: "Failed to delete event", description: String(err?.message || err) });
+                  } finally {
+                    setDeleting(false);
+                  }
+                }}
+              >
+                <Button variant="destructive" disabled={deleting}>{deleting ? "Deleting…" : "Delete"}</Button>
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
 
       <div className="space-y-1 mb-4 text-muted-foreground" style={{ fontSize: 'var(--font-small)' }}>

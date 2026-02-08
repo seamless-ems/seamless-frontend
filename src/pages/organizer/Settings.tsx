@@ -1,5 +1,4 @@
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -19,6 +18,8 @@ import {
   Mail,
   Globe,
 } from "lucide-react";
+import OrganizationSection from "@/components/organizer/OrganizationSection";
+import TeamSection from "@/components/organizer/TeamSection";
 
 export default function Settings() {
   const qc = useQueryClient();
@@ -49,28 +50,24 @@ export default function Settings() {
 
   const form = useForm<any>({
     defaultValues: {
-      first_name: me?.firstName ?? me?.first_name ?? "",
-      last_name: me?.lastName ?? me?.last_name ?? "",
+      name: me?.name ?? "",
       email: me?.email ?? "",
-      company: me?.companyName ?? me?.company ?? "",
-      notifications: settings ?? {},
+      createdAt: me?.createdAt ? new Date(me.createdAt).toLocaleDateString() : "",
     },
   });
 
   React.useEffect(() => {
     form.reset({
-      first_name: me?.firstName ?? me?.first_name ?? "",
-      last_name: me?.lastName ?? me?.last_name ?? "",
+      name: me?.name ?? "",
       email: me?.email ?? "",
-      company: me?.companyName ?? me?.company ?? "",
-      notifications: settings ?? {},
+      createdAt: me?.createdAt ? new Date(me.createdAt).toLocaleDateString() : "",
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [me, settings]);
 
   const onSave = form.handleSubmit(async (vals) => {
     try {
-      await updateMeMut.mutateAsync({ first_name: vals.first_name, last_name: vals.last_name, email: vals.email, company: vals.company });
+      await updateMeMut.mutateAsync(  { name: vals.name, email: vals.email });
       await updateSettingsMut.mutateAsync(vals.notifications ?? settings ?? {});
     } catch (e) {
       // handled by mutation onError
@@ -93,32 +90,28 @@ export default function Settings() {
               Profile
             </CardTitle>
             <CardDescription>Your personal information and preferences</CardDescription>
-            <div className="flex-shrink-0 flex items-center">
-              <Avatar className="h-20 w-20">
-                <AvatarImage src={me?.avatar_url ?? ""} />
-                <AvatarFallback className="bg-primary/10 text-primary text-xl font-display">{(me?.first_name?.[0] ?? "").toUpperCase()}{(me?.last_name?.[0] ?? "").toUpperCase()}</AvatarFallback>
-              </Avatar>
-            </div>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-6">
-              <div className="flex-1">
-                <div className="grid gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="firstName">First Name</Label>
-                    <Input id="firstName" {...form.register("first_name")} readOnly />
-                    <Label htmlFor="lastName">Last Name</Label>
-                    <Input id="lastName" {...form.register("last_name")} readOnly />
-                    <Label htmlFor="email">Email</Label>
-                    <Input id="email" type="email" {...form.register("email")} readOnly />
-                  </div>
-                </div>
+          <CardContent>
+            <div className="space-y-2">
+              <div>
+                <div className="text-sm text-muted-foreground">Name</div>
+                <div className="font-medium">{me?.name ?? "—"}</div>
               </div>
-
+              <div>
+                <div className="text-sm text-muted-foreground">Email</div>
+                <div className="font-medium">{me?.email ?? "—"}</div>
+              </div>
+              <div>
+                <div className="text-sm text-muted-foreground">Member since</div>
+                <div className="font-medium">{me?.createdAt ? new Date(me.createdAt).toLocaleDateString() : "—"}</div>
+              </div>
             </div>
-
           </CardContent>
         </Card>
+        <div className="space-y-8">
+          <OrganizationSection />
+          <TeamSection />
+        </div>
         {/* Danger Zone */}
         <Card className="border-destructive/30">
           <CardHeader>

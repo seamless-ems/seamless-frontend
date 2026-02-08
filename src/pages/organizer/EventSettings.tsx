@@ -464,10 +464,6 @@ export default function EventSettings() {
                 setEventImageFile={setEventImageFile}
                 eventImagePreview={eventImagePreview}
                 setEventImagePreview={setEventImagePreview}
-                promoTemplateFile={null}
-                setPromoTemplateFile={() => {}}
-                promoTemplatePreview={null}
-                setPromoTemplatePreview={() => {}}
                 enableCrop={true}
                 eventCropAspect={NaN}
               />

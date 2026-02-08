@@ -18,8 +18,7 @@ const loginSchema = z.object({
 });
 
 const signupSchema = z.object({
-    first_name: z.string().min(1).optional(),
-    last_name: z.string().min(1).optional(),
+    name: z.string().min(1).optional(),
     email: z.string().email(),
     password: z.string().min(6),
 });
@@ -91,7 +90,7 @@ function SignupForm({ onSuccess }: { onSuccess: () => void }) {
 
     const form = useForm<SignupValues>({
         resolver: zodResolver(signupSchema),
-        defaultValues: { first_name: "", last_name: "", email: "", password: "" },
+        defaultValues: { name: "", email: "", password: "" },
     });
 
     const onSubmit = async (data: SignupValues) => {
@@ -99,8 +98,7 @@ function SignupForm({ onSuccess }: { onSuccess: () => void }) {
             const res = await signupMutation.mutateAsync({
                 email: data.email,
                 password: data.password,
-                first_name: data.first_name,
-                last_name: data.last_name,
+                name: data.name,
             });
             onSuccess();
         } catch (err) {
@@ -110,16 +108,9 @@ function SignupForm({ onSuccess }: { onSuccess: () => void }) {
 
     return (
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                    <label className="text-sm font-medium">First name</label>
-                    <Input {...form.register("first_name")} type="text" placeholder="First name" className="h-12" />
-                </div>
-
-                <div className="space-y-2">
-                    <label className="text-sm font-medium">Last name</label>
-                    <Input {...form.register("last_name")} type="text" placeholder="Last name" className="h-12" />
-                </div>
+            <div className="space-y-2">
+                <label className="text-sm font-medium">Name</label>
+                <Input {...form.register("name")} type="text" placeholder="Name" className="h-12" />
             </div>
 
             <div className="space-y-2">

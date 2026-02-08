@@ -183,6 +183,15 @@ const App = () => {
               }
             />
 
+            <Route
+              path="/call-for-speakers/:eventId"
+              element={
+                // <ProtectedRoute>
+                <SpeakerIntakeForm />
+                // </ProtectedRoute>
+              }
+            /> 
+
             {/* Speaker management routes (protected, /speaker namespace) */}
             <Route
               path="/speaker"

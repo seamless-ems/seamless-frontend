@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/select";
 import GoogleDriveFolderPicker from "@/components/organizer/GoogleDriveFolderPicker";
 import EventMediaUploader from "@/components/organizer/EventMediaUploader";
+import { generateUuid } from "@/lib/utils";
 
 const availableModules = [
 	{
@@ -48,7 +49,8 @@ const availableModules = [
 		description: "Create and publish event schedules",
 		icon: Calendar,
 		color: "schedule",
-		available: true,
+		available: false,
+		comingSoon: true,
 	},
 	{
 		id: "content",
@@ -56,7 +58,8 @@ const availableModules = [
 		description: "Centralized hub for presentations and files",
 		icon: FileText,
 		color: "content",
-		available: true,
+		available: false,
+		comingSoon: true,
 	},
 	{
 		id: "partners",
@@ -64,7 +67,8 @@ const availableModules = [
 		description: "Manage sponsors and partners",
 		icon: Users,
 		color: "primary",
-		available: true,
+		available: false,
+		comingSoon: true,
 	},
 	{
 		id: "attendee",
@@ -91,6 +95,7 @@ export default function CreateEvent() {
 		emailSignature: "",
 		googleDriveConnected: false,
 		rootFolder: "",
+		integrationId: "",
 	});
 
 	const [selectedModules, setSelectedModules] = useState<string[]>(["speaker"]);
@@ -109,9 +114,7 @@ export default function CreateEvent() {
 	);
 
 	const [eventImageFile, setEventImageFile] = useState<File | null>(null);
-	const [promoTemplateFile, setPromoTemplateFile] = useState<File | null>(null);
 	const [eventImagePreview, setEventImagePreview] = useState<string | null>(null);
-	const [promoTemplatePreview, setPromoTemplatePreview] = useState<string | null>(null);
 	const { data: me } = useQuery<any>({ queryKey: ["me"], queryFn: () => getMe() });
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -127,7 +130,6 @@ export default function CreateEvent() {
 	React.useEffect(() => {
 		return () => {
 			if (eventImagePreview) URL.revokeObjectURL(eventImagePreview);
-			if (promoTemplatePreview) URL.revokeObjectURL(promoTemplatePreview);
 		};
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
@@ -144,11 +146,13 @@ export default function CreateEvent() {
 						...prev,
 						googleDriveConnected: true,
 						rootFolder: (status as any).root_folder ?? (folders.length ? folders[0].id : prev.rootFolder ?? ""),
+						integrationId:
+							(status as any).integration?.id ?? (status as any).integration_id ?? (status as any).id ?? (status as any).integrationId ?? prev.integrationId ?? "",
 					}));
 				}
 			} catch (err) {
 				// silently ignore; not critical
-				console.debug("Google Drive status check failed", err);
+				console.info("Google Drive status check failed", err);
 			}
 		})();
 	}, []);
@@ -172,25 +176,6 @@ export default function CreateEvent() {
 				return;
 			}
 
-			// Generate a deterministic event id for uploads so backend can associate assets with the event
-			const generateUuid = () => {
-				try {
-					// prefer crypto.randomUUID when available
-					if (typeof crypto !== "undefined" && typeof (crypto as any).randomUUID === "function") {
-						return (crypto as any).randomUUID();
-					}
-				} catch (err) {
-					// fallthrough to fallback generator
-				}
-
-				// fallback RFC4122 v4-ish generator
-				return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-					const r = (Math.random() * 16) | 0;
-					const v = c === 'x' ? r : (r & 0x3) | 0x8;
-					return v.toString(16);
-				});
-			};
-
 			const eventId = generateUuid();
 
 			// If files were selected, upload them first to obtain URLs and include them in the create payload
@@ -199,6 +184,11 @@ export default function CreateEvent() {
 			selectedModules.forEach((m) => (modulesObj[m] = true));
 
 			const payload: any = { ...formData, modules: modulesObj, team_id: selectedTeamId, id: eventId };
+
+			// If Drive is connected, include the integration id so backend can link resources
+			if (formData.googleDriveConnected && formData.integrationId) {
+				payload.integrationId = formData.integrationId;
+			}
 
 			try {
 				if (eventImageFile) {
@@ -212,18 +202,6 @@ export default function CreateEvent() {
 				console.error("Event image upload failed", err);
 				toast({ title: "Event image upload failed", description: String(err?.message || err) });
 				// continue — backend may accept create without image, or user can retry
-			}
-
-			try {
-				if (promoTemplateFile) {
-					// pass eventId to associate the promo template with the event
-					const res2 = await uploadFile(promoTemplateFile, "user", me?.id ?? "", undefined, eventId);
-					const promoValue = res2?.public_url ?? res2?.publicUrl ?? res2?.url ?? res2?.id ?? null;
-					if (promoValue) payload.promoCardTemplate = promoValue;
-				}
-			} catch (err: any) {
-				console.error("Promo template upload failed", err);
-				toast({ title: "Promo template upload failed", description: String(err?.message || err) });
 			}
 
 			const created = await createEvent(payload);
@@ -587,17 +565,13 @@ export default function CreateEvent() {
 							<CardTitle className="text-lg">Images & Templates</CardTitle>
 						</CardHeader>
 						<CardContent>
-							{/* EventMediaUploader handles image + promo template inputs and previews */}
-							<EventMediaUploader
-								eventImageFile={eventImageFile}
-								setEventImageFile={setEventImageFile}
-								eventImagePreview={eventImagePreview}
-								setEventImagePreview={setEventImagePreview}
-								promoTemplateFile={promoTemplateFile}
-								setPromoTemplateFile={setPromoTemplateFile}
-								promoTemplatePreview={promoTemplatePreview}
-								setPromoTemplatePreview={setPromoTemplatePreview}
-							/>
+									{/* EventMediaUploader handles image inputs and previews */}
+									<EventMediaUploader
+										eventImageFile={eventImageFile}
+										setEventImageFile={setEventImageFile}
+										eventImagePreview={eventImagePreview}
+										setEventImagePreview={setEventImagePreview}
+									/>
 						</CardContent>
 					</Card>
 					<div className="flex justify-end gap-4">

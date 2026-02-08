@@ -59,8 +59,8 @@ export default function FormsTab({ eventId }: { eventId: string | undefined }) {
     },
   ];
 
-  const handleGetLink = (formId: string) => {
-    const url = `${window.location.origin}/speaker-intake/${eventId}`;
+  const handleGetLink = (formId: string, formType: string) => {
+    const url = `${window.location.origin}/${formType}/${eventId}`;
     navigator.clipboard.writeText(url);
     setCopiedForm(formId);
     toast({ title: "Link copied to clipboard!" });
@@ -84,6 +84,7 @@ export default function FormsTab({ eventId }: { eventId: string | undefined }) {
         </div>
         <SpeakerFormBuilder
           eventId={eventId}
+          formType={editingForm ?? undefined}
           onSave={(config) => {
             toast({ title: "Form saved successfully" });
             setEditingForm(null);
@@ -148,7 +149,7 @@ export default function FormsTab({ eventId }: { eventId: string | undefined }) {
                     variant="outline" 
                     size="sm" 
                     className="flex-1"
-                    onClick={() => handleGetLink(form.id)}
+                    onClick={() => handleGetLink(form.id, form.type === "Speaker Information Form" ? "speaker-info" : "call-for-speakers")}
                   >
                     {copiedForm === form.id ? (
                       <>
