@@ -71,9 +71,9 @@ jobs:
           else
             BRANCH_NAME="${GITHUB_REF#refs/heads/}"
           fi
-          # sanitize branch into safe channel id: replace non-alphanum/_/- with - and lowercase
-          CHANNEL_NAME=$(echo "$BRANCH_NAME" | sed -E 's/[^A-Za-z0-9._-]/-/g' | tr '[:upper:]' '[:lower:]')
-          CHANNEL="beta-${CHANNEL_NAME}"
+          # Use a fixed preview channel for beta to keep the preview URL stable across deploys.
+          # This will deploy every push/PR on the beta branch to the same preview channel.
+          CHANNEL="beta-preview"
           echo "channel=$CHANNEL" >> $GITHUB_OUTPUT
           echo "branch=$BRANCH_NAME" >> $GITHUB_OUTPUT
 
@@ -97,7 +97,8 @@ jobs:
           DEPLOY_LOG=deploy.log
           echo "Running firebase-tools with debug output"
           # run with --debug and capture both stdout and stderr
-          if npx firebase-tools hosting:channel:deploy "$CHANNEL" --project "$FIREBASE_PROJECT" --expires 7d --json --debug >"$DEPLOY_OUT" 2>"$DEPLOY_LOG"; then
+          # Use a longer expiry so previews remain available longer (max 28 days).
+          if npx firebase-tools hosting:channel:deploy "$CHANNEL" --project "$FIREBASE_PROJECT" --expires 28d --json --debug >"$DEPLOY_OUT" 2>"$DEPLOY_LOG"; then
             echo "Deploy command exited successfully"
           else
             echo "Deploy command failed; dumping logs for debugging" >&2

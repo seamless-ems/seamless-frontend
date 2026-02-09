@@ -272,11 +272,14 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
         }
       });
 
+      // Prepare speaker display name for upload metadata
+      const speakerDisplayName = `${data.first_name ?? payload.firstName ?? ""} ${data.last_name ?? payload.lastName ?? ""}`.trim();
+
       // Upload headshot if provided
       if (headshot) {
         try {
           console.log("Uploading headshot:", headshot);
-          const res = await uploadFile(headshot, "speaker", eventId!, speakerId);
+          const res = await uploadFile(headshot, speakerId, eventId!, speakerDisplayName);
           const headshotUrl = res?.public_url ?? res?.publicUrl ?? res?.url ?? null;
           payload.headshot = headshotUrl;
         } catch (err) {
@@ -288,7 +291,7 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
       if (companyLogo) {
         try {
           console.log("Uploading company logo:", companyLogo);
-          const res = await uploadFile(companyLogo, "speaker", eventId!, speakerId);
+          const res = await uploadFile(companyLogo, speakerId, eventId!, speakerDisplayName);
           const logoUrl = res?.public_url ?? res?.publicUrl ?? res?.url ?? null;
           console.log("Logo upload response:", res, "URL:", logoUrl);
           // Backend expects companyLogo (camelCase) as the alias
@@ -303,15 +306,15 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
       for (const field of otherFileFields) {
         const file = customFiles[field.id];
         if (file) {
-          try {
-            console.log("Uploading custom file for", field.id, file);
-            const res = await uploadFile(file, "speaker", eventId!, speakerId);
-            const url = res?.public_url ?? res?.publicUrl ?? res?.url ?? null;
-            customFields[field.id] = url;
-            console.log(`Uploaded ${field.id}:`, url);
-          } catch (err) {
-            console.error(`upload failed for ${field.id}`, err);
-          }
+            try {
+              console.log("Uploading custom file for", field.id, file);
+              const res = await uploadFile(file, speakerId, eventId!, speakerDisplayName);
+              const url = res?.public_url ?? res?.publicUrl ?? res?.url ?? null;
+              customFields[field.id] = url;
+              console.log(`Uploaded ${field.id}:`, url);
+            } catch (err) {
+              console.error(`upload failed for ${field.id}`, err);
+            }
         }
       }
 

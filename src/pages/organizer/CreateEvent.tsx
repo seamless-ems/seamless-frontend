@@ -194,7 +194,7 @@ export default function CreateEvent() {
 				if (eventImageFile) {
 					// upload under current user so the upload can exist before event creation
 					// pass the generated eventId so backend can associate the image with the event pre-creation
-					const res = await uploadFile(eventImageFile, "user", me?.id ?? "", undefined, eventId);
+					const res = await uploadFile(eventImageFile, undefined, eventId);
 					const imageValue = res?.public_url ?? res?.publicUrl ?? res?.url ?? res?.id ?? null;
 					if (imageValue) payload.eventImage = imageValue;
 				}

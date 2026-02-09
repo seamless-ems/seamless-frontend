@@ -21,10 +21,25 @@ export interface TeamData {
 
 export interface EventData {
   title: string;
-  date: string;
+  // use start/end dates instead of a single date
+  startDate: string;
+  endDate?: string;
   location: string;
+  eventWebsite?: string;
   type: 'virtual' | 'in-person' | 'hybrid';
   description: string;
+  // email settings
+  fromName?: string;
+  fromEmail?: string;
+  replyToEmail?: string;
+  emailSignature?: string;
+  // modules enabled for the event
+  modules?: string[];
+  // optional media (url) or drive integration info
+  eventImage?: string;
+  googleDriveConnected?: boolean;
+  rootFolder?: string;
+  integrationId?: string;
 }
 
 export interface OnboardingState {

@@ -226,7 +226,7 @@ export default function EventSettings() {
 
       try {
         if (eventImageFile) {
-          const res = await uploadFile(eventImageFile, "user", me?.id ?? "", undefined, eventId);
+          const res = await uploadFile(eventImageFile, undefined, eventId);
           const imageValue = res?.public_url ?? res?.publicUrl ?? res?.url ?? res?.id ?? null;
           if (imageValue) payload.event_image = imageValue;
         }

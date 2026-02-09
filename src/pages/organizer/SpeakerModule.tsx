@@ -225,7 +225,7 @@ export default function SpeakerModule() {
                     size="sm"
                     onClick={() => {
                       const origin = typeof window !== 'undefined' ? window.location.origin : '';
-                      const url = `${origin}/speaker-intake/${id}`;
+                      const url = `${origin}/call-for-speakers/${id}`;
                       window.open(url, '_blank', 'noopener');
                     }}
                   >

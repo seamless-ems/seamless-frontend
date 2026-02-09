@@ -27,6 +27,12 @@ export default function FormsTab({ eventId }: { eventId: string | undefined }) {
     enabled: Boolean(eventId),
   });
 
+  const { data: speakersOverview } = useQuery<any, Error>({
+    queryKey: ["event", eventId, "speakers", "overview"],
+    queryFn: () => getJson<any>(`/events/${eventId}/speakers/overview`),
+    enabled: Boolean(eventId),
+  });
+
   const speakerList: any[] = (() => {
     if (!rawSpeakers) return [];
     let arr: any[] = [];
@@ -40,13 +46,18 @@ export default function FormsTab({ eventId }: { eventId: string | undefined }) {
 
   const confirmedSpeakersCount = speakerList.length;
 
+  const overviewTotalSpeakers =
+    speakersOverview?.totalSpeakers ?? speakersOverview?.total_speakers ?? confirmedSpeakersCount;
+  const overviewCallForSpeakers =
+    speakersOverview?.totalCallForSpeakers ?? speakersOverview?.total_call_for_speakers ?? 0;
+
   const forms = [
     {
       id: "speaker-info",
       name: `Speaker Information | ${eventName}`,
       type: "Speaker Information Form",
       description: "",
-      submissions: confirmedSpeakersCount,
+      submissions: overviewTotalSpeakers,
       badge: "success",
     },
     {
@@ -54,7 +65,7 @@ export default function FormsTab({ eventId }: { eventId: string | undefined }) {
       name: `Call for Speakers | ${eventName}`,
       type: "Application Form",
       description: "Applications require approval - submissions go to Call for Speakers tab",
-      submissions: 0,
+      submissions: overviewCallForSpeakers,
       badge: "warning",
     },
   ];
@@ -149,7 +160,7 @@ export default function FormsTab({ eventId }: { eventId: string | undefined }) {
                     variant="outline" 
                     size="sm" 
                     className="flex-1"
-                    onClick={() => handleGetLink(form.id, form.type === "Speaker Information Form" ? "speaker-info" : "call-for-speakers")}
+                    onClick={() => handleGetLink(form.id, form.type === "Speaker Information Form" ? "speaker-intake" : "call-for-speakers")}
                   >
                     {copiedForm === form.id ? (
                       <>

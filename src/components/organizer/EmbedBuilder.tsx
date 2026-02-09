@@ -257,7 +257,7 @@ export default function EmbedBuilder({ eventId }: { eventId: string | undefined 
             <div>
               <Label style={{ fontSize: 'var(--font-body)', fontWeight: 500, marginBottom: '8px', display: 'block' }}>HTML Code</Label>
               <div className="relative">
-                <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-sm"><code>{selectedEmbed?.code}</code></pre>
+                <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-sm whitespace-pre-wrap break-words"><code>{selectedEmbed?.code}</code></pre>
                 <Button variant="outline" size="sm" className="absolute top-2 right-2" onClick={() => selectedEmbed && copyToClipboard(selectedEmbed.code, 'html')}>
                   {copiedCode === 'html' ? (<><Check className="h-4 w-4 mr-1" />Copied</>) : (<><Copy className="h-4 w-4 mr-1" />Copy</>)}
                 </Button>

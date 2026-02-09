@@ -104,7 +104,7 @@ export default function SpeakerPortal() {
 
       // Convert blob to file
       const file = new File([croppedBlob], `${cropType}.jpg`, { type: "image/jpeg" });
-      const res = await uploadFile(file, "speaker", undefined, speakerId, id);
+      const res = await uploadFile(file, undefined, speakerId, id);
       const url = res?.public_url ?? res?.publicUrl ?? res?.url ?? null;
       if (!url) throw new Error("Upload did not return a file url");
 

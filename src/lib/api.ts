@@ -70,25 +70,26 @@ export async function getJson<TRes>(path: string): Promise<TRes> {
   return deepCamel(json) as TRes;
 }
 
-export function presignUpload(body: { filename: string; content_type: string; owner_type: string; owner_id: string; }) {
+// Request a presigned upload URL. Backend no longer expects `owner_type`/`owner_id`.
+// Keep a compatible helper but accept event/speaker metadata instead.
+export function presignUpload(body: { filename: string; content_type: string; event_id?: string; speaker_id?: string; speaker_name?: string; }) {
   return postJson<typeof body, any>(`/uploads/presign`, body);
 }
 
 // Upload a binary file to the backend (multipart/form-data). Used as a fallback when presigned PUTs are blocked by CORS.
-// Make ownerId, speakerId and eventId optional so callers can omit them when not available.
+// Keep signature compatible but do not send deprecated fields `owner_type` or `owner_id`.
 export async function uploadFile(
   file: File,
-  ownerType: string,
-  ownerId?: string,
   speakerId?: string,
-  eventId?: string
+  eventId?: string,
+  speakerName?: string
 ): Promise<any> {
   const fd = new FormData();
   fd.append("file", file);
-  fd.append("owner_type", ownerType);
-  if (ownerId) fd.append("owner_id", ownerId);
+  // backend no longer expects owner_type or owner_id; preserve other metadata
   if (speakerId) fd.append("speaker_id", speakerId);
   if (eventId) fd.append("event_id", eventId);
+  if (speakerName) fd.append("speaker_name", speakerName);
 
   const token = getToken();
   const headers: Record<string, string> = {};
@@ -154,7 +155,7 @@ export function getOrganization(): Promise<any> {
   return getJson<any>(`/account/organization`);
 }
 
-export function createOrganization(body: { name: string; domain?: string; description?: string }): Promise<any> {
+export function createOrganization(body: { name: string }): Promise<any> {
   return postJson<typeof body, any>(`/account/organization`, body);
 }
 
