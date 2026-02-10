@@ -16,8 +16,6 @@ import SpeakerDashboard from "./pages/speaker/SpeakerDashboard";
 import SpeakerProfile from "./pages/speaker/Profile";
 import { DashboardLayout } from "./components/layout/DashboardLayout";
 import SpeakerIntakeForm from "./pages/public/SpeakerIntakeForm";
-import Team from "./pages/organizer/Team";
-import Subscription from "./pages/organizer/Subscription";
 import CreateEvent from "./pages/organizer/CreateEvent";
 import Settings from "./pages/organizer/Settings";
 import EventSettings from "./pages/organizer/EventSettings";
@@ -28,6 +26,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import PromoEmbed from "./pages/public/PromoEmbed";
 import PromoCardBuilderTest from "./pages/PromoCardBuilderTest";
 import WebsiteCardBuilderTest from "./pages/WebsiteCardBuilderTest";
+import Onboarding from "./components/onboarding/Onboarding";
 
 // Helper component for root redirect
 function RootRedirect() {
@@ -62,6 +61,11 @@ const App = () => {
             <Route path="/" element={<RootRedirect />} />
             <Route path="/login" element={<Auth />} />
             <Route path="/signup" element={<Auth />} />
+            <Route path="/onboarding" element={
+              <ProtectedRoute>
+                <Onboarding />
+              </ProtectedRoute>
+            } />
 
             <Route
               path="/organizer"
@@ -149,28 +153,6 @@ const App = () => {
             />
 
             <Route
-              path="/organizer/team"
-              element={
-                <ProtectedRoute>
-                  <DashboardLayout mode="organizer">
-                    <Team />
-                  </DashboardLayout>
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="/organizer/subscription"
-              element={
-                <ProtectedRoute>
-                  <DashboardLayout mode="organizer">
-                    <Subscription />
-                  </DashboardLayout>
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
               path="/organizer/settings"
               element={
                 <ProtectedRoute>
@@ -200,6 +182,15 @@ const App = () => {
                 // </ProtectedRoute>
               }
             />
+
+            <Route
+              path="/call-for-speakers/:eventId"
+              element={
+                // <ProtectedRoute>
+                <SpeakerIntakeForm />
+                // </ProtectedRoute>
+              }
+            /> 
 
             {/* Speaker management routes (protected, /speaker namespace) */}
             <Route

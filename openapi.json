@@ -11,13 +11,646 @@
     "version": "0.0.1"
   },
   "paths": {
+    "/admin/roles": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "List Roles",
+        "operationId": "list_roles_admin_roles_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AdminRolesSchema"
+                  },
+                  "type": "array",
+                  "title": "Response List Roles Admin Roles Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Create Role",
+        "operationId": "create_role_admin_roles_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminRolesSchema"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminRolesSchema"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/overview": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Admin Overview",
+        "description": "Return counts for core models to give an overview of the data in the DB.",
+        "operationId": "admin_overview_admin_overview_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminCounts"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/teams": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "List Teams",
+        "operationId": "list_teams_admin_teams_get",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 50,
+              "title": "Page Size"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedAdmin"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/teams/{team_id}": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Get Team",
+        "operationId": "get_team_admin_teams__team_id__get",
+        "parameters": [
+          {
+            "name": "team_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Team Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminTeam"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/users": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "List Users",
+        "operationId": "list_users_admin_users_get",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 50,
+              "title": "Page Size"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedAdmin"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/users/{user_id}": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Get User",
+        "operationId": "get_user_admin_users__user_id__get",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminUser"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/events": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "List Events",
+        "operationId": "list_events_admin_events_get",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 50,
+              "title": "Page Size"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedAdmin"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/events/{event_id}": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Get Event Admin",
+        "operationId": "get_event_admin_admin_events__event_id__get",
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Event Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminEvent"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/speakers": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "List Speakers",
+        "operationId": "list_speakers_admin_speakers_get",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 50,
+              "title": "Page Size"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedAdmin"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/speakers/{speaker_id}": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Get Speaker",
+        "operationId": "get_speaker_admin_speakers__speaker_id__get",
+        "parameters": [
+          {
+            "name": "speaker_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Speaker Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminSpeaker"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/integrations": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "List Integrations",
+        "operationId": "list_integrations_admin_integrations_get",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 50,
+              "title": "Page Size"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedAdmin"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/integrations/{integration_id}": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Get Integration",
+        "operationId": "get_integration_admin_integrations__integration_id__get",
+        "parameters": [
+          {
+            "name": "integration_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Integration Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminIntegration"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/r2/objects": {
+      "delete": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Delete all objects in R2 bucket",
+        "description": "ADMIN: Delete all objects in the configured R2 bucket.\n\nThis operation is irreversible. Only users passing `_ensure_admin` may call it.\nObjects are deleted in batches using the S3-compatible API exposed by R2.",
+        "operationId": "clear_r2_bucket_admin_r2_objects_delete",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "List Objects",
+        "description": "List objects in the R2 bucket, optionally filtered by prefix.",
+        "operationId": "list_objects_admin_r2_objects_get",
+        "parameters": [
+          {
+            "name": "prefix",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Prefix"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": "Response List Objects Admin R2 Objects Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/auth/firebase": {
       "post": {
         "tags": [
           "Oauth 2"
         ],
         "summary": "Login",
-        "description": "Login using a Firebase ID token. Ensures local user exists and returns token/user data.",
+        "description": "Login using a Firebase ID token. Ensures local user exists and returns token/user data.\n\nParameters:\n    request (Request): The incoming HTTP request containing the Firebase access token in JSON body.\n    db (AsyncSession): The database session dependency.\nReturns:\n    TokenSchema: The access token and user data.\nRaises:\n    HTTPException: If token verification or user retrieval/creation fails.",
         "operationId": "login_auth_firebase_post",
         "responses": {
           "200": {
@@ -26,6 +659,72 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/TokenSchema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/account/organization": {
+      "get": {
+        "tags": [
+          "account"
+        ],
+        "summary": "Get Organizations",
+        "description": "Return organizations for the current user",
+        "operationId": "get_organizations_account_organization_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/OrganizationSchema"
+                  },
+                  "type": "array",
+                  "title": "Response Get Organizations Account Organization Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "account"
+        ],
+        "summary": "Create Organization",
+        "description": "Create a new organization (placeholder implementation).",
+        "operationId": "create_organization_account_organization_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrganizationCreateSchema"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationSchema"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -57,6 +756,46 @@
             }
           }
         }
+      },
+      "post": {
+        "tags": [
+          "account"
+        ],
+        "summary": "Create Team",
+        "description": "Create a new team and link it to the current user.",
+        "operationId": "create_team_account_team_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TeamCreateSchema"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamSchema"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/account/team/invite": {
@@ -82,9 +821,7 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {
-
-                }
+                "schema": {}
               }
             }
           },
@@ -125,9 +862,7 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {
-
-                }
+                "schema": {}
               }
             }
           },
@@ -219,14 +954,14 @@
         }
       }
     },
-    "/account/team/{member_id}": {
+    "/account/team/member/{member_id}": {
       "patch": {
         "tags": [
           "account"
         ],
         "summary": "Update Team Member",
         "description": "Change role of a team member (placeholder field on User).",
-        "operationId": "update_team_member_account_team__member_id__patch",
+        "operationId": "update_team_member_account_team_member__member_id__patch",
         "parameters": [
           {
             "name": "member_id",
@@ -252,9 +987,7 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {
-
-                }
+                "schema": {}
               }
             }
           },
@@ -275,7 +1008,8 @@
           "account"
         ],
         "summary": "Delete Team Member",
-        "operationId": "delete_team_member_account_team__member_id__delete",
+        "description": "Remove a member from the team.",
+        "operationId": "delete_team_member_account_team_member__member_id__delete",
         "parameters": [
           {
             "name": "member_id",
@@ -284,6 +1018,41 @@
             "schema": {
               "type": "string",
               "title": "Member Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/account/team/{team_id}": {
+      "delete": {
+        "tags": [
+          "account"
+        ],
+        "summary": "Delete Team",
+        "operationId": "delete_team_account_team__team_id__delete",
+        "parameters": [
+          {
+            "name": "team_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Team Id"
             }
           }
         ],
@@ -316,9 +1085,7 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {
-
-                }
+                "schema": {}
               }
             }
           }
@@ -349,9 +1116,7 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {
-
-                }
+                "schema": {}
               }
             }
           },
@@ -380,9 +1145,7 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {
-
-                }
+                "schema": {}
               }
             }
           }
@@ -413,9 +1176,7 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {
-
-                }
+                "schema": {}
               }
             }
           },
@@ -444,9 +1205,7 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {
-
-                }
+                "schema": {}
               }
             }
           }
@@ -465,9 +1224,7 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {
-
-                }
+                "schema": {}
               }
             }
           }
@@ -484,9 +1241,7 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {
-
-                }
+                "schema": {}
               }
             }
           }
@@ -515,9 +1270,7 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {
-
-                }
+                "schema": {}
               }
             }
           },
@@ -566,9 +1319,7 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {
-
-                }
+                "schema": {}
               }
             }
           },
@@ -597,9 +1348,7 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {
-
-                }
+                "schema": {}
               }
             }
           }
@@ -628,9 +1377,7 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {
-
-                }
+                "schema": {}
               }
             }
           },
@@ -640,6 +1387,31 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/account/roles": {
+      "get": {
+        "tags": [
+          "account"
+        ],
+        "summary": "List Roles",
+        "operationId": "list_roles_account_roles_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array",
+                  "title": "Response List Roles Account Roles Get"
                 }
               }
             }
@@ -760,7 +1532,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/EventSchema-Input"
+                "$ref": "#/components/schemas/EventSchema"
               }
             }
           }
@@ -771,7 +1543,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/EventSchema-Output"
+                  "$ref": "#/components/schemas/EventSchema"
                 }
               }
             }
@@ -813,7 +1585,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/EventSchema-Output"
+                  "$ref": "#/components/schemas/EventSchema"
                 }
               }
             }
@@ -852,7 +1624,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/EventSchema-Input"
+                "$ref": "#/components/schemas/EventSchema"
               }
             }
           }
@@ -863,7 +1635,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/EventSchema-Output"
+                  "$ref": "#/components/schemas/EventSchema"
                 }
               }
             }
@@ -937,9 +1709,7 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {
-
-                }
+                "schema": {}
               }
             }
           },
@@ -1000,8 +1770,149 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
                 "schema": {
-
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/forms/config": {
+      "post": {
+        "tags": [
+          "forms"
+        ],
+        "summary": "Create Form Config",
+        "description": "Create a form configuration for an event.",
+        "operationId": "create_form_config_forms_config_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FormConfigCreateSchema"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FormConfigSchema"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/forms/config/{event_id}": {
+      "get": {
+        "tags": [
+          "forms"
+        ],
+        "summary": "Get Form Configs For Event",
+        "description": "Get form configuration for a given event. If form_type is provided, filter by form type.\n\nOtherwise return first form config.",
+        "operationId": "get_form_configs_for_event_forms_config__event_id__get",
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Event Id"
+            }
+          },
+          {
+            "name": "form_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Form Type"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FormConfigSchema"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/events/{event_id}/speakers/overview": {
+      "get": {
+        "tags": [
+          "Events"
+        ],
+        "summary": "Get Speaker Overview",
+        "operationId": "get_speaker_overview_events__event_id__speakers_overview_get",
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Event Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventSpeakerOverviewSchema"
                 }
               }
             }
@@ -1066,6 +1977,22 @@
                 }
               ],
               "title": "Intake Status"
+            }
+          },
+          {
+            "name": "form_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Form Type"
             }
           },
           {
@@ -1274,7 +2201,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SpeakerWithEvents"
+                  "$ref": "#/components/schemas/SpeakerBase"
                 }
               }
             }
@@ -1333,7 +2260,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SpeakerWithEvents"
+                  "$ref": "#/components/schemas/SpeakerBase"
                 }
               }
             }
@@ -1381,9 +2308,7 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {
-
-                }
+                "schema": {}
               }
             }
           },
@@ -1424,9 +2349,7 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {
-
-                }
+                "schema": {}
               }
             }
           },
@@ -1485,9 +2408,7 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {
-
-                }
+                "schema": {}
               }
             }
           },
@@ -1553,8 +2474,125 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/google/drive/folder": {
+      "post": {
+        "tags": [
+          "google/drive"
+        ],
+        "summary": "Create New Folder",
+        "description": "Create a new folder in the user's Google Drive.",
+        "operationId": "create_new_folder_google_drive_folder_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoogleDriveFolder"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
                 "schema": {
-
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/google/drive/webhooks/google-sheets": {
+      "post": {
+        "tags": [
+          "google/drive"
+        ],
+        "summary": "Handle Google Sheet Update",
+        "operationId": "handle_google_sheet_update_google_drive_webhooks_google_sheets_post",
+        "parameters": [
+          {
+            "name": "x-goog-resource-id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Goog-Resource-Id"
+            }
+          },
+          {
+            "name": "x-goog-resource-state",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Goog-Resource-State"
+            }
+          },
+          {
+            "name": "x-goog-channel-id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Goog-Channel-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -1626,9 +2664,7 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {
-
-                }
+                "schema": {}
               }
             }
           },
@@ -1670,8 +2706,107 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
                 "schema": {
-
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/promo-cards/config": {
+      "post": {
+        "tags": [
+          "promo-cards"
+        ],
+        "summary": "Create Promo Config",
+        "description": "Create a promo configuration for an event.",
+        "operationId": "create_promo_config_promo_cards_config_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PromoConfigCreateSchema"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromoConfigSchema"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/promo-cards/config/{event_id}": {
+      "get": {
+        "tags": [
+          "promo-cards"
+        ],
+        "summary": "Get Promo Configs For Event",
+        "description": "Get promo configuration for a given event. If promo_type is provided, filter by promo type.\n\nOtherwise return first promo config.",
+        "operationId": "get_promo_configs_for_event_promo_cards_config__event_id__get",
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Event Id"
+            }
+          },
+          {
+            "name": "promo_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Promo Type"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromoConfigSchema"
                 }
               }
             }
@@ -1699,9 +2834,7 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {
-
-                }
+                "schema": {}
               }
             }
           }
@@ -1718,9 +2851,7 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {
-
-                }
+                "schema": {}
               }
             }
           }
@@ -1730,6 +2861,532 @@
   },
   "components": {
     "schemas": {
+      "AdminCounts": {
+        "properties": {
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Counts"
+          }
+        },
+        "type": "object",
+        "required": [
+          "counts"
+        ],
+        "title": "AdminCounts"
+      },
+      "AdminEvent": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "startDate": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Startdate"
+          },
+          "endDate": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enddate"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          },
+          "teamId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Teamid"
+          },
+          "integrationId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Integrationid"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "modules": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Modules"
+          },
+          "googleDriveConnected": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Googledriveconnected"
+          },
+          "rootFolder": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rootfolder"
+          },
+          "createdAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Createdat"
+          },
+          "updatedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updatedat"
+          }
+        },
+        "type": "object",
+        "title": "AdminEvent"
+      },
+      "AdminIntegration": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type"
+          },
+          "credentials": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Credentials"
+          },
+          "createdAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Createdat"
+          },
+          "updatedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updatedat"
+          },
+          "userId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Userid"
+          }
+        },
+        "type": "object",
+        "title": "AdminIntegration"
+      },
+      "AdminRolesSchema": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "permissions": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Permissions"
+          }
+        },
+        "type": "object",
+        "title": "AdminRolesSchema"
+      },
+      "AdminSpeaker": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "firstName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Firstname"
+          },
+          "lastName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lastname"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "email"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "companyName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Companyname"
+          },
+          "companyRole": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Companyrole"
+          },
+          "registeredAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Registeredat"
+          },
+          "intakeFormStatus": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Intakeformstatus"
+          }
+        },
+        "type": "object",
+        "title": "AdminSpeaker"
+      },
+      "AdminTeam": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "createdAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Createdat"
+          },
+          "createdBy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Createdby"
+          }
+        },
+        "type": "object",
+        "title": "AdminTeam"
+      },
+      "AdminUser": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "email"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "firebaseUid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Firebaseuid"
+          },
+          "createdAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Createdat"
+          },
+          "teamIds": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Teamids"
+          }
+        },
+        "type": "object",
+        "title": "AdminUser"
+      },
       "Body_upload_file_uploads_post": {
         "properties": {
           "file": {
@@ -1747,28 +3404,6 @@
               }
             ],
             "title": "Filename"
-          },
-          "owner_type": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Owner Type"
-          },
-          "owner_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Owner Id"
           },
           "event_id": {
             "anyOf": [
@@ -1791,6 +3426,17 @@
               }
             ],
             "title": "Speaker Id"
+          },
+          "speaker_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Speaker Name"
           }
         },
         "type": "object",
@@ -1799,18 +3445,11 @@
         ],
         "title": "Body_upload_file_uploads_post"
       },
-      "EventSchema-Input": {
+      "EventSchema": {
         "properties": {
           "id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid"
-              },
-              {
-                "type": "null"
-              }
-            ],
+            "type": "string",
+            "format": "uuid",
             "title": "Id"
           },
           "title": {
@@ -1914,6 +3553,19 @@
             ],
             "title": "Rootfolder"
           },
+          "integrationId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Integrationid",
+            "description": "The internal UUID of the linked integration (e.g. Google Drive) for this event, if applicable."
+          },
           "teamId": {
             "anyOf": [
               {
@@ -1929,9 +3581,7 @@
           "eventImage": {
             "anyOf": [
               {
-                "type": "string",
-                "minLength": 1,
-                "format": "uri"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -1939,18 +3589,16 @@
             ],
             "title": "Eventimage"
           },
-          "promoCardTemplate": {
+          "website": {
             "anyOf": [
               {
-                "type": "string",
-                "minLength": 1,
-                "format": "uri"
+                "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Promocardtemplate"
+            "title": "Website"
           },
           "speakers": {
             "anyOf": [
@@ -1964,11 +3612,13 @@
                 "type": "null"
               }
             ],
-            "title": "Speakers"
+            "title": "Speakers",
+            "default": []
           }
         },
         "type": "object",
         "required": [
+          "id",
           "title",
           "startDate",
           "endDate",
@@ -1976,185 +3626,80 @@
         ],
         "title": "EventSchema"
       },
-      "EventSchema-Output": {
+      "EventSpeakerOverviewSchema": {
         "properties": {
-          "id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Id"
+          "totalSpeakers": {
+            "type": "integer",
+            "title": "Totalspeakers"
           },
-          "title": {
-            "type": "string",
-            "title": "Title"
+          "totalPending": {
+            "type": "integer",
+            "title": "Totalpending"
           },
-          "start_date": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Start Date"
+          "totalApproved": {
+            "type": "integer",
+            "title": "Totalapproved"
           },
-          "end_date": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "End Date"
+          "totalCallForSpeakers": {
+            "type": "integer",
+            "title": "Totalcallforspeakers"
           },
-          "location": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Location"
-          },
-          "modules": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Modules",
-            "default": {
-              "speaker": false,
-              "schedule": false,
-              "content": false,
-              "attendee": false
-            }
-          },
-          "from_email": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "email"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "From Email"
-          },
-          "reply_to_email": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "email"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Reply To Email"
-          },
-          "email_signature": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Email Signature"
-          },
-          "google_drive_connected": {
-            "type": "boolean",
-            "title": "Google Drive Connected",
-            "default": false
-          },
-          "root_folder": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Root Folder"
-          },
-          "team_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Team Id"
-          },
-          "event_image": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 1,
-                "format": "uri"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Event Image"
-          },
-          "promo_card_template": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 1,
-                "format": "uri"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Promo Card Template"
-          },
-          "speakers": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/components/schemas/SpeakerBase"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Speakers"
+          "totalCallForSpeakersPending": {
+            "type": "integer",
+            "title": "Totalcallforspeakerspending"
           }
         },
         "type": "object",
         "required": [
-          "title",
-          "start_date",
-          "end_date",
-          "location"
+          "totalSpeakers",
+          "totalPending",
+          "totalApproved",
+          "totalCallForSpeakers",
+          "totalCallForSpeakersPending"
         ],
-        "title": "EventSchema"
+        "title": "EventSpeakerOverviewSchema"
       },
-      "EventSummary": {
+      "FormConfigCreateSchema": {
         "properties": {
+          "eventId": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Eventid"
+          },
+          "formType": {
+            "type": "string",
+            "title": "Formtype"
+          },
+          "config": {
+            "items": {},
+            "type": "array",
+            "title": "Config"
+          }
+        },
+        "type": "object",
+        "required": [
+          "eventId",
+          "formType",
+          "config"
+        ],
+        "title": "FormConfigCreateSchema"
+      },
+      "FormConfigSchema": {
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Eventid"
+          },
+          "formType": {
+            "type": "string",
+            "title": "Formtype"
+          },
+          "config": {
+            "items": {},
+            "type": "array",
+            "title": "Config"
+          },
           "id": {
             "anyOf": [
               {
@@ -2167,16 +3712,7 @@
             ],
             "title": "Id"
           },
-          "title": {
-            "type": "string",
-            "title": "Title"
-          },
-          "start_date": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Start Date"
-          },
-          "end_date": {
+          "createdAt": {
             "anyOf": [
               {
                 "type": "string",
@@ -2186,9 +3722,32 @@
                 "type": "null"
               }
             ],
-            "title": "End Date"
+            "title": "Createdat"
           },
-          "location": {
+          "updatedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updatedat"
+          }
+        },
+        "type": "object",
+        "required": [
+          "eventId",
+          "formType",
+          "config"
+        ],
+        "title": "FormConfigSchema"
+      },
+      "GoogleDriveFolder": {
+        "properties": {
+          "id": {
             "anyOf": [
               {
                 "type": "string"
@@ -2197,16 +3756,29 @@
                 "type": "null"
               }
             ],
-            "title": "Location"
+            "title": "Id"
+          },
+          "folder_name": {
+            "type": "string",
+            "title": "Folder Name"
+          },
+          "parent_folder_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Folder Id"
           }
         },
         "type": "object",
         "required": [
-          "title",
-          "start_date"
+          "folder_name"
         ],
-        "title": "EventSummary",
-        "description": "Lightweight event representation for embedding on other objects.\n\nThis intentionally excludes nested `speakers` to avoid recursion when\nserializing Event -\u003E Speaker -\u003E Event cycles."
+        "title": "GoogleDriveFolder"
       },
       "HTTPValidationError": {
         "properties": {
@@ -2223,7 +3795,7 @@
       },
       "InviteRequest": {
         "properties": {
-          "first_name": {
+          "name": {
             "anyOf": [
               {
                 "type": "string"
@@ -2232,19 +3804,7 @@
                 "type": "null"
               }
             ],
-            "title": "First Name",
-            "default": ""
-          },
-          "last_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Name",
+            "title": "Name",
             "default": ""
           },
           "email": {
@@ -2260,9 +3820,9 @@
             "title": "Email",
             "default": ""
           },
-          "team_id": {
+          "teamId": {
             "type": "string",
-            "title": "Team Id"
+            "title": "Teamid"
           },
           "role": {
             "anyOf": [
@@ -2278,15 +3838,111 @@
         },
         "type": "object",
         "required": [
-          "team_id"
+          "teamId"
         ],
         "title": "InviteRequest"
       },
-      "PaginatedResponse": {
+      "OrganizationCreateSchema": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "OrganizationCreateSchema",
+        "description": "Schema for creating a new organization."
+      },
+      "OrganizationSchema": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "createdAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Createdat"
+          },
+          "createdBy": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TokenDataSchema"
+              },
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Createdby"
+          },
+          "users": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/TokenDataSchema"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Users"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "OrganizationSchema",
+        "description": "Schema for organization data."
+      },
+      "PaginatedAdmin": {
         "properties": {
           "items": {
             "items": {
-              "$ref": "#/components/schemas/EventSchema-Output"
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/AdminEvent"
+                },
+                {
+                  "$ref": "#/components/schemas/AdminUser"
+                },
+                {
+                  "$ref": "#/components/schemas/AdminTeam"
+                },
+                {
+                  "$ref": "#/components/schemas/AdminSpeaker"
+                },
+                {
+                  "$ref": "#/components/schemas/AdminIntegration"
+                }
+              ]
             },
             "type": "array",
             "title": "Items"
@@ -2299,9 +3955,31 @@
             "type": "integer",
             "title": "Page"
           },
-          "page_size": {
+          "pageSize": {
             "type": "integer",
-            "title": "Page Size"
+            "title": "Pagesize"
+          },
+          "nextPage": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nextpage"
+          },
+          "prevPage": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prevpage"
           }
         },
         "type": "object",
@@ -2309,7 +3987,38 @@
           "items",
           "total",
           "page",
-          "page_size"
+          "pageSize"
+        ],
+        "title": "PaginatedAdmin"
+      },
+      "PaginatedResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/EventSchema"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "pageSize": {
+            "type": "integer",
+            "title": "Pagesize"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "pageSize"
         ],
         "title": "PaginatedResponse"
       },
@@ -2330,9 +4039,9 @@
             "type": "integer",
             "title": "Page"
           },
-          "page_size": {
+          "pageSize": {
             "type": "integer",
-            "title": "Page Size"
+            "title": "Pagesize"
           }
         },
         "type": "object",
@@ -2340,7 +4049,7 @@
           "items",
           "total",
           "page",
-          "page_size"
+          "pageSize"
         ],
         "title": "PaginatedSpeakers"
       },
@@ -2426,6 +4135,92 @@
         ],
         "title": "PresignResponse"
       },
+      "PromoConfigCreateSchema": {
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Eventid"
+          },
+          "promoType": {
+            "type": "string",
+            "title": "Promotype"
+          },
+          "config": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Config"
+          }
+        },
+        "type": "object",
+        "required": [
+          "eventId",
+          "promoType",
+          "config"
+        ],
+        "title": "PromoConfigCreateSchema"
+      },
+      "PromoConfigSchema": {
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Eventid"
+          },
+          "promoType": {
+            "type": "string",
+            "title": "Promotype"
+          },
+          "config": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Config"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "createdAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Createdat"
+          },
+          "updatedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updatedat"
+          }
+        },
+        "type": "object",
+        "required": [
+          "eventId",
+          "promoType",
+          "config"
+        ],
+        "title": "PromoConfigSchema"
+      },
       "SpeakerBase": {
         "properties": {
           "id": {
@@ -2433,20 +4228,20 @@
             "format": "uuid",
             "title": "Id"
           },
-          "first_name": {
+          "firstName": {
             "type": "string",
-            "title": "First Name"
+            "title": "Firstname"
           },
-          "last_name": {
+          "lastName": {
             "type": "string",
-            "title": "Last Name"
+            "title": "Lastname"
           },
           "email": {
             "type": "string",
             "format": "email",
             "title": "Email"
           },
-          "company_role": {
+          "companyName": {
             "anyOf": [
               {
                 "type": "string"
@@ -2455,9 +4250,9 @@
                 "type": "null"
               }
             ],
-            "title": "Company Role"
+            "title": "Companyname"
           },
-          "company_name": {
+          "companyRole": {
             "anyOf": [
               {
                 "type": "string"
@@ -2466,40 +4261,12 @@
                 "type": "null"
               }
             ],
-            "title": "Company Name"
-          },
-          "headshot": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 1,
-                "format": "uri"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Headshot"
-          },
-          "company_logo": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 1,
-                "format": "uri"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Company Logo"
+            "title": "Companyrole"
           },
           "linkedin": {
             "anyOf": [
               {
-                "type": "string",
-                "minLength": 1,
-                "format": "uri"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -2518,21 +4285,49 @@
             ],
             "title": "Bio"
           },
-          "intake_form_status": {
+          "headshot": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "format": "uri"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Headshot"
+          },
+          "companyLogo": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "format": "uri"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Companylogo"
+          },
+          "formType": {
             "type": "string",
-            "title": "Intake Form Status"
+            "title": "Formtype"
           },
-          "website_card_approved": {
-            "type": "boolean",
-            "title": "Website Card Approved",
-            "default": false
+          "customFields": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customfields"
           },
-          "promo_card_approved": {
-            "type": "boolean",
-            "title": "Promo Card Approved",
-            "default": false
-          },
-          "registered_at": {
+          "registeredAt": {
             "anyOf": [
               {
                 "type": "string",
@@ -2542,282 +4337,84 @@
                 "type": "null"
               }
             ],
-            "title": "Registered At"
+            "title": "Registeredat"
           },
-          "promo_card_template": {
+          "intakeFormStatus": {
             "anyOf": [
               {
-                "type": "string",
-                "minLength": 1,
-                "format": "uri"
+                "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Promo Card Template"
+            "title": "Intakeformstatus"
+          },
+          "websiteCardApproved": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Websitecardapproved"
+          },
+          "promoCardApproved": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Promocardapproved"
+          },
+          "internalNotes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Internalnotes"
           }
         },
         "type": "object",
         "required": [
           "id",
-          "first_name",
-          "last_name",
+          "firstName",
+          "lastName",
           "email",
-          "intake_form_status"
+          "formType"
         ],
         "title": "SpeakerBase"
       },
       "SpeakerCreate": {
-        "properties": {
-          "firstName": {
-            "type": "string",
-            "title": "Firstname"
-          },
-          "lastName": {
-            "type": "string",
-            "title": "Lastname"
-          },
-          "email": {
-            "type": "string",
-            "format": "email",
-            "title": "Email"
-          },
-          "companyName": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Companyname"
-          },
-          "companyRole": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Companyrole"
-          },
-          "bio": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Bio"
-          },
-          "headshot": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 1,
-                "format": "uri"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Headshot"
-          },
-          "company_logo": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 1,
-                "format": "uri"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Company Logo"
-          },
-          "promo_card_template": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 1,
-                "format": "uri"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Promo Card Template"
-          }
-        },
-        "type": "object",
-        "required": [
-          "firstName",
-          "lastName",
-          "email",
-          "companyName",
-          "companyRole"
-        ],
-        "title": "SpeakerCreate"
-      },
-      "SpeakerUpdate": {
-        "properties": {
-          "firstName": {
-            "type": "string",
-            "title": "Firstname"
-          },
-          "lastName": {
-            "type": "string",
-            "title": "Lastname"
-          },
-          "email": {
-            "type": "string",
-            "format": "email",
-            "title": "Email"
-          },
-          "companyName": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Companyname"
-          },
-          "companyRole": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Companyrole"
-          },
-          "bio": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Bio"
-          },
-          "headshot": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 1,
-                "format": "uri"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Headshot"
-          },
-          "company_logo": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 1,
-                "format": "uri"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Company Logo"
-          },
-          "promo_card_template": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 1,
-                "format": "uri"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Promo Card Template"
-          },
-          "intake_form_status": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Intake Form Status"
-          },
-          "website_card_approved": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Website Card Approved"
-          },
-          "promo_card_approved": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Promo Card Approved"
-          }
-        },
-        "type": "object",
-        "required": [
-          "firstName",
-          "lastName",
-          "email",
-          "companyName",
-          "companyRole"
-        ],
-        "title": "SpeakerUpdate"
-      },
-      "SpeakerWithEvents": {
         "properties": {
           "id": {
             "type": "string",
             "format": "uuid",
             "title": "Id"
           },
-          "first_name": {
+          "firstName": {
             "type": "string",
-            "title": "First Name"
+            "title": "Firstname"
           },
-          "last_name": {
+          "lastName": {
             "type": "string",
-            "title": "Last Name"
+            "title": "Lastname"
           },
           "email": {
             "type": "string",
             "format": "email",
             "title": "Email"
           },
-          "company_role": {
+          "companyName": {
             "anyOf": [
               {
                 "type": "string"
@@ -2826,9 +4423,9 @@
                 "type": "null"
               }
             ],
-            "title": "Company Role"
+            "title": "Companyname"
           },
-          "company_name": {
+          "companyRole": {
             "anyOf": [
               {
                 "type": "string"
@@ -2837,40 +4434,12 @@
                 "type": "null"
               }
             ],
-            "title": "Company Name"
-          },
-          "headshot": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 1,
-                "format": "uri"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Headshot"
-          },
-          "company_logo": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 1,
-                "format": "uri"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Company Logo"
+            "title": "Companyrole"
           },
           "linkedin": {
             "anyOf": [
               {
-                "type": "string",
-                "minLength": 1,
-                "format": "uri"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -2889,33 +4458,7 @@
             ],
             "title": "Bio"
           },
-          "intake_form_status": {
-            "type": "string",
-            "title": "Intake Form Status"
-          },
-          "website_card_approved": {
-            "type": "boolean",
-            "title": "Website Card Approved",
-            "default": false
-          },
-          "promo_card_approved": {
-            "type": "boolean",
-            "title": "Promo Card Approved",
-            "default": false
-          },
-          "registered_at": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Registered At"
-          },
-          "promo_card_template": {
+          "headshot": {
             "anyOf": [
               {
                 "type": "string",
@@ -2926,32 +4469,251 @@
                 "type": "null"
               }
             ],
-            "title": "Promo Card Template"
+            "title": "Headshot"
           },
-          "events": {
+          "companyLogo": {
             "anyOf": [
               {
-                "items": {
-                  "$ref": "#/components/schemas/EventSummary"
-                },
-                "type": "array"
+                "type": "string",
+                "minLength": 1,
+                "format": "uri"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Events"
+            "title": "Companylogo"
+          },
+          "formType": {
+            "type": "string",
+            "title": "Formtype"
+          },
+          "customFields": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customfields"
           }
         },
         "type": "object",
         "required": [
           "id",
-          "first_name",
-          "last_name",
+          "firstName",
+          "lastName",
           "email",
-          "intake_form_status"
+          "formType"
         ],
-        "title": "SpeakerWithEvents"
+        "title": "SpeakerCreate"
+      },
+      "SpeakerUpdate": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "firstName": {
+            "type": "string",
+            "title": "Firstname"
+          },
+          "lastName": {
+            "type": "string",
+            "title": "Lastname"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "companyName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Companyname"
+          },
+          "companyRole": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Companyrole"
+          },
+          "linkedin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Linkedin"
+          },
+          "bio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bio"
+          },
+          "headshot": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "format": "uri"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Headshot"
+          },
+          "companyLogo": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "format": "uri"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Companylogo"
+          },
+          "formType": {
+            "type": "string",
+            "title": "Formtype"
+          },
+          "customFields": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customfields"
+          },
+          "registeredAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Registeredat"
+          },
+          "intakeFormStatus": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Intakeformstatus"
+          },
+          "websiteCardApproved": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Websitecardapproved"
+          },
+          "promoCardApproved": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Promocardapproved"
+          },
+          "internalNotes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Internalnotes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "firstName",
+          "lastName",
+          "email",
+          "formType"
+        ],
+        "title": "SpeakerUpdate"
+      },
+      "TeamCreateSchema": {
+        "properties": {
+          "organizationId": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Organizationid"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          }
+        },
+        "type": "object",
+        "required": [
+          "organizationId",
+          "name"
+        ],
+        "title": "TeamCreateSchema",
+        "description": "Schema for creating a new team."
       },
       "TeamSchema": {
         "properties": {
@@ -2981,7 +4743,7 @@
             ],
             "title": "Description"
           },
-          "created_at": {
+          "createdAt": {
             "anyOf": [
               {
                 "type": "string",
@@ -2991,18 +4753,17 @@
                 "type": "null"
               }
             ],
-            "title": "Created At"
+            "title": "Createdat"
           },
-          "created_by": {
+          "createdBy": {
             "anyOf": [
               {
-                "type": "string"
+                "$ref": "#/components/schemas/TokenDataSchema"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Created By"
+            ]
           },
           "users": {
             "anyOf": [
@@ -3039,7 +4800,7 @@
             ],
             "title": "Id"
           },
-          "first_name": {
+          "name": {
             "anyOf": [
               {
                 "type": "string"
@@ -3048,18 +4809,7 @@
                 "type": "null"
               }
             ],
-            "title": "First Name"
-          },
-          "last_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Name"
+            "title": "Name"
           },
           "email": {
             "anyOf": [
@@ -3073,9 +4823,9 @@
             ],
             "title": "Email"
           },
-          "is_admin": {
+          "isAdmin": {
             "type": "boolean",
-            "title": "Is Admin",
+            "title": "Isadmin",
             "default": false
           },
           "role": {
@@ -3089,7 +4839,7 @@
             ],
             "title": "Role"
           },
-          "team_ids": {
+          "teamIds": {
             "anyOf": [
               {
                 "items": {
@@ -3101,25 +4851,22 @@
                 "type": "null"
               }
             ],
-            "title": "Team Ids"
+            "title": "Teamids"
           }
         },
         "type": "object",
-        "required": [
-          "first_name"
-        ],
         "title": "TokenDataSchema",
         "description": "Schema for token data."
       },
       "TokenSchema": {
         "properties": {
-          "access_token": {
+          "accessToken": {
             "type": "string",
-            "title": "Access Token"
+            "title": "Accesstoken"
           },
-          "token_type": {
+          "tokenType": {
             "type": "string",
-            "title": "Token Type"
+            "title": "Tokentype"
           },
           "user": {
             "$ref": "#/components/schemas/TokenDataSchema"
@@ -3127,8 +4874,8 @@
         },
         "type": "object",
         "required": [
-          "access_token",
-          "token_type",
+          "accessToken",
+          "tokenType",
           "user"
         ],
         "title": "TokenSchema",

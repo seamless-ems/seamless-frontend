@@ -19,10 +19,19 @@ import {
 	FolderOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { createEvent, getIntegrationUrl, getGoogleDriveStatus, deleteIntegration, getTeam, uploadFile, getMe } from "@/lib/api";
+import { createEvent, getIntegrationUrl, getGoogleDriveStatus, deleteIntegration, getTeam, uploadFile, getMe, createGoogleDriveFolder } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
 	Select,
 	SelectTrigger,
@@ -30,6 +39,9 @@ import {
 	SelectContent,
 	SelectItem,
 } from "@/components/ui/select";
+import GoogleDriveFolderPicker from "@/components/organizer/GoogleDriveFolderPicker";
+import EventMediaUploader from "@/components/organizer/EventMediaUploader";
+import { generateUuid } from "@/lib/utils";
 
 const availableModules = [
 	{
@@ -46,7 +58,8 @@ const availableModules = [
 		description: "Create and publish event schedules",
 		icon: Calendar,
 		color: "schedule",
-		available: true,
+		available: false,
+		comingSoon: true,
 	},
 	{
 		id: "content",
@@ -54,7 +67,8 @@ const availableModules = [
 		description: "Centralized hub for presentations and files",
 		icon: FileText,
 		color: "content",
-		available: true,
+		available: false,
+		comingSoon: true,
 	},
 	{
 		id: "partners",
@@ -62,7 +76,8 @@ const availableModules = [
 		description: "Manage sponsors and partners",
 		icon: Users,
 		color: "primary",
-		available: true,
+		available: false,
+		comingSoon: true,
 	},
 	{
 		id: "attendee",
@@ -89,13 +104,16 @@ export default function CreateEvent() {
 		emailSignature: "",
 		googleDriveConnected: false,
 		rootFolder: "",
+		integrationId: "",
 	});
 
 	const [selectedModules, setSelectedModules] = useState<string[]>(["speaker"]);
-			const [driveFolders, setDriveFolders] = useState<any[]>([]);
-			// array of selected folder ids at each depth level, e.g. [topId, childId, grandChildId]
-			const [selectedFolderPath, setSelectedFolderPath] = useState<string[]>([]);
+	const [driveFolders, setDriveFolders] = useState<any[]>([]);
+	// array of selected folder ids at each depth level, e.g. [topId, childId, grandChildId]
+	const [selectedFolderPath, setSelectedFolderPath] = useState<string[]>([]);
 	const { data: teams } = useQuery<any[]>({ queryKey: ["teams"], queryFn: () => getTeam() });
+	const [noTeamsModalOpen, setNoTeamsModalOpen] = React.useState(false);
+	const noTeamsModalShown = React.useRef(false);
 	const location = useLocation();
 
 	// pick team from query param ?team=<id> or default to first available
@@ -107,9 +125,7 @@ export default function CreateEvent() {
 	);
 
 	const [eventImageFile, setEventImageFile] = useState<File | null>(null);
-	const [promoTemplateFile, setPromoTemplateFile] = useState<File | null>(null);
 	const [eventImagePreview, setEventImagePreview] = useState<string | null>(null);
-	const [promoTemplatePreview, setPromoTemplatePreview] = useState<string | null>(null);
 	const { data: me } = useQuery<any>({ queryKey: ["me"], queryFn: () => getMe() });
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -118,6 +134,12 @@ export default function CreateEvent() {
 		if (!selectedTeamId && teams && teams.length) {
 			setSelectedTeamId(defaultTeamFromQuery ?? teams[0].id);
 		}
+
+		// If teams loaded and empty, show a modal directing user to profile/settings
+		if (Array.isArray(teams) && teams.length === 0 && !noTeamsModalShown.current) {
+			noTeamsModalShown.current = true;
+			setNoTeamsModalOpen(true);
+		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [teams]);
 
@@ -125,7 +147,6 @@ export default function CreateEvent() {
 	React.useEffect(() => {
 		return () => {
 			if (eventImagePreview) URL.revokeObjectURL(eventImagePreview);
-			if (promoTemplatePreview) URL.revokeObjectURL(promoTemplatePreview);
 		};
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
@@ -142,109 +163,18 @@ export default function CreateEvent() {
 						...prev,
 						googleDriveConnected: true,
 						rootFolder: (status as any).root_folder ?? (folders.length ? folders[0].id : prev.rootFolder ?? ""),
+						integrationId:
+							(status as any).integration?.id ?? (status as any).integration_id ?? (status as any).id ?? (status as any).integrationId ?? prev.integrationId ?? "",
 					}));
 				}
 			} catch (err) {
 				// silently ignore; not critical
-				console.debug("Google Drive status check failed", err);
+				console.info("Google Drive status check failed", err);
 			}
 		})();
 	}, []);
 
-		// Find path of ids from root to targetId if present
-		const findPathToFolder = (folders: any[], targetId: string): string[] => {
-			if (!folders || !targetId) return [];
-			for (const f of folders) {
-				if (f.id === targetId) return [f.id];
-				if (f.children && f.children.length) {
-					const childPath = findPathToFolder(f.children, targetId);
-					if (childPath.length) return [f.id, ...childPath];
-				}
-			}
-			return [];
-		};
-
-		// helper to find folder object by id
-		const findFolderById = (folders: any[], id?: string): any | null => {
-			if (!id) return null;
-			for (const f of folders) {
-				if (f.id === id) return f;
-				if (f.children && f.children.length) {
-					const res = findFolderById(f.children, id);
-					if (res) return res;
-				}
-			}
-			return null;
-		};
-
-		const getBreadcrumb = () => {
-			if (!selectedFolderPath || !selectedFolderPath.length) return "";
-			const names = selectedFolderPath.map((id) => findFolderById(driveFolders, id)?.name ?? id);
-			return names.join(" / ");
-		};
-
-		// Get folder list for a particular depth level based on current selectedFolderPath
-		const getFoldersForDepth = (depth: number): any[] => {
-			if (depth === 0) return driveFolders;
-			let current = null as any;
-			for (let i = 0; i < depth; i++) {
-				const id = selectedFolderPath[i];
-				if (!id) return [];
-				const list = current ? current.children ?? [] : driveFolders;
-				current = list.find((x: any) => x.id === id);
-				if (!current) return [];
-			}
-			return current?.children ?? [];
-		};
-
-		// Build cascading Select components for each depth until no further children
-
-		const [currentDepth, setCurrentDepth] = useState<number>(0);
-
-		const handleSelectAtDepth = (depth: number, val: string) => {
-			setSelectedFolderPath((prev) => {
-				const next = prev.slice(0, depth);
-				next[depth] = val;
-				return next;
-			});
-			setFormData((f) => ({ ...f, rootFolder: val }));
-			// if selected folder has children, advance depth; otherwise trim
-			const opts = getFoldersForDepth(depth);
-			const selected = opts.find((o: any) => o.id === val);
-			if (selected && selected.children && selected.children.length) setCurrentDepth(depth + 1);
-			else setCurrentDepth(depth);
-		};
-
-		const renderCascadingSelects = () => {
-			const options = getFoldersForDepth(currentDepth);
-			if (!options || options.length === 0) return (
-				<Select>
-					<SelectTrigger className="w-full sm:w-[300px]">
-						<SelectValue placeholder="No folders available" />
-					</SelectTrigger>
-					<SelectContent>
-						<SelectItem value="no-folders" disabled>No folders available</SelectItem>
-					</SelectContent>
-				</Select>
-			);
-
-			const value = selectedFolderPath[currentDepth] ?? "";
-			return (
-				<div>
-					<div className="text-xs text-muted-foreground mb-1">{currentDepth === 0 ? "Top level" : `Level ${currentDepth + 1}`}</div>
-					<Select value={value} aria-label={`Folder level ${currentDepth + 1}`} onValueChange={(val) => handleSelectAtDepth(currentDepth, val)}>
-						<SelectTrigger className="w-full sm:w-[300px]">
-							<SelectValue placeholder={currentDepth === 0 ? "Select folder" : "Select subfolder"} />
-						</SelectTrigger>
-						<SelectContent>
-							{options.map((f: any) => (
-								<SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
-				</div>
-			);
-		};
+	// Google Drive folder picker moved to separate component
 
 	const toggleModule = (moduleId: string) => {
 		setSelectedModules((prev) =>
@@ -263,25 +193,6 @@ export default function CreateEvent() {
 				return;
 			}
 
-			// Generate a deterministic event id for uploads so backend can associate assets with the event
-			const generateUuid = () => {
-				try {
-					// prefer crypto.randomUUID when available
-					if (typeof crypto !== "undefined" && typeof (crypto as any).randomUUID === "function") {
-						return (crypto as any).randomUUID();
-					}
-				} catch (err) {
-					// fallthrough to fallback generator
-				}
-
-				// fallback RFC4122 v4-ish generator
-				return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-					const r = (Math.random() * 16) | 0;
-					const v = c === 'x' ? r : (r & 0x3) | 0x8;
-					return v.toString(16);
-				});
-			};
-
 			const eventId = generateUuid();
 
 			// If files were selected, upload them first to obtain URLs and include them in the create payload
@@ -291,11 +202,16 @@ export default function CreateEvent() {
 
 			const payload: any = { ...formData, modules: modulesObj, team_id: selectedTeamId, id: eventId };
 
+			// If Drive is connected, include the integration id so backend can link resources
+			if (formData.googleDriveConnected && formData.integrationId) {
+				payload.integrationId = formData.integrationId;
+			}
+
 			try {
 				if (eventImageFile) {
 					// upload under current user so the upload can exist before event creation
 					// pass the generated eventId so backend can associate the image with the event pre-creation
-					const res = await uploadFile(eventImageFile, "user", me?.id ?? "", undefined, eventId);
+					const res = await uploadFile(eventImageFile, undefined, eventId);
 					const imageValue = res?.public_url ?? res?.publicUrl ?? res?.url ?? res?.id ?? null;
 					if (imageValue) payload.eventImage = imageValue;
 				}
@@ -303,18 +219,6 @@ export default function CreateEvent() {
 				console.error("Event image upload failed", err);
 				toast({ title: "Event image upload failed", description: String(err?.message || err) });
 				// continue — backend may accept create without image, or user can retry
-			}
-
-			try {
-				if (promoTemplateFile) {
-					// pass eventId to associate the promo template with the event
-					const res2 = await uploadFile(promoTemplateFile, "user", me?.id ?? "", undefined, eventId);
-					const promoValue = res2?.public_url ?? res2?.publicUrl ?? res2?.url ?? res2?.id ?? null;
-					if (promoValue) payload.promoCardTemplate = promoValue;
-				}
-			} catch (err: any) {
-				console.error("Promo template upload failed", err);
-				toast({ title: "Promo template upload failed", description: String(err?.message || err) });
 			}
 
 			const created = await createEvent(payload);
@@ -417,20 +321,45 @@ export default function CreateEvent() {
 
 							{formData.googleDriveConnected && (
 								<div className="space-y-2">
-									<Label htmlFor="rootFolder">Root Event Folder</Label>
-									{renderCascadingSelects()}
-									<div className="flex items-center gap-3 mt-2">
-										<div className="text-sm text-muted-foreground">{getBreadcrumb() || "No folder selected"}</div>
-										{selectedFolderPath && selectedFolderPath.length > 0 && (
-											<Button variant="ghost" size="sm" type="button" onClick={() => { setSelectedFolderPath([]); setFormData((f) => ({ ...f, rootFolder: "" })); setCurrentDepth(0); }}>
-											Clear selection
-											</Button>
-										)}
-									</div>
+									<GoogleDriveFolderPicker
+										driveFolders={driveFolders}
+										setDriveFolders={setDriveFolders}
+										selectedFolderPath={selectedFolderPath}
+										setSelectedFolderPath={setSelectedFolderPath}
+										formData={formData}
+										setFormData={setFormData}
+									/>
+									{/* Folder selection handled by GoogleDriveFolderPicker */}
 								</div>
 							)}
 						</CardContent>
 					</Card>
+							{/* No-teams danger modal */}
+							<AlertDialog open={noTeamsModalOpen} onOpenChange={setNoTeamsModalOpen}>
+								<AlertDialogContent>
+										<AlertDialogTitle className="text-destructive">Organization & Team Required</AlertDialogTitle>
+										<AlertDialogDescription className="text-destructive">
+											The application requires you to belong to an <strong>organization</strong> and at least one <strong>team</strong> to create and manage events. Without these, key features (events, speakers, assets) will not work correctly.
+											<div className="mt-2 text-sm text-muted-foreground">
+												Please create or join an organization and team from your profile before continuing.
+											</div>
+										</AlertDialogDescription>
+										<AlertDialogFooter>
+											<AlertDialogCancel onClick={() => setNoTeamsModalOpen(false)}>Dismiss</AlertDialogCancel>
+											<AlertDialogAction asChild>
+												<Button
+													variant="destructive"
+													onClick={() => {
+														setNoTeamsModalOpen(false);
+														navigate("/organizer/settings");
+													}}
+												>
+													Open profile
+												</Button>
+											</AlertDialogAction>
+										</AlertDialogFooter>
+									</AlertDialogContent>
+							</AlertDialog>
 					{/* Basic Info */}
 					<Card>
 						<CardHeader>
@@ -524,8 +453,8 @@ export default function CreateEvent() {
 								</Label>
 								<Input
 									id="eventWebsite"
-								type="text"
-								placeholder="https://example.com/event (optional)"
+									type="text"
+									placeholder="https://example.com/event (optional)"
 									value={formData.eventWebsite}
 									onChange={(e) =>
 										setFormData((prev) => ({
@@ -673,51 +602,19 @@ export default function CreateEvent() {
 						</CardContent>
 					</Card>
 
-					{/* Images & Templates */}
+					{/* Images & Templates (extracted) */}
 					<Card>
 						<CardHeader>
 							<CardTitle className="text-lg">Images & Templates</CardTitle>
 						</CardHeader>
 						<CardContent>
-							<div className="grid gap-6 sm:grid-cols-2">
-								<div className="space-y-2">
-									<Label htmlFor="eventImage">Event Image</Label>
-									<Input
-										id="eventImage"
-										type="file"
-										accept="image/*"
-										onChange={(e) => {
-											const f = e.target.files?.[0] ?? null;
-											setEventImageFile(f);
-											if (f) setEventImagePreview(URL.createObjectURL(f));
-											else setEventImagePreview(null);
-										}}
-										className="cursor-pointer"
+									{/* EventMediaUploader handles image inputs and previews */}
+									<EventMediaUploader
+										eventImageFile={eventImageFile}
+										setEventImageFile={setEventImageFile}
+										eventImagePreview={eventImagePreview}
+										setEventImagePreview={setEventImagePreview}
 									/>
-									{eventImagePreview && (
-										<img src={eventImagePreview} alt="Event preview" className="mt-3 max-h-32 rounded border" />
-									)}
-								</div>
-
-								<div className="space-y-2">
-									<Label htmlFor="promoTemplate">Promo Card Template</Label>
-									<Input
-										id="promoTemplate"
-										type="file"
-										accept="image/*,application/pdf"
-										onChange={(e) => {
-											const f = e.target.files?.[0] ?? null;
-											setPromoTemplateFile(f);
-											if (f && f.type.startsWith("image/")) setPromoTemplatePreview(URL.createObjectURL(f));
-											else setPromoTemplatePreview(null);
-										}}
-										className="cursor-pointer"
-									/>
-									{promoTemplatePreview && (
-										<img src={promoTemplatePreview} alt="Template preview" className="mt-3 max-h-32 rounded border" />
-									)}
-								</div>
-							</div>
 						</CardContent>
 					</Card>
 					<div className="flex justify-end gap-4">

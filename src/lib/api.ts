@@ -52,43 +52,40 @@ export async function getJson<TRes>(path: string): Promise<TRes> {
   });
 
   if (!res.ok) {
-    // If the user is unauthorized, redirect to the login page.
-    if (res.status === 401) {
-      // Use location.replace so the back button doesn't return to the protected page
-      if (typeof window !== "undefined" && window.location) {
-        window.location.replace("/login");
-        // Return a never-resolving promise to satisfy the return type; navigation will occur.
-        return new Promise<TRes>(() => {});
-      }
-    }
-
+    // Surface 401 errors to callers instead of redirecting here.
+    // Components (or a global auth handler) should decide how to react
+    // when the backend reports the token is invalid/expired.
     const text = await res.text();
-    throw new Error(text || res.statusText);
+    const message = text || res.statusText || `HTTP ${res.status}`;
+    const err: any = new Error(message);
+    err.status = res.status;
+    throw err;
   }
 
   const json = await res.json();
   return deepCamel(json) as TRes;
 }
 
-export function presignUpload(body: { filename: string; content_type: string; owner_type: string; owner_id: string; }) {
+// Request a presigned upload URL. Backend no longer expects `owner_type`/`owner_id`.
+// Keep a compatible helper but accept event/speaker metadata instead.
+export function presignUpload(body: { filename: string; content_type: string; event_id?: string; speaker_id?: string; speaker_name?: string; }) {
   return postJson<typeof body, any>(`/uploads/presign`, body);
 }
 
 // Upload a binary file to the backend (multipart/form-data). Used as a fallback when presigned PUTs are blocked by CORS.
-// Make ownerId, speakerId and eventId optional so callers can omit them when not available.
+// Keep signature compatible but do not send deprecated fields `owner_type` or `owner_id`.
 export async function uploadFile(
   file: File,
-  ownerType: string,
-  ownerId?: string,
   speakerId?: string,
-  eventId?: string
+  eventId?: string,
+  speakerName?: string
 ): Promise<any> {
   const fd = new FormData();
   fd.append("file", file);
-  fd.append("owner_type", ownerType);
-  if (ownerId) fd.append("owner_id", ownerId);
+  // backend no longer expects owner_type or owner_id; preserve other metadata
   if (speakerId) fd.append("speaker_id", speakerId);
   if (eventId) fd.append("event_id", eventId);
+  if (speakerName) fd.append("speaker_name", speakerName);
 
   const token = getToken();
   const headers: Record<string, string> = {};
@@ -113,8 +110,7 @@ export async function uploadFile(
 export type SignupRequest = {
   email: string;
   password: string;
-  first_name?: string;
-  last_name?: string;
+  name?: string;
 };
 
 export type LoginRequest = {
@@ -137,13 +133,28 @@ export function login(body: LoginRequest): Promise<TokenSchema> {
 
 // Exchange a Firebase ID token for the backend's session/token representation.
 // Backend should verify the ID token and return a TokenSchema { accessToken, tokenType }
-export function exchangeFirebaseToken(idToken: string): Promise<TokenSchema> {
-  return postJson<{ accessToken: string }, TokenSchema>("/auth/firebase", { accessToken: idToken });
+export function exchangeFirebaseToken(idToken: string, name?: string): Promise<TokenSchema> {
+  const body: { accessToken: string; name?: string } = { accessToken: idToken };
+  if (name) body.name = name;
+  return postJson<{ accessToken: string; name?: string }, TokenSchema>("/auth/firebase", body);
 }
 
 // --- Account endpoints ---
 export function getTeam(): Promise<any[]> {
   return getJson<any[]>(`/account/team`);
+}
+
+export function createTeam(body: { name: string; description?: string; organizationId: string }): Promise<any> {
+  // Backend expects the organization id to associate the team with.
+  return postJson<typeof body, any>(`/account/team`, body);
+}
+
+export function getOrganization(): Promise<any> {
+  return getJson<any>(`/account/organization`);
+}
+
+export function createOrganization(body: { name: string }): Promise<any> {
+  return postJson<typeof body, any>(`/account/organization`, body);
 }
 
 export function inviteTeamMember(body: any): Promise<any> {
@@ -171,7 +182,7 @@ export function updateTeamDetails(teamId: string, body: { name?: string; descrip
 }
 
 export async function deleteTeamMember(memberId: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/account/team/${encodeURIComponent(memberId)}`, {
+  const res = await fetch(`${API_BASE}/account/team/member/${encodeURIComponent(memberId)}`, {
     method: "DELETE",
     headers: authHeaders(),
     credentials: "include",
@@ -205,6 +216,11 @@ export function cancelSubscription(): Promise<any> {
 
 export function getMe(): Promise<any> {
   return getJson<any>(`/account/me`);
+}
+
+// List available roles for the current account/organization
+export function getRoles(): Promise<any[]> {
+  return getJson<any[]>(`/account/roles`);
 }
 
 export async function updateMe(body: any): Promise<any> {
@@ -248,6 +264,39 @@ export function getGoogleDriveStatus(): Promise<{ connected: boolean; root_folde
   return getJson<{ connected: boolean; root_folder?: string }>(`/google/drive/status`);
 }
 
+// Create a new folder in the connected Google Drive for the current user
+export function createGoogleDriveFolder(body: { folder_name: string; parent_folder_id?: string | null }): Promise<any> {
+  return postJson<typeof body, any>(`/google/drive/folder`, body);
+}
+
+// Forms config endpoints
+export function getFormConfigForEvent(eventId: string, formType: string): Promise<any> {
+  const qs = `?form_type=${encodeURIComponent(formType)}`;
+  return getJson<any>(`/forms/config/${encodeURIComponent(eventId)}${qs}`);
+}
+
+export function createFormConfig(body: { eventId: string; formType: string; config: any[] }): Promise<any> {
+  // Backend expects eventId, formType and config (array)
+  return postJson<typeof body, any>(`/forms/config`, body);
+}
+
+// Promo cards endpoints
+export function getPromoConfigForEvent(eventId: string, promoType?: string): Promise<any> {
+  const qs = promoType ? `?promo_type=${encodeURIComponent(promoType)}` : "";
+  return getJson<any>(`/promo-cards/config/${encodeURIComponent(eventId)}${qs}`);
+}
+
+export function createPromoConfig(body: { eventId: string; promoType: string; config: any }): Promise<any> {
+  return postJson<typeof body, any>(`/promo-cards/config`, body);
+}
+// Website template endpoints (parallel to promo cards)
+export function getWebsiteConfigForEvent(eventId: string): Promise<any> {
+  return getJson<any>(`/website/config/${encodeURIComponent(eventId)}`);
+}
+
+export function createWebsiteConfig(body: { eventId: string; config: any }): Promise<any> {
+  return postJson<typeof body, any>(`/website/config`, body);
+}
 export async function deleteIntegration(provider: string): Promise<void> {
   const res = await fetch(`${API_BASE}/integrations/${encodeURIComponent(provider)}`, {
     method: "DELETE",

@@ -1,5 +1,4 @@
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -9,7 +8,7 @@ import React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
-import { getMe, updateMe, getSettings, updateSettings } from "@/lib/api";
+import { getMe, updateMe, getSettings, updateSettings, getTeam } from "@/lib/api";
 import {
   User,
   Bell,
@@ -19,12 +18,15 @@ import {
   Mail,
   Globe,
 } from "lucide-react";
+import OrganizationSection from "@/components/organizer/OrganizationSection";
+import TeamSection from "@/components/organizer/TeamSection";
 
 export default function Settings() {
   const qc = useQueryClient();
 
   const { data: me } = useQuery<any, Error>({ queryKey: ["me"], queryFn: () => getMe() });
   const { data: settings } = useQuery<any, Error>({ queryKey: ["settings"], queryFn: () => getSettings(), enabled: !!me });
+  const { data: teams } = useQuery<any[]>({ queryKey: ["teams"], queryFn: () => getTeam(), enabled: !!me });
   const updateMeMut = useMutation({
     mutationFn: (body: any) => updateMe(body),
     onSuccess: () => {
@@ -49,28 +51,24 @@ export default function Settings() {
 
   const form = useForm<any>({
     defaultValues: {
-      first_name: me?.firstName ?? me?.first_name ?? "",
-      last_name: me?.lastName ?? me?.last_name ?? "",
+      name: me?.name ?? "",
       email: me?.email ?? "",
-      company: me?.companyName ?? me?.company ?? "",
-      notifications: settings ?? {},
+      createdAt: me?.createdAt ? new Date(me.createdAt).toLocaleDateString() : "",
     },
   });
 
   React.useEffect(() => {
     form.reset({
-      first_name: me?.firstName ?? me?.first_name ?? "",
-      last_name: me?.lastName ?? me?.last_name ?? "",
+      name: me?.name ?? "",
       email: me?.email ?? "",
-      company: me?.companyName ?? me?.company ?? "",
-      notifications: settings ?? {},
+      createdAt: me?.createdAt ? new Date(me.createdAt).toLocaleDateString() : "",
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [me, settings]);
 
   const onSave = form.handleSubmit(async (vals) => {
     try {
-      await updateMeMut.mutateAsync({ first_name: vals.first_name, last_name: vals.last_name, email: vals.email, company: vals.company });
+      await updateMeMut.mutateAsync(  { name: vals.name, email: vals.email });
       await updateSettingsMut.mutateAsync(vals.notifications ?? settings ?? {});
     } catch (e) {
       // handled by mutation onError
@@ -86,6 +84,33 @@ export default function Settings() {
           <p className="text-muted-foreground mt-1">Manage your account preferences</p>
         </div>
 
+        {/* Warning when user has no teams */}
+        {Array.isArray(teams) && teams.length === 0 && (
+          <Card className="border-destructive/30">
+            <CardHeader>
+              <CardTitle className="text-lg text-destructive">Organization & Team Required</CardTitle>
+              <CardDescription className="text-destructive">You currently do not belong to any team. The rest of the application requires an organization and at least one team to function correctly (events, speakers, assets).</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Create or join an organization and team to continue.</p>
+                </div>
+                <Button
+                  variant="destructive"
+                  onClick={() => {
+                    // scroll to team section
+                    const el = document.getElementById("team-section");
+                    if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+                  }}
+                >
+                  Manage teams
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <Card>
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
@@ -93,129 +118,30 @@ export default function Settings() {
               Profile
             </CardTitle>
             <CardDescription>Your personal information and preferences</CardDescription>
-            <div className="flex-shrink-0 flex items-center">
-              <Avatar className="h-20 w-20">
-                <AvatarImage src={me?.avatar_url ?? ""} />
-                <AvatarFallback className="bg-primary/10 text-primary text-xl font-display">{(me?.first_name?.[0] ?? "").toUpperCase()}{(me?.last_name?.[0] ?? "").toUpperCase()}</AvatarFallback>
-              </Avatar>
-            </div>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-6">
-              <div className="flex-1">
-                <div className="grid gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="firstName">First Name</Label>
-                    <Input id="firstName" {...form.register("first_name")} readOnly />
-                    <Label htmlFor="lastName">Last Name</Label>
-                    <Input id="lastName" {...form.register("last_name")} readOnly />
-                    <Label htmlFor="email">Email</Label>
-                    <Input id="email" type="email" {...form.register("email")} readOnly />
-                  </div>
-                </div>
+          <CardContent>
+            <div className="space-y-2">
+              <div>
+                <div className="text-sm text-muted-foreground">Name</div>
+                <div className="font-medium">{me?.name ?? "—"}</div>
               </div>
-
+              <div>
+                <div className="text-sm text-muted-foreground">Email</div>
+                <div className="font-medium">{me?.email ?? "—"}</div>
+              </div>
+              <div>
+                <div className="text-sm text-muted-foreground">Member since</div>
+                <div className="font-medium">{me?.createdAt ? new Date(me.createdAt).toLocaleDateString() : "—"}</div>
+              </div>
             </div>
-
           </CardContent>
         </Card>
-
-        {/* Notifications - render based on settings if available */}
-        {/* <Card>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Bell className="h-5 w-5 text-primary" />
-              Notifications
-            </CardTitle>
-            <CardDescription>Choose what notifications you receive</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {Object.entries((settings && settings.notifications) || {
-              email: true,
-              speaker_submissions: true,
-              weekly_digest: false,
-              marketing: false,
-            }).map(([key, value]) => (
-              <div key={key} className="flex items-center justify-between py-3">
-                <div>
-                  <p className="font-medium text-foreground">{key.replace(/_/g, " ")}</p>
-                  <p className="text-sm text-muted-foreground">{`Preference for ${key}`}</p>
-                </div>
-                <Switch {...form.register(`notifications.${key}`)} defaultChecked={Boolean(value)} />
-              </div>
-            ))}
-          </CardContent>
-        </Card> */}
-
-        {/* Other sections unchanged, but they can be hooked to API later */}
-        {/* <Card>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Globe className="h-5 w-5 text-primary" />
-              Integrations
-            </CardTitle>
-            <CardDescription>Connect external services</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between py-3 border-b border-border">
-              <div className="flex items-center gap-4">
-                <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center">
-                  <Mail className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <div>
-                  <p className="font-medium text-foreground">Google Workspace</p>
-                  <p className="text-sm text-muted-foreground">Connect Google Drive and Sheets</p>
-                </div>
-              </div>
-              <Button variant="outline">Connect</Button>
-            </div>
-
-            <div className="flex items-center justify-between py-3">
-              <div className="flex items-center gap-4">
-                <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center">
-                  <Globe className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <div>
-                  <p className="font-medium text-foreground">Tito</p>
-                  <p className="text-sm text-muted-foreground">Ticketing platform integration</p>
-                </div>
-              </div>
-              <Button variant="outline">Connect</Button>
-            </div>
-          </CardContent>
-        </Card> */}
-
-        {/* Security */}
-        {/* <Card>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Shield className="h-5 w-5 text-primary" />
-              Security
-            </CardTitle>
-            <CardDescription>Manage your account security settings</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>Change Password</Label>
-              <div className="flex gap-4">
-                <Input type="password" placeholder="Current password" />
-                <Input type="password" placeholder="New password" />
-                <Button variant="outline">Update</Button>
-              </div>
-            </div>
-
-            <Separator />
-
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium text-foreground">Two-factor authentication</p>
-                <p className="text-sm text-muted-foreground">Add an extra layer of security to your account</p>
-              </div>
-              <Button variant="outline">Enable</Button>
-            </div>
-          </CardContent>
-        </Card> */}
-
+        <div className="space-y-8">
+          <OrganizationSection />
+          <div id="team-section">
+            <TeamSection />
+          </div>
+        </div>
         {/* Danger Zone */}
         <Card className="border-destructive/30">
           <CardHeader>

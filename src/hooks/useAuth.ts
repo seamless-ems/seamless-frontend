@@ -1,7 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { signIn, signUp } from "@/lib/firebase";
 import { setToken } from "@/lib/auth";
-import { exchangeFirebaseToken } from "@/lib/api";
+import tryExchangeWithRetry from "@/lib/tokenExchange";
 import type { LoginRequest, SignupRequest, TokenSchema } from "@/lib/api";
 
 export function useLogin(options?: {
@@ -16,7 +16,7 @@ export function useLogin(options?: {
       const idToken = await cred.user.getIdToken();
 
       try {
-        const backendToken = await exchangeFirebaseToken(idToken);
+        const backendToken = await tryExchangeWithRetry(idToken);
         if (backendToken && backendToken.accessToken) return backendToken as TokenSchema;
       } catch (e) {
         // If exchange fails, fall back to returning the raw Firebase ID token
@@ -46,7 +46,7 @@ export function useLogin(options?: {
         // No onSuccess handler provided by caller navigate to dashboard/root
         if (typeof window !== "undefined" && window.location) {
           try {
-            window.location.replace("/");
+            window.location.replace("/organizer");
           } catch (e) {
             // ignore navigation errors in non-browser environments
           }
@@ -63,11 +63,11 @@ export function useSignup(options?: {
 }) {
   return useMutation<TokenSchema, unknown, SignupRequest>({
     mutationFn: async (vars) => {
-      const cred = await signUp(vars.email, vars.password);
+      const cred = await signUp(vars.email, vars.password, vars.name);
       const idToken = await cred.user.getIdToken();
 
       try {
-        const backendToken = await exchangeFirebaseToken(idToken);
+        const backendToken = await tryExchangeWithRetry(idToken, vars.name);
         if (backendToken && backendToken.accessToken) return backendToken as TokenSchema;
       } catch (e) {
         // eslint-disable-next-line no-console
@@ -90,7 +90,7 @@ export function useSignup(options?: {
       } else {
         if (typeof window !== "undefined" && window.location) {
           try {
-            window.location.replace("/");
+            window.location.replace("/organizer");
           } catch (e) {
             // ignore navigation errors
           }

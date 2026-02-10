@@ -1,12 +1,14 @@
 import React from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { getToken } from "@/lib/auth";
+import { isOnboardingCompleted } from "@/lib/onboarding";
 
 type Props = {
   children: React.ReactElement;
 };
 
 export default function ProtectedRoute({ children }: Props) {
+  const location = useLocation();
   const [checking, setChecking] = React.useState(true);
   const [token, setTokenState] = React.useState<string | null>(null);
 
@@ -23,7 +25,7 @@ export default function ProtectedRoute({ children }: Props) {
     }
 
     let mounted = true;
-    // Poll localStorage for token for up to 1000ms
+    // Poll localStorage for token for up to 2000ms (give auth flows more time)
     const interval = setInterval(() => {
       const tok = getToken();
       if (tok && mounted) {
@@ -37,12 +39,36 @@ export default function ProtectedRoute({ children }: Props) {
       mounted = false;
       clearInterval(interval);
       setChecking(false);
-    }, 1000);
+    }, 2000);
+
+    // Listen for explicit token-change events dispatched by `setToken/clearToken`.
+    const handleTokenChange = () => {
+      try {
+        const tok = getToken();
+        if (tok && mounted) {
+          setTokenState(tok);
+          setChecking(false);
+        }
+        if (!tok && mounted) {
+          setTokenState(null);
+          setChecking(false);
+        }
+      } catch (e) {
+        // ignore
+      }
+    };
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("seamless:token-changed", handleTokenChange);
+    }
 
     return () => {
       mounted = false;
       clearInterval(interval);
       clearTimeout(timeout);
+      if (typeof window !== "undefined") {
+        window.removeEventListener("seamless:token-changed", handleTokenChange);
+      }
     };
   }, []);
 
@@ -53,6 +79,12 @@ export default function ProtectedRoute({ children }: Props) {
 
   if (!token) {
     return <Navigate to="/login" replace />;
+  }
+
+  // If user hasn't completed onboarding and is not already on the onboarding page, redirect
+  const isOnOnboardingPage = location.pathname === "/onboarding";
+  if (!isOnOnboardingPage && !isOnboardingCompleted()) {
+    return <Navigate to="/onboarding" replace />;
   }
 
   return children;

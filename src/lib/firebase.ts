@@ -1,7 +1,7 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, onIdTokenChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as fbSignOut, GoogleAuthProvider, OAuthProvider, signInWithPopup } from "firebase/auth";
+import { getAuth, onIdTokenChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as fbSignOut, GoogleAuthProvider, OAuthProvider, signInWithPopup, updateProfile } from "firebase/auth";
 import { setToken, clearToken } from "./auth";
-import { exchangeFirebaseToken } from "./api";
+import tryExchangeWithRetry from "./tokenExchange";
 
 // NOTE: You must set these env vars in your .env (Vite) or replace with your config
 const firebaseConfig = {
@@ -26,7 +26,7 @@ onIdTokenChanged(auth, async (user) => {
     const idToken = await user.getIdToken();
     // Try to exchange the Firebase ID token for a backend token so backend can link user records.
     try {
-      const backendToken = await exchangeFirebaseToken(idToken);
+      const backendToken = await tryExchangeWithRetry(idToken);
       if (backendToken && backendToken.accessToken) {
         setToken(backendToken.accessToken);
         return;
@@ -36,6 +36,7 @@ onIdTokenChanged(auth, async (user) => {
       // eslint-disable-next-line no-console
       console.warn("exchangeFirebaseToken failed, falling back to raw Firebase ID token:", e);
     }
+
     setToken(idToken);
   } catch (e) {
     console.error("Error getting ID token from Firebase user", e);
@@ -47,8 +48,17 @@ export async function signIn(email: string, password: string) {
   return userCredential;
 }
 
-export async function signUp(email: string, password: string) {
+export async function signUp(email: string, password: string, displayName?: string) {
   const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+  if (displayName) {
+    try {
+      await updateProfile(userCredential.user, { displayName });
+    } catch (e) {
+      // ignore updateProfile errors
+      // eslint-disable-next-line no-console
+      console.warn("updateProfile failed:", e);
+    }
+  }
   return userCredential;
 }
 

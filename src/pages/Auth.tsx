@@ -8,8 +8,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { useLogin, useSignup } from "@/hooks/useAuth";
 import { signInWithGooglePopup, signInWithMicrosoftPopup } from "@/lib/firebase";
-import { exchangeFirebaseToken } from "@/lib/api";
+import tryExchangeWithRetry from "@/lib/tokenExchange";
 import { setToken } from "@/lib/auth";
+import { isOnboardingCompleted } from "@/lib/onboarding";
 
 const loginSchema = z.object({
     email: z.string().email(),
@@ -17,11 +18,34 @@ const loginSchema = z.object({
 });
 
 const signupSchema = z.object({
-    first_name: z.string().min(1).optional(),
-    last_name: z.string().min(1).optional(),
+    name: z.string().min(1).optional(),
     email: z.string().email(),
     password: z.string().min(6),
 });
+
+// Google icon SVG
+function GoogleIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24">
+      <path
+        fill="#4285F4"
+        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+      />
+      <path
+        fill="#34A853"
+        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+      />
+      <path
+        fill="#EA4335"
+        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+      />
+    </svg>
+  );
+}
 
 type LoginValues = z.infer<typeof loginSchema>;
 type SignupValues = z.infer<typeof signupSchema>;
@@ -45,8 +69,7 @@ function LoginForm({ onSuccess }: { onSuccess: () => void }) {
 
     const onSubmit = async (data: LoginValues) => {
         try {
-            const res = await loginMutation.mutateAsync({ email: data.email, password: data.password });
-            onSuccess();
+            await loginMutation.mutateAsync({ email: data.email, password: data.password });
         } catch (err) {
             console.error("login error", err);
         }
@@ -90,18 +113,16 @@ function SignupForm({ onSuccess }: { onSuccess: () => void }) {
 
     const form = useForm<SignupValues>({
         resolver: zodResolver(signupSchema),
-        defaultValues: { first_name: "", last_name: "", email: "", password: "" },
+        defaultValues: { name: "", email: "", password: "" },
     });
 
     const onSubmit = async (data: SignupValues) => {
         try {
-            const res = await signupMutation.mutateAsync({
+            await signupMutation.mutateAsync({
                 email: data.email,
                 password: data.password,
-                first_name: data.first_name,
-                last_name: data.last_name,
+                name: data.name,
             });
-            onSuccess();
         } catch (err) {
             console.error("signup error", err);
         }
@@ -109,16 +130,9 @@ function SignupForm({ onSuccess }: { onSuccess: () => void }) {
 
     return (
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                    <label className="text-sm font-medium">First name</label>
-                    <Input {...form.register("first_name")} type="text" placeholder="First name" className="h-12" />
-                </div>
-
-                <div className="space-y-2">
-                    <label className="text-sm font-medium">Last name</label>
-                    <Input {...form.register("last_name")} type="text" placeholder="Last name" className="h-12" />
-                </div>
+            <div className="space-y-2">
+                <label className="text-sm font-medium">Name</label>
+                <Input {...form.register("name")} type="text" placeholder="Name" className="h-12" />
             </div>
 
             <div className="space-y-2">
@@ -144,7 +158,31 @@ const Auth: React.FC = () => {
     const navigate = useNavigate();
 
     const navigateAfterAuth = () => {
-        navigate("/organizer", { replace: true });
+        // Wait for the auth token to be persisted to localStorage before navigating.
+        // This avoids a race where we navigate to a protected route before the
+        // token is visible to `ProtectedRoute` and get redirected back to /login.
+        const waitForTokenAndNavigate = async () => {
+            const start = Date.now();
+            const timeout = 2000; // ms
+            const checkInterval = 100;
+            const { getToken } = await import("@/lib/auth");
+
+            while (Date.now() - start < timeout) {
+                const tok = getToken();
+                if (tok) break;
+                // eslint-disable-next-line no-await-in-loop
+                await new Promise((r) => setTimeout(r, checkInterval));
+            }
+
+            // Check if user needs onboarding (only for new signups)
+            if (mode === "signup" || !isOnboardingCompleted()) {
+                navigate("/onboarding", { replace: true });
+            } else {
+                navigate("/organizer", { replace: true });
+            }
+        };
+
+        void waitForTokenAndNavigate();
     };
 
     return (
@@ -243,7 +281,8 @@ const Auth: React.FC = () => {
                                 const res = await signInWithGooglePopup();
                                 try {
                                     const idToken = await res.user.getIdToken();
-                                    const backend = await exchangeFirebaseToken(idToken);
+                                    const backend = await tryExchangeWithRetry(idToken);
+
                                     if (backend && backend.accessToken) {
                                         setToken(backend.accessToken);
                                     } else {
@@ -266,51 +305,8 @@ const Auth: React.FC = () => {
                             }
                         }}
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 mr-2" viewBox="0 0 48 48">
-                            <path fill="#EA4335" d="M24 9.5c3.9 0 7.4 1.4 10.1 3.8l7.6-7.6C36.9 2.5 30.8 0 24 0 14.7 0 6.9 5 2.6 12.3l8.9 6.9C13.5 15 18 9.5 24 9.5z" />
-                        </svg>
+                        <GoogleIcon />
                         <span>Google</span>
-                    </Button>
-
-                    <Button
-                        variant="outline"
-                        className="w-full h-12 border-[1.5px]"
-                        type="button"
-                        onClick={async () => {
-                            try {
-                                const res = await signInWithMicrosoftPopup();
-                                try {
-                                    const idToken = await res.user.getIdToken();
-                                    const backend = await exchangeFirebaseToken(idToken);
-                                    if (backend && backend.accessToken) {
-                                        setToken(backend.accessToken);
-                                    } else {
-                                        setToken(idToken);
-                                    }
-                                } catch (err) {
-                                    console.warn("Microsoft popup token exchange failed, falling back to ID token:", err);
-                                    try {
-                                        const idToken = await res.user.getIdToken();
-                                        setToken(idToken);
-                                    } catch (e) {
-                                        // ignore
-                                    }
-                                }
-                                toast.success("Signed in with Microsoft");
-                                navigateAfterAuth();
-                            } catch (e) {
-                                console.error("microsoft popup error", e);
-                                toast.error("Unable to sign in with Microsoft");
-                            }
-                        }}
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 mr-2" viewBox="0 0 24 24">
-                            <rect x="1" y="1" width="10" height="10" fill="#f65314" />
-                            <rect x="13" y="1" width="10" height="10" fill="#7cbb00" />
-                            <rect x="1" y="13" width="10" height="10" fill="#00a1f1" />
-                            <rect x="13" y="13" width="10" height="10" fill="#ffbb00" />
-                        </svg>
-                        <span>Microsoft</span>
                     </Button>
                 </div>
 
@@ -325,11 +321,6 @@ const Auth: React.FC = () => {
                             Have an account? <Link to="/login" className="text-primary hover:underline">Sign in</Link>
                         </span>
                     )}
-                </div>
-
-                {/* Help text */}
-                <div className="text-center mt-4 text-sm text-muted-foreground">
-                    Need help? Contact us here
                 </div>
             </div>
         </div>

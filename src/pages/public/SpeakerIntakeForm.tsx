@@ -6,7 +6,6 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 import { getJson, createSpeakerIntake, presignUpload, uploadFile, updateSpeaker } from "@/lib/api";
@@ -19,16 +18,16 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import {
-  User,
   MapPin,
   CheckCircle,
-  Upload,
 } from "lucide-react";
 import { useState } from "react";
 import React from "react";
+const Uploads = React.lazy(() => import("@/components/speaker/Uploads"));
 import type { FormFieldConfig } from "@/components/SpeakerFormBuilder";
 import { ImageCropDialog } from "@/components/ImageCropDialog";
 import { useRef } from "react";
+import { generateUuid } from "@/lib/utils";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
@@ -85,13 +84,16 @@ function buildDynamicSchema(fields: FormFieldConfig[]): z.ZodSchema {
   return z.object(shape);
 }
 
-export default function SpeakerIntakeForm() {
+export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intake" | "call-for-speakers" } = {}) {
+  const { formPageType } = props;
   const { eventId } = useParams();
   const navigate = useNavigate();
   const [headshot, setHeadshot] = useState<File | null>(null);
   const [headshotPreview, setHeadshotPreview] = useState<string | null>(null);
   const [companyLogo, setCompanyLogo] = useState<File | null>(null);
   const [companyLogoPreview, setCompanyLogoPreview] = useState<string | null>(null);
+  const [customFiles, setCustomFiles] = useState<Record<string, File | null>>({});
+  const [customFilePreviews, setCustomFilePreviews] = useState<Record<string, string | null>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [formConfig, setFormConfig] = useState<FormFieldConfig[]>(DEFAULT_FORM_FIELDS);
@@ -107,23 +109,48 @@ export default function SpeakerIntakeForm() {
   const speakerId = search.get("speakerId") ?? undefined;
   const isEditing = Boolean(speakerId);
 
-  // Load form config from localStorage (bridge until backend endpoint)
+  // Determine page type from prop or URL. Defaults to `speaker-intake`.
+  const pageType: "speaker-intake" | "call-for-speakers" = formPageType
+    ?? (location.pathname.includes("/call-for-speakers") ? "call-for-speakers" : (location.pathname.includes("/speaker-intake") ? "speaker-intake" : "speaker-intake"));
+
+  // Map the page type to the backend formType value
+  const backendFormType = pageType === "speaker-intake" ? "speaker-info" : "call-for-speakers";
+
+  // Load form config from backend for this event (fall back to defaults on error)
   React.useEffect(() => {
-    if (eventId) {
-      const savedConfig = localStorage.getItem(`speaker_form_config_${eventId}`);
-      if (savedConfig) {
-        try {
-          const config = JSON.parse(savedConfig) as FormFieldConfig[];
-          setFormConfig(config);
-        } catch (err) {
-          console.error("Failed to parse form config", err);
+    if (!eventId) return;
+    let mounted = true;
+    import("@/lib/api").then(({ getFormConfigForEvent }) => {
+      getFormConfigForEvent(eventId, backendFormType)
+        .then((res: any) => {
+          if (!mounted) return;
+          if (!res || !Array.isArray(res.config)) {
+            setFormConfig(DEFAULT_FORM_FIELDS);
+            return;
+          }
+          try {
+            setFormConfig(res.config as FormFieldConfig[]);
+          } catch (e) {
+            console.error("Invalid config format", e);
+            setFormConfig(DEFAULT_FORM_FIELDS);
+          }
+        })
+        .catch((err) => {
+          console.error("Failed to load form config", err);
           setFormConfig(DEFAULT_FORM_FIELDS);
-        }
-      } else {
-        setFormConfig(DEFAULT_FORM_FIELDS);
-      }
-    }
+        });
+    }).catch((err) => {
+      console.error(err);
+      setFormConfig(DEFAULT_FORM_FIELDS);
+    });
+
+    return () => { mounted = false; };
   }, [eventId]);
+
+  // Update the visible form name based on page type
+  React.useEffect(() => {
+    setFormName(pageType === "speaker-intake" ? "Speaker Information" : "Call for Speakers");
+  }, [pageType]);
 
   // Build dynamic schema based on enabled fields
   const dynamicSchema = buildDynamicSchema(formConfig);
@@ -194,10 +221,25 @@ export default function SpeakerIntakeForm() {
     }
   };
 
+  const handleCustomFileSelected = (fieldId: string, file: File) => {
+    setCustomFiles((prev) => ({ ...prev, [fieldId]: file }));
+    // For preview, prefer filename. If image, also read data URL.
+    if (file.type.startsWith("image/")) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setCustomFilePreviews((prev) => ({ ...prev, [fieldId]: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setCustomFilePreviews((prev) => ({ ...prev, [fieldId]: file.name }));
+    }
+  };
+
   const onSubmit = async (data: any) => {
-    console.log("Form data received:", data);
-    console.log("Form config enabled fields:", formConfig.filter(f => f.enabled).map(f => f.id));
     setIsSubmitting(true);
+
+    const speakerId = generateUuid(); // Generate a unique ID for the speaker (used for file uploads before we have a speaker record)
+
     try {
       if (!eventId) {
         toast.error("Invalid event");
@@ -207,47 +249,83 @@ export default function SpeakerIntakeForm() {
 
       const payload: Record<string, any> = {};
 
-      // Map form data to API payload based on enabled fields
-      formConfig.filter(f => f.enabled && f.type !== "file").forEach(field => {
-        if (data[field.id] !== undefined) {
-          // Transform snake_case to camelCase
-          if (field.id === "first_name") {
-            payload.firstName = data[field.id];
-          } else if (field.id === "last_name") {
-            payload.lastName = data[field.id];
-          } else if (field.id === "company_name") {
-            payload.companyName = data[field.id];
-          } else if (field.id === "company_role") {
-            payload.companyRole = data[field.id];
-          } else {
-            payload[field.id] = data[field.id];
-          }
+      // Gather custom fields separately
+      const customFields: Record<string, any> = {};
+
+      // Map form data to API payload based on enabled fields (non-file fields)
+      formConfig.filter(f => f.enabled).forEach(field => {
+        if (field.type === "file") return;
+        const val = data[field.id];
+        if (val === undefined) return;
+
+        // Standard top-level fields expected by backend
+        if (field.id === "first_name") payload.firstName = val;
+        else if (field.id === "last_name") payload.lastName = val;
+        else if (field.id === "email") payload.email = val;
+        else if (field.id === "company_name") payload.companyName = val;
+        else if (field.id === "company_role") payload.companyRole = val;
+        else if (field.id === "bio") payload.bio = val;
+        else if (field.id === "linkedin") payload.linkedin = val;
+        else {
+          // Custom (non-file) fields go into customFields
+          customFields[field.id] = val;
         }
       });
 
+      // Prepare speaker display name for upload metadata
+      const speakerDisplayName = `${data.first_name ?? payload.firstName ?? ""} ${data.last_name ?? payload.lastName ?? ""}`.trim();
+
+      // Upload headshot if provided
       if (headshot) {
         try {
           console.log("Uploading headshot:", headshot);
-          const res = await uploadFile(headshot, "speaker", eventId!);
+          const res = await uploadFile(headshot, speakerId, eventId!, speakerDisplayName);
           const headshotUrl = res?.public_url ?? res?.publicUrl ?? res?.url ?? null;
-          console.log("Headshot upload response:", res, "URL:", headshotUrl);
           payload.headshot = headshotUrl;
         } catch (err) {
           console.error("headshot upload failed", err);
         }
       }
 
+      // Upload company logo if provided
       if (companyLogo) {
         try {
           console.log("Uploading company logo:", companyLogo);
-          const res = await uploadFile(companyLogo, "speaker", eventId!);
+          const res = await uploadFile(companyLogo, speakerId, eventId!, speakerDisplayName);
           const logoUrl = res?.public_url ?? res?.publicUrl ?? res?.url ?? null;
           console.log("Logo upload response:", res, "URL:", logoUrl);
-          payload.company_logo = logoUrl;
+          // Backend expects companyLogo (camelCase) as the alias
+          payload.companyLogo = logoUrl;
         } catch (err) {
           console.error("company logo upload failed", err);
         }
       }
+
+      // Upload any custom file fields (not headshot/company_logo) and attach to customFields
+      const otherFileFields = formConfig.filter(f => f.enabled && f.type === "file" && f.id !== "headshot" && f.id !== "company_logo");
+      for (const field of otherFileFields) {
+        const file = customFiles[field.id];
+        if (file) {
+            try {
+              console.log("Uploading custom file for", field.id, file);
+              const res = await uploadFile(file, speakerId, eventId!, speakerDisplayName);
+              const url = res?.public_url ?? res?.publicUrl ?? res?.url ?? null;
+              customFields[field.id] = url;
+              console.log(`Uploaded ${field.id}:`, url);
+            } catch (err) {
+              console.error(`upload failed for ${field.id}`, err);
+            }
+        }
+      }
+
+      // Attach customFields if any
+      if (Object.keys(customFields).length > 0) {
+        payload.customFields = customFields;
+      }
+
+      // Tell backend which form this submission is for (backend expects underscored form types)
+      payload.formType = backendFormType;
+      payload.id = speakerId; // Include the generated speaker ID in the payload for updates
 
       console.log("Final payload:", payload);
 
@@ -280,6 +358,7 @@ export default function SpeakerIntakeForm() {
   const companyFields = formConfig.filter(f => f.enabled && ["company_name", "company_role"].includes(f.id));
   const bioFields = formConfig.filter(f => f.enabled && f.id === "bio");
   const fileFields = formConfig.filter(f => f.enabled && f.type === "file");
+  const otherFields = formConfig.filter(f => f.enabled && !["first_name", "last_name", "email", "linkedin", "company_name", "company_role", "bio"].includes(f.id) && f.type !== "file");
 
   return (
     <div className="min-h-screen bg-background">
@@ -417,114 +496,61 @@ export default function SpeakerIntakeForm() {
                     </div>
                   )}
 
-                  {/* Uploads */}
-                  {fileFields.length > 0 && (
+                  {/* Additional / Custom Fields */}
+                  {otherFields.length > 0 && (
                     <div className="space-y-4 pt-2">
-                      <h3 className="text-sm font-semibold text-foreground">Uploads</h3>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                        {/* Headshot Upload */}
-                        {fileFields.some(f => f.id === "headshot") && (
-                          <div className="text-center">
-                            <Label className="text-xs font-medium block mb-3">
-                              Headshot
-                              {formConfig.find(f => f.id === "headshot")?.required && <span className="text-destructive ml-1">*</span>}
-                            </Label>
-                            
-                            {/* Preview Box */}
-                            <div className="relative w-full aspect-square rounded-lg border-2 border-border mb-3 overflow-hidden cursor-pointer bg-muted flex items-center justify-center">
-                              {headshotPreview ? (
-                                <img src={headshotPreview} alt="headshot preview" className="w-full h-full object-cover" />
-                              ) : (
-                                <div className="text-center">
-                                  <Upload className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
-                                  <p className="text-xs text-muted-foreground">No image selected</p>
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Hidden File Input */}
-                            <input
-                              ref={headshotInputRef}
-                              type="file"
-                              accept="image/*"
-                              className="hidden"
-                              onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                if (!file) return;
-                                const reader = new FileReader();
-                                reader.onloadend = () => {
-                                  setCropImageUrl(reader.result as string);
-                                  setCropType("headshot");
-                                };
-                                reader.readAsDataURL(file);
-                              }}
-                            />
-
-                            {/* Upload/Replace Button */}
-                            <Button
-                              type="button"
-                              variant="outline"
-                              className="w-full"
-                              onClick={() => headshotInputRef.current?.click()}
-                              disabled={uploadingHeadshot}
-                            >
-                              {uploadingHeadshot ? "Uploading..." : headshotPreview ? "Replace" : "Upload"}
-                            </Button>
-                          </div>
-                        )}
-
-                        {/* Company Logo Upload */}
-                        {fileFields.some(f => f.id === "company_logo") && (
-                          <div className="text-center">
-                            <Label className="text-xs font-medium block mb-3">
-                              Company Logo
-                              {formConfig.find(f => f.id === "company_logo")?.required && <span className="text-destructive ml-1">*</span>}
-                            </Label>
-                            
-                            {/* Preview Box - White bg for logos */}
-                            <div className="relative w-full aspect-square rounded-lg border-2 border-border mb-3 overflow-hidden cursor-pointer bg-white flex items-center justify-center p-3">
-                              {companyLogoPreview ? (
-                                <img src={companyLogoPreview} alt="company logo preview" className="max-w-full max-h-full object-contain" />
-                              ) : (
-                                <div className="text-center">
-                                  <Upload className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
-                                  <p className="text-xs text-muted-foreground">No image selected</p>
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Hidden File Input */}
-                            <input
-                              ref={logoInputRef}
-                              type="file"
-                              accept="image/*"
-                              className="hidden"
-                              onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                if (!file) return;
-                                const reader = new FileReader();
-                                reader.onloadend = () => {
-                                  setCropImageUrl(reader.result as string);
-                                  setCropType("logo");
-                                };
-                                reader.readAsDataURL(file);
-                              }}
-                            />
-
-                            {/* Upload/Replace Button */}
-                            <Button
-                              type="button"
-                              variant="outline"
-                              className="w-full"
-                              onClick={() => logoInputRef.current?.click()}
-                              disabled={uploadingLogo}
-                            >
-                              {uploadingLogo ? "Uploading..." : companyLogoPreview ? "Replace" : "Upload"}
-                            </Button>
-                          </div>
-                        )}
+                      <h3 className="text-sm font-semibold text-foreground">Additional Information</h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {otherFields.map(field => (
+                          <FormField
+                            key={field.id}
+                            control={form.control}
+                            name={field.id}
+                            render={({ field: formField }) => (
+                              <FormItem>
+                                <FormLabel className="text-xs font-medium">
+                                  {field.label}
+                                  {field.required && <span className="text-destructive ml-1">*</span>}
+                                </FormLabel>
+                                <FormControl>
+                                  {field.type === 'textarea' ? (
+                                    <Textarea className="text-sm" placeholder={field.placeholder ?? `Enter ${field.label.toLowerCase()}`} rows={4} {...formField} />
+                                  ) : (
+                                    <Input className="text-sm" placeholder={field.placeholder ?? `Enter ${field.label.toLowerCase()}`} {...formField} />
+                                  )}
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        ))}
                       </div>
                     </div>
+                  )}
+
+                  {/* Uploads */}
+                  {fileFields.length > 0 && (
+                    <>
+                      {/* Lazy-loaded upload component to keep file smaller */}
+                      <React.Suspense fallback={<div>Loading uploads…</div>}>
+                        {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
+                        {/* @ts-ignore-next-line */}
+                        <Uploads
+                          fileFields={fileFields}
+                          formConfig={formConfig}
+                          headshotPreview={headshotPreview}
+                          companyLogoPreview={companyLogoPreview}
+                          headshotInputRef={headshotInputRef}
+                          logoInputRef={logoInputRef}
+                          uploadingHeadshot={uploadingHeadshot}
+                          uploadingLogo={uploadingLogo}
+                          setCropImageUrl={setCropImageUrl}
+                          setCropType={setCropType}
+                          customFilePreviews={customFilePreviews}
+                          onCustomFileSelected={handleCustomFileSelected}
+                        />
+                      </React.Suspense>
+                    </>
                   )}
                 </Form>
                 {/* Crop Dialog */}
