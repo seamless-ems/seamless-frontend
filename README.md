@@ -109,10 +109,10 @@ Professional Canva-like design tool built with Fabric.js:
 
 For design system, routing, and architecture details see `CLAUDE.md`.
 
-##GitHub Push
+##GitHub Push Do in WSL
 - git status
 - git add .
-- git commit -m"account, speaker portal updates" 
+- git commit -m "account, speaker portal updates" 
 - git push origin beta
 
 ##GitHub Pull
