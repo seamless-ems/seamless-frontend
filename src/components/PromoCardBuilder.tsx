@@ -55,6 +55,7 @@ import {
 import { fabric } from "fabric";
 import { ImageCropDialog } from "@/components/ImageCropDialog";
 import { toast } from "@/hooks/use-toast";
+import { getPromoConfigForEvent, createPromoConfig, uploadFile } from "@/lib/api";
 
 // Default test data - users upload their own headshot and logo
 const DEFAULT_TEST_DATA = {
@@ -1396,7 +1397,7 @@ export default function PromoCardBuilder({ eventId }: { eventId?: string }) {
 
         // Only save template background, NOT test images
         // Test images are just for preview - speakers will upload their own
-        convertBlobUrlToDataUrl(templateUrl || "").then((template) => {
+        convertBlobUrlToDataUrl(templateUrl || "").then(async (template) => {
           const configData = {
             config, // This contains DROP ZONE positions/sizes, NOT image URLs
             templateUrl: template || null,
@@ -1417,6 +1418,34 @@ export default function PromoCardBuilder({ eventId }: { eventId?: string }) {
             description: "Your promo card layout has been saved successfully.",
           });
           setHasUnsavedChanges(false);
+          // If this builder is tied to an event, persist to backend as well
+          if (eventId) {
+            try {
+              // If template is a local blob/data URL, upload it first and replace the templateUrl
+              let serverTemplateUrl = configData.templateUrl;
+              const isLocal = serverTemplateUrl && (serverTemplateUrl.startsWith("blob:") || serverTemplateUrl.startsWith("data:"));
+              if (isLocal) {
+                try {
+                  // fetch blob and upload
+                  const resp = await fetch(serverTemplateUrl!);
+                  const blob = await resp.blob();
+                  const fileName = `promo-template-${eventId}-${Date.now()}`;
+                  const file = new File([blob], fileName, { type: blob.type });
+                  const uploadRes: any = await uploadFile(file, undefined, eventId);
+                  serverTemplateUrl = uploadRes?.url || uploadRes?.uploadUrl || uploadRes?.fileUrl || serverTemplateUrl;
+                } catch (uerr) {
+                  console.warn("Template upload failed, continuing with local template:", uerr);
+                }
+              }
+
+              const payload = { eventId, promoType: "default", config: { ...configData, templateUrl: serverTemplateUrl } };
+              await createPromoConfig(payload);
+              toast({ title: "Saved to event", description: "Promo config saved to event." });
+            } catch (err) {
+              console.error("Error saving promo config to API:", err);
+              toast({ title: "Server save failed", description: "Could not save promo config to server.", variant: "destructive" });
+            }
+          }
           resolvePromise();
         });
       } catch (err) {
@@ -1431,50 +1460,121 @@ export default function PromoCardBuilder({ eventId }: { eventId?: string }) {
     });
   };
 
-  // Load configuration from localStorage on mount
+  // Load configuration from backend (if eventId provided) or localStorage on mount
   useEffect(() => {
-    try {
-      const storageKey = `promo-card-config-${eventId || "default"}`;
-      const savedData = localStorage.getItem(storageKey);
-      if (savedData) {
-        const configData = JSON.parse(savedData);
-        if (configData.config) {
-          setConfig(configData.config);
-          // Initialize history with loaded config
-          setHistory([configData.config]);
+    let mounted = true;
+
+    const loadFromLocal = () => {
+      try {
+        const storageKey = `promo-card-config-${eventId || "default"}`;
+        const savedData = localStorage.getItem(storageKey);
+        if (savedData) {
+          const configData = JSON.parse(savedData);
+          if (configData.config) {
+            setConfig(configData.config);
+            // Initialize history with loaded config
+            setHistory([configData.config]);
+            setHistoryIndex(0);
+          }
+          if (configData.templateUrl) {
+            setTemplateUrl(configData.templateUrl);
+          }
+          if (configData.backgroundColor) {
+            setBackgroundColor(configData.backgroundColor);
+          }
+          if (configData.backgroundZIndex !== undefined) {
+            setBackgroundZIndex(configData.backgroundZIndex);
+          }
+          if (configData.canvasWidth) {
+            setCanvasWidth(configData.canvasWidth);
+          }
+          if (configData.canvasHeight) {
+            setCanvasHeight(configData.canvasHeight);
+          }
+          if (configData.templateIsGif !== undefined) {
+            setTemplateIsGif(configData.templateIsGif);
+          }
+        } else {
+          // Initialize history with empty config
+          setHistory([{}]);
           setHistoryIndex(0);
         }
-        if (configData.templateUrl) {
-          setTemplateUrl(configData.templateUrl);
-        }
-        if (configData.backgroundColor) {
-          setBackgroundColor(configData.backgroundColor);
-        }
-        if (configData.backgroundZIndex !== undefined) {
-          setBackgroundZIndex(configData.backgroundZIndex);
-        }
-        if (configData.canvasWidth) {
-          setCanvasWidth(configData.canvasWidth);
-        }
-        if (configData.canvasHeight) {
-          setCanvasHeight(configData.canvasHeight);
-        }
-        if (configData.templateIsGif !== undefined) {
-          setTemplateIsGif(configData.templateIsGif);
-        }
-        // Legacy data: testHeadshot, testLogo, headshotCropShape are intentionally NOT loaded
-        // Test images are preview-only and should not persist
-      } else {
-        // Initialize history with empty config
+      } catch (err) {
+        console.error("Error loading configuration:", err);
         setHistory([{}]);
         setHistoryIndex(0);
       }
-    } catch (err) {
-      console.error("Error loading configuration:", err);
-      setHistory([{}]);
-      setHistoryIndex(0);
-    }
-    setHasUnsavedChanges(false);
+    };
+
+    const tryLoadFromApi = async () => {
+      if (!eventId) {
+        loadFromLocal();
+        setHasUnsavedChanges(false);
+        return;
+      }
+
+      try {
+        const res = await getPromoConfigForEvent(eventId);
+        if (!mounted) return;
+
+        if (res) {
+          // Normalize a few shapes the API might return:
+          // - { config: { config: {...}, templateUrl, ... } }
+          // - { data: { config: {...}, ... } }
+          // - { config: {...}, templateUrl, ... }
+          let payload: any = res;
+          if (res.config && res.config.config) {
+            // Server wrapped everything under `config` (double-nesting)
+            payload = res.config;
+          } else if (res.data && res.data.config) {
+            payload = res.data;
+          }
+
+          // The actual card config may be in payload.config or payload itself
+          const possibleConfig = payload.config || payload;
+          const finalConfig = (possibleConfig && possibleConfig.config) ? possibleConfig.config : possibleConfig;
+
+          if (finalConfig && typeof finalConfig === "object") {
+            setConfig(finalConfig);
+            setHistory([finalConfig]);
+            setHistoryIndex(0);
+          }
+
+          // Normalize auxiliary fields (templateUrl, backgroundColor, sizes)
+          const template = payload.templateUrl ?? res.templateUrl ?? null;
+          if (template) setTemplateUrl(template);
+
+          const bg = payload.backgroundColor ?? res.backgroundColor;
+          if (bg !== undefined && bg !== null) setBackgroundColor(bg);
+
+          const bgZ = payload.backgroundZIndex ?? res.backgroundZIndex;
+          if (bgZ !== undefined) setBackgroundZIndex(bgZ);
+
+          const cW = payload.canvasWidth ?? res.canvasWidth;
+          if (cW) setCanvasWidth(cW);
+
+          const cH = payload.canvasHeight ?? res.canvasHeight;
+          if (cH) setCanvasHeight(cH);
+
+          const isGif = payload.templateIsGif ?? res.templateIsGif;
+          if (isGif !== undefined) setTemplateIsGif(isGif);
+        }
+
+        // If API returned nothing meaningful, fall back to local storage
+        if ((!res || Object.keys(res || {}).length === 0) && mounted) {
+          loadFromLocal();
+        }
+      } catch (err) {
+        console.warn("Promo config API load failed, falling back to localStorage:", err);
+        loadFromLocal();
+      } finally {
+        if (mounted) setHasUnsavedChanges(false);
+      }
+    };
+
+    tryLoadFromApi();
+
+    return () => { mounted = false; };
   }, [eventId]);
 
   const handleDownloadWithCheck = async () => {

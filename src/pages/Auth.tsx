@@ -8,7 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { useLogin, useSignup } from "@/hooks/useAuth";
 import { signInWithGooglePopup, signInWithMicrosoftPopup } from "@/lib/firebase";
-import { exchangeFirebaseToken } from "@/lib/api";
+import tryExchangeWithRetry from "@/lib/tokenExchange";
 import { setToken } from "@/lib/auth";
 import { isOnboardingCompleted } from "@/lib/onboarding";
 
@@ -69,8 +69,7 @@ function LoginForm({ onSuccess }: { onSuccess: () => void }) {
 
     const onSubmit = async (data: LoginValues) => {
         try {
-            const res = await loginMutation.mutateAsync({ email: data.email, password: data.password });
-            onSuccess();
+            await loginMutation.mutateAsync({ email: data.email, password: data.password });
         } catch (err) {
             console.error("login error", err);
         }
@@ -119,12 +118,11 @@ function SignupForm({ onSuccess }: { onSuccess: () => void }) {
 
     const onSubmit = async (data: SignupValues) => {
         try {
-            const res = await signupMutation.mutateAsync({
+            await signupMutation.mutateAsync({
                 email: data.email,
                 password: data.password,
                 name: data.name,
             });
-            onSuccess();
         } catch (err) {
             console.error("signup error", err);
         }
@@ -160,12 +158,31 @@ const Auth: React.FC = () => {
     const navigate = useNavigate();
 
     const navigateAfterAuth = () => {
-        // Check if user needs onboarding (only for new signups)
-        if (mode === "signup" || !isOnboardingCompleted()) {
-            navigate("/onboarding", { replace: true });
-        } else {
-            navigate("/organizer", { replace: true });
-        }
+        // Wait for the auth token to be persisted to localStorage before navigating.
+        // This avoids a race where we navigate to a protected route before the
+        // token is visible to `ProtectedRoute` and get redirected back to /login.
+        const waitForTokenAndNavigate = async () => {
+            const start = Date.now();
+            const timeout = 2000; // ms
+            const checkInterval = 100;
+            const { getToken } = await import("@/lib/auth");
+
+            while (Date.now() - start < timeout) {
+                const tok = getToken();
+                if (tok) break;
+                // eslint-disable-next-line no-await-in-loop
+                await new Promise((r) => setTimeout(r, checkInterval));
+            }
+
+            // Check if user needs onboarding (only for new signups)
+            if (mode === "signup" || !isOnboardingCompleted()) {
+                navigate("/onboarding", { replace: true });
+            } else {
+                navigate("/organizer", { replace: true });
+            }
+        };
+
+        void waitForTokenAndNavigate();
     };
 
     return (
@@ -264,7 +281,8 @@ const Auth: React.FC = () => {
                                 const res = await signInWithGooglePopup();
                                 try {
                                     const idToken = await res.user.getIdToken();
-                                    const backend = await exchangeFirebaseToken(idToken);
+                                    const backend = await tryExchangeWithRetry(idToken);
+
                                     if (backend && backend.accessToken) {
                                         setToken(backend.accessToken);
                                     } else {
@@ -289,47 +307,6 @@ const Auth: React.FC = () => {
                     >
                         <GoogleIcon />
                         <span>Google</span>
-                    </Button>
-
-                    <Button
-                        variant="outline"
-                        className="w-full h-12 border-[1.5px]"
-                        type="button"
-                        onClick={async () => {
-                            try {
-                                const res = await signInWithMicrosoftPopup();
-                                try {
-                                    const idToken = await res.user.getIdToken();
-                                    const backend = await exchangeFirebaseToken(idToken);
-                                    if (backend && backend.accessToken) {
-                                        setToken(backend.accessToken);
-                                    } else {
-                                        setToken(idToken);
-                                    }
-                                } catch (err) {
-                                    console.warn("Microsoft popup token exchange failed, falling back to ID token:", err);
-                                    try {
-                                        const idToken = await res.user.getIdToken();
-                                        setToken(idToken);
-                                    } catch (e) {
-                                        // ignore
-                                    }
-                                }
-                                toast.success("Signed in with Microsoft");
-                                navigateAfterAuth();
-                            } catch (e) {
-                                console.error("microsoft popup error", e);
-                                toast.error("Unable to sign in with Microsoft");
-                            }
-                        }}
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 mr-2" viewBox="0 0 24 24">
-                            <rect x="1" y="1" width="10" height="10" fill="#f65314" />
-                            <rect x="13" y="1" width="10" height="10" fill="#7cbb00" />
-                            <rect x="1" y="13" width="10" height="10" fill="#00a1f1" />
-                            <rect x="13" y="13" width="10" height="10" fill="#ffbb00" />
-                        </svg>
-                        <span>Microsoft</span>
                     </Button>
                 </div>
 

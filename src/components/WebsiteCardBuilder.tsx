@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import WebsiteCanvas from "@/components/website/WebsiteCanvas";
 import { toast } from "@/hooks/use-toast";
 import { ImageCropDialog } from "@/components/ImageCropDialog";
+import { getWebsiteConfigForEvent, createWebsiteConfig, uploadFile } from "@/lib/api";
 
 interface WebsiteCardBuilderProps {
   eventId?: string;
@@ -30,23 +31,56 @@ export default function WebsiteCardBuilder({ eventId, onSave }: WebsiteCardBuild
   const backgroundInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("websiteCardTemplate");
-      if (raw) {
-        const t: TemplateConfig = JSON.parse(raw);
-        if (t.backgroundColor) setBackgroundColor(t.backgroundColor);
-        if (t.backgroundImage) setBackgroundImageUrl(t.backgroundImage);
-        if (editor && (t.snapshot as any)) {
-          try {
-            (editor as any).loadSnapshot?.(t.snapshot);
-          } catch (e) {
-            console.warn("snapshot load failed", e);
+    let mounted = true;
+
+    const loadFromLocal = () => {
+      try {
+        const raw = localStorage.getItem("websiteCardTemplate");
+        if (raw) {
+          const t: TemplateConfig = JSON.parse(raw);
+          if (t.backgroundColor) setBackgroundColor(t.backgroundColor);
+          if (t.backgroundImage) setBackgroundImageUrl(t.backgroundImage);
+          if (editor && (t.snapshot as any)) {
+            try {
+              (editor as any).loadSnapshot?.(t.snapshot);
+            } catch (e) {
+              console.warn("snapshot load failed", e);
+            }
           }
         }
+      } catch (e) {
+        console.warn("Failed to load template", e);
       }
-    } catch (e) {
-      console.warn("Failed to load template", e);
-    }
+    };
+
+    const tryLoadFromApi = async () => {
+      if (!eventId) {
+        loadFromLocal();
+        return;
+      }
+
+      try {
+        const res = await getWebsiteConfigForEvent(eventId);
+        if (!mounted) return;
+        if (res) {
+          if (res.backgroundColor) setBackgroundColor(res.backgroundColor);
+          if (res.backgroundImage) setBackgroundImageUrl(res.backgroundImage);
+          if (editor && res.snapshot) {
+            try { (editor as any).loadSnapshot?.(res.snapshot); } catch (e) { console.warn("snapshot load failed", e); }
+          }
+          return;
+        }
+        // fallback to local
+        loadFromLocal();
+      } catch (err) {
+        console.warn("Website template API load failed, falling back to localStorage:", err);
+        loadFromLocal();
+      }
+    };
+
+    tryLoadFromApi();
+
+    return () => { mounted = false; };
   }, [editor]);
 
   const handleBackgroundUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -91,6 +125,35 @@ export default function WebsiteCardBuilder({ eventId, onSave }: WebsiteCardBuild
       localStorage.setItem("websiteCardTemplate", JSON.stringify(template));
       if (onSave) onSave(template);
       toast({ title: "Saved", description: "Template saved" });
+
+      // Persist to backend for event-scoped templates
+      if (eventId) {
+        (async () => {
+          try {
+            let serverBg = template.backgroundImage;
+            const isLocal = serverBg && (serverBg.startsWith("blob:") || serverBg.startsWith("data:"));
+            if (isLocal && serverBg) {
+              try {
+                const resp = await fetch(serverBg as string);
+                const blob = await resp.blob();
+                const fileName = `website-bg-${eventId}-${Date.now()}`;
+                const file = new File([blob], fileName, { type: blob.type });
+                const uploadRes: any = await uploadFile(file, undefined, eventId);
+                serverBg = uploadRes?.url || uploadRes?.uploadUrl || uploadRes?.fileUrl || serverBg;
+              } catch (uerr) {
+                console.warn("Background upload failed, continuing with local background:", uerr);
+              }
+            }
+
+            const payload = { eventId, config: { ...template, backgroundImage: serverBg } };
+            await createWebsiteConfig(payload);
+            toast({ title: "Saved to event", description: "Website template saved to event." });
+          } catch (err) {
+            console.error("Error saving website template to API:", err);
+            toast({ title: "Server save failed", description: "Could not save website template to server.", variant: "destructive" });
+          }
+        })();
+      }
     } catch (err) {
       console.error(err);
       toast({ title: "Save failed", description: "Could not save template", variant: "destructive" });

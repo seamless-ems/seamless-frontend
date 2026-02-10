@@ -117,3 +117,14 @@ For design system, routing, and architecture details see `CLAUDE.md`.
 
 ##GitHub Pull
 - git pull origin beta
+
+## TODOs:
+- force all image uploads to be png or jpeg (no pdfs etc.)
+- add form title and form description, boolean show_title_description for (FormConfig object) (default on with Event Title, "please submit")
+- Do folders in google drive by speaker information/ speaker name/ headshot.png
+- Do folders in google drive by call for speakers/ speaker name/ headshot.png
+- Make the call for speakers and speaker information fully seperate in master google sheet
+- Don't autofill sheet columns. On creation put instructions in the column headers
+- Add Speaker/ FormConfig optional field for "talk_topic"
+- For the select speakers make this default off
+- For edit form we need both radio buttons and checkboxes as options for the builder

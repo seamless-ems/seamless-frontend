@@ -25,7 +25,7 @@ export default function ProtectedRoute({ children }: Props) {
     }
 
     let mounted = true;
-    // Poll localStorage for token for up to 1000ms
+    // Poll localStorage for token for up to 2000ms (give auth flows more time)
     const interval = setInterval(() => {
       const tok = getToken();
       if (tok && mounted) {
@@ -39,12 +39,36 @@ export default function ProtectedRoute({ children }: Props) {
       mounted = false;
       clearInterval(interval);
       setChecking(false);
-    }, 1000);
+    }, 2000);
+
+    // Listen for explicit token-change events dispatched by `setToken/clearToken`.
+    const handleTokenChange = () => {
+      try {
+        const tok = getToken();
+        if (tok && mounted) {
+          setTokenState(tok);
+          setChecking(false);
+        }
+        if (!tok && mounted) {
+          setTokenState(null);
+          setChecking(false);
+        }
+      } catch (e) {
+        // ignore
+      }
+    };
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("seamless:token-changed", handleTokenChange);
+    }
 
     return () => {
       mounted = false;
       clearInterval(interval);
       clearTimeout(timeout);
+      if (typeof window !== "undefined") {
+        window.removeEventListener("seamless:token-changed", handleTokenChange);
+      }
     };
   }, []);
 

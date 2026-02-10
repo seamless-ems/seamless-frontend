@@ -1,6 +1,6 @@
 import React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getTeam, inviteTeamMember, deleteTeamMember, updateTeamMember, createTeam, getOrganization } from "@/lib/api";
+import { getTeam, inviteTeamMember, deleteTeamMember, updateTeamMember, createTeam, getOrganization, getRoles } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,6 +48,8 @@ export default function TeamSection() {
     const form = useForm<{ email: string; role?: string }>({ defaultValues: { email: "", role: "member" } });
     const teamForm = useForm<{ name: string; description?: string; organizationId?: string }>({ defaultValues: { name: "", description: "", organizationId: "" } });
 
+    const { data: roles = [] } = useQuery<any[]>({ queryKey: ["roles"], queryFn: () => getRoles() });
+
     const { data: orgs = [] } = useQuery<any[]>({ queryKey: ["organization"], queryFn: () => getOrganization() });
 
     // When orgs load, default the organizationId to the first org if not set
@@ -61,6 +63,15 @@ export default function TeamSection() {
     const [inviteForTeam, setInviteForTeam] = React.useState<string | null>(null);
     const [inviteEmail, setInviteEmail] = React.useState("");
     const [inviteRole, setInviteRole] = React.useState("member");
+
+    // When roles load, default inviteRole to first available role (if any)
+    React.useEffect(() => {
+        if (roles && roles.length > 0 && inviteRole === "member") {
+            const first = roles[0].id || roles[0];
+            setInviteRole(first);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [roles]);
 
     if (isLoading) {
         return (
@@ -98,8 +109,18 @@ export default function TeamSection() {
                                                         <div className="font-medium">{t.name ?? t.id}</div>
                                                         {t.description && <div className="text-sm text-muted-foreground">{t.description}</div>}
                                                     </div>
-                                                    <div className="flex items-center gap-2">
-                                                        <Button size="sm" onClick={() => { setInviteForTeam(t.id); setInviteEmail(""); setInviteRole("member"); }}>
+                                                        <div className="flex items-center gap-2">
+                                                        <Button size="sm" onClick={() => {
+                                                            setInviteForTeam(t.id);
+                                                            setInviteEmail("");
+                                                            // default invite role to first available role if present
+                                                            if (roles && roles.length > 0) {
+                                                                const first = roles[0].id || roles[0];
+                                                                setInviteRole(first);
+                                                            } else {
+                                                                setInviteRole("member");
+                                                            }
+                                                        }}>
                                                             Add Member
                                                         </Button>
                                                     </div>
@@ -116,15 +137,23 @@ export default function TeamSection() {
                                                                     <div className="text-sm text-muted-foreground">{m.email}</div>
                                                                 </div>
                                                                 <div className="flex items-center gap-2">
-                                                                    <select
-                                                                        value={m.role}
-                                                                        onChange={(e) => roleMut.mutate({ id: m.id, role: e.target.value })}
-                                                                        className="border rounded px-2 py-1"
-                                                                    >
-                                                                        <option value="owner">Owner</option>
-                                                                        <option value="admin">Admin</option>
-                                                                        <option value="member">Member</option>
-                                                                    </select>
+                                                                                <select
+                                                                                    value={m.role}
+                                                                                    onChange={(e) => roleMut.mutate({ id: m.id, role: e.target.value })}
+                                                                                    className="border rounded px-2 py-1"
+                                                                                >
+                                                                                    {roles && roles.length > 0 ? (
+                                                                                        roles.map((r: any) => (
+                                                                                            <option key={r.id || r} value={r.id || r}>{r.id || r}</option>
+                                                                                        ))
+                                                                                    ) : (
+                                                                                        <>
+                                                                                            <option value="owner">Owner</option>
+                                                                                            <option value="admin">Admin</option>
+                                                                                            <option value="member">Member</option>
+                                                                                        </>
+                                                                                    )}
+                                                                                </select>
                                                                     <Button variant="destructive" size="sm" onClick={() => deleteMut.mutate(m.id)}>
                                                                         Remove
                                                                     </Button>
@@ -143,11 +172,27 @@ export default function TeamSection() {
                                                             </div>
                                                             <div className="flex items-center gap-2">
                                                                 <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value)} className="border rounded px-2 py-1">
-                                                                    <option value="owner">Owner</option>
-                                                                    <option value="admin">Admin</option>
-                                                                    <option value="member">Member</option>
+                                                                    {roles && roles.length > 0 ? (
+                                                                        roles.map((r: any) => (
+                                                                            <option key={r.id || r} value={r.id || r}>{r.id || r}</option>
+                                                                        ))
+                                                                    ) : (
+                                                                        <>
+                                                                            <option value="owner">Owner</option>
+                                                                            <option value="admin">Admin</option>
+                                                                            <option value="member">Member</option>
+                                                                        </>
+                                                                    )}
                                                                 </select>
-                                                                <Button onClick={() => { if (inviteEmail) inviteMut.mutate({ email: inviteEmail, role: inviteRole, teamId: t.id }); setInviteForTeam(null); }}>Send Invite</Button>
+                                                                <Button onClick={async () => {
+                                                                    if (!inviteEmail) return;
+                                                                    try {
+                                                                        await inviteMut.mutateAsync({ email: inviteEmail, role: inviteRole, teamId: t.id });
+                                                                        setInviteForTeam(null);
+                                                                    } catch (err: any) {
+                                                                        // error handled by mutation onError
+                                                                    }
+                                                                }}>Send Invite</Button>
                                                                 <Button variant="ghost" onClick={() => setInviteForTeam(null)}>Cancel</Button>
                                                             </div>
                                                         </div>

@@ -1394,6 +1394,31 @@
         }
       }
     },
+    "/account/roles": {
+      "get": {
+        "tags": [
+          "account"
+        ],
+        "summary": "List Roles",
+        "operationId": "list_roles_account_roles_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array",
+                  "title": "Response List Roles Account Roles Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/events": {
       "get": {
         "tags": [
@@ -1810,8 +1835,66 @@
           "forms"
         ],
         "summary": "Get Form Configs For Event",
-        "description": "Get all form configurations for a given event.",
+        "description": "Get form configuration for a given event. If form_type is provided, filter by form type.\n\nOtherwise return first form config.",
         "operationId": "get_form_configs_for_event_forms_config__event_id__get",
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Event Id"
+            }
+          },
+          {
+            "name": "form_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Form Type"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FormConfigSchema"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/events/{event_id}/speakers/overview": {
+      "get": {
+        "tags": [
+          "Events"
+        ],
+        "summary": "Get Speaker Overview",
+        "operationId": "get_speaker_overview_events__event_id__speakers_overview_get",
         "parameters": [
           {
             "name": "event_id",
@@ -1829,11 +1912,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/FormConfigSchema"
-                  },
-                  "title": "Response Get Form Configs For Event Forms Config  Event Id  Get"
+                  "$ref": "#/components/schemas/EventSpeakerOverviewSchema"
                 }
               }
             }
@@ -1898,6 +1977,22 @@
                 }
               ],
               "title": "Intake Status"
+            }
+          },
+          {
+            "name": "form_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Form Type"
             }
           },
           {
@@ -2106,7 +2201,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SpeakerWithEvents"
+                  "$ref": "#/components/schemas/SpeakerBase"
                 }
               }
             }
@@ -2165,7 +2260,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SpeakerWithEvents"
+                  "$ref": "#/components/schemas/SpeakerBase"
                 }
               }
             }
@@ -2612,6 +2707,107 @@
             "content": {
               "application/json": {
                 "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/promo-cards/config": {
+      "post": {
+        "tags": [
+          "promo-cards"
+        ],
+        "summary": "Create Promo Config",
+        "description": "Create a promo configuration for an event.",
+        "operationId": "create_promo_config_promo_cards_config_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PromoConfigCreateSchema"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromoConfigSchema"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/promo-cards/config/{event_id}": {
+      "get": {
+        "tags": [
+          "promo-cards"
+        ],
+        "summary": "Get Promo Configs For Event",
+        "description": "Get promo configuration for a given event. If promo_type is provided, filter by promo type.\n\nOtherwise return first promo config.",
+        "operationId": "get_promo_configs_for_event_promo_cards_config__event_id__get",
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Event Id"
+            }
+          },
+          {
+            "name": "promo_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Promo Type"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromoConfigSchema"
+                }
               }
             }
           },
@@ -3209,28 +3405,6 @@
             ],
             "title": "Filename"
           },
-          "owner_type": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Owner Type"
-          },
-          "owner_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Owner Id"
-          },
           "event_id": {
             "anyOf": [
               {
@@ -3252,6 +3426,17 @@
               }
             ],
             "title": "Speaker Id"
+          },
+          "speaker_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Speaker Name"
           }
         },
         "type": "object",
@@ -3263,15 +3448,8 @@
       "EventSchema": {
         "properties": {
           "id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid"
-              },
-              {
-                "type": "null"
-              }
-            ],
+            "type": "string",
+            "format": "uuid",
             "title": "Id"
           },
           "title": {
@@ -3440,6 +3618,7 @@
         },
         "type": "object",
         "required": [
+          "id",
           "title",
           "startDate",
           "endDate",
@@ -3447,60 +3626,38 @@
         ],
         "title": "EventSchema"
       },
-      "EventSummary": {
+      "EventSpeakerOverviewSchema": {
         "properties": {
-          "id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Id"
+          "totalSpeakers": {
+            "type": "integer",
+            "title": "Totalspeakers"
           },
-          "title": {
-            "type": "string",
-            "title": "Title"
+          "totalPending": {
+            "type": "integer",
+            "title": "Totalpending"
           },
-          "startDate": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Startdate"
+          "totalApproved": {
+            "type": "integer",
+            "title": "Totalapproved"
           },
-          "endDate": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Enddate"
+          "totalCallForSpeakers": {
+            "type": "integer",
+            "title": "Totalcallforspeakers"
           },
-          "location": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Location"
+          "totalCallForSpeakersPending": {
+            "type": "integer",
+            "title": "Totalcallforspeakerspending"
           }
         },
         "type": "object",
         "required": [
-          "title",
-          "startDate"
+          "totalSpeakers",
+          "totalPending",
+          "totalApproved",
+          "totalCallForSpeakers",
+          "totalCallForSpeakersPending"
         ],
-        "title": "EventSummary",
-        "description": "Lightweight event representation for embedding on other objects.\n\nThis intentionally excludes nested `speakers` to avoid recursion when\nserializing Event -> Speaker -> Event cycles."
+        "title": "EventSpeakerOverviewSchema"
       },
       "FormConfigCreateSchema": {
         "properties": {
@@ -3978,6 +4135,92 @@
         ],
         "title": "PresignResponse"
       },
+      "PromoConfigCreateSchema": {
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Eventid"
+          },
+          "promoType": {
+            "type": "string",
+            "title": "Promotype"
+          },
+          "config": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Config"
+          }
+        },
+        "type": "object",
+        "required": [
+          "eventId",
+          "promoType",
+          "config"
+        ],
+        "title": "PromoConfigCreateSchema"
+      },
+      "PromoConfigSchema": {
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Eventid"
+          },
+          "promoType": {
+            "type": "string",
+            "title": "Promotype"
+          },
+          "config": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Config"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "createdAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Createdat"
+          },
+          "updatedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updatedat"
+          }
+        },
+        "type": "object",
+        "required": [
+          "eventId",
+          "promoType",
+          "config"
+        ],
+        "title": "PromoConfigSchema"
+      },
       "SpeakerBase": {
         "properties": {
           "id": {
@@ -3998,17 +4241,6 @@
             "format": "email",
             "title": "Email"
           },
-          "companyRole": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Companyrole"
-          },
           "companyName": {
             "anyOf": [
               {
@@ -4020,38 +4252,21 @@
             ],
             "title": "Companyname"
           },
-          "headshot": {
+          "companyRole": {
             "anyOf": [
               {
-                "type": "string",
-                "minLength": 1,
-                "format": "uri"
+                "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Headshot"
-          },
-          "companyLogo": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 1,
-                "format": "uri"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Companylogo"
+            "title": "Companyrole"
           },
           "linkedin": {
             "anyOf": [
               {
-                "type": "string",
-                "minLength": 1,
-                "format": "uri"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -4070,33 +4285,7 @@
             ],
             "title": "Bio"
           },
-          "intakeFormStatus": {
-            "type": "string",
-            "title": "Intakeformstatus"
-          },
-          "websiteCardApproved": {
-            "type": "boolean",
-            "title": "Websitecardapproved",
-            "default": false
-          },
-          "promoCardApproved": {
-            "type": "boolean",
-            "title": "Promocardapproved",
-            "default": false
-          },
-          "registeredAt": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Registeredat"
-          },
-          "promoCardTemplate": {
+          "headshot": {
             "anyOf": [
               {
                 "type": "string",
@@ -4107,7 +4296,24 @@
                 "type": "null"
               }
             ],
-            "title": "Promocardtemplate"
+            "title": "Headshot"
+          },
+          "companyLogo": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "format": "uri"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Companylogo"
+          },
+          "formType": {
+            "type": "string",
+            "title": "Formtype"
           },
           "customFields": {
             "anyOf": [
@@ -4120,202 +4326,18 @@
               }
             ],
             "title": "Customfields"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "firstName",
-          "lastName",
-          "email",
-          "intakeFormStatus"
-        ],
-        "title": "SpeakerBase"
-      },
-      "SpeakerCreate": {
-        "properties": {
-          "firstName": {
-            "type": "string",
-            "title": "Firstname"
           },
-          "lastName": {
-            "type": "string",
-            "title": "Lastname"
-          },
-          "email": {
-            "type": "string",
-            "format": "email",
-            "title": "Email"
-          },
-          "companyName": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Companyname"
-          },
-          "companyRole": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Companyrole"
-          },
-          "bio": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Bio"
-          },
-          "headshot": {
+          "registeredAt": {
             "anyOf": [
               {
                 "type": "string",
-                "minLength": 1,
-                "format": "uri"
+                "format": "date-time"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Headshot"
-          },
-          "companyLogo": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 1,
-                "format": "uri"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Companylogo"
-          },
-          "promoCardTemplate": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 1,
-                "format": "uri"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Promocardtemplate"
-          }
-        },
-        "type": "object",
-        "required": [
-          "firstName",
-          "lastName",
-          "email",
-          "companyName",
-          "companyRole"
-        ],
-        "title": "SpeakerCreate"
-      },
-      "SpeakerUpdate": {
-        "properties": {
-          "firstName": {
-            "type": "string",
-            "title": "Firstname"
-          },
-          "lastName": {
-            "type": "string",
-            "title": "Lastname"
-          },
-          "email": {
-            "type": "string",
-            "format": "email",
-            "title": "Email"
-          },
-          "companyName": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Companyname"
-          },
-          "companyRole": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Companyrole"
-          },
-          "bio": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Bio"
-          },
-          "headshot": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 1,
-                "format": "uri"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Headshot"
-          },
-          "companyLogo": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 1,
-                "format": "uri"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Companylogo"
-          },
-          "promoCardTemplate": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 1,
-                "format": "uri"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Promocardtemplate"
+            "title": "Registeredat"
           },
           "intakeFormStatus": {
             "anyOf": [
@@ -4349,19 +4371,30 @@
               }
             ],
             "title": "Promocardapproved"
+          },
+          "internalNotes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Internalnotes"
           }
         },
         "type": "object",
         "required": [
+          "id",
           "firstName",
           "lastName",
           "email",
-          "companyName",
-          "companyRole"
+          "formType"
         ],
-        "title": "SpeakerUpdate"
+        "title": "SpeakerBase"
       },
-      "SpeakerWithEvents": {
+      "SpeakerCreate": {
         "properties": {
           "id": {
             "type": "string",
@@ -4381,6 +4414,17 @@
             "format": "email",
             "title": "Email"
           },
+          "companyName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Companyname"
+          },
           "companyRole": {
             "anyOf": [
               {
@@ -4392,7 +4436,7 @@
             ],
             "title": "Companyrole"
           },
-          "companyName": {
+          "linkedin": {
             "anyOf": [
               {
                 "type": "string"
@@ -4401,7 +4445,18 @@
                 "type": "null"
               }
             ],
-            "title": "Companyname"
+            "title": "Linkedin"
+          },
+          "bio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bio"
           },
           "headshot": {
             "anyOf": [
@@ -4429,12 +4484,79 @@
             ],
             "title": "Companylogo"
           },
+          "formType": {
+            "type": "string",
+            "title": "Formtype"
+          },
+          "customFields": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customfields"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "firstName",
+          "lastName",
+          "email",
+          "formType"
+        ],
+        "title": "SpeakerCreate"
+      },
+      "SpeakerUpdate": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "firstName": {
+            "type": "string",
+            "title": "Firstname"
+          },
+          "lastName": {
+            "type": "string",
+            "title": "Lastname"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "companyName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Companyname"
+          },
+          "companyRole": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Companyrole"
+          },
           "linkedin": {
             "anyOf": [
               {
-                "type": "string",
-                "minLength": 1,
-                "format": "uri"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -4453,33 +4575,7 @@
             ],
             "title": "Bio"
           },
-          "intakeFormStatus": {
-            "type": "string",
-            "title": "Intakeformstatus"
-          },
-          "websiteCardApproved": {
-            "type": "boolean",
-            "title": "Websitecardapproved",
-            "default": false
-          },
-          "promoCardApproved": {
-            "type": "boolean",
-            "title": "Promocardapproved",
-            "default": false
-          },
-          "registeredAt": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Registeredat"
-          },
-          "promoCardTemplate": {
+          "headshot": {
             "anyOf": [
               {
                 "type": "string",
@@ -4490,7 +4586,24 @@
                 "type": "null"
               }
             ],
-            "title": "Promocardtemplate"
+            "title": "Headshot"
+          },
+          "companyLogo": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "format": "uri"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Companylogo"
+          },
+          "formType": {
+            "type": "string",
+            "title": "Formtype"
           },
           "customFields": {
             "anyOf": [
@@ -4504,19 +4617,61 @@
             ],
             "title": "Customfields"
           },
-          "events": {
+          "registeredAt": {
             "anyOf": [
               {
-                "items": {
-                  "$ref": "#/components/schemas/EventSummary"
-                },
-                "type": "array"
+                "type": "string",
+                "format": "date-time"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Events"
+            "title": "Registeredat"
+          },
+          "intakeFormStatus": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Intakeformstatus"
+          },
+          "websiteCardApproved": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Websitecardapproved"
+          },
+          "promoCardApproved": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Promocardapproved"
+          },
+          "internalNotes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Internalnotes"
           }
         },
         "type": "object",
@@ -4525,9 +4680,9 @@
           "firstName",
           "lastName",
           "email",
-          "intakeFormStatus"
+          "formType"
         ],
-        "title": "SpeakerWithEvents"
+        "title": "SpeakerUpdate"
       },
       "TeamCreateSchema": {
         "properties": {

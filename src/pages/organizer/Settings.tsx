@@ -8,7 +8,7 @@ import React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
-import { getMe, updateMe, getSettings, updateSettings } from "@/lib/api";
+import { getMe, updateMe, getSettings, updateSettings, getTeam } from "@/lib/api";
 import {
   User,
   Bell,
@@ -26,6 +26,7 @@ export default function Settings() {
 
   const { data: me } = useQuery<any, Error>({ queryKey: ["me"], queryFn: () => getMe() });
   const { data: settings } = useQuery<any, Error>({ queryKey: ["settings"], queryFn: () => getSettings(), enabled: !!me });
+  const { data: teams } = useQuery<any[]>({ queryKey: ["teams"], queryFn: () => getTeam(), enabled: !!me });
   const updateMeMut = useMutation({
     mutationFn: (body: any) => updateMe(body),
     onSuccess: () => {
@@ -83,6 +84,33 @@ export default function Settings() {
           <p className="text-muted-foreground mt-1">Manage your account preferences</p>
         </div>
 
+        {/* Warning when user has no teams */}
+        {Array.isArray(teams) && teams.length === 0 && (
+          <Card className="border-destructive/30">
+            <CardHeader>
+              <CardTitle className="text-lg text-destructive">Organization & Team Required</CardTitle>
+              <CardDescription className="text-destructive">You currently do not belong to any team. The rest of the application requires an organization and at least one team to function correctly (events, speakers, assets).</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Create or join an organization and team to continue.</p>
+                </div>
+                <Button
+                  variant="destructive"
+                  onClick={() => {
+                    // scroll to team section
+                    const el = document.getElementById("team-section");
+                    if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+                  }}
+                >
+                  Manage teams
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <Card>
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
@@ -110,7 +138,9 @@ export default function Settings() {
         </Card>
         <div className="space-y-8">
           <OrganizationSection />
-          <TeamSection />
+          <div id="team-section">
+            <TeamSection />
+          </div>
         </div>
         {/* Danger Zone */}
         <Card className="border-destructive/30">

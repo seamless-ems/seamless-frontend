@@ -24,6 +24,15 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
 	Select,
 	SelectTrigger,
 	SelectValue,
@@ -103,6 +112,8 @@ export default function CreateEvent() {
 	// array of selected folder ids at each depth level, e.g. [topId, childId, grandChildId]
 	const [selectedFolderPath, setSelectedFolderPath] = useState<string[]>([]);
 	const { data: teams } = useQuery<any[]>({ queryKey: ["teams"], queryFn: () => getTeam() });
+	const [noTeamsModalOpen, setNoTeamsModalOpen] = React.useState(false);
+	const noTeamsModalShown = React.useRef(false);
 	const location = useLocation();
 
 	// pick team from query param ?team=<id> or default to first available
@@ -122,6 +133,12 @@ export default function CreateEvent() {
 	useEffect(() => {
 		if (!selectedTeamId && teams && teams.length) {
 			setSelectedTeamId(defaultTeamFromQuery ?? teams[0].id);
+		}
+
+		// If teams loaded and empty, show a modal directing user to profile/settings
+		if (Array.isArray(teams) && teams.length === 0 && !noTeamsModalShown.current) {
+			noTeamsModalShown.current = true;
+			setNoTeamsModalOpen(true);
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [teams]);
@@ -317,6 +334,32 @@ export default function CreateEvent() {
 							)}
 						</CardContent>
 					</Card>
+							{/* No-teams danger modal */}
+							<AlertDialog open={noTeamsModalOpen} onOpenChange={setNoTeamsModalOpen}>
+								<AlertDialogContent>
+										<AlertDialogTitle className="text-destructive">Organization & Team Required</AlertDialogTitle>
+										<AlertDialogDescription className="text-destructive">
+											The application requires you to belong to an <strong>organization</strong> and at least one <strong>team</strong> to create and manage events. Without these, key features (events, speakers, assets) will not work correctly.
+											<div className="mt-2 text-sm text-muted-foreground">
+												Please create or join an organization and team from your profile before continuing.
+											</div>
+										</AlertDialogDescription>
+										<AlertDialogFooter>
+											<AlertDialogCancel onClick={() => setNoTeamsModalOpen(false)}>Dismiss</AlertDialogCancel>
+											<AlertDialogAction asChild>
+												<Button
+													variant="destructive"
+													onClick={() => {
+														setNoTeamsModalOpen(false);
+														navigate("/organizer/settings");
+													}}
+												>
+													Open profile
+												</Button>
+											</AlertDialogAction>
+										</AlertDialogFooter>
+									</AlertDialogContent>
+							</AlertDialog>
 					{/* Basic Info */}
 					<Card>
 						<CardHeader>

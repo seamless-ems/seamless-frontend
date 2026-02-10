@@ -52,18 +52,14 @@ export async function getJson<TRes>(path: string): Promise<TRes> {
   });
 
   if (!res.ok) {
-    // If the user is unauthorized, redirect to the login page.
-    if (res.status === 401) {
-      // Use location.replace so the back button doesn't return to the protected page
-      if (typeof window !== "undefined" && window.location) {
-        window.location.replace("/login");
-        // Return a never-resolving promise to satisfy the return type; navigation will occur.
-        return new Promise<TRes>(() => {});
-      }
-    }
-
+    // Surface 401 errors to callers instead of redirecting here.
+    // Components (or a global auth handler) should decide how to react
+    // when the backend reports the token is invalid/expired.
     const text = await res.text();
-    throw new Error(text || res.statusText);
+    const message = text || res.statusText || `HTTP ${res.status}`;
+    const err: any = new Error(message);
+    err.status = res.status;
+    throw err;
   }
 
   const json = await res.json();
@@ -137,8 +133,10 @@ export function login(body: LoginRequest): Promise<TokenSchema> {
 
 // Exchange a Firebase ID token for the backend's session/token representation.
 // Backend should verify the ID token and return a TokenSchema { accessToken, tokenType }
-export function exchangeFirebaseToken(idToken: string): Promise<TokenSchema> {
-  return postJson<{ accessToken: string }, TokenSchema>("/auth/firebase", { accessToken: idToken });
+export function exchangeFirebaseToken(idToken: string, name?: string): Promise<TokenSchema> {
+  const body: { accessToken: string; name?: string } = { accessToken: idToken };
+  if (name) body.name = name;
+  return postJson<{ accessToken: string; name?: string }, TokenSchema>("/auth/firebase", body);
 }
 
 // --- Account endpoints ---
@@ -220,6 +218,11 @@ export function getMe(): Promise<any> {
   return getJson<any>(`/account/me`);
 }
 
+// List available roles for the current account/organization
+export function getRoles(): Promise<any[]> {
+  return getJson<any[]>(`/account/roles`);
+}
+
 export async function updateMe(body: any): Promise<any> {
   return patchJson<any, any>(`/account/me`, body);
 }
@@ -275,6 +278,24 @@ export function getFormConfigForEvent(eventId: string, formType: string): Promis
 export function createFormConfig(body: { eventId: string; formType: string; config: any[] }): Promise<any> {
   // Backend expects eventId, formType and config (array)
   return postJson<typeof body, any>(`/forms/config`, body);
+}
+
+// Promo cards endpoints
+export function getPromoConfigForEvent(eventId: string, promoType?: string): Promise<any> {
+  const qs = promoType ? `?promo_type=${encodeURIComponent(promoType)}` : "";
+  return getJson<any>(`/promo-cards/config/${encodeURIComponent(eventId)}${qs}`);
+}
+
+export function createPromoConfig(body: { eventId: string; promoType: string; config: any }): Promise<any> {
+  return postJson<typeof body, any>(`/promo-cards/config`, body);
+}
+// Website template endpoints (parallel to promo cards)
+export function getWebsiteConfigForEvent(eventId: string): Promise<any> {
+  return getJson<any>(`/website/config/${encodeURIComponent(eventId)}`);
+}
+
+export function createWebsiteConfig(body: { eventId: string; config: any }): Promise<any> {
+  return postJson<typeof body, any>(`/website/config`, body);
 }
 export async function deleteIntegration(provider: string): Promise<void> {
   const res = await fetch(`${API_BASE}/integrations/${encodeURIComponent(provider)}`, {
