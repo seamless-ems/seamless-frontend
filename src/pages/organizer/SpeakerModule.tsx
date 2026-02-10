@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -13,7 +13,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getJson, createSpeaker } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 import SpeakerFormBuilder from "@/components/SpeakerFormBuilder";
-import PromoCardBuilder from "@/components/PromoCardBuilder";
 import AddSpeakerDialog from "@/components/organizer/AddSpeakerDialog";
 import SpeakersTable from "@/components/organizer/SpeakersTable";
 import SpeakersControls from "@/components/organizer/SpeakersControls";
@@ -22,6 +21,7 @@ import FormsTab from "@/components/organizer/FormsTab";
 
 export default function SpeakerModule() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -158,14 +158,10 @@ export default function SpeakerModule() {
             Embed Builder
           </button>
           <button
-            onClick={() => setSelectedTab("promo-builder")}
-            className={`pb-3 border-b-2 transition-colors text-sm ${
-              selectedTab === "promo-builder"
-                ? "border-primary text-foreground font-semibold bg-muted/50 px-3 py-2 rounded-t"
-                : "border-transparent text-muted-foreground hover:text-foreground font-medium"
-            }`}
+            onClick={() => navigate(`/organizer/event/${id}/card-builder`)}
+            className="pb-3 border-b-2 border-transparent text-muted-foreground hover:text-foreground font-medium transition-colors text-sm hover:border-primary"
           >
-            Website & Promo Card Builder
+            Card Builder
           </button>
         </div>
       </div>
@@ -265,10 +261,6 @@ export default function SpeakerModule() {
         <EmbedBuilder eventId={id} />
       )}
 
-      {/* Website & Promo Card Builder Tab */}
-      {selectedTab === "promo-builder" && (
-        <PromoCardBuilder eventId={id} />
-      )}
     </div>
   );
 }

@@ -31,6 +31,7 @@ export interface FormFieldConfig {
   enabled: boolean;
   custom?: boolean;
   helpText?: string;
+  showInCardBuilder?: boolean; // New: Toggle to show field in card builder
 }
 
 interface SpeakerFormBuilderProps {
@@ -119,6 +120,14 @@ export default function SpeakerFormBuilder({
     setFields((prev) =>
       prev.map((f) =>
         f.id === fieldId ? { ...f, required: !f.required } : f
+      )
+    );
+  };
+
+  const toggleCardBuilder = (fieldId: string) => {
+    setFields((prev) =>
+      prev.map((f) =>
+        f.id === fieldId ? { ...f, showInCardBuilder: !f.showInCardBuilder } : f
       )
     );
   };
@@ -241,17 +250,31 @@ export default function SpeakerFormBuilder({
                         </span>
                       )}
                     </div>
-                    {field.enabled && !cannotDisable && (
-                      <div className="flex items-center gap-2">
-                        <label className="text-muted-foreground flex items-center gap-1" style={{ fontSize: "var(--font-tiny)" }}>
-                          <input
-                            type="checkbox"
-                            checked={field.required}
-                            onChange={() => toggleRequired(field.id)}
-                            className="rounded"
-                          />
-                          Required
-                        </label>
+                    {field.enabled && (
+                      <div className="flex items-center gap-3">
+                        {!cannotDisable && (
+                          <label className="text-muted-foreground flex items-center gap-1" style={{ fontSize: "var(--font-tiny)" }}>
+                            <input
+                              type="checkbox"
+                              checked={field.required}
+                              onChange={() => toggleRequired(field.id)}
+                              className="rounded"
+                            />
+                            Required
+                          </label>
+                        )}
+                        {/* Show Card Builder for all fields except email */}
+                        {field.id !== "email" && (
+                          <label className="text-muted-foreground flex items-center gap-1" style={{ fontSize: "var(--font-tiny)" }}>
+                            <input
+                              type="checkbox"
+                              checked={field.showInCardBuilder || false}
+                              onChange={() => toggleCardBuilder(field.id)}
+                              className="rounded"
+                            />
+                            Card Builder
+                          </label>
+                        )}
                       </div>
                     )}
                   </div>

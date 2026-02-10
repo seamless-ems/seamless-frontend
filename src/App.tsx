@@ -24,8 +24,7 @@ import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import ProtectedRoute from "./components/ProtectedRoute";
 import PromoEmbed from "./pages/public/PromoEmbed";
-import PromoCardBuilderTest from "./pages/PromoCardBuilderTest";
-import WebsiteCardBuilderTest from "./pages/WebsiteCardBuilderTest";
+import CardBuilderPage from "./pages/organizer/CardBuilderPage";
 import Onboarding from "./components/onboarding/Onboarding";
 
 // Helper component for root redirect
@@ -134,6 +133,15 @@ const App = () => {
               }
             />
 
+            <Route
+              path="/organizer/event/:id/card-builder"
+              element={
+                <ProtectedRoute>
+                  <CardBuilderPage />
+                </ProtectedRoute>
+              }
+            />
+
             {/* Public embed route for speaker promo cards */}
             <Route path="/event/:id/speakers/embed" element={<SpeakerEmbed />} />
             <Route path="/event/:id/speakers/embed/promo" element={<PromoEmbed />} />
@@ -215,9 +223,6 @@ const App = () => {
               }
             />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            {/* Dev/Test routes for builders */}
-            <Route path="/test/promo-builder" element={<PromoCardBuilderTest />} />
-            <Route path="/test/website-builder" element={<WebsiteCardBuilderTest />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

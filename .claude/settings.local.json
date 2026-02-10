@@ -6,7 +6,15 @@
       "Bash(npm run build:dev:*)",
       "Bash(curl:*)",
       "Bash(npm run build:*)",
-      "Bash(pgrep:*)"
+      "Bash(pgrep:*)",
+      "Bash(lsof:*)",
+      "Bash(xargs kill:*)",
+      "Bash(tee:*)",
+      "Bash(for port in 5173 5174 5175 5176)",
+      "Bash(do lsof -ti:$port)",
+      "Bash(xargs:*)",
+      "Bash(done)",
+      "Bash(pkill:*)"
     ]
   }
 }
