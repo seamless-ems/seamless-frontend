@@ -65,23 +65,28 @@ Open http://localhost:5173.
 
 ## Components & Features
 
-### PromoCardBuilder (`src/components/PromoCardBuilder.tsx`)
-**Status:** ✅ Complete & Stable (Phase 2 refactor finished)
+### CardBuilderV2 (`src/components/CardBuilderV2.tsx`)
+**Status:** ✅ Complete & Stable (Unified card builder - replaces PromoCardBuilder and WebsiteCardBuilder)
 
-Professional Canva-like design tool built with Fabric.js:
+Professional Canva-like design tool built with Fabric.js for creating both promo cards and website cards:
 
 **Architecture:**
+- **Unified builder**: Single component with card type toggle (Promo/Website)
+- **Dynamic elements**: Automatically generates card elements from event form configuration
 - **Drop zone system**: Templates define WHERE content goes (position, size, shape), NOT the actual content
 - **Test images**: Preview-only (never saved to config) - upload samples to see how layout looks
 - **Template config**: Saves layout positions, sizes, shapes, colors (NOT image URLs)
-- **Multi-select**: Batch edit multiple elements at once (Shift+click)
+- **Form integration**: Custom form fields can be toggled to appear in card builder via `showInCardBuilder` flag
 
 **3-Column Layout:**
 - **Left (50%):** Canvas with visual snap guides (pink dashed lines)
-- **Middle (25%):** Element library (click to add) + test image uploads + layers panel
+- **Middle (25%):** Card type selector + Element library (click to add) + test image uploads + layers panel
 - **Right (25%):** Properties panel with number inputs for precision
 
 **Key Features:**
+- **Card Types**: Toggle between Promo and Website cards with separate configs
+- **Dynamic Elements**: Reads form config via API and creates elements from custom fields
+- **Social Media Icons**: LinkedIn, Twitter, Facebook, Instagram, GitHub support
 - Visual alignment snapping (edges, centers, adjacent elements)
 - Multi-select batch editing (font size, weight, color, opacity)
 - Layers panel with drag-to-reorder and z-index management
@@ -92,13 +97,12 @@ Professional Canva-like design tool built with Fabric.js:
 - Headshot shape toggle (circle/square/rectangle)
 - Empty canvas start with click-to-add elements
 - PNG export with proper clipping paths
-- localStorage persistence
+- localStorage persistence per event + card type
 
-**Test Route:** `http://localhost:5173/test/promo-builder` (no auth required)
-
-**Known Limitations:**
-- Backend team/account nesting API needed to access PromoCardBuilder from normal event flow
-- Currently only accessible via organizer event speaker module once team structure is in place
+**Access:**
+- Route: `/organizer/event/:id/card-builder`
+- Accessible from Speaker Module via "Card Builder" button
+- Fullscreen editing experience with back navigation
 
 ## Scripts
 

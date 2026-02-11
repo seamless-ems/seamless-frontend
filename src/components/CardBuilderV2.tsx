@@ -1,3 +1,45 @@
+/**
+ * CardBuilderV2 - Unified Card Builder Component
+ *
+ * A professional Canva-like design tool built with Fabric.js for creating both
+ * promo cards and website cards. Replaces the previous separate builders.
+ *
+ * KEY ARCHITECTURE DECISIONS:
+ *
+ * 1. DROP ZONE SYSTEM
+ *    - Templates define layout (position, size, shape) NOT content
+ *    - Test images are preview-only, never saved to config
+ *    - Config stores: baseSize, scaleX, scaleY, position, styling
+ *    - Actual images will come from real speaker data at runtime
+ *
+ * 2. DYNAMIC ELEMENTS
+ *    - Fetches form config via API (getFormConfigForEvent)
+ *    - Creates elements for fields marked with showInCardBuilder: true
+ *    - Allows custom form fields to appear as card elements
+ *
+ * 3. PLACEHOLDER RENDERING
+ *    - Headshot: lockUniScaling + corner-only controls (maintains aspect ratio)
+ *    - Logo: Free resize with all handles (width/height independent)
+ *    - Gray rect fills selection box: rect at (0,0), text centered, selectable:false
+ *
+ * 4. PERSISTENT SELECTION
+ *    - Selection stays active when clicking toolbar controls
+ *    - Only clears on: canvas background click, selecting another element, or ESC key
+ *    - Prevents toolbar interactions from deselecting elements
+ *
+ * 5. SCALE MANAGEMENT
+ *    - Placeholders render at: actualSize = baseSize × scaleX/Y
+ *    - On resize: calculate new scale from getBoundingRect() / baseSize
+ *    - Store scale in config for persistence
+ *
+ * MVP SIMPLIFICATIONS:
+ * - Test image uploads disabled (gray placeholders only)
+ * - Position alignment removed (too complex, just use drag)
+ * - Text alignment simplified (content alignment only, like PowerPoint)
+ *
+ * @component
+ */
+
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +65,9 @@ import {
   ChevronUp,
   ChevronDown,
   RotateCcw,
+  AlignLeft,
+  AlignRight,
+  AlignCenterHorizontal,
 } from "lucide-react";
 import { FaLinkedin, FaTwitter, FaFacebook, FaInstagram, FaGithub } from "react-icons/fa";
 import { fabric } from "fabric";
@@ -285,8 +330,17 @@ export default function CardBuilderV2({ eventId, fullscreen = false }: CardBuild
         }
       });
 
-      canvas.on("selection:cleared", () => {
-        setSelectedElement(null);
+      // Don't auto-clear selection - keep it persistent
+      // Selection only clears when:
+      // 1. User selects another element (handled by selection:created/updated)
+      // 2. User presses ESC (handled by keyboard listener below)
+      // 3. User clicks canvas background (handled below)
+
+      canvas.on("mouse:down", (e) => {
+        // Only clear selection if clicking on empty canvas (not on an object)
+        if (!e.target) {
+          setSelectedElement(null);
+        }
       });
 
       // PowerPoint-style snapping - snap to CLOSEST object
@@ -448,9 +502,32 @@ export default function CardBuilderV2({ eventId, fullscreen = false }: CardBuild
           }
 
           // Save scale for groups (placeholders)
+          // Calculate scale from actual dimensions vs base size
           if (obj.type === "group") {
-            updates.scaleX = obj.scaleX || 1;
-            updates.scaleY = obj.scaleY || 1;
+            setConfig(prev => {
+              const baseSize = prev[elementKey]?.size || 60;
+              const bounds = obj.getBoundingRect();
+
+              // Calculate scale from actual pixel dimensions
+              const newScaleX = bounds.width / baseSize;
+              const newScaleY = bounds.height / baseSize;
+
+              const newConfig = {
+                ...prev,
+                [elementKey]: {
+                  ...prev[elementKey],
+                  x: obj.left || 0,
+                  y: obj.top || 0,
+                  scaleX: newScaleX,
+                  scaleY: newScaleY,
+                },
+              };
+
+              setHasUnsavedChanges(true);
+              addToHistory(newConfig);
+              return newConfig;
+            });
+            return; // Early return since we handled setConfig above
           }
 
           // Save width for text elements
@@ -549,11 +626,14 @@ export default function CardBuilderV2({ eventId, fullscreen = false }: CardBuild
             mb: false,
           });
 
-          // Test images use base size, ignore placeholder scale
-          // This prevents compounding when user resizes test image
+          // Use actual size (base size × scale) to match the resized placeholder
+          const scaleX = cfg.scaleX || 1;
+          const scaleY = cfg.scaleY || 1;
           const shape = cfg.shape || "circle";
+
           if (shape === "circle") {
-            const radius = cfg.size / 2;
+            const actualSize = cfg.size * scaleX;
+            const radius = actualSize / 2;
             fabricImg.set({
               clipPath: new fabric.Circle({
                 radius: radius,
@@ -561,31 +641,32 @@ export default function CardBuilderV2({ eventId, fullscreen = false }: CardBuild
                 originY: 'center',
               }),
             });
-            fabricImg.scaleToWidth(cfg.size);
+            fabricImg.scaleToWidth(actualSize);
           } else if (shape === "square") {
-            fabricImg.scaleToWidth(cfg.size);
+            const actualWidth = cfg.size * scaleX;
+            fabricImg.scaleToWidth(actualWidth);
           } else if (shape === "vertical") {
             // 3:4 aspect ratio (portrait)
-            const width = cfg.size;
-            const height = (cfg.size * 4) / 3;
-            fabricImg.scaleToWidth(width);
+            const actualWidth = cfg.size * scaleX;
+            const actualHeight = (cfg.size * 4 / 3) * scaleY;
+            fabricImg.scaleToWidth(actualWidth);
             fabricImg.set({
               clipPath: new fabric.Rect({
-                width: width / fabricImg.scaleX!,
-                height: height / fabricImg.scaleY!,
+                width: actualWidth / fabricImg.scaleX!,
+                height: actualHeight / fabricImg.scaleY!,
                 originX: 'center',
                 originY: 'center',
               }),
             });
           } else if (shape === "horizontal") {
             // 4:3 aspect ratio (landscape)
-            const width = cfg.size;
-            const height = (cfg.size * 3) / 4;
-            fabricImg.scaleToWidth(width);
+            const actualWidth = cfg.size * scaleX;
+            const actualHeight = (cfg.size * 3 / 4) * scaleY;
+            fabricImg.scaleToWidth(actualWidth);
             fabricImg.set({
               clipPath: new fabric.Rect({
-                width: width / fabricImg.scaleX!,
-                height: height / fabricImg.scaleY!,
+                width: actualWidth / fabricImg.scaleX!,
+                height: actualHeight / fabricImg.scaleY!,
                 originX: 'center',
                 originY: 'center',
               }),
@@ -595,16 +676,23 @@ export default function CardBuilderV2({ eventId, fullscreen = false }: CardBuild
           canvas.add(fabricImg);
           elementRefs.current.headshot = fabricImg;
         } else {
-          // Render placeholder - create at base size, then apply scale
+          // Render placeholder - calculate actual size from base size × scale
           const shape = cfg.shape || "circle";
-          let width = cfg.size;
-          let height = cfg.size;
+          const scaleX = cfg.scaleX || 1;
+          const scaleY = cfg.scaleY || 1;
+
+          let baseWidth = cfg.size;
+          let baseHeight = cfg.size;
 
           if (shape === "vertical") {
-            height = cfg.size * 4 / 3;
+            baseHeight = cfg.size * 4 / 3;
           } else if (shape === "horizontal") {
-            height = cfg.size * 3 / 4;
+            baseHeight = cfg.size * 3 / 4;
           }
+
+          // Calculate actual dimensions (base × scale)
+          const width = baseWidth * scaleX;
+          const height = baseHeight * scaleY;
 
           const rect = new fabric.Rect({
             left: 0,
@@ -624,7 +712,7 @@ export default function CardBuilderV2({ eventId, fullscreen = false }: CardBuild
           const text = new fabric.Text("Headshot", {
             left: width / 2,
             top: height / 2,
-            fontSize: Math.max(14, width / 6),
+            fontSize: Math.min(Math.max(14, width / 6), 20), // Cap at 20px
             fill: '#9ca3af',
             fontFamily: 'Inter',
             originX: 'center',
@@ -639,16 +727,12 @@ export default function CardBuilderV2({ eventId, fullscreen = false }: CardBuild
             selectable: true,
             hasControls: true,
             lockRotation: true,
-            lockUniScaling: true,
+            lockUniScaling: true, // Force uniform scaling to maintain aspect ratio
             subTargetCheck: false,
             data: { elementKey: "headshot" },
           });
 
-          // Apply saved scale after group creation
-          if (cfg.scaleX !== undefined) group.set('scaleX', cfg.scaleX);
-          if (cfg.scaleY !== undefined) group.set('scaleY', cfg.scaleY);
-
-          // Hide middle edge controls - force corner-only resizing
+          // Hide middle edge controls - force corner-only resizing (maintains aspect ratio)
           group.setControlsVisibility({
             ml: false,
             mt: false,
@@ -681,21 +765,28 @@ export default function CardBuilderV2({ eventId, fullscreen = false }: CardBuild
             mb: false,
           });
 
-          // Test images use base size, ignore placeholder scale
-          // This prevents compounding when user resizes test image
-          fabricImg.scaleToWidth(cfg.size);
+          // Use actual size (base size × scale) to match the resized placeholder
+          const scaleX = cfg.scaleX || 1;
+          const actualWidth = cfg.size * scaleX;
+          fabricImg.scaleToWidth(actualWidth);
 
           canvas.add(fabricImg);
           elementRefs.current.companyLogo = fabricImg;
         } else {
-          // Render placeholder - create at base size, then apply scale
+          // Render placeholder - calculate actual size from base size × scale
           const baseSize = cfg.size;
+          const scaleX = cfg.scaleX || 1;
+          const scaleY = cfg.scaleY || 1;
+
+          // Calculate actual dimensions (base × scale)
+          const width = baseSize * scaleX;
+          const height = baseSize * scaleY;
 
           const rect = new fabric.Rect({
             left: 0,
             top: 0,
-            width: baseSize,
-            height: baseSize,
+            width: width,
+            height: height,
             fill: '#e5e7eb',
             stroke: '#d1d5db',
             strokeWidth: 2,
@@ -708,9 +799,9 @@ export default function CardBuilderV2({ eventId, fullscreen = false }: CardBuild
           });
 
           const text = new fabric.Text("Logo Drop Zone", {
-            left: baseSize / 2,
-            top: baseSize / 2,
-            fontSize: Math.max(11, baseSize / 6),
+            left: width / 2,
+            top: height / 2,
+            fontSize: Math.min(Math.max(11, width / 8), 18), // Cap at 18px
             fill: '#9ca3af',
             fontFamily: 'Inter',
             originX: 'center',
@@ -725,22 +816,12 @@ export default function CardBuilderV2({ eventId, fullscreen = false }: CardBuild
             selectable: true,
             hasControls: true,
             lockRotation: true,
-            lockUniScaling: true,
             subTargetCheck: false,
             data: { elementKey: "companyLogo" },
           });
 
-          // Apply saved scale after group creation
-          if (cfg.scaleX !== undefined) group.set('scaleX', cfg.scaleX);
-          if (cfg.scaleY !== undefined) group.set('scaleY', cfg.scaleY);
-
-          // Hide middle edge controls
-          group.setControlsVisibility({
-            ml: false,
-            mt: false,
-            mr: false,
-            mb: false,
-          });
+          // Logo: Allow all resize handles (free drag, no aspect ratio lock)
+          // Don't hide any controls - user can resize width/height independently
 
           canvas.add(group);
           elementRefs.current.companyLogo = group;
@@ -933,6 +1014,18 @@ export default function CardBuilderV2({ eventId, fullscreen = false }: CardBuild
       if (((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'z') || (e.ctrlKey && e.key === 'y')) {
         e.preventDefault();
         redo();
+        return;
+      }
+
+      // ESC: Deselect (clear selection)
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        const canvas = fabricCanvasRef.current;
+        if (canvas) {
+          canvas.discardActiveObject();
+          canvas.renderAll();
+        }
+        setSelectedElement(null);
         return;
       }
 
@@ -1712,6 +1805,196 @@ export default function CardBuilderV2({ eventId, fullscreen = false }: CardBuild
                 </div>
               )}
             </div>
+
+            {/* Text Formatting - always visible, disabled when no text selected */}
+            <>
+              <div className="h-6 w-px bg-border" />
+
+              {/* Text Style Controls - prevent canvas interference */}
+              <div
+                className="flex items-center gap-2 px-2 py-1 bg-muted/30 rounded-md"
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                }}
+              >
+                  {/* Font Family */}
+                  <select
+                    value={selectedElement && config[selectedElement] ? (config[selectedElement].fontFamily || "Inter") : "Inter"}
+                    onChange={(e) => selectedElement && updateElement(selectedElement, { fontFamily: e.target.value })}
+                    disabled={!selectedElement || !["name", "title", "company"].includes(selectedElement)}
+                    className="h-7 px-2 text-xs border border-border rounded bg-background disabled:opacity-50"
+                  >
+                    <option value="Inter">Inter</option>
+                    <option value="Arial">Arial</option>
+                    <option value="Helvetica">Helvetica</option>
+                    <option value="Georgia">Georgia</option>
+                    <option value="Times New Roman">Times</option>
+                  </select>
+
+                  {/* Font Size */}
+                  <Input
+                    type="number"
+                    value={selectedElement && config[selectedElement] ? (config[selectedElement].fontSize || 16) : 16}
+                    onChange={(e) => {
+                      if (!selectedElement) return;
+                      // Allow free typing - update immediately
+                      const val = parseInt(e.target.value);
+                      if (!isNaN(val)) {
+                        updateElement(selectedElement, { fontSize: val });
+                      }
+                    }}
+                    onBlur={(e) => {
+                      if (!selectedElement) return;
+                      // Validate on blur - clamp to valid range
+                      const val = parseInt(e.target.value);
+                      if (!isNaN(val)) {
+                        const clamped = Math.max(8, Math.min(120, val));
+                        updateElement(selectedElement, { fontSize: clamped });
+                      }
+                    }}
+                    disabled={!selectedElement || !["name", "title", "company"].includes(selectedElement)}
+                    className="w-14 h-7 text-xs text-center disabled:opacity-50"
+                    min={8}
+                    max={120}
+                  />
+
+                  <div className="h-4 w-px bg-border" />
+
+                  {/* Bold */}
+                  <button
+                    onClick={() => {
+                      if (!selectedElement) return;
+                      const current = config[selectedElement]?.fontWeight || 400;
+                      updateElement(selectedElement, { fontWeight: current === 700 ? 400 : 700 });
+                    }}
+                    disabled={!selectedElement || !["name", "title", "company"].includes(selectedElement)}
+                    className={`h-7 w-7 flex items-center justify-center rounded font-bold disabled:opacity-50 ${
+                      selectedElement && config[selectedElement]?.fontWeight === 700 ? 'bg-primary text-primary-foreground' : 'hover:bg-accent border border-border'
+                    }`}
+                    title="Bold"
+                  >
+                    B
+                  </button>
+                  {/* Italic */}
+                  <button
+                    onClick={() => {
+                      if (!selectedElement) return;
+                      const current = config[selectedElement]?.fontStyle || "normal";
+                      updateElement(selectedElement, { fontStyle: current === "italic" ? "normal" : "italic" });
+                    }}
+                    disabled={!selectedElement || !["name", "title", "company"].includes(selectedElement)}
+                    className={`h-7 w-7 flex items-center justify-center rounded italic disabled:opacity-50 ${
+                      selectedElement && config[selectedElement]?.fontStyle === "italic" ? 'bg-primary text-primary-foreground' : 'hover:bg-accent border border-border'
+                    }`}
+                    title="Italic"
+                  >
+                    I
+                  </button>
+                  {/* Underline */}
+                  <button
+                    onClick={() => {
+                      if (!selectedElement) return;
+                      const current = config[selectedElement]?.underline || false;
+                      updateElement(selectedElement, { underline: !current });
+                    }}
+                    disabled={!selectedElement || !["name", "title", "company"].includes(selectedElement)}
+                    className={`h-7 w-7 flex items-center justify-center rounded underline disabled:opacity-50 ${
+                      selectedElement && config[selectedElement]?.underline ? 'bg-primary text-primary-foreground' : 'hover:bg-accent border border-border'
+                    }`}
+                    title="Underline"
+                  >
+                    U
+                  </button>
+
+                  <div className="h-4 w-px bg-border" />
+
+                  {/* Text Align */}
+                  <button
+                    onClick={() => selectedElement && updateElement(selectedElement, { textAlign: "left" })}
+                    disabled={!selectedElement || !["name", "title", "company"].includes(selectedElement)}
+                    className={`h-7 px-2 flex items-center justify-center rounded text-xs disabled:opacity-50 ${
+                      selectedElement && config[selectedElement]?.textAlign === "left" ? 'bg-primary text-primary-foreground' : 'hover:bg-accent border border-border'
+                    }`}
+                    title="Align Text Left"
+                  >
+                    <AlignLeft className="h-3 w-3" />
+                  </button>
+                  <button
+                    onClick={() => selectedElement && updateElement(selectedElement, { textAlign: "center" })}
+                    disabled={!selectedElement || !["name", "title", "company"].includes(selectedElement)}
+                    className={`h-7 px-2 flex items-center justify-center rounded text-xs disabled:opacity-50 ${
+                      selectedElement && config[selectedElement]?.textAlign === "center" ? 'bg-primary text-primary-foreground' : 'hover:bg-accent border border-border'
+                    }`}
+                    title="Align Text Center"
+                  >
+                    <AlignCenterHorizontal className="h-3 w-3" />
+                  </button>
+                  <button
+                    onClick={() => selectedElement && updateElement(selectedElement, { textAlign: "right" })}
+                    disabled={!selectedElement || !["name", "title", "company"].includes(selectedElement)}
+                    className={`h-7 px-2 flex items-center justify-center rounded text-xs disabled:opacity-50 ${
+                      selectedElement && config[selectedElement]?.textAlign === "right" ? 'bg-primary text-primary-foreground' : 'hover:bg-accent border border-border'
+                    }`}
+                    title="Align Text Right"
+                  >
+                    <AlignRight className="h-3 w-3" />
+                  </button>
+
+                  <div className="h-4 w-px bg-border" />
+
+                  {/* Color Picker */}
+                  <input
+                    type="color"
+                    value={selectedElement && config[selectedElement] ? (config[selectedElement].color || "#000000") : "#000000"}
+                    onChange={(e) => selectedElement && updateElement(selectedElement, { color: e.target.value })}
+                    disabled={!selectedElement || !["name", "title", "company"].includes(selectedElement)}
+                    className="w-7 h-7 rounded border border-border cursor-pointer disabled:opacity-50"
+                    title="Text Color"
+                  />
+
+                  <div className="h-4 w-px bg-border" />
+
+                  {/* Line Height */}
+                  <Input
+                    type="number"
+                    value={selectedElement && config[selectedElement] ? (config[selectedElement].lineHeight || 1.2) : 1.2}
+                    onChange={(e) => {
+                      if (!selectedElement) return;
+                      const val = parseFloat(e.target.value);
+                      if (!isNaN(val) && val >= 0.5 && val <= 3) {
+                        updateElement(selectedElement, { lineHeight: val });
+                      }
+                    }}
+                    disabled={!selectedElement || !["name", "title", "company"].includes(selectedElement)}
+                    className="w-12 h-7 text-xs text-center disabled:opacity-50"
+                    step={0.1}
+                    min={0.5}
+                    max={3}
+                    title="Line Height"
+                  />
+
+                  {/* Letter Spacing */}
+                  <Input
+                    type="number"
+                    value={selectedElement && config[selectedElement] ? (config[selectedElement].charSpacing || 0) : 0}
+                    onChange={(e) => {
+                      if (!selectedElement) return;
+                      const val = parseInt(e.target.value);
+                      if (!isNaN(val) && val >= -100 && val <= 500) {
+                        updateElement(selectedElement, { charSpacing: val });
+                      }
+                    }}
+                    disabled={!selectedElement || !["name", "title", "company"].includes(selectedElement)}
+                    className="w-12 h-7 text-xs text-center disabled:opacity-50"
+                    min={-100}
+                    max={500}
+                    title="Letter Spacing"
+                  />
+                </div>
+              </>
           </div>
 
           {/* Right: Actions - Always visible */}
@@ -1963,340 +2246,22 @@ export default function CardBuilderV2({ eventId, fullscreen = false }: CardBuild
               <canvas ref={canvasRef} style={{ display: "block" }} />
             </div>
 
-            {/* Floating Text Toolbar - appears when text element is selected */}
-            {selectedElement && ["name", "title", "company"].includes(selectedElement) && config[selectedElement] && (
-              <div
-                className="absolute top-4 left-1/2 -translate-x-1/2 bg-card border border-border rounded-lg shadow-xl p-3 flex items-center gap-3 z-10"
-                onMouseDown={(e) => e.stopPropagation()}
-                onClick={(e) => e.stopPropagation()}
-              >
-                {/* Font Family */}
-                <div className="flex items-center gap-1.5">
-                  <Label className="text-xs text-muted-foreground">Font</Label>
-                  <select
-                    value={config[selectedElement].fontFamily || "Inter"}
-                    onChange={(e) => {
-                      e.stopPropagation();
-                      updateElement(selectedElement, { fontFamily: e.target.value });
-                    }}
-                    className="h-8 px-2 text-xs border border-border rounded bg-background"
-                    onMouseDown={(e) => e.stopPropagation()}
-                  >
-                    <optgroup label="Sans Serif">
-                      <option value="Inter">Inter</option>
-                      <option value="Roboto">Roboto</option>
-                      <option value="Open Sans">Open Sans</option>
-                      <option value="Lato">Lato</option>
-                      <option value="Montserrat">Montserrat</option>
-                      <option value="Poppins">Poppins</option>
-                      <option value="Raleway">Raleway</option>
-                      <option value="Nunito">Nunito</option>
-                      <option value="Ubuntu">Ubuntu</option>
-                      <option value="Work Sans">Work Sans</option>
-                      <option value="Helvetica">Helvetica</option>
-                      <option value="Arial">Arial</option>
-                      <option value="Verdana">Verdana</option>
-                    </optgroup>
-                    <optgroup label="Serif">
-                      <option value="Playfair Display">Playfair Display</option>
-                      <option value="Merriweather">Merriweather</option>
-                      <option value="Lora">Lora</option>
-                      <option value="PT Serif">PT Serif</option>
-                      <option value="Crimson Text">Crimson Text</option>
-                      <option value="Georgia">Georgia</option>
-                      <option value="Times New Roman">Times New Roman</option>
-                    </optgroup>
-                    <optgroup label="Display">
-                      <option value="Bebas Neue">Bebas Neue</option>
-                      <option value="Oswald">Oswald</option>
-                      <option value="Anton">Anton</option>
-                      <option value="Righteous">Righteous</option>
-                      <option value="Abril Fatface">Abril Fatface</option>
-                      <option value="Impact">Impact</option>
-                    </optgroup>
-                    <optgroup label="Handwriting">
-                      <option value="Dancing Script">Dancing Script</option>
-                      <option value="Pacifico">Pacifico</option>
-                      <option value="Caveat">Caveat</option>
-                      <option value="Satisfy">Satisfy</option>
-                    </optgroup>
-                    <optgroup label="Monospace">
-                      <option value="Roboto Mono">Roboto Mono</option>
-                      <option value="Source Code Pro">Source Code Pro</option>
-                      <option value="Courier New">Courier New</option>
-                    </optgroup>
-                  </select>
-                </div>
-
-                <div className="h-6 w-px bg-border" />
-
-                {/* Font Size with +/- */}
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      const current = config[selectedElement].fontSize || 16;
-                      if (current > 8) updateElement(selectedElement, { fontSize: current - 1 });
-                    }}
-                    className="h-7 w-7 flex items-center justify-center rounded hover:bg-accent border border-border"
-                    onMouseDown={(e) => e.stopPropagation()}
-                  >
-                    -
-                  </button>
-                  <Input
-                    type="number"
-                    value={config[selectedElement].fontSize || 16}
-                    onChange={(e) => {
-                      e.stopPropagation();
-                      const val = parseInt(e.target.value);
-                      if (!isNaN(val) && val >= 8 && val <= 120) {
-                        updateElement(selectedElement, { fontSize: val });
-                      }
-                    }}
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onFocus={(e) => e.stopPropagation()}
-                    className="w-14 h-7 text-xs text-center"
-                    min={8}
-                    max={120}
-                  />
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      const current = config[selectedElement].fontSize || 16;
-                      if (current < 120) updateElement(selectedElement, { fontSize: current + 1 });
-                    }}
-                    className="h-7 w-7 flex items-center justify-center rounded hover:bg-accent border border-border"
-                    onMouseDown={(e) => e.stopPropagation()}
-                  >
-                    +
-                  </button>
-                </div>
-
-                <div className="h-6 w-px bg-border" />
-
-                {/* Bold, Italic, Underline */}
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      const current = config[selectedElement].fontWeight || 400;
-                      updateElement(selectedElement, { fontWeight: current === 700 ? 400 : 700 });
-                    }}
-                    onMouseDown={(e) => e.stopPropagation()}
-                    className={`h-7 w-7 flex items-center justify-center rounded font-bold ${
-                      config[selectedElement].fontWeight === 700 ? 'bg-primary text-primary-foreground' : 'hover:bg-accent border border-border'
-                    }`}
-                    title="Bold"
-                  >
-                    B
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      const current = config[selectedElement].fontStyle || "normal";
-                      updateElement(selectedElement, { fontStyle: current === "italic" ? "normal" : "italic" });
-                    }}
-                    onMouseDown={(e) => e.stopPropagation()}
-                    className={`h-7 w-7 flex items-center justify-center rounded italic ${
-                      config[selectedElement].fontStyle === "italic" ? 'bg-primary text-primary-foreground' : 'hover:bg-accent border border-border'
-                    }`}
-                    title="Italic"
-                  >
-                    I
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      const current = config[selectedElement].underline || false;
-                      updateElement(selectedElement, { underline: !current });
-                    }}
-                    onMouseDown={(e) => e.stopPropagation()}
-                    className={`h-7 w-7 flex items-center justify-center rounded underline ${
-                      config[selectedElement].underline ? 'bg-primary text-primary-foreground' : 'hover:bg-accent border border-border'
-                    }`}
-                    title="Underline"
-                  >
-                    U
-                  </button>
-                </div>
-
-                <div className="h-6 w-px bg-border" />
-
-                {/* Text Color */}
-                <div className="flex items-center gap-1.5">
-                  <Label className="text-xs text-muted-foreground">Color</Label>
-                  <div className="flex items-center gap-1">
-                    {/* Preset color swatches */}
-                    {[
-                      { name: "Black", value: "#000000" },
-                      { name: "White", value: "#FFFFFF" },
-                      { name: "Gray", value: "#6B7280" },
-                      { name: "Blue", value: "#3B82F6" },
-                      { name: "Red", value: "#EF4444" },
-                      { name: "Green", value: "#10B981" },
-                      { name: "Purple", value: "#8B5CF6" },
-                      { name: "Yellow", value: "#F59E0B" },
-                    ].map((color) => (
-                      <button
-                        key={color.value}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          e.preventDefault();
-                          updateElement(selectedElement, { color: color.value });
-                        }}
-                        onMouseDown={(e) => {
-                          e.stopPropagation();
-                          e.preventDefault();
-                        }}
-                        className={`w-6 h-6 rounded border-2 transition-all hover:scale-110 ${
-                          config[selectedElement].color === color.value
-                            ? "border-primary ring-2 ring-primary/20"
-                            : "border-border hover:border-primary/50"
-                        }`}
-                        style={{ backgroundColor: color.value }}
-                        title={color.name}
-                      />
-                    ))}
-
-                    {/* HEX input */}
-                    <Input
-                      type="text"
-                      value={config[selectedElement].color || "#000000"}
-                      onChange={(e) => {
-                        e.stopPropagation();
-                        const value = e.target.value;
-                        // Allow # and hex characters
-                        if (/^#[0-9A-Fa-f]{0,6}$/.test(value) || value === "") {
-                          updateElement(selectedElement, { color: value });
-                        }
-                      }}
-                      onBlur={(e) => {
-                        // Ensure valid hex on blur
-                        let value = e.target.value;
-                        if (!value.startsWith("#")) value = "#" + value;
-                        if (!/^#[0-9A-Fa-f]{6}$/.test(value)) {
-                          value = "#000000"; // Reset to black if invalid
-                        }
-                        updateElement(selectedElement, { color: value });
-                      }}
-                      onMouseDown={(e) => e.stopPropagation()}
-                      className="w-20 h-7 text-xs font-mono px-2"
-                      placeholder="#000000"
-                    />
-
-                    {/* Color picker fallback */}
-                    <div className="relative">
-                      <input
-                        type="color"
-                        value={config[selectedElement].color || "#000000"}
-                        onChange={(e) => {
-                          e.stopPropagation();
-                          updateElement(selectedElement, { color: e.target.value });
-                        }}
-                        onMouseDown={(e) => e.stopPropagation()}
-                        className="w-7 h-7 rounded border border-border cursor-pointer"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="h-6 w-px bg-border" />
-
-                {/* Text Align */}
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      updateElement(selectedElement, { textAlign: "left" });
-                    }}
-                    onMouseDown={(e) => e.stopPropagation()}
-                    className={`h-7 px-2 flex items-center justify-center rounded text-xs ${
-                      config[selectedElement].textAlign === "left" ? 'bg-primary text-primary-foreground' : 'hover:bg-accent border border-border'
-                    }`}
-                    title="Align Left"
-                  >
-                    Left
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      updateElement(selectedElement, { textAlign: "center" });
-                    }}
-                    onMouseDown={(e) => e.stopPropagation()}
-                    className={`h-7 px-2 flex items-center justify-center rounded text-xs ${
-                      config[selectedElement].textAlign === "center" ? 'bg-primary text-primary-foreground' : 'hover:bg-accent border border-border'
-                    }`}
-                    title="Align Center"
-                  >
-                    Center
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      updateElement(selectedElement, { textAlign: "right" });
-                    }}
-                    onMouseDown={(e) => e.stopPropagation()}
-                    className={`h-7 px-2 flex items-center justify-center rounded text-xs ${
-                      config[selectedElement].textAlign === "right" ? 'bg-primary text-primary-foreground' : 'hover:bg-accent border border-border'
-                    }`}
-                    title="Align Right"
-                  >
-                    Right
-                  </button>
-                </div>
-
-                <div className="h-6 w-px bg-border" />
-
-                {/* Line Height */}
-                <div className="flex items-center gap-1.5">
-                  <Label className="text-xs text-muted-foreground">Line</Label>
-                  <Input
-                    type="number"
-                    value={config[selectedElement].lineHeight || 1.2}
-                    onChange={(e) => {
-                      e.stopPropagation();
-                      const val = parseFloat(e.target.value);
-                      if (!isNaN(val) && val >= 0.5 && val <= 3) {
-                        updateElement(selectedElement, { lineHeight: val });
-                      }
-                    }}
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onFocus={(e) => e.stopPropagation()}
-                    className="w-14 h-7 text-xs text-center"
-                    step={0.1}
-                    min={0.5}
-                    max={3}
-                  />
-                </div>
-
-                <div className="h-6 w-px bg-border" />
-
-                {/* Letter Spacing */}
-                <div className="flex items-center gap-1.5">
-                  <Label className="text-xs text-muted-foreground">Spacing</Label>
-                  <Input
-                    type="number"
-                    value={config[selectedElement].charSpacing || 0}
-                    onChange={(e) => {
-                      e.stopPropagation();
-                      const val = parseInt(e.target.value);
-                      if (!isNaN(val) && val >= -100 && val <= 500) {
-                        updateElement(selectedElement, { charSpacing: val });
-                      }
-                    }}
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onFocus={(e) => e.stopPropagation()}
-                    className="w-14 h-7 text-xs text-center"
-                    min={-100}
-                    max={500}
-                  />
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Right Sidebar - Test Images */}
-          <div className="w-64 border-l bg-card/30 p-4 space-y-4">
+          {/*
+            DEVELOPER NOTE (MVP): Test image uploads temporarily disabled for MVP.
+            Gray placeholder boxes will be used for card design instead.
+
+            Issue: Drop zone sizing and test image scaling need further refinement.
+            When re-enabling, ensure:
+            1. Gray placeholder fills entire selection box
+            2. Test images match resized drop zone dimensions
+            3. Scale compound logic works correctly on resize
+
+            To re-enable: Uncomment the div below and test thoroughly.
+          */}
+          {/* <div className="w-64 border-l bg-card/30 p-4 space-y-4">
             <div>
               <h3 className="text-sm font-semibold mb-2">Test Images</h3>
               <p className="text-xs text-muted-foreground mb-3">Preview only (not saved)</p>
@@ -2342,7 +2307,7 @@ export default function CardBuilderV2({ eventId, fullscreen = false }: CardBuild
                 </div>
               )}
             </div>
-          </div>
+          </div> */}
         </div>
       </div>
     </>
