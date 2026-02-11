@@ -56,6 +56,7 @@ export default function SpeakerModule() {
       const lastName = it.last_name ?? it.lastName ?? "";
       const email = it.email ?? "";
       const company = it.company_name ?? it.company ?? it.companyName ?? "";
+      const companyRole = it.company_role ?? it.companyRole ?? "";
       const headshot = it.headshot ?? it.headshot_url ?? it.avatar_url ?? null;
       const intakeFormStatus = it.intake_form_status ?? it.intakeFormStatus ?? "pending";
       const createdAt = it.registered_at ?? it.created_at ?? it.createdAt ?? null;
@@ -67,6 +68,7 @@ export default function SpeakerModule() {
         lastName,
         email,
         company,
+        companyRole,
         avatarUrl: headshot,
         intakeFormStatus,
         createdAt,

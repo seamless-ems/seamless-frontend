@@ -18,6 +18,7 @@ Working rules (short)
 - Keep changes incremental: one small task per branch and preserve existing behavior.
 - Follow the design system and tokens in `src/index.css` and `tailwind.config.ts`.
 - **CRITICAL: NO COMPLETION DOCUMENTS** - Do NOT create summary/review/completed files (e.g., "UX_IMPROVEMENTS_COMPLETED.md", "REVIEW.md"). These burn credits unnecessarily. Just do the work, test it, report results verbally. Only update existing docs when required (README, API_GAPS, CLAUDE.md).
+- **KEEP DOCS CONCISE** - API_GAPS.md should be SHORT and DIRECT. Backend team is competent - they don't need 50 lines of explanation for simple requests. Just state: what's needed, why, and minimal implementation notes. No testing checklists, no example payloads unless absolutely critical.
 - **CSS consistency:** All cards, tables, and component styling must follow these patterns:
   - **Cards:** Use `Card` component with `bg-card`, `border border-border`, `hover:shadow-sm`, `hover:border-primary` (for interactive cards like EventCard)
   - **Card Actions:** Buttons in cards use `variant="outline"` with `size="sm"` and `className="flex-1"` for equal widths
