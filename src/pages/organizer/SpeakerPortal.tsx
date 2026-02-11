@@ -52,6 +52,16 @@ export default function SpeakerPortal() {
     staleTime: 0, // Always refetch when component mounts
   });
 
+  const { data: formConfig } = useQuery<any>({
+    queryKey: ["formConfig", id, "speaker-info"],
+    queryFn: async () => {
+      const { getFormConfigForEvent } = await import("@/lib/api");
+      const data = await getFormConfigForEvent(id!, "speaker-info");
+      return data;
+    },
+    enabled: Boolean(id),
+  });
+
   const s = speaker
     ? {
       id: speaker.id,
@@ -70,6 +80,7 @@ export default function SpeakerPortal() {
       websiteCardApproved: (speaker as any).websiteCardApproved ?? (speaker as any).website_card_approved ?? false,
       promoCardApproved: (speaker as any).promoCardApproved ?? (speaker as any).promo_card_approved ?? false,
       internalNotes: (speaker as any).internalNotes ?? (speaker as any).internal_notes ?? "",
+      customFields: (speaker as any).customFields ?? (speaker as any).custom_fields ?? {},
     }
     : null;
 
@@ -185,6 +196,7 @@ export default function SpeakerPortal() {
             <div>
               <SpeakerInfoCard
                 s={s}
+                formConfig={formConfig?.config}
                 onEdit={() => setEditOpen(true)}
                 onViewBio={() => setBioOpen(true)}
                 onViewNotes={() => setNotesOpen(true)}
@@ -254,21 +266,79 @@ export default function SpeakerPortal() {
               companyRole: s?.companyRole ?? "",
               linkedin: s?.linkedin ?? "",
               bio: s?.bio ?? "",
+              // Map custom fields: backend returns keys without underscores, but form config has underscores
+              // So we need to map backend keys back to form config field IDs
+              ...(() => {
+                const customFieldValues: Record<string, any> = {};
+                const customFields = s?.customFields || {};
+                const configFields = formConfig?.config || [];
+
+                // For each custom field in the config, try to find its value in the backend data
+                configFields.forEach((field: any) => {
+                  if (field.custom && field.enabled && field.type !== 'file') {
+                    // Try exact match first
+                    if (customFields[field.id]) {
+                      customFieldValues[field.id] = customFields[field.id];
+                    } else {
+                      // Try without underscores (backend strips them)
+                      const keyWithoutUnderscore = field.id.replace(/_/g, '');
+                      if (customFields[keyWithoutUnderscore]) {
+                        customFieldValues[field.id] = customFields[keyWithoutUnderscore];
+                      }
+                    }
+                  }
+                });
+
+                return customFieldValues;
+              })(),
             }}
+            formConfig={formConfig?.config}
             submitLabel="Save"
             onCancel={() => setEditOpen(false)}
             onSubmit={async (values) => {
               if (!id || !speakerId) return;
               try {
-                await updateSpeaker(id, speakerId, {
-                  first_name: values.firstName,
-                  last_name: values.lastName,
-                  email: values.email,
-                  company_name: values.companyName,
-                  company_role: values.companyRole,
-                  linkedin: values.linkedin,
-                  bio: values.bio,
+                // Collect custom fields (any field not in the standard mapping)
+                const standardKeys = ['firstName', 'lastName', 'email', 'companyName', 'companyRole', 'linkedin', 'bio'];
+                const customFields: Record<string, any> = {};
+                Object.keys(values).forEach(key => {
+                  if (!standardKeys.includes(key)) {
+                    customFields[key] = values[key];
+                  }
                 });
+
+                // Check if all required fields are filled to determine status
+                const requiredFields = formConfig?.config?.filter((f: any) => f.required && f.enabled) || [];
+                const allRequiredFilled = requiredFields.every((field: any) => {
+                  const key = field.id === 'first_name' ? 'firstName' :
+                              field.id === 'last_name' ? 'lastName' :
+                              field.id === 'company_name' ? 'companyName' :
+                              field.id === 'company_role' ? 'companyRole' :
+                              field.id;
+                  const value = standardKeys.includes(key) ? values[key] : customFields[key];
+                  return value && value.trim() !== '';
+                });
+
+                // Prepare payload
+                const payload: any = {
+                  id: speakerId,
+                  firstName: values.firstName,
+                  lastName: values.lastName,
+                  email: values.email,
+                  companyName: values.companyName || null,
+                  companyRole: values.companyRole || null,
+                  linkedin: values.linkedin || null,
+                  bio: values.bio || null,
+                  formType: s?.formType || "speaker-info",
+                  intakeFormStatus: allRequiredFilled ? "submitted" : "pending", // Update status based on required fields
+                };
+
+                // Add customFields if any exist
+                if (Object.keys(customFields).length > 0) {
+                  payload.customFields = customFields;
+                }
+
+                await updateSpeaker(id, speakerId, payload);
                 queryClient.invalidateQueries({ queryKey: ["event", id, "speaker", speakerId] });
                 queryClient.invalidateQueries({ queryKey: ["event", id, "speakers"], exact: false });
                 setEditOpen(false);

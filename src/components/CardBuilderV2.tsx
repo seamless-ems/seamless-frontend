@@ -1097,25 +1097,40 @@ export default function CardBuilderV2({ eventId, fullscreen = false }: CardBuild
     const saved = localStorage.getItem(storageKey);
     if (saved) {
       try {
-        const { config: savedConfig, templateUrl: savedTemplateUrl } = JSON.parse(saved);
+        const { config: savedConfig, templateUrl: savedTemplateUrl, canvasWidth: savedWidth, canvasHeight: savedHeight } = JSON.parse(saved);
         if (savedConfig) {
           setConfig(savedConfig);
           setHasUnsavedChanges(false);
         }
+
+        // Load canvas dimensions if saved (preferred method)
+        if (savedWidth && savedHeight) {
+          setCanvasWidth(savedWidth);
+          setCanvasHeight(savedHeight);
+          if (fabricCanvasRef.current) {
+            fabricCanvasRef.current.setDimensions({
+              width: savedWidth,
+              height: savedHeight,
+            });
+          }
+        }
+
         if (savedTemplateUrl) {
-          // Load background image to get its dimensions
+          // Load background image to get its dimensions (fallback if dimensions not saved)
           const img = new Image();
           img.onload = () => {
-            // Update canvas dimensions to match background
-            setCanvasWidth(img.width);
-            setCanvasHeight(img.height);
+            // Update canvas dimensions to match background (only if not already set from saved data)
+            if (!savedWidth || !savedHeight) {
+              setCanvasWidth(img.width);
+              setCanvasHeight(img.height);
 
-            // Resize Fabric canvas
-            if (fabricCanvasRef.current) {
-              fabricCanvasRef.current.setDimensions({
-                width: img.width,
-                height: img.height,
-              });
+              // Resize Fabric canvas
+              if (fabricCanvasRef.current) {
+                fabricCanvasRef.current.setDimensions({
+                  width: img.width,
+                  height: img.height,
+                });
+              }
             }
 
             // Set background URL (will trigger re-render)
@@ -1569,11 +1584,37 @@ export default function CardBuilderV2({ eventId, fullscreen = false }: CardBuild
   };
 
   // Save
-  const handleSave = () => {
+  const handleSave = async () => {
     const storageKey = `${cardType}-card-config-${eventId || "default"}`;
-    localStorage.setItem(storageKey, JSON.stringify({ config, templateUrl }));
+    localStorage.setItem(storageKey, JSON.stringify({ config, templateUrl, canvasWidth, canvasHeight }));
+
+    // Also save to backend if eventId exists
+    if (eventId) {
+      try {
+        const { createPromoConfig } = await import("@/lib/api");
+
+        // Save the full config to the promo-cards API (include canvas dimensions for proper scaling)
+        await createPromoConfig({
+          eventId,
+          promoType: cardType,
+          config: {
+            ...config,
+            templateUrl, // Include background URL in config
+            canvasWidth, // Save canvas dimensions for scaling
+            canvasHeight,
+          },
+        });
+
+        toast({ title: "Saved", description: `${cardType === "promo" ? "Promo" : "Website"} card template saved` });
+      } catch (err: any) {
+        console.error("Failed to save template to event:", err);
+        toast({ title: "Saved locally", description: "Template saved to browser, but failed to sync with server" });
+      }
+    } else {
+      toast({ title: "Saved", description: `${cardType === "promo" ? "Promo" : "Website"} card saved locally` });
+    }
+
     setHasUnsavedChanges(false);
-    toast({ title: "Saved", description: `${cardType === "promo" ? "Promo" : "Website"} card saved` });
   };
 
   // Export PNG
