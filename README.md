@@ -132,3 +132,5 @@ For design system, routing, and architecture details see `CLAUDE.md`.
 - Add Speaker/ FormConfig optional field for "talk_topic"
 - For the select speakers make this default off
 - For edit form we need both radio buttons and checkboxes as options for the builder
+- Add custom font upload for card builder (and then use that font in the card builder)
+- Apply to all button for card builder (speaker promo card download)
