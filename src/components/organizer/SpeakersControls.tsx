@@ -40,9 +40,9 @@ export default function SpeakersControls({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="pending">Pending</SelectItem>
-            <SelectItem value="approved">Approved</SelectItem>
+            <SelectItem value="pending">Info Pending</SelectItem>
+            <SelectItem value="submitted">Info Submitted</SelectItem>
+            <SelectItem value="approved">Cards Approved</SelectItem>
             <SelectItem value="archived">Archived</SelectItem>
           </SelectContent>
         </Select>

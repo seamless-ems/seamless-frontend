@@ -1,5 +1,5 @@
 /**
- * CardBuilderV2 - Unified Card Builder Component
+ * CardBuilder - Unified Card Builder Component
  *
  * A professional Canva-like design tool built with Fabric.js for creating both
  * promo cards and website cards. Replaces the previous separate builders.
@@ -41,6 +41,7 @@
  */
 
 import { useState, useRef, useEffect } from "react";
+import { useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -79,7 +80,7 @@ import type { FormFieldConfig } from "@/components/SpeakerFormBuilder";
 
 type CardType = "promo" | "website";
 
-interface CardBuilderV2Props {
+interface CardBuilderProps {
   eventId?: string;
   fullscreen?: boolean;
 }
@@ -225,9 +226,17 @@ const ELEMENT_TEMPLATES = {
   },
 };
 
-export default function CardBuilderV2({ eventId, fullscreen = false }: CardBuilderV2Props) {
+export default function CardBuilder({ eventId, fullscreen = false }: CardBuilderProps) {
   // State
-  const [cardType, setCardType] = useState<CardType>("promo");
+  const location = useLocation();
+  const deriveInitialCardType = (): CardType => {
+    const path = (location && location.pathname) || (typeof window !== 'undefined' ? window.location.pathname : '');
+    if (path.includes('/website-card-builder')) return 'website';
+    if (path.includes('/promo-card-builder')) return 'promo';
+    return 'promo';
+  };
+
+  const [cardType, setCardType] = useState<CardType>(deriveInitialCardType);
   const [config, setConfig] = useState<CardConfig>({});
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
   const [templateUrl, setTemplateUrl] = useState<string | null>(null);
@@ -981,7 +990,6 @@ export default function CardBuilderV2({ eventId, fullscreen = false }: CardBuild
   const loadImagePromise = (url: string): Promise<HTMLImageElement> => {
     return new Promise((resolve, reject) => {
       const img = new Image();
-      img.crossOrigin = "anonymous";
       img.onload = () => resolve(img);
       img.onerror = reject;
       img.src = url;
@@ -1091,31 +1099,54 @@ export default function CardBuilderV2({ eventId, fullscreen = false }: CardBuild
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [hasUnsavedChanges]);
 
-  // Load saved config from localStorage on mount
+  // Load saved config on mount: prefer server config for eventId, fallback to localStorage
   useEffect(() => {
     const storageKey = `${cardType}-card-config-${eventId || "default"}`;
-    const saved = localStorage.getItem(storageKey);
-    if (saved) {
+
+    const loadFromLocal = () => {
+      const saved = localStorage.getItem(storageKey);
+      if (!saved) return;
       try {
-        const { config: savedConfig, templateUrl: savedTemplateUrl } = JSON.parse(saved);
+        const { config: savedConfig, templateUrl: savedTemplateUrl, canvasWidth: savedWidth, canvasHeight: savedHeight } = JSON.parse(saved);
         if (savedConfig) {
           setConfig(savedConfig);
           setHasUnsavedChanges(false);
         }
-        if (savedTemplateUrl) {
-          // Load background image to get its dimensions
-          const img = new Image();
-          img.onload = () => {
-            // Update canvas dimensions to match background
-            setCanvasWidth(img.width);
-            setCanvasHeight(img.height);
 
-            // Resize Fabric canvas
-            if (fabricCanvasRef.current) {
-              fabricCanvasRef.current.setDimensions({
-                width: img.width,
-                height: img.height,
-              });
+        // Load canvas dimensions if saved (preferred method)
+        if (savedWidth && savedHeight) {
+          setCanvasWidth(savedWidth);
+          setCanvasHeight(savedHeight);
+          if (fabricCanvasRef.current) {
+            fabricCanvasRef.current.setDimensions({
+              width: savedWidth,
+              height: savedHeight,
+            });
+          }
+        }
+
+        if (savedTemplateUrl) {
+          // Load background image to get its dimensions (fallback if dimensions not saved)
+          const img = new Image();
+          img.onerror = (err) => {
+            console.error("Failed to load saved background image (possible CORS):", savedTemplateUrl, err);
+            toast({ title: "Background load failed", description: "Could not load background image due to CORS or network error. Try re-uploading the image.", variant: "destructive" });
+            // clear template to avoid broken image state
+            setTemplateUrl(null);
+          };
+          img.onload = () => {
+            // Update canvas dimensions to match background (only if not already set from saved data)
+            if (!savedWidth || !savedHeight) {
+              setCanvasWidth(img.width);
+              setCanvasHeight(img.height);
+
+              // Resize Fabric canvas
+              if (fabricCanvasRef.current) {
+                fabricCanvasRef.current.setDimensions({
+                  width: img.width,
+                  height: img.height,
+                });
+              }
             }
 
             // Set background URL (will trigger re-render)
@@ -1123,14 +1154,73 @@ export default function CardBuilderV2({ eventId, fullscreen = false }: CardBuild
           };
           img.src = savedTemplateUrl;
         }
-        toast({
-          title: "Loaded",
-          description: "Restored your previous card",
-          duration: 2000
-        });
+        toast({ title: "Loaded", description: "Restored your previous card", duration: 2000 });
       } catch (err) {
         console.error("Failed to load saved config:", err);
       }
+    };
+
+    // If we have an eventId, prefer fetching server config
+    if (eventId) {
+      (async () => {
+        try {
+          const api = await import("@/lib/api");
+          const res = await api.getPromoConfigForEvent(eventId, cardType);
+
+          // server may return { config: {...}, ... } or the config directly
+          const serverConfig = res?.config ?? res;
+
+          // If server returned a config object, use it
+          if (serverConfig && typeof serverConfig === "object") {
+            // serverConfig may be the saved config object (with templateUrl, canvasWidth/Height)
+            const savedConfig = serverConfig;
+            const savedTemplateUrl = serverConfig.templateUrl ?? null;
+            const savedWidth = serverConfig.canvasWidth ?? serverConfig.canvas_width ?? null;
+            const savedHeight = serverConfig.canvasHeight ?? serverConfig.canvas_height ?? null;
+
+            if (savedConfig) {
+              setConfig(savedConfig);
+              setHasUnsavedChanges(false);
+            }
+
+            if (savedWidth && savedHeight) {
+              setCanvasWidth(savedWidth);
+              setCanvasHeight(savedHeight);
+              if (fabricCanvasRef.current) {
+                fabricCanvasRef.current.setDimensions({ width: savedWidth, height: savedHeight });
+              }
+            }
+
+            if (savedTemplateUrl) {
+              const img = new Image();
+              img.onload = () => {
+                if (!savedWidth || !savedHeight) {
+                  setCanvasWidth(img.width);
+                  setCanvasHeight(img.height);
+                  if (fabricCanvasRef.current) {
+                    fabricCanvasRef.current.setDimensions({ width: img.width, height: img.height });
+                  }
+                }
+                setTemplateUrl(savedTemplateUrl);
+              };
+              img.src = savedTemplateUrl;
+            }
+
+            toast({ title: "Loaded", description: "Loaded template from event", duration: 2000 });
+            return;
+          }
+
+          // If no server config found, fall back to localStorage
+          loadFromLocal();
+        } catch (err) {
+          console.error("Failed to fetch server promo config:", err);
+          // fallback
+          loadFromLocal();
+        }
+      })();
+    } else {
+      // No eventId -> use local storage
+      loadFromLocal();
     }
   }, [eventId, cardType]); // Load when eventId or cardType changes
 
@@ -1569,11 +1659,66 @@ export default function CardBuilderV2({ eventId, fullscreen = false }: CardBuild
   };
 
   // Save
-  const handleSave = () => {
+  const handleSave = async () => {
     const storageKey = `${cardType}-card-config-${eventId || "default"}`;
-    localStorage.setItem(storageKey, JSON.stringify({ config, templateUrl }));
+    localStorage.setItem(storageKey, JSON.stringify({ config, templateUrl, canvasWidth, canvasHeight }));
+
+    // Also save to backend if eventId exists
+    if (eventId) {
+      try {
+        // Dynamically import API helpers so this file doesn't eagerly bundle all api methods
+        const api = await import("@/lib/api");
+        const { createPromoConfig, uploadFile } = api;
+
+        // If templateUrl is a data: or blob: URL, upload it to the /uploads endpoint
+        // and replace it with the returned public URL when saving to the server.
+        let finalTemplateUrl = templateUrl;
+
+        if (templateUrl && (templateUrl.startsWith("data:") || templateUrl.startsWith("blob:"))) {
+          try {
+            // Convert data/blob URL to a Blob, then to a File for upload
+            const fetched = await fetch(templateUrl);
+            const blob = await fetched.blob();
+            const fileName = `template-${Date.now()}`;
+            const file = new File([blob], `${fileName}.${(blob.type || "image/png").split("/").pop()}`, { type: blob.type || "image/png" });
+
+            const uploadRes = await uploadFile(file, undefined, eventId);
+            const uploadedUrl = uploadRes?.public_url ?? uploadRes?.publicUrl ?? uploadRes?.url ?? uploadRes?.id ?? null;
+
+            if (uploadedUrl) {
+              finalTemplateUrl = uploadedUrl;
+              // update local state so UI reflects the server URL
+              setTemplateUrl(finalTemplateUrl);
+            }
+          } catch (uploadErr) {
+            console.error("Template upload failed:", uploadErr);
+            // Continue and attempt to save the data URL if upload fails; notify user
+            toast({ title: "Upload failed", description: "Could not upload background image to server. Saved locally instead.", variant: "destructive" });
+          }
+        }
+
+        // Save the full config to the promo-cards API (include canvas dimensions for proper scaling)
+        await createPromoConfig({
+          eventId,
+          promoType: cardType,
+          config: {
+            ...config,
+            templateUrl: finalTemplateUrl, // Use uploaded URL when available
+            canvasWidth, // Save canvas dimensions for scaling
+            canvasHeight,
+          },
+        });
+
+        toast({ title: "Saved", description: `${cardType === "promo" ? "Promo" : "Website"} card template saved` });
+      } catch (err: any) {
+        console.error("Failed to save template to event:", err);
+        toast({ title: "Saved locally", description: "Template saved to browser, but failed to sync with server" });
+      }
+    } else {
+      toast({ title: "Saved", description: `${cardType === "promo" ? "Promo" : "Website"} card saved locally` });
+    }
+
     setHasUnsavedChanges(false);
-    toast({ title: "Saved", description: `${cardType === "promo" ? "Promo" : "Website"} card saved` });
   };
 
   // Export PNG

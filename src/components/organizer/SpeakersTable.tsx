@@ -30,20 +30,21 @@ export default function SpeakersTable({ speakers, isLoading, eventId }: Props) {
     <table className="w-full">
       <thead className="border-b border-border bg-muted/30">
         <tr>
-          <th className="px-2 py-3 text-left text-xs font-bold text-muted-foreground">Actions</th>
+          <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground w-[60px]">Actions</th>
           <th className="px-5 py-3 text-left text-xs font-medium text-muted-foreground">Speaker</th>
+          <th className="px-5 py-3 text-left text-xs font-medium text-muted-foreground">Title</th>
           <th className="px-5 py-3 text-left text-xs font-medium text-muted-foreground">Company</th>
-          <th className="px-5 py-3 text-left text-xs font-medium text-muted-foreground">Submitted</th>
+          <th className="px-5 py-3 text-left text-xs font-medium text-muted-foreground">Last Updated</th>
           <th className="px-5 py-3 text-left text-xs font-medium text-muted-foreground">Status</th>
         </tr>
       </thead>
       <tbody>
         {speakers.map((speaker) => (
           <tr key={speaker.id} className="border-b border-border hover:bg-muted/40 transition-colors group">
-            <td className="px-2 py-2 text-center">
+            <td className="px-4 py-4">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                  <button className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-muted rounded">
+                  <button className="p-1.5 hover:bg-muted rounded transition-colors">
                     <MoreVertical className="h-4 w-4 text-muted-foreground" />
                   </button>
                 </DropdownMenuTrigger>
@@ -113,18 +114,15 @@ export default function SpeakersTable({ speakers, isLoading, eventId }: Props) {
 
             <td className="px-5 py-4">
               <div
-                className="flex items-center gap-3 cursor-pointer"
+                className="text-sm font-medium text-foreground cursor-pointer"
                 onClick={() => window.location.href = `/organizer/event/${eventId}/speakers/${speaker.id}`}
               >
-                <Avatar className="h-8 w-8">
-                  <AvatarFallback className="text-sm font-medium bg-muted">{speaker.name.charAt(0).toUpperCase()}</AvatarFallback>
-                  <AvatarImage src={speaker.avatarUrl} alt={speaker.name} />
-                </Avatar>
-                <div>
-                  <div className="text-sm font-medium text-foreground">{speaker.name}</div>
-                  <div className="text-xs text-muted-foreground">{speaker.email}</div>
-                </div>
+                {speaker.name}
               </div>
+            </td>
+
+            <td className="px-5 py-4 text-sm text-foreground cursor-pointer" onClick={() => window.location.href = `/organizer/event/${eventId}/speakers/${speaker.id}`}>
+              {speaker.companyRole || "-"}
             </td>
 
             <td className="px-5 py-4 text-sm text-foreground cursor-pointer" onClick={() => window.location.href = `/organizer/event/${eventId}/speakers/${speaker.id}`}>
@@ -132,22 +130,28 @@ export default function SpeakersTable({ speakers, isLoading, eventId }: Props) {
             </td>
 
             <td className="px-5 py-4 text-sm text-muted-foreground cursor-pointer" onClick={() => window.location.href = `/organizer/event/${eventId}/speakers/${speaker.id}`}>
+              {/* TODO: Backend needs to add updatedAt field - currently showing registeredAt */}
               {speaker.createdAt ? new Date(speaker.createdAt).toLocaleDateString() : "-"}
             </td>
 
             <td className="px-5 py-4">
               <Badge
                 variant="outline"
-                className={`text-xs font-medium capitalize cursor-pointer ${
+                className={`text-xs font-medium cursor-pointer ${
                   speaker.intakeFormStatus === "approved"
                     ? "bg-success/10 text-success border-success/30"
+                    : speaker.intakeFormStatus === "submitted"
+                    ? "bg-blue-500/10 text-blue-600 border-blue-500/30"
                     : speaker.intakeFormStatus === "pending"
                     ? "bg-warning/10 text-warning border-warning/30"
                     : "bg-muted/50 text-muted-foreground border-muted/50"
                 }`}
                 onClick={() => window.location.href = `/organizer/event/${eventId}/speakers/${speaker.id}`}
               >
-                {speaker.intakeFormStatus}
+                {speaker.intakeFormStatus === "pending" && "Info Pending"}
+                {speaker.intakeFormStatus === "submitted" && "Info Submitted"}
+                {speaker.intakeFormStatus === "approved" && "Cards Approved"}
+                {!["pending", "submitted", "approved"].includes(speaker.intakeFormStatus) && speaker.intakeFormStatus}
               </Badge>
             </td>
           </tr>

@@ -18,6 +18,7 @@ Working rules (short)
 - Keep changes incremental: one small task per branch and preserve existing behavior.
 - Follow the design system and tokens in `src/index.css` and `tailwind.config.ts`.
 - **CRITICAL: NO COMPLETION DOCUMENTS** - Do NOT create summary/review/completed files (e.g., "UX_IMPROVEMENTS_COMPLETED.md", "REVIEW.md"). These burn credits unnecessarily. Just do the work, test it, report results verbally. Only update existing docs when required (README, API_GAPS, CLAUDE.md).
+- **KEEP DOCS CONCISE** - API_GAPS.md should be SHORT and DIRECT. Backend team is competent - they don't need 50 lines of explanation for simple requests. Just state: what's needed, why, and minimal implementation notes. No testing checklists, no example payloads unless absolutely critical.
 - **CSS consistency:** All cards, tables, and component styling must follow these patterns:
   - **Cards:** Use `Card` component with `bg-card`, `border border-border`, `hover:shadow-sm`, `hover:border-primary` (for interactive cards like EventCard)
   - **Card Actions:** Buttons in cards use `variant="outline"` with `size="sm"` and `className="flex-1"` for equal widths
@@ -30,39 +31,43 @@ Working rules (short)
 - Commit policy: the user will explicitly instruct when to commit or push. Do not create commits or push changes without explicit permission.
 
 Current priority (single source of truth)
-- **Speaker Module migration and stabilization** (primary focus)
-- **PromoCardBuilder component** — ✅ COMPLETE & STABLE
-  - Phase 2 refactor finished: Drop zone architecture, number inputs, multi-select batch editing
+- **Backend Image Generation** — ⏳ WAITING FOR BACKEND (primary blocker)
+  - Card Builder (CardBuilder) is complete and saves templates
+  - Frontend card generation attempted but blocked by CORS and font rendering issues
+  - **Backend generation is the recommended approach** (industry standard, scalable, stable)
+  - See `API_GAPS.md` for complete backend specification
+  - Once backend implements `/api/promo-cards/generate`, frontend will integrate
+
+- **CardBuilder (unified)** — ✅ COMPLETE & STABLE
+  - Replaced separate PromoCardBuilder and WebsiteCardBuilder
+  - Unified component with card type toggle (Promo/Website)
   - Professional Fabric.js canvas with Canva-like UX
   - Template system: Saves layout config (positions, sizes, shapes) NOT content
-  - Test images are preview-only, never saved to config
-  - See README for full feature list and PROMO_CARD_REFACTOR_PLAN.md for details
-- **WebsiteCardBuilder component** — 🚧 IN PROGRESS (tldraw experiment)
-  - New component using tldraw instead of Fabric.js (testing alternative approach)
-  - Same drop-zone architecture as PromoCardBuilder (test images preview-only)
-  - Features: Background upload with crop, headshot with shape options (circle/square/rectangle), logo upload, text elements with test data
-  - Uses tldraw's native tools for editing (minimal custom code)
-  - Text elements use geo shapes with text labels (tldraw doesn't support standalone text shapes)
-  - Test route: `http://localhost:5173/test/website-builder`
-  - Location: `src/components/WebsiteCardBuilder.tsx`, `src/pages/WebsiteCardBuilderTest.tsx`
-- **Backend blocker:** Team/account nesting API required to fully integrate builders into event flow
+  - Dynamic elements from form config (custom fields appear in builder)
+  - Config saved to backend via `/promo-cards/config` API
+  - Canvas dimensions saved with config for proper scaling
+  - Location: `src/components/CardBuilder.tsx`
 
 Immediate next steps (for the next agent)
-- Verify speaker list and portal UI against the local prototype (`Local Prototype/Seamless Demo/index.html`).
-- Confirm backend supports approval fields (`website_card_approved`, `promo_card_approved`) — if not, add to `API_GAPS.md` and request guidance.
-- Implement missing UI flows using mock data only if approved; always add a `// TODO` note.
+- **Integrate backend image generation** (once endpoint is ready):
+  - Update `SpeakerPreviews.tsx` to call `/api/promo-cards/generate`
+  - Display generated card images with download/regenerate buttons
+  - Handle approval workflow (generate at approval time)
 
-**PromoCardBuilder TODO:**
-- **GIF Animation Export** - Background GIFs display animated on canvas but download as static PNG. To fix: Install `gif.js` or `gifshot` library, capture animated frames, encode with proper timing. Check `templateIsGif` state to conditionally export as animated GIF vs static PNG.
-- **Canvas Download Dimensions** - Rectangle backgrounds download as rectangle on square canvas (white space around). Issue: Canvas state (`canvasWidth`/`canvasHeight`) updates but Fabric canvas resize not working properly for downloads. Need to ensure `fabricCanvasRef.current.setDimensions()` actually resizes the underlying canvas element before `toDataURL()` export. Check canvas initialization and dimension sync.
+- **CORS Headers** (backend blocker):
+  - Backend needs to add CORS headers to `/uploads/proxy/` endpoint
+  - Required for any frontend image fetching
+  - See `API_GAPS.md` for details
+
+**Known Issues:**
+- **Custom fields:** Backend strips underscores from custom field keys (e.g., `custom_123` becomes `custom123`). Frontend handles this with fallback logic in field lookups.
 
 Where to look first
-- `src/pages/organizer/SpeakerModule.tsx`
-- `src/pages/organizer/SpeakerPortal.tsx`
-- `src/components/SpeakerForm.tsx`
-- `src/components/PromoCardBuilder.tsx` (Fabric.js - complete & stable)
-- `src/components/WebsiteCardBuilder.tsx` (tldraw - in progress)
-- `src/lib/api.ts` and `openapi.json` (API reference)
+- `src/components/CardBuilder.tsx` - Unified card builder (template creator)
+- `src/components/organizer/SpeakerPreviews.tsx` - Placeholder for card display (ready for backend integration)
+- `src/pages/organizer/SpeakerPortal.tsx` - Speaker details page
+- `src/lib/api.ts` - API functions including `getPromoConfigForEvent()`, `createPromoConfig()`
+- `openapi.json` - API spec (check `/promo-cards/config` endpoints)
 
 Mandatory agent check
 - Before making any API-related changes, every agent MUST check the local API specification at:
@@ -98,7 +103,25 @@ End of briefing.
 ---
 
 ## Recent Changes
-1. 🚧 **WebsiteCardBuilder - Initial Build** (2026-01-29) - Created new component using tldraw as alternative to Fabric.js
+1. 🚧 **Speaker Portal Card Rendering** (2026-02-11) - IN PROGRESS, NOT WORKING YET
+   - **Goal:** Display promo/website cards on speaker portal with real speaker data
+   - **What was done:**
+     - Fixed custom fields saving/loading (backend strips underscores from field keys)
+     - Added `canvasWidth` and `canvasHeight` to saved config for proper scaling
+     - Created `cardRenderer.ts` - shared rendering utility extracted from CardBuilder
+     - Updated `PromoCardCanvasRenderer` to use shared utility
+     - Changed layout: cards stack vertically instead of side-by-side
+     - Added extensive console logging for debugging
+     - Backend API integration: saves config to `/promo-cards/config` endpoint
+   - **Issues (NOT RESOLVED):**
+     - Cards not fully visible on speaker portal
+     - Placeholder text ("Wakko Warner") appearing instead of real speaker names
+     - Headshot and company logo not rendering (possible CORS issue with uploaded images)
+     - Text formatting doesn't match Card Builder
+   - **Next steps:** Debug using console logs, check element key mapping, verify speaker data flow
+   - **Files changed:** `cardRenderer.ts` (new), `PromoCardCanvasRenderer.tsx`, `SpeakerPreviews.tsx`, `CardBuilder.tsx`
+
+2. 🚧 **WebsiteCardBuilder - Initial Build** (2026-01-29) - Created new component using tldraw as alternative to Fabric.js
    - Installed tldraw package
    - Built component with same drop-zone architecture as PromoCardBuilder
    - Features: Background upload (with crop), headshot upload (with crop + shape options), logo upload (with crop), test data elements (Name/Title/Company)

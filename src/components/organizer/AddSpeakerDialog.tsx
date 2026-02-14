@@ -33,17 +33,21 @@ export default function AddSpeakerDialog({ eventId }: { eventId?: string }) {
             setCreating(true);
             try {
               await createSpeaker(eventId, {
-                first_name: newSpeaker.firstName,
-                last_name: newSpeaker.lastName,
+                id: crypto.randomUUID(), // Required field - backend expects client-generated UUID
+                firstName: newSpeaker.firstName,
+                lastName: newSpeaker.lastName,
                 email: newSpeaker.email,
-                company_name: newSpeaker.companyName,
-                company_role: newSpeaker.companyRole,
+                companyName: newSpeaker.companyName,
+                companyRole: newSpeaker.companyRole,
+                formType: "speaker-info", // Required field - indicates this is a confirmed speaker, not a call-for-speakers application
               });
               toast({ title: "Speaker added" });
               queryClient.invalidateQueries({ queryKey: ["event", eventId, "speakers"] });
               setOpen(false);
               setNewSpeaker({ firstName: "", lastName: "", email: "", companyName: "", companyRole: "" });
             } catch (err: any) {
+              console.error("Failed to add speaker - full error:", err);
+              console.error("Error message:", err?.message);
               toast({ title: "Failed to add speaker", description: String(err?.message || err) });
             } finally {
               setCreating(false);
