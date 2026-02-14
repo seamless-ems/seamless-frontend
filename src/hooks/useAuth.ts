@@ -1,7 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
 import { signIn, signUp } from "@/lib/firebase";
-import { setToken } from "@/lib/auth";
-import tryExchangeWithRetry from "@/lib/tokenExchange";
 import type { LoginRequest, SignupRequest, TokenSchema } from "@/lib/api";
 
 export function useLogin(options?: {
@@ -10,50 +8,26 @@ export function useLogin(options?: {
 }) {
   return useMutation<TokenSchema, unknown, LoginRequest>({
     mutationFn: async (vars) => {
-      // Use Firebase signIn. After signing in, exchange the Firebase ID token
-      // for the backend token synchronously so callers can navigate safely.
-      const cred = await signIn(vars.email, vars.password);
-      const idToken = await cred.user.getIdToken();
-
+      console.log("[useAuth] useLogin.mutationFn: starting for", vars.email);
       try {
-        const backendToken = await tryExchangeWithRetry(idToken);
-        if (backendToken && backendToken.accessToken) return backendToken as TokenSchema;
+        await signIn(vars.email, vars.password);
+        console.log("[useAuth] useLogin.mutationFn: signIn succeeded for", vars.email);
       } catch (e) {
-        // If exchange fails, fall back to returning the raw Firebase ID token
-        // and let the onIdTokenChanged listener attempt exchange in the background.
-        // eslint-disable-next-line no-console
-        console.warn("exchangeFirebaseToken failed during login mutation, falling back to idToken:", e);
+        console.error("[useAuth] useLogin.mutationFn: signIn failed", e);
+        throw e;
       }
 
-      return { accessToken: idToken, tokenType: "firebase" } as TokenSchema;
+      // Return a placeholder - the real token is set by the auth listener
+      return { accessToken: "", tokenType: "firebase" } as TokenSchema;
+    },
+    onError: (err) => {
+      console.error("[useAuth] useLogin.onError:", err);
+      if (options?.onError) options.onError(err);
     },
     onSuccess: (data) => {
-      try {
-        // Ensure the token returned by the mutation is stored locally before any
-        // caller navigation happens. This prevents a race where the app navigates
-        // to a protected route before localStorage contains the token and then
-        // immediately gets redirected back to /login.
-        if (data && data.accessToken) {
-          setToken(data.accessToken);
-        }
-      } catch (e) {
-        // ignore setToken errors
-      }
-
-      if (options?.onSuccess) {
-        options.onSuccess(data);
-      } else {
-        // No onSuccess handler provided by caller navigate to dashboard/root
-        if (typeof window !== "undefined" && window.location) {
-          try {
-            window.location.replace("/organizer");
-          } catch (e) {
-            // ignore navigation errors in non-browser environments
-          }
-        }
-      }
+      console.log("[useAuth] useLogin.onSuccess:", data);
+      if (options?.onSuccess) options.onSuccess(data);
     },
-    onError: options?.onError,
   });
 }
 
@@ -63,40 +37,25 @@ export function useSignup(options?: {
 }) {
   return useMutation<TokenSchema, unknown, SignupRequest>({
     mutationFn: async (vars) => {
-      const cred = await signUp(vars.email, vars.password, vars.name);
-      const idToken = await cred.user.getIdToken();
-
+      console.log("[useAuth] useSignup.mutationFn: starting for", vars.email, "name=", vars.name);
       try {
-        const backendToken = await tryExchangeWithRetry(idToken, vars.name);
-        if (backendToken && backendToken.accessToken) return backendToken as TokenSchema;
+        await signUp(vars.email, vars.password, vars.name);
+        console.log("[useAuth] useSignup.mutationFn: signUp succeeded for", vars.email);
       } catch (e) {
-        // eslint-disable-next-line no-console
-        console.warn("exchangeFirebaseToken failed during signup mutation, falling back to idToken:", e);
+        console.error("[useAuth] useSignup.mutationFn: signUp failed", e);
+        throw e;
       }
 
-      return { accessToken: idToken, tokenType: "firebase" } as TokenSchema;
+      // Return a placeholder - the real token is set by the auth listener
+      return { accessToken: "", tokenType: "firebase" } as TokenSchema;
+    },
+    onError: (err) => {
+      console.error("[useAuth] useSignup.onError:", err);
+      if (options?.onError) options.onError(err);
     },
     onSuccess: (data) => {
-      try {
-        if (data && data.accessToken) {
-          setToken(data.accessToken);
-        }
-      } catch (e) {
-        // ignore
-      }
-
-      if (options?.onSuccess) {
-        options.onSuccess(data);
-      } else {
-        if (typeof window !== "undefined" && window.location) {
-          try {
-            window.location.replace("/organizer");
-          } catch (e) {
-            // ignore navigation errors
-          }
-        }
-      }
+      console.log("[useAuth] useSignup.onSuccess:", data);
+      if (options?.onSuccess) options.onSuccess(data);
     },
-    onError: options?.onError,
   });
 }

@@ -1,17 +1,29 @@
-import { getToken } from "@/lib/auth";
+import { getCurrentToken } from "@/lib/session";
 import { deepCamel } from "@/lib/utils";
 
 export const API_BASE = import.meta.env.VITE_API_URL || "";
 
 function authHeaders(): Record<string, string> {
-  const token = getToken();
+  const token = getCurrentToken();
   const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (token) headers["Authorization"] = `Bearer ${token}`;
+  if (token) {
+    try {
+      const masked = typeof token === 'string' ? `${token.slice(0, 6)}...(${token.length})` : String(token);
+      console.log('[api] authHeaders: using token', masked);
+    } catch (e) {
+      console.log('[api] authHeaders: using token (could not mask)');
+    }
+    headers["Authorization"] = `Bearer ${token}`;
+  } else {
+    console.log('[api] authHeaders: no token present');
+  }
   return headers;
 }
 
 async function postJson<TReq, TRes>(path: string, body: TReq): Promise<TRes> {
-  const res = await fetch(`${API_BASE}${path}`, {
+  const url = `${API_BASE}${path}`;
+  console.log("[api] postJson: POST", url, "body=", body);
+  const res = await fetch(url, {
     method: "POST",
     headers: authHeaders(),
     body: JSON.stringify(body),
@@ -20,7 +32,11 @@ async function postJson<TReq, TRes>(path: string, body: TReq): Promise<TRes> {
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(text || res.statusText);
+    console.error("[api] postJson: HTTP error", res.status, res.statusText, "path=", path, "response=", text);
+    const err = new Error(text || res.statusText) as any;
+    err.status = res.status;
+    err.responseText = text;
+    throw err;
   }
 
   const json = await res.json();
@@ -28,7 +44,9 @@ async function postJson<TReq, TRes>(path: string, body: TReq): Promise<TRes> {
 }
 
 async function patchJson<TReq, TRes>(path: string, body: TReq): Promise<TRes> {
-  const res = await fetch(`${API_BASE}${path}`, {
+  const url = `${API_BASE}${path}`;
+  console.log("[api] patchJson: PATCH", url, "body=", body);
+  const res = await fetch(url, {
     method: "PATCH",
     headers: authHeaders(),
     body: JSON.stringify(body),
@@ -37,7 +55,11 @@ async function patchJson<TReq, TRes>(path: string, body: TReq): Promise<TRes> {
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(text || res.statusText);
+    console.error("[api] patchJson: HTTP error", res.status, res.statusText, "path=", path, "response=", text);
+    const err = new Error(text || res.statusText) as any;
+    err.status = res.status;
+    err.responseText = text;
+    throw err;
   }
 
   const json = await res.json();
@@ -45,7 +67,9 @@ async function patchJson<TReq, TRes>(path: string, body: TReq): Promise<TRes> {
 }
 
 export async function getJson<TRes>(path: string): Promise<TRes> {
-  const res = await fetch(`${API_BASE}${path}`, {
+  const url = `${API_BASE}${path}`;
+  console.log("[api] getJson: GET", url);
+  const res = await fetch(url, {
     method: "GET",
     headers: authHeaders(),
     credentials: "include",
@@ -56,9 +80,11 @@ export async function getJson<TRes>(path: string): Promise<TRes> {
     // Components (or a global auth handler) should decide how to react
     // when the backend reports the token is invalid/expired.
     const text = await res.text();
+    console.error("[api] getJson: HTTP error", res.status, res.statusText, "path=", path, "response=", text);
     const message = text || res.statusText || `HTTP ${res.status}`;
     const err: any = new Error(message);
     err.status = res.status;
+    err.responseText = text;
     throw err;
   }
 
@@ -87,7 +113,7 @@ export async function uploadFile(
   if (eventId) fd.append("event_id", eventId);
   if (speakerName) fd.append("speaker_name", speakerName);
 
-  const token = getToken();
+  const token = getCurrentToken();
   const headers: Record<string, string> = {};
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
@@ -134,9 +160,30 @@ export function login(body: LoginRequest): Promise<TokenSchema> {
 // Exchange a Firebase ID token for the backend's session/token representation.
 // Backend should verify the ID token and return a TokenSchema { accessToken, tokenType }
 export function exchangeFirebaseToken(idToken: string, name?: string): Promise<TokenSchema> {
-  const body: { accessToken: string; name?: string } = { accessToken: idToken };
+  // Mask token for logs: show prefix and length only
+  const mask = (t: string) => `${t.slice(0, 6)}...(${t.length})`;
+  console.log("[api] exchangeFirebaseToken: calling /auth/firebase name=", name, "idToken=", mask(idToken));
+  const body: { accessToken: string; access_token: string; name?: string } = {
+    accessToken: idToken,
+    access_token: idToken,
+  };
   if (name) body.name = name;
-  return postJson<{ accessToken: string; name?: string }, TokenSchema>("/auth/firebase", body);
+  return postJson<typeof body, TokenSchema>("/auth/firebase", body).then((res) => {
+    try {
+      // Log response shape (keys) and whether accessToken exists
+      const keys = res && typeof res === 'object' ? Object.keys(res) : [];
+      const hasAccess = res && ((res as any).accessToken || (res as any).access_token || (res as any).token);
+      console.log('[api] exchangeFirebaseToken: response keys=', keys, 'hasAccessToken=', !!hasAccess);
+      if (hasAccess) {
+        const tokenVal = (res as any).accessToken || (res as any).access_token || (res as any).token;
+        const masked = typeof tokenVal === 'string' ? `${tokenVal.slice(0,6)}...(${tokenVal.length})` : String(tokenVal);
+        console.log('[api] exchangeFirebaseToken: selected token', masked);
+      }
+    } catch (e) {
+      console.warn('[api] exchangeFirebaseToken: failed to inspect response', e);
+    }
+    return res;
+  });
 }
 
 // --- Account endpoints ---
@@ -293,7 +340,7 @@ export function createPromoConfig(body: { eventId: string; promoType: string; co
 // Request backend to generate a promo card for an event/speaker.
 // Returns the raw Response so callers can stream the body.
 export async function generatePromo(eventId: string, speakerId: string): Promise<Response> {
-  const token = getToken();
+  const token = getCurrentToken();
   const headers: Record<string, string> = {};
   if (token) headers["Authorization"] = `Bearer ${token}`;
 

@@ -604,7 +604,6 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
         elementRefs.current['_background'] = fabricImg;
         canvas.renderAll();
       } catch (err) {
-        console.error("Error loading background image:", err);
         toast({ title: "Failed to load background", description: String(err), variant: "destructive" });
       }
     }

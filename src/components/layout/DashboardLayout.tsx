@@ -35,7 +35,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useNavigate } from "react-router-dom";
-import { clearToken } from "@/lib/auth";
+import { clearTokenAndNotify } from "@/lib/session";
 import { signOut as firebaseSignOut } from "@/lib/firebase";
 import { useQuery } from "@tanstack/react-query";
 import { getMe, getTeam, getJson } from "@/lib/api";
@@ -445,7 +445,7 @@ export function DashboardLayout({ children, eventId, mode: propMode }: Dashboard
                     await firebaseSignOut();
                   } catch (e) {
                     try {
-                      clearToken();
+                      clearTokenAndNotify();
                     } catch (err) {
                       console.error("Error clearing token after signOut failure:", err);
                     }

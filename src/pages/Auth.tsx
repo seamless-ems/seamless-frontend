@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Link, useLocation, useNavigate } from "react-router-dom";
@@ -7,10 +7,9 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { useLogin, useSignup } from "@/hooks/useAuth";
-import { signInWithGooglePopup, signInWithMicrosoftPopup } from "@/lib/firebase";
-import tryExchangeWithRetry from "@/lib/tokenExchange";
-import { setToken } from "@/lib/auth";
+import { signInWithGooglePopup } from "@/lib/firebase";
 import { isOnboardingCompleted } from "@/lib/onboarding";
+import { useAuth } from "@/contexts/AuthContext";
 
 const loginSchema = z.object({
     email: z.string().email(),
@@ -51,7 +50,6 @@ type LoginValues = z.infer<typeof loginSchema>;
 type SignupValues = z.infer<typeof signupSchema>;
 
 function LoginForm({ onSuccess }: { onSuccess: () => void }) {
-    const navigate = useNavigate();
     const loginMutation = useLogin({
         onSuccess: () => {
             toast.success("Signed in");
@@ -68,10 +66,12 @@ function LoginForm({ onSuccess }: { onSuccess: () => void }) {
     });
 
     const onSubmit = async (data: LoginValues) => {
+        console.log("[Auth] LoginForm.onSubmit: submitting for", data.email);
         try {
             await loginMutation.mutateAsync({ email: data.email, password: data.password });
+            console.log("[Auth] LoginForm.onSubmit: mutation completed for", data.email);
         } catch (err) {
-            console.error("login error", err);
+            console.error("[Auth] login error", err);
         }
     };
 
@@ -117,14 +117,16 @@ function SignupForm({ onSuccess }: { onSuccess: () => void }) {
     });
 
     const onSubmit = async (data: SignupValues) => {
+        console.log("[Auth] SignupForm.onSubmit: submitting for", data.email, "name=", data.name);
         try {
             await signupMutation.mutateAsync({
                 email: data.email,
                 password: data.password,
                 name: data.name,
             });
+            console.log("[Auth] SignupForm.onSubmit: mutation completed for", data.email);
         } catch (err) {
-            console.error("signup error", err);
+            console.error("[Auth] signup error", err);
         }
     };
 
@@ -157,33 +159,21 @@ const Auth: React.FC = () => {
     const mode = location.pathname === "/signup" ? "signup" : "login";
     const navigate = useNavigate();
 
-    const navigateAfterAuth = () => {
-        // Wait for the auth token to be persisted to localStorage before navigating.
-        // This avoids a race where we navigate to a protected route before the
-        // token is visible to `ProtectedRoute` and get redirected back to /login.
-        const waitForTokenAndNavigate = async () => {
-            const start = Date.now();
-            const timeout = 2000; // ms
-            const checkInterval = 100;
-            const { getToken } = await import("@/lib/auth");
+    const { isAuthenticated, isLoading } = useAuth();
+    const [isSsoLoading, setIsSsoLoading] = React.useState(false);
 
-            while (Date.now() - start < timeout) {
-                const tok = getToken();
-                if (tok) break;
-                // eslint-disable-next-line no-await-in-loop
-                await new Promise((r) => setTimeout(r, checkInterval));
-            }
-
-            // Check if user needs onboarding (only for new signups)
+    // Navigate when auth state becomes authenticated
+    React.useEffect(() => {
+        if (isLoading) return;
+        if (isAuthenticated) {
+            console.log("[Auth] detected authenticated state, navigating");
             if (mode === "signup" || !isOnboardingCompleted()) {
                 navigate("/onboarding", { replace: true });
             } else {
                 navigate("/organizer", { replace: true });
             }
-        };
-
-        void waitForTokenAndNavigate();
-    };
+        }
+    }, [isAuthenticated, isLoading, mode, navigate]);
 
     return (
         <div className="min-h-screen flex items-center justify-center relative" style={{
@@ -253,13 +243,12 @@ const Auth: React.FC = () => {
                     </div>
                 </div>
 
-
                 {/* Form */}
                 <div key={mode} className="space-y-4">
                     {mode === "signup" ? (
-                        <SignupForm onSuccess={() => navigateAfterAuth()} />
+                        <SignupForm onSuccess={() => {}} />
                     ) : (
-                        <LoginForm onSuccess={() => navigateAfterAuth()} />
+                        <LoginForm onSuccess={() => {}} />
                     )}
                 </div>
 
@@ -276,37 +265,25 @@ const Auth: React.FC = () => {
                         variant="outline"
                         className="w-full h-12 border-[1.5px]"
                         type="button"
+                        disabled={isSsoLoading}
                         onClick={async () => {
+                            if (isSsoLoading) return;
+                            setIsSsoLoading(true);
+                            console.log("[Auth] Google SSO button clicked");
                             try {
-                                const res = await signInWithGooglePopup();
-                                try {
-                                    const idToken = await res.user.getIdToken();
-                                    const backend = await tryExchangeWithRetry(idToken);
-
-                                    if (backend && backend.accessToken) {
-                                        setToken(backend.accessToken);
-                                    } else {
-                                        setToken(idToken);
-                                    }
-                                } catch (err) {
-                                    console.warn("Google popup token exchange failed, falling back to ID token:", err);
-                                    try {
-                                        const idToken = await res.user.getIdToken();
-                                        setToken(idToken);
-                                    } catch (e) {
-                                        // ignore
-                                    }
-                                }
-                                toast.success("Signed in with Google");
-                                navigateAfterAuth();
+                                await signInWithGooglePopup();
+                                console.log("[Auth] Google popup completed");
+                                // Token exchange + user hydration handled by firebase.ts listener
                             } catch (e) {
-                                console.error("google popup error", e);
+                                console.error("[Auth] google popup error", e);
                                 toast.error("Unable to sign in with Google");
+                            } finally {
+                                setIsSsoLoading(false);
                             }
                         }}
                     >
                         <GoogleIcon />
-                        <span>Google</span>
+                        <span>{isSsoLoading ? "Connecting..." : "Google"}</span>
                     </Button>
                 </div>
 
