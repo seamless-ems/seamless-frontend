@@ -160,10 +160,16 @@ export default function SpeakerModule() {
             Embed Builder
           </button>
           <button
-            onClick={() => navigate(`/organizer/event/${id}/card-builder`)}
+            onClick={() => navigate(`/organizer/event/${id}/website-card-builder`)}
             className="pb-3 border-b-2 border-transparent text-muted-foreground hover:text-foreground font-medium transition-colors text-sm hover:border-primary"
           >
-            Card Builder
+            Website Card Builder
+          </button>
+          <button
+            onClick={() => navigate(`/organizer/event/${id}/promo-card-builder`)}
+            className="pb-3 border-b-2 border-transparent text-muted-foreground hover:text-foreground font-medium transition-colors text-sm hover:border-primary"
+          >
+            Promo Card Builder
           </button>
         </div>
       </div>

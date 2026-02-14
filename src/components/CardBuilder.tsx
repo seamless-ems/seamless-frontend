@@ -41,6 +41,7 @@
  */
 
 import { useState, useRef, useEffect } from "react";
+import { useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -227,7 +228,15 @@ const ELEMENT_TEMPLATES = {
 
 export default function CardBuilder({ eventId, fullscreen = false }: CardBuilderProps) {
   // State
-  const [cardType, setCardType] = useState<CardType>("promo");
+  const location = useLocation();
+  const deriveInitialCardType = (): CardType => {
+    const path = (location && location.pathname) || (typeof window !== 'undefined' ? window.location.pathname : '');
+    if (path.includes('/website-card-builder')) return 'website';
+    if (path.includes('/promo-card-builder')) return 'promo';
+    return 'promo';
+  };
+
+  const [cardType, setCardType] = useState<CardType>(deriveInitialCardType);
   const [config, setConfig] = useState<CardConfig>({});
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
   const [templateUrl, setTemplateUrl] = useState<string | null>(null);

@@ -3,7 +3,7 @@ import { ArrowLeft, Save, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import CardBuilder from "@/components/CardBuilder";
 
-export default function CardBuilderPage() {
+export default function WebsiteCardBuilderPage() {
   const { id } = useParams();
   const navigate = useNavigate();
 
@@ -20,7 +20,7 @@ export default function CardBuilderPage() {
           Back to Event
         </Button>
         <div className="flex-1 px-6">
-          <h1 className="text-lg font-semibold">Card Builder</h1>
+          <h1 className="text-lg font-semibold">Website Card Builder</h1>
         </div>
       </div>
 
