@@ -65,7 +65,7 @@ Open http://localhost:5173.
 
 ## Components & Features
 
-### CardBuilderV2 (`src/components/CardBuilderV2.tsx`)
+### CardBuilder (`src/components/CardBuilder.tsx`)
 **Status:** ✅ Complete & Stable (Unified card builder - replaces PromoCardBuilder and WebsiteCardBuilder)
 
 Professional Canva-like design tool built with Fabric.js for creating both promo cards and website cards:

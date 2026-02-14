@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Save, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import CardBuilderV2 from "@/components/CardBuilderV2";
+import CardBuilder from "@/components/CardBuilder";
 
 export default function CardBuilderPage() {
   const { id } = useParams();
@@ -26,7 +26,7 @@ export default function CardBuilderPage() {
 
       {/* Card builder takes full remaining space */}
       <div className="flex-1 overflow-hidden">
-        <CardBuilderV2 eventId={id} fullscreen />
+        <CardBuilder eventId={id} fullscreen />
       </div>
     </div>
   );

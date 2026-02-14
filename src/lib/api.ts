@@ -289,6 +289,28 @@ export function getPromoConfigForEvent(eventId: string, promoType?: string): Pro
 export function createPromoConfig(body: { eventId: string; promoType: string; config: any }): Promise<any> {
   return postJson<typeof body, any>(`/promo-cards/config`, body);
 }
+
+// Request backend to generate a promo card for an event/speaker.
+// Returns the raw Response so callers can stream the body.
+export async function generatePromo(eventId: string, speakerId: string): Promise<Response> {
+  const token = getToken();
+  const headers: Record<string, string> = {};
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  const url = `${API_BASE}/promo-cards/generate?event_id=${encodeURIComponent(eventId)}&speaker_id=${encodeURIComponent(speakerId)}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers,
+    credentials: "include",
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || res.statusText || `HTTP ${res.status}`);
+  }
+
+  return res;
+}
 // Website template endpoints (parallel to promo cards)
 export function getWebsiteConfigForEvent(eventId: string): Promise<any> {
   return getJson<any>(`/website/config/${encodeURIComponent(eventId)}`);
