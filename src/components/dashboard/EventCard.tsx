@@ -136,7 +136,7 @@ export function EventCard({ event, index = 0, onDelete }: EventCardProps) {
                     // If no onDelete handler provided, navigate back to events list
                     if (typeof onDelete !== "function") navigate('/organizer/events');
                   } catch (err: any) {
-                    console.error("Failed to delete event", err);
+                    
                     toast({ title: "Failed to delete event", description: String(err?.message || err) });
                   } finally {
                     setDeleting(false);

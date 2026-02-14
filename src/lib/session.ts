@@ -14,9 +14,6 @@ export function setTokenAndNotify(token: string) {
     setCurrentToken(token);
     window.dispatchEvent(new CustomEvent('auth-token-changed', { detail: { token } }));
   } catch (e) {
-    // noop
-    // eslint-disable-next-line no-console
-    console.warn('setTokenAndNotify failed:', e);
   }
 }
 
@@ -26,8 +23,6 @@ export function clearTokenAndNotify() {
     setCurrentToken(null);
     window.dispatchEvent(new CustomEvent('auth-token-changed', { detail: { token: null } }));
   } catch (e) {
-    // eslint-disable-next-line no-console
-    console.warn('clearTokenAndNotify failed:', e);
   }
 }
 
@@ -36,8 +31,6 @@ export function setUserAndNotify(user: Record<string, any>) {
     localStorage.setItem('auth_user', JSON.stringify(user));
     window.dispatchEvent(new CustomEvent('auth-user-changed', { detail: { user } }));
   } catch (e) {
-    // eslint-disable-next-line no-console
-    console.warn('setUserAndNotify failed:', e);
   }
 }
 
@@ -46,8 +39,6 @@ export function clearUserAndNotify() {
     localStorage.removeItem('auth_user');
     window.dispatchEvent(new CustomEvent('auth-user-changed', { detail: { user: null } }));
   } catch (e) {
-    // eslint-disable-next-line no-console
-    console.warn('clearUserAndNotify failed:', e);
   }
 }
 

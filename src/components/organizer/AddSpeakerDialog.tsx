@@ -46,8 +46,7 @@ export default function AddSpeakerDialog({ eventId }: { eventId?: string }) {
               setOpen(false);
               setNewSpeaker({ firstName: "", lastName: "", email: "", companyName: "", companyRole: "" });
             } catch (err: any) {
-              console.error("Failed to add speaker - full error:", err);
-              console.error("Error message:", err?.message);
+              
               toast({ title: "Failed to add speaker", description: String(err?.message || err) });
             } finally {
               setCreating(false);

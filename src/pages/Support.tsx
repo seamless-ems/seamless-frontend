@@ -25,7 +25,7 @@ export default function Support() {
       toast({ title: "Message sent", description: "Thanks — we will get back to you soon." });
       setName(""); setEmail(""); setSubject(""); setMessage("");
     } catch (err: any) {
-      console.error("Support message failed", err);
+      
       // fallback: open mailto
       const mailto = `mailto:support@seamless.events?subject=${encodeURIComponent(subject || "Support request")}&body=${encodeURIComponent(`Name: ${name}\nEmail: ${email}\n\n${message}`)}`;
       window.location.href = mailto;

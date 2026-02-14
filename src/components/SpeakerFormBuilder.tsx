@@ -63,6 +63,7 @@ export default function SpeakerFormBuilder({
     initialConfig ?? DEFAULT_FIELDS
   );
   const [customFieldDialog, setCustomFieldDialog] = useState(false);
+  const [missingFormDialogOpen, setMissingFormDialogOpen] = useState(false);
   const [saveWarningOpen, setSaveWarningOpen] = useState(false);
   const [newCustomField, setNewCustomField] = useState({
     label: "",
@@ -88,12 +89,15 @@ export default function SpeakerFormBuilder({
           try {
             setFields(res.config as FormFieldConfig[]);
           } catch (e) {
-            console.error("Invalid config format", e);
+            
             setFields(DEFAULT_FIELDS);
           }
         })
         .catch((err: any) => {
-          console.error("Failed to load form config", err);
+          // If backend returns 404 (no saved form config), prompt user to create and save the form
+          if (err && (err.status === 404 || err?.status === 404)) {
+            setMissingFormDialogOpen(true);
+          }
           setFields(DEFAULT_FIELDS);
         });
     });
@@ -206,7 +210,7 @@ export default function SpeakerFormBuilder({
       toast({ title: "Form configuration saved" });
       if (onSave) onSave(fields);
     } catch (err) {
-      console.error("Failed to save form config to server", err);
+      
       toast({ title: "Failed to save form configuration", variant: "destructive" });
     } finally {
       setSaveWarningOpen(false);
@@ -217,6 +221,24 @@ export default function SpeakerFormBuilder({
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <Dialog open={missingFormDialogOpen} onOpenChange={setMissingFormDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-destructive">Speaker Form Not Found</DialogTitle>
+          </DialogHeader>
+          <div className="mt-2">
+            <p className="text-sm text-muted-foreground">
+              We couldn't find a saved "Speaker Information" form for this event. Please create and save your speaker information form first.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setMissingFormDialogOpen(false)}>Close</Button>
+              <Button variant="destructive" onClick={() => { window.location.href = `/organizer/event/${eventId}/speakers?tab=forms`; }}>
+                Go to Forms
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
       {/* Left Panel: Form Builder (titles removed - parent shows main heading) */}
       <div className="lg:col-span-1 space-y-4">
 

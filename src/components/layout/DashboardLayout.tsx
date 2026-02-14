@@ -447,9 +447,9 @@ export function DashboardLayout({ children, eventId, mode: propMode }: Dashboard
                     try {
                       clearTokenAndNotify();
                     } catch (err) {
-                      console.error("Error clearing token after signOut failure:", err);
+                      
                     }
-                    console.error("Firebase signOut failed:", e);
+                    
                   }
                   navigate("/login");
                 }}

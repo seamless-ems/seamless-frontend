@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -22,11 +22,23 @@ import FormsTab from "@/components/organizer/FormsTab";
 export default function SpeakerModule() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState("newest");
-  const [selectedTab, setSelectedTab] = useState("speakers");
+  const getInitialTab = () => {
+    try {
+      const params = new URLSearchParams(location.search);
+      const t = params.get("tab");
+      if (t === "speakers" || t === "applications" || t === "forms" || t === "embed-builder") return t;
+    } catch (e) {
+      // ignore
+    }
+    return "speakers";
+  };
+
+  const [selectedTab, setSelectedTab] = useState<string>(getInitialTab);
   // dialog and table are extracted into components
   const [addOpen, setAddOpen] = useState(false);
 

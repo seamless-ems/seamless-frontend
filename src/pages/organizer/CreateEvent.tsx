@@ -104,7 +104,7 @@ export default function CreateEvent() {
 		emailSignature: "",
 		googleDriveConnected: false,
 		rootFolder: "",
-		integrationId: "",
+		integrationId: null,
 	});
 
 	const [selectedModules, setSelectedModules] = useState<string[]>(["speaker"]);
@@ -169,7 +169,6 @@ export default function CreateEvent() {
 				}
 			} catch (err) {
 				// silently ignore; not critical
-				console.info("Google Drive status check failed", err);
 			}
 		})();
 	}, []);
@@ -216,7 +215,7 @@ export default function CreateEvent() {
 					if (imageValue) payload.eventImage = imageValue;
 				}
 			} catch (err: any) {
-				console.error("Event image upload failed", err);
+				
 				toast({ title: "Event image upload failed", description: String(err?.message || err) });
 				// continue — backend may accept create without image, or user can retry
 			}
@@ -231,7 +230,7 @@ export default function CreateEvent() {
 				navigate("/organizer/events");
 			}
 		} catch (err: any) {
-			console.error("Create event failed", err);
+			
 			toast({ title: "Failed to create event", description: String(err?.message || err) });
 		} finally {
 			setIsSubmitting(false);
@@ -286,7 +285,7 @@ export default function CreateEvent() {
 													setFormData((prev) => ({ ...prev, googleDriveConnected: false, rootFolder: "" }));
 													toast({ title: "Disconnected", description: "Google Drive integration removed" });
 												} catch (err: any) {
-													console.error("Failed to disconnect", err);
+													
 													toast({ title: "Failed to disconnect", description: String(err?.message || err) });
 												}
 											}}
@@ -308,7 +307,7 @@ export default function CreateEvent() {
 													toast({ title: "Failed to start integration", description: "No URL returned from server" });
 												}
 											} catch (err: any) {
-												console.error("Integration link failed", err);
+												
 												toast({ title: "Failed to start integration", description: String(err?.message || err) });
 											}
 										}}

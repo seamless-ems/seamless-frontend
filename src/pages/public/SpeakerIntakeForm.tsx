@@ -131,16 +131,16 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
           try {
             setFormConfig(res.config as FormFieldConfig[]);
           } catch (e) {
-            console.error("Invalid config format", e);
+            
             setFormConfig(DEFAULT_FORM_FIELDS);
           }
         })
         .catch((err) => {
-          console.error("Failed to load form config", err);
+          
           setFormConfig(DEFAULT_FORM_FIELDS);
         });
     }).catch((err) => {
-      console.error(err);
+      
       setFormConfig(DEFAULT_FORM_FIELDS);
     });
 
@@ -277,27 +277,27 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
 
       // Upload headshot if provided
       if (headshot) {
-        try {
-          console.log("Uploading headshot:", headshot);
+          try {
+          
           const res = await uploadFile(headshot, speakerId, eventId!, speakerDisplayName);
           const headshotUrl = res?.public_url ?? res?.publicUrl ?? res?.url ?? null;
           payload.headshot = headshotUrl;
         } catch (err) {
-          console.error("headshot upload failed", err);
+          
         }
       }
 
       // Upload company logo if provided
       if (companyLogo) {
         try {
-          console.log("Uploading company logo:", companyLogo);
+          
           const res = await uploadFile(companyLogo, speakerId, eventId!, speakerDisplayName);
           const logoUrl = res?.public_url ?? res?.publicUrl ?? res?.url ?? null;
-          console.log("Logo upload response:", res, "URL:", logoUrl);
+          
           // Backend expects companyLogo (camelCase) as the alias
           payload.companyLogo = logoUrl;
         } catch (err) {
-          console.error("company logo upload failed", err);
+          
         }
       }
 
@@ -307,13 +307,13 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
         const file = customFiles[field.id];
         if (file) {
             try {
-              console.log("Uploading custom file for", field.id, file);
+              
               const res = await uploadFile(file, speakerId, eventId!, speakerDisplayName);
               const url = res?.public_url ?? res?.publicUrl ?? res?.url ?? null;
               customFields[field.id] = url;
-              console.log(`Uploaded ${field.id}:`, url);
+              
             } catch (err) {
-              console.error(`upload failed for ${field.id}`, err);
+              
             }
         }
       }
@@ -327,7 +327,7 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
       payload.formType = backendFormType;
       payload.id = speakerId; // Include the generated speaker ID in the payload for updates
 
-      console.log("Final payload:", payload);
+      
 
       if (isEditing && speakerId) {
         await updateSpeaker(eventId, speakerId, payload);
@@ -338,7 +338,7 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
         setIsSubmitted(true);
       }
     } catch (e) {
-      console.error("intake submit error", e);
+      
       toast.error(String(e));
     } finally {
       setIsSubmitting(false);

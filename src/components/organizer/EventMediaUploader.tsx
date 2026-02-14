@@ -34,7 +34,7 @@ export default function EventMediaUploader({
       const url = URL.createObjectURL(file);
       setEventImagePreview(url);
     } catch (err) {
-      console.error("Failed to process cropped image", err);
+      
     } finally {
       setCropImageUrl(null);
       setCropTarget(null);

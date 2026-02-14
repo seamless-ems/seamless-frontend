@@ -66,12 +66,12 @@ function LoginForm({ onSuccess }: { onSuccess: () => void }) {
     });
 
     const onSubmit = async (data: LoginValues) => {
-        console.log("[Auth] LoginForm.onSubmit: submitting for", data.email);
+        
         try {
             await loginMutation.mutateAsync({ email: data.email, password: data.password });
-            console.log("[Auth] LoginForm.onSubmit: mutation completed for", data.email);
+            
         } catch (err) {
-            console.error("[Auth] login error", err);
+            
         }
     };
 
@@ -117,16 +117,16 @@ function SignupForm({ onSuccess }: { onSuccess: () => void }) {
     });
 
     const onSubmit = async (data: SignupValues) => {
-        console.log("[Auth] SignupForm.onSubmit: submitting for", data.email, "name=", data.name);
+        
         try {
             await signupMutation.mutateAsync({
                 email: data.email,
                 password: data.password,
                 name: data.name,
             });
-            console.log("[Auth] SignupForm.onSubmit: mutation completed for", data.email);
+            
         } catch (err) {
-            console.error("[Auth] signup error", err);
+            
         }
     };
 
@@ -166,7 +166,7 @@ const Auth: React.FC = () => {
     React.useEffect(() => {
         if (isLoading) return;
         if (isAuthenticated) {
-            console.log("[Auth] detected authenticated state, navigating");
+            
             if (mode === "signup" || !isOnboardingCompleted()) {
                 navigate("/onboarding", { replace: true });
             } else {
@@ -269,13 +269,13 @@ const Auth: React.FC = () => {
                         onClick={async () => {
                             if (isSsoLoading) return;
                             setIsSsoLoading(true);
-                            console.log("[Auth] Google SSO button clicked");
+                            
                             try {
                                 await signInWithGooglePopup();
-                                console.log("[Auth] Google popup completed");
+                                
                                 // Token exchange + user hydration handled by firebase.ts listener
                             } catch (e) {
-                                console.error("[Auth] google popup error", e);
+                                
                                 toast.error("Unable to sign in with Google");
                             } finally {
                                 setIsSsoLoading(false);

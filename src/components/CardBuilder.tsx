@@ -75,6 +75,12 @@ import { fabric } from "fabric";
 import { ImageCropDialog } from "@/components/ImageCropDialog";
 import { toast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { getFormConfigForEvent } from "@/lib/api";
 import type { FormFieldConfig } from "@/components/SpeakerFormBuilder";
 
@@ -279,9 +285,21 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   // Fetch form configuration to get fields marked for card builder
+  const [missingFormDialogOpen, setMissingFormDialogOpen] = useState(false);
+
   const { data: formConfig } = useQuery<{ config: FormFieldConfig[] }>({
     queryKey: ["formConfig", eventId, "speaker-info"],
-    queryFn: () => getFormConfigForEvent(eventId || "", "speaker-info"),
+    queryFn: async () => {
+      try {
+        return await getFormConfigForEvent(eventId || "", "speaker-info");
+      } catch (err: any) {
+        console.log("Error fetching form config:", err);
+        if (err && (err.status === 404 || err?.status === 404)) {
+          setMissingFormDialogOpen(true);
+        }
+        throw err;
+      }
+    },
     enabled: Boolean(eventId),
   });
 
@@ -848,7 +866,8 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
           lineHeight: cfg.lineHeight || 1.2,
           charSpacing: cfg.charSpacing || 0,
           width: cfg.width,
-          textBaseline: "alphabetic",
+          // fabric.Textbox options don't include `textBaseline` in the TypeScript defs;
+          // the default baseline is acceptable, so omit this option to satisfy typings.
           selectable: true,
           editable: true,
           hasControls: true,
@@ -885,7 +904,7 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
 
           const iconText: { [key: string]: string } = {
             linkedin: "in",
-            twitter: "𝕏",
+            twitter: "x",
             facebook: "f",
             instagram: "📷",
             github: "gh",
@@ -955,7 +974,6 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
             fontWeight: cfg.fontWeight,
             textAlign: cfg.textAlign,
             width: cfg.width,
-            textBaseline: "alphabetic",
             selectable: true,
             editable: true,
             hasControls: true,
@@ -1128,7 +1146,7 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
           // Load background image to get its dimensions (fallback if dimensions not saved)
           const img = new Image();
           img.onerror = (err) => {
-            console.error("Failed to load saved background image (possible CORS):", savedTemplateUrl, err);
+            
             toast({ title: "Background load failed", description: "Could not load background image due to CORS or network error. Try re-uploading the image.", variant: "destructive" });
             // clear template to avoid broken image state
             setTemplateUrl(null);
@@ -1155,7 +1173,7 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
         }
         toast({ title: "Loaded", description: "Restored your previous card", duration: 2000 });
       } catch (err) {
-        console.error("Failed to load saved config:", err);
+        
       }
     };
 
@@ -1212,7 +1230,7 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
           // If no server config found, fall back to localStorage
           loadFromLocal();
         } catch (err) {
-          console.error("Failed to fetch server promo config:", err);
+          
           // fallback
           loadFromLocal();
         }
@@ -1277,7 +1295,7 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
     }
 
     if (!template) {
-      console.error("No template found for", elementKey);
+      
       setDraggingElement(null);
       return;
     }
@@ -1583,12 +1601,12 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
         });
       };
       reader.onerror = () => {
-        console.error("FileReader error");
+        
         toast({ title: "Upload failed", variant: "destructive" });
       };
       reader.readAsDataURL(file);
     } catch (err) {
-      console.error("Error uploading background:", err);
+      
       toast({ title: "Upload failed", variant: "destructive" });
     }
 
@@ -1648,7 +1666,7 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
         toast({ title: "Test logo uploaded" });
       }
     } catch (err) {
-      console.error("Image upload error:", err);
+      
       toast({ title: "Image error", variant: "destructive" });
     } finally {
       setCropDialogOpen(false);
@@ -1690,7 +1708,7 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
               setTemplateUrl(finalTemplateUrl);
             }
           } catch (uploadErr) {
-            console.error("Template upload failed:", uploadErr);
+            
             // Continue and attempt to save the data URL if upload fails; notify user
             toast({ title: "Upload failed", description: "Could not upload background image to server. Saved locally instead.", variant: "destructive" });
           }
@@ -1710,7 +1728,7 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
 
         toast({ title: "Saved", description: `${cardType === "promo" ? "Promo" : "Website"} card template saved` });
       } catch (err: any) {
-        console.error("Failed to save template to event:", err);
+        
         toast({ title: "Saved locally", description: "Template saved to browser, but failed to sync with server" });
       }
     } else {
@@ -1776,6 +1794,22 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
 
   return (
     <>
+      <Dialog open={missingFormDialogOpen} onOpenChange={setMissingFormDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-destructive">Speaker Form Missing</DialogTitle>
+          </DialogHeader>
+          <div className="mt-2">
+            <p className="text-sm text-muted-foreground">
+              A saved "Speaker Information" form wasn't found for this event. Please create and save the form first in your event's Forms tab.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setMissingFormDialogOpen(false)}>Close</Button>
+              <Button variant="destructive" onClick={() => { window.location.href = `/organizer/event/${eventId}/speakers?tab=forms`; }}>Open Forms</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
       <ImageCropDialog
         open={cropDialogOpen}
         onOpenChange={(open) => {

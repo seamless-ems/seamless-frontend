@@ -1,13 +1,9 @@
 import React from "react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { DropdownMenu as DM } from "@/components/ui/dropdown-menu";
-import { MoreVertical } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useQueryClient } from "@tanstack/react-query";
 import { updateSpeaker, deleteSpeaker } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
-import { Button } from "@/components/ui/button";
 
 type Props = {
   speakers: any[];
@@ -30,7 +26,7 @@ export default function SpeakersTable({ speakers, isLoading, eventId }: Props) {
     <table className="w-full">
       <thead className="border-b border-border bg-muted/30">
         <tr>
-          <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground w-[60px]">Actions</th>
+          <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground w-[64px]">Headshot</th>
           <th className="px-5 py-3 text-left text-xs font-medium text-muted-foreground">Speaker</th>
           <th className="px-5 py-3 text-left text-xs font-medium text-muted-foreground">Title</th>
           <th className="px-5 py-3 text-left text-xs font-medium text-muted-foreground">Company</th>
@@ -42,74 +38,14 @@ export default function SpeakersTable({ speakers, isLoading, eventId }: Props) {
         {speakers.map((speaker) => (
           <tr key={speaker.id} className="border-b border-border hover:bg-muted/40 transition-colors group">
             <td className="px-4 py-4">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                  <button className="p-1.5 hover:bg-muted rounded transition-colors">
-                    <MoreVertical className="h-4 w-4 text-muted-foreground" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start">
-                  <DropdownMenuItem onClick={() => window.location.href = `/organizer/event/${eventId}/speakers/${speaker.id}`}>
-                    View Details
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  {!speaker.status || speaker.status !== "archived" ? (
-                    <>
-                      <DropdownMenuItem
-                        className="text-warning"
-                        onClick={async () => {
-                          if (!eventId) return;
-                          if (confirm(`Archive ${speaker.name}?\n\nSpeaker will be hidden from the active list, but their data is retained. You can restore them anytime.`)) {
-                            try {
-                              await updateSpeaker(eventId, speaker.id, { status: "archived" });
-                              toast({ title: "Speaker archived", description: `${speaker.name} archived. Filter by \"Archived\" to restore.` });
-                              queryClient.invalidateQueries({ queryKey: ["event", eventId, "speakers"] });
-                            } catch (err: any) {
-                              toast({ title: "Failed to archive speaker", description: String(err?.message || err) });
-                            }
-                          }
-                        }}
-                      >
-                        Archive Speaker
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="text-destructive"
-                        onClick={async () => {
-                          if (!eventId) return;
-                          if (confirm(`Permanently delete ${speaker.name}?\n\nThis action cannot be undone. All speaker data will be permanently deleted.`)) {
-                            try {
-                              await deleteSpeaker(eventId, speaker.id);
-                              toast({ title: "Speaker deleted", description: `${speaker.name} has been permanently deleted` });
-                              queryClient.invalidateQueries({ queryKey: ["event", eventId, "speakers"] });
-                            } catch (err: any) {
-                              toast({ title: "Failed to delete speaker", description: String(err?.message || err) });
-                            }
-                          }
-                        }}
-                      >
-                        Delete Speaker
-                      </DropdownMenuItem>
-                    </>
-                  ) : (
-                    <DropdownMenuItem
-                      onClick={async () => {
-                        if (!eventId) return;
-                        if (confirm(`Restore ${speaker.name} to active speakers?`)) {
-                          try {
-                            await updateSpeaker(eventId, speaker.id, { status: "active" });
-                            toast({ title: "Speaker restored", description: `${speaker.name} has been restored` });
-                            queryClient.invalidateQueries({ queryKey: ["event", eventId, "speakers"] });
-                          } catch (err: any) {
-                            toast({ title: "Failed to restore speaker", description: String(err?.message || err) });
-                          }
-                        }
-                      }}
-                    >
-                      Restore Speaker
-                    </DropdownMenuItem>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <div className="w-10 h-10">
+                <Avatar>
+                  <AvatarImage src={speaker.headshot || speaker.headshotUrl || speaker.headshot_url || undefined} alt={speaker.name || "headshot"} />
+                  <AvatarFallback>
+                    {((speaker.name || "") as string).split(" ").map((p: string) => p?.[0]).filter(Boolean).slice(0,2).join("")}
+                  </AvatarFallback>
+                </Avatar>
+              </div>
             </td>
 
             <td className="px-5 py-4">
@@ -130,7 +66,6 @@ export default function SpeakersTable({ speakers, isLoading, eventId }: Props) {
             </td>
 
             <td className="px-5 py-4 text-sm text-muted-foreground cursor-pointer" onClick={() => window.location.href = `/organizer/event/${eventId}/speakers/${speaker.id}`}>
-              {/* TODO: Backend needs to add updatedAt field - currently showing registeredAt */}
               {speaker.createdAt ? new Date(speaker.createdAt).toLocaleDateString() : "-"}
             </td>
 
