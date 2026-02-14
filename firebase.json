@@ -1,5 +1,6 @@
 {
   "hosting": {
+    "site": "seamless-10a01",
     "public": "dist",
     "rewrites": [
       { "source": "/__/auth/**", "destination": "/__/auth/" },
