@@ -153,10 +153,10 @@ const App = () => {
             />
 
             {/* Public embed route for speaker promo cards */}
-            <Route path="/event/:id/speakers/embed" element={<SpeakerEmbed />} />
+            {/* <Route path="/event/:id/speakers/embed" element={<SpeakerEmbed />} /> */}
             <Route path="/event/:id/speakers/embed/promo" element={<PromoEmbed />} />
             {/* Single-speaker embed routes (public) */}
-            <Route path="/event/:id/speakers/embed/speaker/:speakerId" element={<SpeakerEmbedSingle />} />
+            {/* <Route path="/event/:id/speakers/embed/speaker/:speakerId" element={<SpeakerEmbedSingle />} /> */}
             <Route path="/event/:id/speakers/embed/promo/:speakerId" element={<PromoEmbedSingle />} />
 
             <Route

@@ -2005,11 +2005,36 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
                     disabled={!selectedElement || !["name", "title", "company"].includes(selectedElement)}
                     className="h-7 px-2 text-xs border border-border rounded bg-background disabled:opacity-50"
                   >
-                    <option value="Inter">Inter</option>
-                    <option value="Arial">Arial</option>
-                    <option value="Helvetica">Helvetica</option>
-                    <option value="Georgia">Georgia</option>
-                    <option value="Times New Roman">Times</option>
+                    <option value="Roboto">Roboto</option>
+                    <option value="Open Sans">Open Sans</option>
+                    <option value="Lato">Lato</option>
+                    <option value="Montserrat">Montserrat</option>
+                    <option value="Poppins">Poppins</option>
+                    <option value="Raleway">Raleway</option>
+                    <option value="Noto Sans">Noto Sans</option>
+                    <option value="Source Sans Pro">Source Sans Pro</option>
+                    <option value="Merriweather">Merriweather</option>
+                    <option value="Playfair Display">Playfair Display</option>
+                    <option value="Nunito">Nunito</option>
+                    <option value="Ubuntu">Ubuntu</option>
+                    <option value="PT Sans">PT Sans</option>
+                    <option value="Karla">Karla</option>
+                    <option value="Oswald">Oswald</option>
+                    <option value="Fira Sans">Fira Sans</option>
+                    <option value="Work Sans">Work Sans</option>
+                    <option value="Inconsolata">Inconsolata</option>
+                    <option value="Josefin Sans">Josefin Sans</option>
+                    <option value="Alegreya">Alegreya</option>
+                    <option value="Cabin">Cabin</option>
+                    <option value="Titillium Web">Titillium Web</option>
+                    <option value="Mulish">Mulish</option>
+                    <option value="Quicksand">Quicksand</option>
+                    <option value="Anton">Anton</option>
+                    <option value="Droid Sans">Droid Sans</option>
+                    <option value="Archivo">Archivo</option>
+                    <option value="Hind">Hind</option>
+                    <option value="Bitter">Bitter</option>
+                    <option value="Libre Franklin">Libre Franklin</option>
                   </select>
 
                   {/* Font Size */}
