@@ -131,17 +131,36 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
           try {
             setFormConfig(res.config as FormFieldConfig[]);
           } catch (e) {
-            
             setFormConfig(DEFAULT_FORM_FIELDS);
           }
         })
         .catch((err) => {
-          
           setFormConfig(DEFAULT_FORM_FIELDS);
         });
     }).catch((err) => {
-      
       setFormConfig(DEFAULT_FORM_FIELDS);
+    });
+
+    return () => { mounted = false; };
+  }, [eventId, backendFormType]);
+
+  // Load website/promo config for this event (used to pick crop shapes)
+  React.useEffect(() => {
+    if (!eventId) return;
+    let mounted = true;
+    import("@/lib/api").then(({ getWebsiteConfigForEvent }) => {
+      getWebsiteConfigForEvent(eventId)
+        .then((res) => {
+          if (!mounted) return;
+          setWebsiteConfig(res ?? null);
+        })
+        .catch(() => {
+          if (!mounted) return;
+          setWebsiteConfig(null);
+        });
+    }).catch(() => {
+      if (!mounted) return;
+      setWebsiteConfig(null);
     });
 
     return () => { mounted = false; };
@@ -168,6 +187,14 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
     queryKey: ["event", eventId, "speaker", speakerId],
     queryFn: () => getJson<any>(`/events/${eventId}/speakers/${speakerId}`),
     enabled: Boolean(eventId && speakerId),
+  });
+
+  // Use react-query to load website/promo config for this event (avoids race conditions)
+  const { data: websiteConfig } = useQuery({
+    queryKey: ["event", eventId, "websiteConfig"],
+    queryFn: async () => getJson<any>(`/promo-cards/config/${encodeURIComponent(eventId!)}?promo_type=website`),
+    enabled: Boolean(eventId),
+    staleTime: 1000 * 60 * 5,
   });
 
   React.useEffect(() => {
@@ -567,6 +594,16 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
                     aspectRatio={cropType === "headshot" ? 1 : NaN}
                     onCropComplete={handleCropComplete}
                     title={cropType === "headshot" ? "Crop Headshot" : "Crop Company Logo"}
+                    cropShape={(() => {
+                      // Default fallbacks
+                      if (cropType === "headshot") {
+                        return (websiteConfig?.config?.headshot?.shape as any) ?? "circle";
+                      }
+                      if (cropType === "logo") {
+                        return (websiteConfig?.config?.companyLogo?.shape as any) ?? "square";
+                      }
+                      return "square";
+                    })()}
                   />
                 )}
 

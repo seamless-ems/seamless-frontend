@@ -352,11 +352,12 @@ export async function generatePromo(eventId: string, speakerId: string): Promise
 }
 // Website template endpoints (parallel to promo cards)
 export function getWebsiteConfigForEvent(eventId: string): Promise<any> {
-  return getJson<any>(`/website/config/${encodeURIComponent(eventId)}`);
+  return getJson<any>(`/promo-cards/config/${encodeURIComponent(eventId)}?promo_type=website`);
 }
 
 export function createWebsiteConfig(body: { eventId: string; config: any }): Promise<any> {
-  return postJson<typeof body, any>(`/website/config`, body);
+  // be sure to pass promo_type=website in the body as backend uses the same config structure for both promo cards and website templates
+  return postJson<typeof body, any>(`/config`, body);
 }
 export async function deleteIntegration(provider: string): Promise<void> {
   const res = await fetch(`${API_BASE}/integrations/${encodeURIComponent(provider)}`, {
