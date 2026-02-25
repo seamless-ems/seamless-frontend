@@ -1,4 +1,5 @@
 import React from "react";
+import { toast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Upload } from "lucide-react";
@@ -62,11 +63,17 @@ export default function Uploads(props: Props) {
             <input
               ref={headshotInputRef}
               type="file"
-              accept="image/*"
+              accept="image/png,image/jpeg"
               className="hidden"
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (!file) return;
+                const allowed = ["image/png", "image/jpeg"];
+                if (!allowed.includes(file.type)) {
+                  toast({ title: "Invalid file type", description: "Please upload a PNG or JPEG for headshot", variant: "destructive" });
+                  e.currentTarget.value = '';
+                  return;
+                }
                 const reader = new FileReader();
                 reader.onloadend = () => {
                   setCropImageUrl(reader.result as string);
@@ -110,11 +117,17 @@ export default function Uploads(props: Props) {
             <input
               ref={logoInputRef}
               type="file"
-              accept="image/*"
+              accept="image/png,image/jpeg"
               className="hidden"
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (!file) return;
+                const allowed = ["image/png", "image/jpeg"];
+                if (!allowed.includes(file.type)) {
+                  toast({ title: "Invalid file type", description: "Please upload a PNG or JPEG for logo", variant: "destructive" });
+                  e.currentTarget.value = '';
+                  return;
+                }
                 const reader = new FileReader();
                 reader.onloadend = () => {
                   setCropImageUrl(reader.result as string);
@@ -167,12 +180,18 @@ export default function Uploads(props: Props) {
 
               <input
                 type="file"
-                accept="image/*"
+                accept="image/png,image/jpeg"
                 className="hidden"
                 id={`custom-file-${field.id}`}
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (!file) return;
+                  const allowed = ["image/png", "image/jpeg"];
+                  if (!allowed.includes(file.type)) {
+                    toast({ title: "Invalid file type", description: "Please upload a PNG or JPEG image", variant: "destructive" });
+                    (e.target as HTMLInputElement).value = '';
+                    return;
+                  }
                   onCustomFileSelected?.(field.id, file);
                 }}
               />

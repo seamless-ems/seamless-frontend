@@ -1565,8 +1565,9 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
     if (!file) {
       return;
     }
-    if (!file.type.startsWith("image/")) {
-      toast({ title: "Invalid file", description: "Please select an image file", variant: "destructive" });
+    const allowed = ["image/png", "image/jpeg"];
+    if (!allowed.includes(file.type)) {
+      toast({ title: "Invalid file type", description: "Please upload a PNG or JPEG image", variant: "destructive" });
       return;
     }
 
@@ -1617,7 +1618,13 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
   // Headshot upload
   const handleHeadshotUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !file.type.startsWith("image/")) return;
+    const allowed = ["image/png", "image/jpeg"];
+    if (!file) return;
+    if (!allowed.includes(file.type)) {
+      toast({ title: "Invalid file type", description: "Headshot must be PNG or JPEG", variant: "destructive" });
+      e.target.value = '';
+      return;
+    }
     const url = URL.createObjectURL(file);
     setCropImageUrl(url);
     setCropMode("headshot");
@@ -1627,7 +1634,13 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
   // Logo upload
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !file.type.startsWith("image/")) return;
+    const allowed = ["image/png", "image/jpeg"];
+    if (!file) return;
+    if (!allowed.includes(file.type)) {
+      toast({ title: "Invalid file type", description: "Logo must be PNG or JPEG", variant: "destructive" });
+      e.target.value = '';
+      return;
+    }
     const url = URL.createObjectURL(file);
     setCropImageUrl(url);
     setCropMode("logo");
@@ -2229,7 +2242,7 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
               <ImageIcon className="h-5 w-5" />
               <span className="text-xs">Background</span>
             </button>
-            <input ref={fileInputRef} type="file" accept="image/*" onChange={handleBackgroundUpload} className="hidden" />
+            <input ref={fileInputRef} type="file" accept="image/png,image/jpeg" onChange={handleBackgroundUpload} className="hidden" />
 
             <div className="h-px w-12 bg-border" />
 
@@ -2472,7 +2485,7 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
 
             <div>
               <Label className="text-xs mb-2 block">Headshot</Label>
-              <input ref={headshotInputRef} type="file" accept="image/*" onChange={handleHeadshotUpload} className="hidden" />
+              <input ref={headshotInputRef} type="file" accept="image/png,image/jpeg" onChange={handleHeadshotUpload} className="hidden" />
               <Button onClick={() => headshotInputRef.current?.click()} variant="outline" size="sm" className="w-full">
                 <Upload className="h-3 w-3 mr-2" />
                 Upload Test Image
@@ -2493,7 +2506,7 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
             <div>
               <Label className="text-xs mb-1 block">Company Logo</Label>
               <p className="text-xs text-muted-foreground mb-2">Drop zone for logos (free crop)</p>
-              <input ref={logoInputRef} type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
+              <input ref={logoInputRef} type="file" accept="image/png,image/jpeg" onChange={handleLogoUpload} className="hidden" />
               <Button onClick={() => logoInputRef.current?.click()} variant="outline" size="sm" className="w-full">
                 <Upload className="h-3 w-3 mr-2" />
                 Upload Test Image

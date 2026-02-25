@@ -2824,18 +2824,18 @@
         }
       }
     },
-    "/promo-cards/generate": {
-      "post": {
+    "/promo-cards/{event_id}/speaker/{speaker_id}": {
+      "get": {
         "tags": [
           "promo-cards"
         ],
-        "summary": "Generate Promo Card",
-        "description": "Generate a promo card PNG from a payload containing `eventId`, `promoType`, `config`, and `id` (speaker id).\n\nThis is a minimal implementation that composites a template image (if provided), speaker headshot,\nand company logo, and renders the company text. It returns a PNG image stream.",
-        "operationId": "generate_promo_card_promo_cards_generate_post",
+        "summary": "Get Promo Card Speaker Embed",
+        "description": "Get the promo card embed for a specific speaker in an event.",
+        "operationId": "get_promo_card_speaker_embed_promo_cards__event_id__speaker__speaker_id__get",
         "parameters": [
           {
             "name": "event_id",
-            "in": "query",
+            "in": "path",
             "required": true,
             "schema": {
               "type": "string",
@@ -2844,17 +2844,121 @@
           },
           {
             "name": "speaker_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Speaker Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/embed/{event_id}": {
+      "get": {
+        "tags": [
+          "website embed"
+        ],
+        "summary": "Get Website Embed",
+        "description": "Get the website embed for an event.",
+        "operationId": "get_website_embed_embed__event_id__get",
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Event Id"
+            }
+          },
+          {
+            "name": "column_amount",
             "in": "query",
             "required": false,
             "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
+              "type": "integer",
+              "default": 2,
+              "title": "Column Amount"
+            }
+          },
+          {
+            "name": "include_bio_modal",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": true,
+              "title": "Include Bio Modal"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
-              ],
+              }
+            }
+          }
+        }
+      }
+    },
+    "/embed/{event_id}/speaker/{speaker_id}": {
+      "get": {
+        "tags": [
+          "website embed"
+        ],
+        "summary": "Get Website Speaker Embed",
+        "description": "Get the website embed for a specific speaker in an event.",
+        "operationId": "get_website_speaker_embed_embed__event_id__speaker__speaker_id__get",
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Event Id"
+            }
+          },
+          {
+            "name": "speaker_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
               "title": "Speaker Id"
             }
           }
@@ -3615,6 +3719,9 @@
               {
                 "type": "string",
                 "format": "uuid"
+              },
+              {
+                "type": "string"
               },
               {
                 "type": "null"

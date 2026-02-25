@@ -1,6 +1,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { toast } from '@/hooks/use-toast';
 
 type Props = {
   s: any;
@@ -31,11 +32,17 @@ export default function SpeakerAssets({ s, headshotInputRef, logoInputRef, uploa
         <input
           ref={headshotInputRef}
           type="file"
-          accept="image/*"
+          accept="image/png,image/jpeg"
           className="hidden"
           onChange={(e) => {
             const file = e.target.files?.[0];
             if (!file) return;
+            const allowed = ["image/png", "image/jpeg"];
+            if (!allowed.includes(file.type)) {
+              toast({ title: "Invalid file type", description: "Headshot must be PNG or JPEG", variant: "destructive" });
+              e.currentTarget.value = '';
+              return;
+            }
             const reader = new FileReader();
             reader.onloadend = () => onSelectFile('headshot', reader.result as string);
             reader.readAsDataURL(file);
@@ -69,11 +76,17 @@ export default function SpeakerAssets({ s, headshotInputRef, logoInputRef, uploa
         <input
           ref={logoInputRef}
           type="file"
-          accept="image/*"
+          accept="image/png,image/jpeg"
           className="hidden"
           onChange={(e) => {
             const file = e.target.files?.[0];
             if (!file) return;
+            const allowed = ["image/png", "image/jpeg"];
+            if (!allowed.includes(file.type)) {
+              toast({ title: "Invalid file type", description: "Logo must be PNG or JPEG", variant: "destructive" });
+              e.currentTarget.value = '';
+              return;
+            }
             const reader = new FileReader();
             reader.onloadend = () => onSelectFile('logo', reader.result as string);
             reader.readAsDataURL(file);

@@ -443,7 +443,7 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
                   {/* Personal Details */}
                   {personalFields.length > 0 && (
                     <div className="space-y-4">
-                      <h3 className="text-sm font-semibold text-foreground">Personal Information</h3>
+                      {/* <h3 className="text-sm font-semibold text-foreground">Personal Information</h3> */}
                       <div className="grid grid-cols-1 gap-4">
                         {personalFields.map(field => (
                           field.type !== "file" && (
@@ -473,7 +473,7 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
                   {/* Company Details */}
                   {companyFields.length > 0 && (
                     <div className="space-y-4 pt-2">
-                      <h3 className="text-sm font-semibold text-foreground">Company Information</h3>
+                      {/* <h3 className="text-sm font-semibold text-foreground">Company Information</h3> */}
                       <div className="grid grid-cols-1 gap-4">
                         {companyFields.map(field => (
                           <FormField
@@ -526,7 +526,7 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
                   {/* Additional / Custom Fields */}
                   {otherFields.length > 0 && (
                     <div className="space-y-4 pt-2">
-                      <h3 className="text-sm font-semibold text-foreground">Additional Information</h3>
+                      {/* <h3 className="text-sm font-semibold text-foreground">Additional Information</h3> */}
                       <div className="grid grid-cols-1 gap-4">
                         {otherFields.map(field => (
                           <FormField
