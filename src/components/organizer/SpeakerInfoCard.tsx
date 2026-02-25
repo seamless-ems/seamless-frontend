@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 
 type Props = {
   s: any;
-  formConfig?: any[];
+  formConfig?: any;
   onEdit: () => void;
   onViewBio: () => void;
   onViewNotes: () => void;
@@ -23,8 +23,19 @@ const FIELD_MAPPING: Record<string, string> = {
 };
 
 export default function SpeakerInfoCard({ s, formConfig, onEdit, onViewBio, onViewNotes }: Props) {
+  // Normalize `formConfig` into an array supporting multiple shapes
+  const _fieldsArray: any[] = (() => {
+    if (!formConfig) return [];
+    if (Array.isArray(formConfig)) return formConfig as any[];
+    if (Array.isArray((formConfig as any).config)) return (formConfig as any).config as any[];
+    if (Array.isArray((formConfig as any).fields)) return (formConfig as any).fields as any[];
+    // support nested shape: { config: { fields: [...] } }
+    if (Array.isArray((formConfig as any).config?.fields)) return (formConfig as any).config.fields as any[];
+    return [];
+  })();
+
   // Filter to enabled fields only
-  const enabledFields = formConfig?.filter((f: any) => f.enabled && f.type !== 'file') || [];
+  const enabledFields = _fieldsArray.filter((f: any) => f && f.enabled && f.type !== 'file');
 
   const renderField = (field: any) => {
     const speakerKey = FIELD_MAPPING[field.id] || field.id;

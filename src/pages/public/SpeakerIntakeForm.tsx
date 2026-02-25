@@ -28,6 +28,7 @@ import type { FormFieldConfig } from "@/components/SpeakerFormBuilder";
 import { ImageCropDialog } from "@/components/ImageCropDialog";
 import { useRef } from "react";
 import { generateUuid } from "@/lib/utils";
+import MissingFormDialog from "@/components/MissingFormDialog";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
@@ -58,6 +59,17 @@ function buildDynamicSchema(fields: FormFieldConfig[]): z.ZodSchema {
         break;
       case "textarea":
         fieldSchema = z.string().min(10, `${field.label} must be at least 10 characters`).max(500);
+        break;
+      case "radio":
+        fieldSchema = z.string();
+        break;
+      case "checkbox":
+        // If checkbox has options it's a multi-select array, otherwise a boolean
+        if ((field as any).options && Array.isArray((field as any).options) && (field as any).options.length > 0) {
+          fieldSchema = z.array(z.string());
+        } else {
+          fieldSchema = z.boolean();
+        }
         break;
       case "text":
       case "url":
@@ -97,6 +109,10 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [formConfig, setFormConfig] = useState<FormFieldConfig[]>(DEFAULT_FORM_FIELDS);
+  const [formTitle, setFormTitle] = useState<string | null>(null);
+  const [formSubtitle, setFormSubtitle] = useState<string | null>(null);
+  const [showFormTitle, setShowFormTitle] = useState<boolean>(true);
+  const [missingFormDialogOpen, setMissingFormDialogOpen] = useState<boolean>(false);
   const [cropImageUrl, setCropImageUrl] = useState<string | null>(null);
   const [cropType, setCropType] = useState<"headshot" | "logo" | null>(null);
   const [formName, setFormName] = useState<string>("Speaker Information");
@@ -120,21 +136,42 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
   React.useEffect(() => {
     if (!eventId) return;
     let mounted = true;
+    const [missingDialogOpenSetter] = [null];
     import("@/lib/api").then(({ getFormConfigForEvent }) => {
       getFormConfigForEvent(eventId, backendFormType)
         .then((res: any) => {
           if (!mounted) return;
-          if (!res || !Array.isArray(res.config)) {
+          if (!res || !res.config) {
             setFormConfig(DEFAULT_FORM_FIELDS);
             return;
           }
           try {
-            setFormConfig(res.config as FormFieldConfig[]);
+            // support legacy array shape or new object shape { fields, metadata }
+            if (Array.isArray(res.config)) {
+              setFormConfig(res.config as FormFieldConfig[]);
+              // read optional metadata from top-level
+              setFormTitle((res.title as string) || null);
+              setFormSubtitle((res.subtitle as string) || null);
+              const show = typeof res.showTitle === 'boolean' ? res.showTitle : (res.metadata?.showTitle ?? true);
+              setShowFormTitle(Boolean(show));
+            } else if (typeof res.config === 'object') {
+              const cfg = res.config as any;
+              const fieldsFromCfg = Array.isArray(cfg.fields) ? cfg.fields : DEFAULT_FORM_FIELDS;
+              setFormConfig(fieldsFromCfg as FormFieldConfig[]);
+              setFormTitle((cfg.metadata?.title as string) || null);
+              setFormSubtitle((cfg.metadata?.subtitle as string) || null);
+              setShowFormTitle(typeof cfg.metadata?.showTitle === 'boolean' ? cfg.metadata.showTitle : true);
+            } else {
+              setFormConfig(DEFAULT_FORM_FIELDS);
+            }
           } catch (e) {
             setFormConfig(DEFAULT_FORM_FIELDS);
           }
         })
         .catch((err) => {
+          if (err && (err.status === 404 || err?.status === 404)) {
+            setMissingFormDialogOpen(true);
+          }
           setFormConfig(DEFAULT_FORM_FIELDS);
         });
     }).catch((err) => {
@@ -143,6 +180,8 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
 
     return () => { mounted = false; };
   }, [eventId, backendFormType]);
+
+  // Missing form dialog state handled above with `missingFormDialogOpen`/`setMissingFormDialogOpen`
 
   // Load website/promo config for this event (used to pick crop shapes)
   React.useEffect(() => {
@@ -168,14 +207,23 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
 
   // Update the visible form name based on page type
   React.useEffect(() => {
-    setFormName(pageType === "speaker-intake" ? "Speaker Information" : "Call for Speakers");
+    // only set default form name when not provided by config metadata
+    if (!formTitle) setFormName(pageType === "speaker-intake" ? "Speaker Information" : "Call for Speakers");
   }, [pageType]);
 
   // Build dynamic schema based on enabled fields
   const dynamicSchema = buildDynamicSchema(formConfig);
   const defaultValues: Record<string, any> = {};
   formConfig.filter(f => f.enabled).forEach(field => {
-    defaultValues[field.id] = "";
+    if (field.type === 'checkbox') {
+      if ((field as any).options && Array.isArray((field as any).options) && (field as any).options.length > 0) {
+        defaultValues[field.id] = [];
+      } else {
+        defaultValues[field.id] = false;
+      }
+    } else {
+      defaultValues[field.id] = "";
+    }
   });
 
   const form = useForm({
@@ -389,9 +437,16 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
 
   return (
     <div className="min-h-screen bg-background">
+      <MissingFormDialog open={missingFormDialogOpen} onOpenChange={setMissingFormDialogOpen} eventId={String(eventId)} />
       {/* Main Content */}
       <div className="p-6 lg:p-12">
         <div className="max-w-2xl mx-auto space-y-6">
+          {showFormTitle && (
+            <div className="text-center space-y-2">
+              <h1 className="text-2xl font-semibold">{formTitle ?? formName}</h1>
+              {formSubtitle && <p className="text-sm text-muted-foreground">{formSubtitle}</p>}
+            </div>
+          )}
           {/* Success Screen */}
           {isSubmitted ? (
             <div className="flex flex-col items-center justify-center min-h-screen bg-background px-4">
@@ -416,28 +471,6 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
             </div>
           ) : (
             <>
-              {/* Form Header */}
-              <div>
-                <h1 className="text-2xl font-semibold text-foreground">
-                  {formName} | {eventData?.title ?? (loadingEvent ? "Loading…" : "Event")}
-                </h1>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Submit your information for use in the {eventData?.title ?? "event"} promotion
-                </p>
-                {(eventData?.location || eventData?.type) && (
-                  <div className="flex items-center gap-3 mt-3 text-xs text-muted-foreground">
-                    {eventData?.location && (
-                      <>
-                        <MapPin className="h-4 w-4 text-primary" />
-                        <span>{eventData.location}</span>
-                      </>
-                    )}
-                    {eventData?.type && eventData?.location && <span>•</span>}
-                    {eventData?.type && <span>{eventData.type}</span>}
-                  </div>
-                )}
-              </div>
-
               <form onSubmit={form.handleSubmit(onSubmit)} className="bg-card rounded-lg border border-border p-8 space-y-6">
                 <Form {...form}>
                   {/* Personal Details */}
@@ -540,11 +573,55 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
                                   {field.required && <span className="text-destructive ml-1">*</span>}
                                 </FormLabel>
                                 <FormControl>
-                                  {field.type === 'textarea' ? (
-                                    <Textarea className="text-sm" placeholder={field.placeholder ?? `Enter ${field.label.toLowerCase()}`} rows={4} {...formField} />
-                                  ) : (
-                                    <Input className="text-sm" placeholder={field.placeholder ?? `Enter ${field.label.toLowerCase()}`} {...formField} />
-                                  )}
+                                            {field.type === 'textarea' ? (
+                                              <Textarea className="text-sm" placeholder={field.placeholder ?? `Enter ${field.label.toLowerCase()}`} rows={4} {...formField} />
+                                            ) : field.type === 'radio' ? (
+                                              <div className="space-y-2">
+                                                {((field as any).options || []).map((opt: string) => (
+                                                  <label key={opt} className="flex items-center gap-2 text-sm">
+                                                    <input
+                                                      type="radio"
+                                                      name={field.id}
+                                                      value={opt}
+                                                      checked={formField.value === opt}
+                                                      onChange={() => formField.onChange(opt)}
+                                                    />
+                                                    <span>{opt}</span>
+                                                  </label>
+                                                ))}
+                                              </div>
+                                            ) : field.type === 'checkbox' ? (
+                                              <div className="space-y-2">
+                                                {((field as any).options || []).length > 0 ? (
+                                                  // multi-select checkboxes
+                                                  ((field as any).options || []).map((opt: string) => (
+                                                    <label key={opt} className="flex items-center gap-2 text-sm">
+                                                      <input
+                                                        type="checkbox"
+                                                        name={`${field.id}.${opt}`}
+                                                        checked={Array.isArray(formField.value) && formField.value.includes(opt)}
+                                                        onChange={(e) => {
+                                                          const cur = Array.isArray(formField.value) ? [...formField.value] : [];
+                                                          if (e.target.checked) cur.push(opt); else {
+                                                            const idx = cur.indexOf(opt); if (idx > -1) cur.splice(idx, 1);
+                                                          }
+                                                          formField.onChange(cur);
+                                                        }}
+                                                      />
+                                                      <span>{opt}</span>
+                                                    </label>
+                                                  ))
+                                                ) : (
+                                                  // single boolean checkbox
+                                                  <label className="flex items-center gap-2 text-sm">
+                                                    <input type="checkbox" checked={Boolean(formField.value)} onChange={(e) => formField.onChange(e.target.checked)} />
+                                                    <span>{field.label}</span>
+                                                  </label>
+                                                )}
+                                              </div>
+                                            ) : (
+                                              <Input className="text-sm" placeholder={field.placeholder ?? `Enter ${field.label.toLowerCase()}`} {...formField} />
+                                            )}
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>

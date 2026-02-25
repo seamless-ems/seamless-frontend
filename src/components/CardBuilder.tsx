@@ -75,12 +75,7 @@ import { fabric } from "fabric";
 import { ImageCropDialog } from "@/components/ImageCropDialog";
 import { toast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import MissingFormDialog from "@/components/MissingFormDialog";
 import { getFormConfigForEvent } from "@/lib/api";
 import type { FormFieldConfig } from "@/components/SpeakerFormBuilder";
 
@@ -305,13 +300,21 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
 
   // Get fields that are enabled for card builder, excluding default fields
   const DEFAULT_FIELD_IDS = ["headshot", "name", "title", "first_name", "last_name", "company_name", "company_role", "company_logo"];
-  const cardBuilderFields = (formConfig?.config || []).filter(
-    (field) => field.showInCardBuilder && field.enabled && !DEFAULT_FIELD_IDS.includes(field.id)
+  const _fieldsArray: any[] = (() => {
+    if (!formConfig) return [];
+    if (Array.isArray(formConfig)) return formConfig as any[];
+    if (Array.isArray((formConfig as any).config)) return (formConfig as any).config as any[];
+    if (Array.isArray((formConfig as any).fields)) return (formConfig as any).fields as any[];
+    return [];
+  })();
+
+  const cardBuilderFields = _fieldsArray.filter(
+    (field: any) => field && field.showInCardBuilder && field.enabled && !DEFAULT_FIELD_IDS.includes(field.id)
   );
 
   // Helper to check if a hardcoded element should be shown based on form config
   const shouldShowElement = (elementKey: string): boolean => {
-    if (!formConfig?.config) return true; // Show all if no config loaded
+    if (_fieldsArray.length === 0) return true; // Show all if no config loaded
 
     const fieldMapping: { [key: string]: string[] } = {
       headshot: ["headshot"],
@@ -324,7 +327,7 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
     const relatedFields = fieldMapping[elementKey] || [];
     // Show if ANY related field has showInCardBuilder enabled
     return relatedFields.some(fieldId => {
-      const field = formConfig.config.find(f => f.id === fieldId);
+      const field = _fieldsArray.find((f: any) => f.id === fieldId);
       return field?.showInCardBuilder === true;
     });
   };
@@ -1807,22 +1810,7 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
 
   return (
     <>
-      <Dialog open={missingFormDialogOpen} onOpenChange={setMissingFormDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="text-destructive">Speaker Form Missing</DialogTitle>
-          </DialogHeader>
-          <div className="mt-2">
-            <p className="text-sm text-muted-foreground">
-              A saved "Speaker Information" form wasn't found for this event. Please create and save the form first in your event's Forms tab.
-            </p>
-            <div className="mt-4 flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setMissingFormDialogOpen(false)}>Close</Button>
-              <Button variant="destructive" onClick={() => { window.location.href = `/organizer/event/${eventId}/speakers?tab=forms`; }}>Open Forms</Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <MissingFormDialog open={missingFormDialogOpen} onOpenChange={setMissingFormDialogOpen} eventId={eventId || ""} />
       <ImageCropDialog
         open={cropDialogOpen}
         onOpenChange={(open) => {
