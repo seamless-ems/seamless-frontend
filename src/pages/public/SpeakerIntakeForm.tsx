@@ -461,7 +461,7 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
                     Thank You!
                   </h2>
                   <p className="text-base text-muted-foreground leading-relaxed">
-                    Your information has been successfully submitted. The event organizer will review your details and contact you about next steps.
+                    Your information has been successfully submitted.
                   </p>
                 </div>
                 <div className="pt-6">

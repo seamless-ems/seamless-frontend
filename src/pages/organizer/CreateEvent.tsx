@@ -604,7 +604,7 @@ export default function CreateEvent() {
 					{/* Images & Templates (extracted) */}
 					<Card>
 						<CardHeader>
-							<CardTitle className="text-lg">Images & Templates</CardTitle>
+							<CardTitle className="text-lg">Images</CardTitle>
 						</CardHeader>
 						<CardContent>
 									{/* EventMediaUploader handles image inputs and previews */}
