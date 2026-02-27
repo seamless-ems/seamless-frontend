@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -22,11 +22,23 @@ import FormsTab from "@/components/organizer/FormsTab";
 export default function SpeakerModule() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState("newest");
-  const [selectedTab, setSelectedTab] = useState("speakers");
+  const getInitialTab = () => {
+    try {
+      const params = new URLSearchParams(location.search);
+      const t = params.get("tab");
+      if (t === "speakers" || t === "applications" || t === "forms" || t === "embed-builder") return t;
+    } catch (e) {
+      // ignore
+    }
+    return "speakers";
+  };
+
+  const [selectedTab, setSelectedTab] = useState<string>(getInitialTab);
   // dialog and table are extracted into components
   const [addOpen, setAddOpen] = useState(false);
 
@@ -59,6 +71,8 @@ export default function SpeakerModule() {
       const companyRole = it.company_role ?? it.companyRole ?? "";
       const headshot = it.headshot ?? it.headshot_url ?? it.avatar_url ?? null;
       const intakeFormStatus = it.intake_form_status ?? it.intakeFormStatus ?? "pending";
+      const speakerInformationStatus = it.speaker_information_status ?? it.speakerInformationStatus ?? it.speakerInformationStatus ?? null;
+      const callForSpeakersStatus = it.call_for_speakers_status ?? it.callForSpeakersStatus ?? it.callForSpeakersStatus ?? null;
       const createdAt = it.registered_at ?? it.created_at ?? it.createdAt ?? null;
       const name = `${firstName} ${lastName}`.trim() || email;
 
@@ -71,6 +85,8 @@ export default function SpeakerModule() {
         companyRole,
         avatarUrl: headshot,
         intakeFormStatus,
+        speakerInformationStatus,
+        callForSpeakersStatus,
         createdAt,
         name,
       };
@@ -91,7 +107,16 @@ export default function SpeakerModule() {
       } else if (statusFilter === "archived") {
         matchesStatus = isArchived;
       } else if (statusFilter !== "all") {
-        matchesStatus = speaker.intakeFormStatus === statusFilter;
+        // Determine which status field to check based on selected tab
+        const effectiveStatus = selectedTab === 'applications'
+          ? (speaker.callForSpeakersStatus ?? speaker.call_for_speakers_status ?? speaker.callForSpeakersStatus ?? speaker.call_for_speakers_status)
+          : (speaker.speakerInformationStatus ?? speaker.speaker_information_status ?? speaker.speakerInformationStatus ?? speaker.speaker_information_status ?? speaker.intakeFormStatus ?? speaker.intake_form_status);
+
+        if (statusFilter === 'approved' || statusFilter === 'cards_approved') {
+          matchesStatus = ['approved', 'cards_approved'].includes(effectiveStatus);
+        } else {
+          matchesStatus = effectiveStatus === statusFilter;
+        }
       }
 
       return matchesSearch && matchesStatus;
@@ -111,7 +136,12 @@ export default function SpeakerModule() {
       return 0;
     });
 
-  const pendingCount = speakerList.filter(s => s.intakeFormStatus === "pending").length;
+  const pendingCount = speakerList.filter(s => {
+    const effectiveStatus = selectedTab === 'applications'
+      ? (s.callForSpeakersStatus ?? s.call_for_speakers_status ?? s.callForSpeakersStatus ?? s.call_for_speakers_status)
+      : (s.speakerInformationStatus ?? s.speaker_information_status ?? s.speakerInformationStatus ?? s.speaker_information_status ?? s.intakeFormStatus ?? s.intake_form_status);
+    return effectiveStatus === 'pending';
+  }).length;
   const totalCount = speakerList.length;
 
   return (
@@ -160,10 +190,16 @@ export default function SpeakerModule() {
             Embed Builder
           </button>
           <button
-            onClick={() => navigate(`/organizer/event/${id}/card-builder`)}
+            onClick={() => navigate(`/organizer/event/${id}/website-card-builder`)}
             className="pb-3 border-b-2 border-transparent text-muted-foreground hover:text-foreground font-medium transition-colors text-sm hover:border-primary"
           >
-            Card Builder
+            Website Card Builder
+          </button>
+          <button
+            onClick={() => navigate(`/organizer/event/${id}/promo-card-builder`)}
+            className="pb-3 border-b-2 border-transparent text-muted-foreground hover:text-foreground font-medium transition-colors text-sm hover:border-primary"
+          >
+            Promo Card Builder
           </button>
         </div>
       </div>
@@ -201,7 +237,7 @@ export default function SpeakerModule() {
             {/* Speakers table extracted */}
             <div className="rounded-lg border border-border overflow-hidden">
               {/* @ts-ignore */}
-              <SpeakersTable speakers={filteredSpeakers} isLoading={isLoading} eventId={id} />
+              <SpeakersTable speakers={filteredSpeakers} isLoading={isLoading} eventId={id} selectedTab={selectedTab} />
             </div>
           </div>
         </div>
@@ -247,7 +283,7 @@ export default function SpeakerModule() {
 
             <div className="rounded-lg border border-border overflow-hidden">
               {/* @ts-ignore */}
-              <SpeakersTable speakers={filteredSpeakers} isLoading={isLoading} eventId={id} />
+              <SpeakersTable speakers={filteredSpeakers} isLoading={isLoading} eventId={id} selectedTab={selectedTab} />
             </div>
           </div>
         </div>

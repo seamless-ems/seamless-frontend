@@ -64,7 +64,7 @@ export function ImageCropDialog({
             }
           }
         } catch (err) {
-          console.error('Error in cropper initialization:', err);
+          
         }
       }, 100);
 
@@ -84,17 +84,17 @@ export function ImageCropDialog({
     });
 
     if (!canvas) {
-      console.error('Failed to get cropped canvas');
+      
       return;
     }
 
     canvas.toBlob(
-      (blob: Blob | null) => {
+        (blob: Blob | null) => {
         if (blob) {
           onCropComplete(blob);
           onOpenChange(false);
         } else {
-          console.error('Failed to convert canvas to blob');
+          
         }
       },
       imageFormat === "png" ? "image/png" : "image/jpeg",

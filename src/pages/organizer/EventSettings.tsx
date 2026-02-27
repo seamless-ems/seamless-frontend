@@ -183,7 +183,7 @@ export default function EventSettings() {
           }
         }
       } catch (err) {
-        console.debug("Google Drive status check failed", err);
+        
       }
     })();
   }, []);
@@ -231,7 +231,7 @@ export default function EventSettings() {
           if (imageValue) payload.event_image = imageValue;
         }
       } catch (err: any) {
-        console.error("Event image upload failed", err);
+        
         toast({ title: "Event image upload failed", description: String(err?.message || err) });
       }
 
@@ -246,7 +246,7 @@ export default function EventSettings() {
       queryClient.invalidateQueries({ queryKey: ["event", id] });
       toast({ title: "Event updated" });
     } catch (err: any) {
-      console.error("Update event failed", err);
+      
       const errorMsg = err?.message || String(err);
       toast({
         title: "Failed to update event",
@@ -299,7 +299,7 @@ export default function EventSettings() {
                         setSelectedFolderPath([]);
                         toast({ title: "Disconnected", description: "Google Drive integration removed" });
                       } catch (err: any) {
-                        console.error("Failed to disconnect", err);
+                        
                         toast({ title: "Failed to disconnect", description: String(err?.message || err) });
                       }
                     }}>Disconnect</Button>
@@ -311,7 +311,7 @@ export default function EventSettings() {
                       if (res?.url) window.location.href = res.url;
                       else toast({ title: "Failed to start integration", description: "No URL returned from server" });
                     } catch (err: any) {
-                      console.error("Integration link failed", err);
+                      
                       toast({ title: "Failed to start integration", description: String(err?.message || err) });
                     }
                   }}>

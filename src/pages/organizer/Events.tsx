@@ -34,7 +34,7 @@ export default function Events() {
     // Common paginated shapes: { items: [...]} or { results: [...] } or { events: [...] }
     let arr: any[] = [];
   // rawEvents might be directly an array
-  console.debug("rawEvents:", rawEvents);
+  
   if (Array.isArray(rawEvents)) arr = rawEvents;
     else if (Array.isArray(rawEvents.items)) arr = rawEvents.items;
     else {
@@ -118,7 +118,7 @@ export default function Events() {
                     // refetch events
                     qc.invalidateQueries({ queryKey: ["events"] });
                   } catch (err: any) {
-                    console.error("Failed to delete event", err);
+                    
                     alert("Failed to delete event: " + String(err?.message || err));
                   }
                 }}

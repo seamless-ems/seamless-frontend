@@ -6,7 +6,7 @@ export function setOnboardingCompleted(completed: boolean = true): void {
       localStorage.setItem(ONBOARDING_KEY, completed ? "true" : "false");
     }
   } catch (e) {
-    console.error("Failed to set onboarding status:", e);
+    
   }
 }
 
@@ -17,7 +17,7 @@ export function isOnboardingCompleted(): boolean {
       return value === "true";
     }
   } catch (e) {
-    console.error("Failed to get onboarding status:", e);
+    
   }
   return false;
 }
@@ -28,6 +28,6 @@ export function clearOnboardingStatus(): void {
       localStorage.removeItem(ONBOARDING_KEY);
     }
   } catch (e) {
-    console.error("Failed to clear onboarding status:", e);
+    
   }
 }

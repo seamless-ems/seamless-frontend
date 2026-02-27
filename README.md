@@ -67,7 +67,7 @@ Open http://localhost:5173.
 
 ## Components & Features
 
-### CardBuilderV2 (`src/components/CardBuilderV2.tsx`)
+### CardBuilder (`src/components/CardBuilder.tsx`)
 **Status:** ✅ Complete & Stable (Unified card builder - replaces PromoCardBuilder and WebsiteCardBuilder)
 
 Professional Canva-like design tool built with Fabric.js for creating both promo cards and website cards:
@@ -125,12 +125,41 @@ For design system, routing, and architecture details see `CLAUDE.md`.
 - git pull origin beta
 
 ## TODOs:
-- force all image uploads to be png or jpeg (no pdfs etc.)
-- add form title and form description, boolean show_title_description for (FormConfig object) (default on with Event Title, "please submit")
-- Do folders in google drive by speaker information/ speaker name/ headshot.png
-- Do folders in google drive by call for speakers/ speaker name/ headshot.png
+- force all image uploads to be png or jpeg (no pdfs etc.) DONE
+- add form title and form description, boolean show_title_description for (FormConfig object) (default on with Event Title, "please submit") DONE
+- Fix the background image in the website embed (it is not loading) DONE
+- Fix companyLogo being cropped in the rendered website embed DONE
+- For edit form we need both radio buttons and checkboxes as options for the builder DONE
+- Speaker intake - do what is in frontend DONE
+- Call for speakers -> `submitted`, `rejected`, `approved` (`approved` goes from call for speakers to speaker intake - `info pending`) DONE
+
+
+- The font weight/ width doesn't match what is actually created in the card builder (e.g. 400 is not showing up as normal weight) ***
+- For the text input in the card builder we need to add overflow options (e.g. wrap, truncate with ellipsis, overflow visible, resize) ***
+- Sort out complete beta flow ***
+
+
+- For the promo-card we can have it as a GET (and then when a user clicks approved it syncs with google drive and a download image button appears in the speaker assets area) *
+- For the linkedin URL we need to force url *
+- Add the warning redirect for the embed link (if the website and promo card builder) (default square warning) *
+- Speaker information headshot needs to mirror cropping *
+- Stop wrapping the text in the card builder (e.g. Lethrethrial Stormrage) *
+- Background image POST returning non - absolute *ish
+- Put download button for the promo card in the backend return, not in the speaker info frontend (so people can download without loggin in) *
+- Reload website card builder when font changes in the form config *
+
+
+- Deal with onboarding flow redirect issue with google drive integration
+- Do folders in google drive by speaker information | {event_name}/ speaker name/ headshot.png
+- Do folders in google drive by call for speakers | {event_name}/ speaker name/ headshot.png
 - Make the call for speakers and speaker information fully seperate in master google sheet
 - Don't autofill sheet columns. On creation put instructions in the column headers
 - Add Speaker/ FormConfig optional field for "talk_topic"
 - For the select speakers make this default off
-- For edit form we need both radio buttons and checkboxes as options for the builder
+- Add custom font upload for card builder (and then use that font in the card builder)
+- Apply to all button for card builder (speaker promo card download)
+- For custom fields in form config make it possible to add them to the promo card builder and website card builder
+- Add companyLogo field to speaker info table and make it a clickable modal with download option
+- Add companyLogo, headshot + promo card and website embed at the speaker info table level (not just in the card builder)
+- Add a splash screen for loading for the Event create POST as it is pretty slow when doing integration as well (~10s)
+- Match form names with website card builder names (e.g. "Company Name" in form config should be "Company Name" in the card builder element library and not "companyName")

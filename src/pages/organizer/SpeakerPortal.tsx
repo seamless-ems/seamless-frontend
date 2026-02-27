@@ -25,6 +25,7 @@ import {
   DialogDescription,
     
 } from "@/components/ui/dialog";
+import MissingFormDialog from "@/components/MissingFormDialog";
 import { toast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { getJson } from "@/lib/api";
@@ -60,7 +61,25 @@ export default function SpeakerPortal() {
       return data;
     },
     enabled: Boolean(id),
+    onError: (err: any) => {
+      if (err && (err.status === 404 || err?.status === 404)) {
+        setMissingFormDialogOpen(true);
+      }
+    },
   });
+
+  const [missingFormDialogOpen, setMissingFormDialogOpen] = useState(false);
+
+  // Normalize formConfig to a fields array (support multiple API shapes)
+  const configFields: any[] = (() => {
+    if (!formConfig) return [];
+    if (Array.isArray(formConfig)) return formConfig as any[];
+    if (Array.isArray((formConfig as any).config)) return (formConfig as any).config as any[];
+    if (Array.isArray((formConfig as any).fields)) return (formConfig as any).fields as any[];
+    // support nested shape: { config: { fields: [...] } }
+    if (Array.isArray((formConfig as any).config?.fields)) return (formConfig as any).config.fields as any[];
+    return [];
+  })();
 
   const s = speaker
     ? {
@@ -151,9 +170,23 @@ export default function SpeakerPortal() {
     if (!id || !speakerId || !canApprove) return;
 
     try {
-      s.websiteCardApproved = !isApproved;
-      s.promoCardApproved = !isApproved; // Both cards approved together
-      await updateSpeaker(id, speakerId, s);
+      // Prepare payload so we only send the intended fields
+      const payload: any = {
+        id: speakerId,
+        firstName: s?.firstName ?? "",
+        lastName: s?.lastName ?? "",
+        email: s?.email ?? "",
+        formType: s?.formType ?? "speaker-info",
+        websiteCardApproved: !isApproved,
+        promoCardApproved: !isApproved,
+      };
+
+      // When approving, notify backend via speakerInformationStatus
+      if (!isApproved) {
+        payload.speakerInformationStatus = 'cards_approved';
+      }
+
+      await updateSpeaker(id, speakerId, payload);
       queryClient.invalidateQueries({ queryKey: ["event", id, "speaker", speakerId] });
       queryClient.invalidateQueries({ queryKey: ["event", id, "speakers"], exact: false });
       toast({ title: isApproved ? "Cards unapproved" : "Cards approved for embed" });
@@ -164,6 +197,7 @@ export default function SpeakerPortal() {
 
   return (
     <div className="space-y-6">
+      <MissingFormDialog open={missingFormDialogOpen} onOpenChange={setMissingFormDialogOpen} eventId={String(id)} />
       {/* Card 1: Speaker Information + Assets */}
       <Card>
         <CardContent className="p-6">
@@ -196,7 +230,7 @@ export default function SpeakerPortal() {
             <div>
               <SpeakerInfoCard
                 s={s}
-                formConfig={formConfig?.config}
+                formConfig={configFields}
                 onEdit={() => setEditOpen(true)}
                 onViewBio={() => setBioOpen(true)}
                 onViewNotes={() => setNotesOpen(true)}
@@ -271,7 +305,7 @@ export default function SpeakerPortal() {
               ...(() => {
                 const customFieldValues: Record<string, any> = {};
                 const customFields = s?.customFields || {};
-                const configFields = formConfig?.config || [];
+                // use normalized `configFields` defined above
 
                 // For each custom field in the config, try to find its value in the backend data
                 configFields.forEach((field: any) => {
@@ -292,7 +326,7 @@ export default function SpeakerPortal() {
                 return customFieldValues;
               })(),
             }}
-            formConfig={formConfig?.config}
+            formConfig={configFields}
             submitLabel="Save"
             onCancel={() => setEditOpen(false)}
             onSubmit={async (values) => {
@@ -308,7 +342,7 @@ export default function SpeakerPortal() {
                 });
 
                 // Check if all required fields are filled to determine status
-                const requiredFields = formConfig?.config?.filter((f: any) => f.required && f.enabled) || [];
+                const requiredFields = configFields.filter((f: any) => f.required && f.enabled) || [];
                 const allRequiredFilled = requiredFields.every((field: any) => {
                   const key = field.id === 'first_name' ? 'firstName' :
                               field.id === 'last_name' ? 'lastName' :

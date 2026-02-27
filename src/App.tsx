@@ -24,7 +24,8 @@ import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import ProtectedRoute from "./components/ProtectedRoute";
 import PromoEmbed from "./pages/public/PromoEmbed";
-import CardBuilderPage from "./pages/organizer/CardBuilderPage";
+import PromoCardBuilderPage from "./pages/organizer/PromoCardBuilderPage";
+import WebsiteCardBuilderPage from "./pages/organizer/WebsiteCardBuilderPage";
 import Onboarding from "./components/onboarding/Onboarding";
 
 // Helper component for root redirect
@@ -134,19 +135,28 @@ const App = () => {
             />
 
             <Route
-              path="/organizer/event/:id/card-builder"
+              path="/organizer/event/:id/promo-card-builder"
               element={
                 <ProtectedRoute>
-                  <CardBuilderPage />
+                  <PromoCardBuilderPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/organizer/event/:id/website-card-builder"
+              element={
+                <ProtectedRoute>
+                  <WebsiteCardBuilderPage />
                 </ProtectedRoute>
               }
             />
 
             {/* Public embed route for speaker promo cards */}
-            <Route path="/event/:id/speakers/embed" element={<SpeakerEmbed />} />
+            {/* <Route path="/event/:id/speakers/embed" element={<SpeakerEmbed />} /> */}
             <Route path="/event/:id/speakers/embed/promo" element={<PromoEmbed />} />
             {/* Single-speaker embed routes (public) */}
-            <Route path="/event/:id/speakers/embed/speaker/:speakerId" element={<SpeakerEmbedSingle />} />
+            {/* <Route path="/event/:id/speakers/embed/speaker/:speakerId" element={<SpeakerEmbedSingle />} /> */}
             <Route path="/event/:id/speakers/embed/promo/:speakerId" element={<PromoEmbedSingle />} />
 
             <Route

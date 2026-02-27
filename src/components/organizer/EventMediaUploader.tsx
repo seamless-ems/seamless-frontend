@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { toast } from "@/hooks/use-toast";
 import { ImageCropDialog } from "@/components/ImageCropDialog";
 
 type Props = {
@@ -34,7 +35,7 @@ export default function EventMediaUploader({
       const url = URL.createObjectURL(file);
       setEventImagePreview(url);
     } catch (err) {
-      console.error("Failed to process cropped image", err);
+      
     } finally {
       setCropImageUrl(null);
       setCropTarget(null);
@@ -48,12 +49,18 @@ export default function EventMediaUploader({
           <Input
             id="eventImage"
             type="file"
-            accept="image/*"
+            accept="image/png,image/jpeg"
             onChange={(e) => {
               const f = e.target.files?.[0] ?? null;
               if (!f) {
                 setEventImageFile(null);
                 setEventImagePreview(null);
+                return;
+              }
+              const allowed = ["image/png", "image/jpeg"];
+              if (!allowed.includes(f.type)) {
+                toast({ title: "Invalid file type", description: "Please upload a PNG or JPEG image", variant: "destructive" });
+                e.currentTarget.value = '';
                 return;
               }
 

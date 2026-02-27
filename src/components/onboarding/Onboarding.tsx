@@ -221,7 +221,7 @@ const Onboarding: React.FC = () => {
             if (imageValue) payload.eventImage = imageValue;
           }
         } catch (err) {
-          console.error('Event image upload failed', err);
+          
         }
 
         // Create event on backend
@@ -233,7 +233,7 @@ const Onboarding: React.FC = () => {
         setState(prev => ({ ...prev, currentStep: OnboardingStep.SUCCESS, isLoading: false }));
         toast.success('Setup completed successfully!');
       } catch (error) {
-        console.error('Onboarding submission error:', error);
+        
         setState(prev => ({ 
           ...prev, 
           isLoading: false, 
@@ -265,7 +265,7 @@ const Onboarding: React.FC = () => {
       setShowSkipConfirm(false);
       navigate('/organizer');
     } catch (err) {
-      console.error('Failed to skip onboarding', err);
+      
       toast.error('Could not skip onboarding');
     }
   };
@@ -401,7 +401,7 @@ const Onboarding: React.FC = () => {
                                 setEventFormData((prev: any) => ({ ...prev, googleDriveConnected: false, rootFolder: '' }));
                                 toast.success('Google Drive disconnected');
                               } catch (err) {
-                                console.error('Failed to disconnect', err);
+                                
                                 toast.error('Failed to disconnect Google Drive');
                               }
                             }}
@@ -422,7 +422,7 @@ const Onboarding: React.FC = () => {
                                 toast.error('Failed to start integration');
                               }
                             } catch (err) {
-                              console.error('Integration link failed', err);
+                              
                               toast.error('Failed to start integration');
                             }
                           }}

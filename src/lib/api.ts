@@ -1,17 +1,29 @@
-import { getToken } from "@/lib/auth";
+import { getCurrentToken } from "@/lib/session";
 import { deepCamel } from "@/lib/utils";
 
 export const API_BASE = import.meta.env.VITE_API_URL || "";
 
 function authHeaders(): Record<string, string> {
-  const token = getToken();
+  const token = getCurrentToken();
   const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (token) headers["Authorization"] = `Bearer ${token}`;
+  if (token) {
+    try {
+      const masked = typeof token === 'string' ? `${token.slice(0, 6)}...(${token.length})` : String(token);
+      
+    } catch (e) {
+      
+    }
+    headers["Authorization"] = `Bearer ${token}`;
+  } else {
+    
+  }
   return headers;
 }
 
 async function postJson<TReq, TRes>(path: string, body: TReq): Promise<TRes> {
-  const res = await fetch(`${API_BASE}${path}`, {
+  const url = `${API_BASE}${path}`;
+  
+  const res = await fetch(url, {
     method: "POST",
     headers: authHeaders(),
     body: JSON.stringify(body),
@@ -20,7 +32,11 @@ async function postJson<TReq, TRes>(path: string, body: TReq): Promise<TRes> {
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(text || res.statusText);
+    
+    const err = new Error(text || res.statusText) as any;
+    err.status = res.status;
+    err.responseText = text;
+    throw err;
   }
 
   const json = await res.json();
@@ -28,7 +44,9 @@ async function postJson<TReq, TRes>(path: string, body: TReq): Promise<TRes> {
 }
 
 async function patchJson<TReq, TRes>(path: string, body: TReq): Promise<TRes> {
-  const res = await fetch(`${API_BASE}${path}`, {
+  const url = `${API_BASE}${path}`;
+  
+  const res = await fetch(url, {
     method: "PATCH",
     headers: authHeaders(),
     body: JSON.stringify(body),
@@ -37,7 +55,11 @@ async function patchJson<TReq, TRes>(path: string, body: TReq): Promise<TRes> {
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(text || res.statusText);
+    
+    const err = new Error(text || res.statusText) as any;
+    err.status = res.status;
+    err.responseText = text;
+    throw err;
   }
 
   const json = await res.json();
@@ -45,7 +67,9 @@ async function patchJson<TReq, TRes>(path: string, body: TReq): Promise<TRes> {
 }
 
 export async function getJson<TRes>(path: string): Promise<TRes> {
-  const res = await fetch(`${API_BASE}${path}`, {
+  const url = `${API_BASE}${path}`;
+  
+  const res = await fetch(url, {
     method: "GET",
     headers: authHeaders(),
     credentials: "include",
@@ -56,9 +80,11 @@ export async function getJson<TRes>(path: string): Promise<TRes> {
     // Components (or a global auth handler) should decide how to react
     // when the backend reports the token is invalid/expired.
     const text = await res.text();
+    
     const message = text || res.statusText || `HTTP ${res.status}`;
     const err: any = new Error(message);
     err.status = res.status;
+    err.responseText = text;
     throw err;
   }
 
@@ -87,7 +113,7 @@ export async function uploadFile(
   if (eventId) fd.append("event_id", eventId);
   if (speakerName) fd.append("speaker_name", speakerName);
 
-  const token = getToken();
+  const token = getCurrentToken();
   const headers: Record<string, string> = {};
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
@@ -134,9 +160,22 @@ export function login(body: LoginRequest): Promise<TokenSchema> {
 // Exchange a Firebase ID token for the backend's session/token representation.
 // Backend should verify the ID token and return a TokenSchema { accessToken, tokenType }
 export function exchangeFirebaseToken(idToken: string, name?: string): Promise<TokenSchema> {
-  const body: { accessToken: string; name?: string } = { accessToken: idToken };
+  // Mask token for logs: show prefix and length only
+  const mask = (t: string) => `${t.slice(0, 6)}...(${t.length})`;
+  
+  const body: { accessToken: string; access_token: string; name?: string } = {
+    accessToken: idToken,
+    access_token: idToken,
+  };
   if (name) body.name = name;
-  return postJson<{ accessToken: string; name?: string }, TokenSchema>("/auth/firebase", body);
+  return postJson<typeof body, TokenSchema>("/auth/firebase", body).then((res) => {
+    try {
+      
+    } catch (e) {
+      
+    }
+    return res;
+  });
 }
 
 // --- Account endpoints ---
@@ -289,13 +328,15 @@ export function getPromoConfigForEvent(eventId: string, promoType?: string): Pro
 export function createPromoConfig(body: { eventId: string; promoType: string; config: any }): Promise<any> {
   return postJson<typeof body, any>(`/promo-cards/config`, body);
 }
+
 // Website template endpoints (parallel to promo cards)
 export function getWebsiteConfigForEvent(eventId: string): Promise<any> {
-  return getJson<any>(`/website/config/${encodeURIComponent(eventId)}`);
+  return getJson<any>(`/promo-cards/config/${encodeURIComponent(eventId)}?promo_type=website`);
 }
 
 export function createWebsiteConfig(body: { eventId: string; config: any }): Promise<any> {
-  return postJson<typeof body, any>(`/website/config`, body);
+  // be sure to pass promo_type=website in the body as backend uses the same config structure for both promo cards and website templates
+  return postJson<typeof body, any>(`/config`, body);
 }
 export async function deleteIntegration(provider: string): Promise<void> {
   const res = await fetch(`${API_BASE}/integrations/${encodeURIComponent(provider)}`, {

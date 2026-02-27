@@ -1,7 +1,7 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, onIdTokenChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as fbSignOut, GoogleAuthProvider, OAuthProvider, signInWithPopup, updateProfile } from "firebase/auth";
-import { setToken, clearToken } from "./auth";
-import tryExchangeWithRetry from "./tokenExchange";
+import { getAuth, onIdTokenChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as fbSignOut, GoogleAuthProvider, OAuthProvider, signInWithPopup, updateProfile, type UserCredential } from "firebase/auth";
+import { setTokenAndNotify, clearTokenAndNotify, setUserAndNotify, clearUserAndNotify } from "./session";
+import { exchangeFirebaseToken } from "./api";
 
 // NOTE: You must set these env vars in your .env (Vite) or replace with your config
 const firebaseConfig = {
@@ -16,65 +16,123 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig as Record<string, any>);
 export const auth = getAuth(app);
 
-// Listen for token changes and mirror ID token into localStorage via setToken
-onIdTokenChanged(auth, async (user) => {
-  try {
-    if (!user) {
-      clearToken();
-      return;
-    }
-    const idToken = await user.getIdToken();
-    // Try to exchange the Firebase ID token for a backend token so backend can link user records.
-    try {
-      const backendToken = await tryExchangeWithRetry(idToken);
-      if (backendToken && backendToken.accessToken) {
-        setToken(backendToken.accessToken);
-        return;
-      }
-    } catch (e) {
-      // If exchange fails, fallback to using the Firebase ID token directly.
-      // eslint-disable-next-line no-console
-      console.warn("exchangeFirebaseToken failed, falling back to raw Firebase ID token:", e);
-    }
+// Centralized token handling function
+async function handleAuthToken(user: { getIdToken: () => Promise<string> } | null): Promise<boolean> {
+  
 
-    setToken(idToken);
-  } catch (e) {
-    console.error("Error getting ID token from Firebase user", e);
+  if (!user) {
+    
+    clearTokenAndNotify();
+    return false;
   }
+
+  let idToken: string | null = null;
+  try {
+    idToken = await user.getIdToken();
+    
+  } catch (e) {
+    
+  }
+
+  if (!idToken) {
+    clearTokenAndNotify();
+    return false;
+  }
+
+  try {
+    
+    const backendToken = await exchangeFirebaseToken(idToken);
+    
+    // support various backend shapes: access_token, accessToken, token
+    const tokenFromBackend = backendToken && ((backendToken as any).access_token || (backendToken as any).accessToken || (backendToken as any).token || (backendToken as any).accessToken);
+    if (tokenFromBackend) {
+      try {
+        
+      } catch (e) {
+        // ignore logging length errors
+      }
+      setTokenAndNotify(tokenFromBackend as string);
+      return true;
+    }
+  } catch (e) {
+  }
+
+  // Do not persist Firebase idToken as `auth_token`. Clear any stale token instead.
+  clearTokenAndNotify();
+  return false;
+}
+
+// Listen for token changes and mirror ID token into localStorage
+onIdTokenChanged(auth, (user) => {
+  
+  if (!user) {
+    
+    clearTokenAndNotify();
+    clearUserAndNotify();
+    return;
+  }
+
+  handleAuthToken(user)
+    .then((success) => {
+      try {
+        const profile = {
+          id: (user as any).uid,
+          email: (user as any).email || '',
+          name: (user as any).displayName || undefined,
+          avatar: (user as any).photoURL || undefined,
+        };
+        if (success) {
+          
+          setUserAndNotify(profile);
+        } else {
+          
+          clearUserAndNotify();
+        }
+      } catch (e) {
+      }
+    })
+    .catch(() => {});
 });
 
 export async function signIn(email: string, password: string) {
-  const userCredential = await signInWithEmailAndPassword(auth, email, password);
-  return userCredential;
+  
+  const cred = await signInWithEmailAndPassword(auth, email, password);
+  
+  return cred;
 }
 
 export async function signUp(email: string, password: string, displayName?: string) {
-  const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+  
+  const cred = await createUserWithEmailAndPassword(auth, email, password);
+  
   if (displayName) {
     try {
-      await updateProfile(userCredential.user, { displayName });
+      await updateProfile(cred.user, { displayName });
+      
     } catch (e) {
-      // ignore updateProfile errors
-      // eslint-disable-next-line no-console
-      console.warn("updateProfile failed:", e);
     }
   }
-  return userCredential;
+  return cred;
 }
 
 export async function signOut() {
   await fbSignOut(auth);
-  clearToken();
+  clearTokenAndNotify();
+  
 }
 
 export async function signInWithGooglePopup() {
+  
   const provider = new GoogleAuthProvider();
   const result = await signInWithPopup(auth, provider);
+  
   return result;
 }
 
 export async function signInWithMicrosoftPopup() {
+  
   const provider = new OAuthProvider("microsoft.com");
   const result = await signInWithPopup(auth, provider);
+  
   return result;
 }

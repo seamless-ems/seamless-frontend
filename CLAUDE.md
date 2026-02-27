@@ -32,13 +32,13 @@ Working rules (short)
 
 Current priority (single source of truth)
 - **Backend Image Generation** — ⏳ WAITING FOR BACKEND (primary blocker)
-  - Card Builder (CardBuilderV2) is complete and saves templates
+  - Card Builder (CardBuilder) is complete and saves templates
   - Frontend card generation attempted but blocked by CORS and font rendering issues
   - **Backend generation is the recommended approach** (industry standard, scalable, stable)
   - See `API_GAPS.md` for complete backend specification
   - Once backend implements `/api/promo-cards/generate`, frontend will integrate
 
-- **CardBuilderV2 (unified)** — ✅ COMPLETE & STABLE
+- **CardBuilder (unified)** — ✅ COMPLETE & STABLE
   - Replaced separate PromoCardBuilder and WebsiteCardBuilder
   - Unified component with card type toggle (Promo/Website)
   - Professional Fabric.js canvas with Canva-like UX
@@ -46,7 +46,7 @@ Current priority (single source of truth)
   - Dynamic elements from form config (custom fields appear in builder)
   - Config saved to backend via `/promo-cards/config` API
   - Canvas dimensions saved with config for proper scaling
-  - Location: `src/components/CardBuilderV2.tsx`
+  - Location: `src/components/CardBuilder.tsx`
 
 Immediate next steps (for the next agent)
 - **Integrate backend image generation** (once endpoint is ready):
@@ -63,7 +63,7 @@ Immediate next steps (for the next agent)
 - **Custom fields:** Backend strips underscores from custom field keys (e.g., `custom_123` becomes `custom123`). Frontend handles this with fallback logic in field lookups.
 
 Where to look first
-- `src/components/CardBuilderV2.tsx` - Unified card builder (template creator)
+- `src/components/CardBuilder.tsx` - Unified card builder (template creator)
 - `src/components/organizer/SpeakerPreviews.tsx` - Placeholder for card display (ready for backend integration)
 - `src/pages/organizer/SpeakerPortal.tsx` - Speaker details page
 - `src/lib/api.ts` - API functions including `getPromoConfigForEvent()`, `createPromoConfig()`

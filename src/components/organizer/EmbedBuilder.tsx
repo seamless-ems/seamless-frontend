@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { getJson } from "@/lib/api";
+import { API_BASE, getJson } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -73,8 +73,8 @@ export default function EmbedBuilder({ eventId }: { eventId: string | undefined 
       title: "All Speakers",
       type: "Website Cards",
       count: approvedCount,
-      url: `${origin}/event/${eventId}/speakers/embed`,
-      code: `<iframe src="${origin}/event/${eventId}/speakers/embed" width="100%" height="600" frameborder="0" style="border: none; border-radius: 8px;"></iframe>`,
+      url: `${API_BASE}/embed/${eventId}`,
+      code: `<iframe src="${API_BASE}/embed/${eventId}" width="100%" height="600" frameborder="0" style="border: none; border-radius: 8px;"></iframe>`,
     },
     {
       id: "promo-cards",

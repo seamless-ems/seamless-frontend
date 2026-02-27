@@ -1,5 +1,5 @@
 /**
- * CardBuilderV2 - Unified Card Builder Component
+ * CardBuilder - Unified Card Builder Component
  *
  * A professional Canva-like design tool built with Fabric.js for creating both
  * promo cards and website cards. Replaces the previous separate builders.
@@ -41,6 +41,7 @@
  */
 
 import { useState, useRef, useEffect } from "react";
+import { useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -71,15 +72,17 @@ import {
 } from "lucide-react";
 import { FaLinkedin, FaTwitter, FaFacebook, FaInstagram, FaGithub } from "react-icons/fa";
 import { fabric } from "fabric";
+import { API_BASE } from '@/lib/api';
 import { ImageCropDialog } from "@/components/ImageCropDialog";
 import { toast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
+import MissingFormDialog from "@/components/MissingFormDialog";
 import { getFormConfigForEvent } from "@/lib/api";
 import type { FormFieldConfig } from "@/components/SpeakerFormBuilder";
 
 type CardType = "promo" | "website";
 
-interface CardBuilderV2Props {
+interface CardBuilderProps {
   eventId?: string;
   fullscreen?: boolean;
 }
@@ -172,11 +175,11 @@ const ELEMENT_TEMPLATES = {
   },
   name: {
     label: "Name",
-    text: "Wakko Warner",
+    text: "Lethrethriel Stormrage",
     x: 150,
     y: 50,
     fontSize: 32,
-    fontFamily: "Inter",
+    fontFamily: "Roboto",
     color: "#000000",
     fontWeight: 700,
     visible: true,
@@ -190,7 +193,7 @@ const ELEMENT_TEMPLATES = {
     x: 150,
     y: 90,
     fontSize: 20,
-    fontFamily: "Inter",
+    fontFamily: "Roboto",
     color: "#000000",
     fontWeight: 500,
     visible: true,
@@ -200,11 +203,11 @@ const ELEMENT_TEMPLATES = {
   },
   company: {
     label: "Company",
-    text: "Warner Bros",
+    text: "JensenGuuard Inc.",
     x: 150,
     y: 115,
     fontSize: 18,
-    fontFamily: "Inter",
+    fontFamily: "Roboto",
     color: "#000000",
     fontWeight: 400,
     visible: true,
@@ -225,9 +228,17 @@ const ELEMENT_TEMPLATES = {
   },
 };
 
-export default function CardBuilderV2({ eventId, fullscreen = false }: CardBuilderV2Props) {
+export default function CardBuilder({ eventId, fullscreen = false }: CardBuilderProps) {
   // State
-  const [cardType, setCardType] = useState<CardType>("promo");
+  const location = useLocation();
+  const deriveInitialCardType = (): CardType => {
+    const path = (location && location.pathname) || (typeof window !== 'undefined' ? window.location.pathname : '');
+    if (path.includes('/website-card-builder')) return 'website';
+    if (path.includes('/promo-card-builder')) return 'promo';
+    return 'promo';
+  };
+
+  const [cardType, setCardType] = useState<CardType>(deriveInitialCardType);
   const [config, setConfig] = useState<CardConfig>({});
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
   const [templateUrl, setTemplateUrl] = useState<string | null>(null);
@@ -270,21 +281,41 @@ export default function CardBuilderV2({ eventId, fullscreen = false }: CardBuild
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   // Fetch form configuration to get fields marked for card builder
+  const [missingFormDialogOpen, setMissingFormDialogOpen] = useState(false);
+
   const { data: formConfig } = useQuery<{ config: FormFieldConfig[] }>({
     queryKey: ["formConfig", eventId, "speaker-info"],
-    queryFn: () => getFormConfigForEvent(eventId || "", "speaker-info"),
+    queryFn: async () => {
+      try {
+        return await getFormConfigForEvent(eventId || "", "speaker-info");
+      } catch (err: any) {
+        console.log("Error fetching form config:", err);
+        if (err && (err.status === 404 || err?.status === 404)) {
+          setMissingFormDialogOpen(true);
+        }
+        throw err;
+      }
+    },
     enabled: Boolean(eventId),
   });
 
   // Get fields that are enabled for card builder, excluding default fields
   const DEFAULT_FIELD_IDS = ["headshot", "name", "title", "first_name", "last_name", "company_name", "company_role", "company_logo"];
-  const cardBuilderFields = (formConfig?.config || []).filter(
-    (field) => field.showInCardBuilder && field.enabled && !DEFAULT_FIELD_IDS.includes(field.id)
+  const _fieldsArray: any[] = (() => {
+    if (!formConfig) return [];
+    if (Array.isArray(formConfig)) return formConfig as any[];
+    if (Array.isArray((formConfig as any).config)) return (formConfig as any).config as any[];
+    if (Array.isArray((formConfig as any).fields)) return (formConfig as any).fields as any[];
+    return [];
+  })();
+
+  const cardBuilderFields = _fieldsArray.filter(
+    (field: any) => field && field.showInCardBuilder && field.enabled && !DEFAULT_FIELD_IDS.includes(field.id)
   );
 
   // Helper to check if a hardcoded element should be shown based on form config
   const shouldShowElement = (elementKey: string): boolean => {
-    if (!formConfig?.config) return true; // Show all if no config loaded
+    if (_fieldsArray.length === 0) return true; // Show all if no config loaded
 
     const fieldMapping: { [key: string]: string[] } = {
       headshot: ["headshot"],
@@ -297,7 +328,7 @@ export default function CardBuilderV2({ eventId, fullscreen = false }: CardBuild
     const relatedFields = fieldMapping[elementKey] || [];
     // Show if ANY related field has showInCardBuilder enabled
     return relatedFields.some(fieldId => {
-      const field = formConfig.config.find(f => f.id === fieldId);
+      const field = _fieldsArray.find((f: any) => f.id === fieldId);
       return field?.showInCardBuilder === true;
     });
   };
@@ -572,7 +603,8 @@ export default function CardBuilderV2({ eventId, fullscreen = false }: CardBuild
     // Render background if exists (1:1 scale, canvas is sized to match)
     if (templateUrl) {
       try {
-        const img = await loadImagePromise(templateUrl);
+        const bgUrl = getAbsoluteUrl(templateUrl) || templateUrl;
+        const img = await loadImagePromise(bgUrl);
         const fabricImg = new fabric.Image(img, {
           left: 0,
           top: 0,
@@ -595,7 +627,6 @@ export default function CardBuilderV2({ eventId, fullscreen = false }: CardBuild
         elementRefs.current['_background'] = fabricImg;
         canvas.renderAll();
       } catch (err) {
-        console.error("Error loading background image:", err);
         toast({ title: "Failed to load background", description: String(err), variant: "destructive" });
       }
     }
@@ -840,7 +871,8 @@ export default function CardBuilderV2({ eventId, fullscreen = false }: CardBuild
           lineHeight: cfg.lineHeight || 1.2,
           charSpacing: cfg.charSpacing || 0,
           width: cfg.width,
-          textBaseline: "alphabetic",
+          // fabric.Textbox options don't include `textBaseline` in the TypeScript defs;
+          // the default baseline is acceptable, so omit this option to satisfy typings.
           selectable: true,
           editable: true,
           hasControls: true,
@@ -877,7 +909,7 @@ export default function CardBuilderV2({ eventId, fullscreen = false }: CardBuild
 
           const iconText: { [key: string]: string } = {
             linkedin: "in",
-            twitter: "𝕏",
+            twitter: "x",
             facebook: "f",
             instagram: "📷",
             github: "gh",
@@ -947,7 +979,6 @@ export default function CardBuilderV2({ eventId, fullscreen = false }: CardBuild
             fontWeight: cfg.fontWeight,
             textAlign: cfg.textAlign,
             width: cfg.width,
-            textBaseline: "alphabetic",
             selectable: true,
             editable: true,
             hasControls: true,
@@ -981,11 +1012,27 @@ export default function CardBuilderV2({ eventId, fullscreen = false }: CardBuild
   const loadImagePromise = (url: string): Promise<HTMLImageElement> => {
     return new Promise((resolve, reject) => {
       const img = new Image();
-      img.crossOrigin = "anonymous";
       img.onload = () => resolve(img);
       img.onerror = reject;
       img.src = url;
     });
+  };
+
+  // Normalize template URLs: if the URL is relative (starts with '/'),
+  // prefix with API_BASE so requests go to the backend (not the frontend dev server).
+  const getAbsoluteUrl = (url: string | null | undefined) => {
+    if (!url) return url;
+    try {
+      // If url already absolute (has protocol), return as-is
+      const parsed = new URL(url);
+      return parsed.href;
+    } catch (e) {
+      // Not an absolute URL — likely a path like '/uploads/...'
+      // Ensure API_BASE does not end up with double slashes
+      const base = API_BASE?.replace(/\/$/, "") || "";
+      if (!base) return url; // fallback to raw value
+      return url.startsWith("/") ? `${base}${url}` : `${base}/${url}`;
+    }
   };
 
   // Re-render when config changes
@@ -1091,11 +1138,13 @@ export default function CardBuilderV2({ eventId, fullscreen = false }: CardBuild
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [hasUnsavedChanges]);
 
-  // Load saved config from localStorage on mount
+  // Load saved config on mount: prefer server config for eventId, fallback to localStorage
   useEffect(() => {
     const storageKey = `${cardType}-card-config-${eventId || "default"}`;
-    const saved = localStorage.getItem(storageKey);
-    if (saved) {
+
+    const loadFromLocal = () => {
+      const saved = localStorage.getItem(storageKey);
+      if (!saved) return;
       try {
         const { config: savedConfig, templateUrl: savedTemplateUrl, canvasWidth: savedWidth, canvasHeight: savedHeight } = JSON.parse(saved);
         if (savedConfig) {
@@ -1118,6 +1167,11 @@ export default function CardBuilderV2({ eventId, fullscreen = false }: CardBuild
         if (savedTemplateUrl) {
           // Load background image to get its dimensions (fallback if dimensions not saved)
           const img = new Image();
+          img.onerror = (err) => {
+            toast({ title: "Background load failed", description: "Could not load background image due to CORS or network error. Try re-uploading the image.", variant: "destructive" });
+            // clear template to avoid broken image state
+            setTemplateUrl(null);
+          };
           img.onload = () => {
             // Update canvas dimensions to match background (only if not already set from saved data)
             if (!savedWidth || !savedHeight) {
@@ -1136,16 +1190,75 @@ export default function CardBuilderV2({ eventId, fullscreen = false }: CardBuild
             // Set background URL (will trigger re-render)
             setTemplateUrl(savedTemplateUrl);
           };
-          img.src = savedTemplateUrl;
+          img.src = getAbsoluteUrl(savedTemplateUrl) || savedTemplateUrl;
         }
-        toast({
-          title: "Loaded",
-          description: "Restored your previous card",
-          duration: 2000
-        });
+        toast({ title: "Loaded", description: "Restored your previous card", duration: 2000 });
       } catch (err) {
-        console.error("Failed to load saved config:", err);
+        
       }
+    };
+
+    // If we have an eventId, prefer fetching server config
+    if (eventId) {
+      (async () => {
+        try {
+          const api = await import("@/lib/api");
+          const res = await api.getPromoConfigForEvent(eventId, cardType);
+
+          // server may return { config: {...}, ... } or the config directly
+          const serverConfig = res?.config ?? res;
+
+          // If server returned a config object, use it
+          if (serverConfig && typeof serverConfig === "object") {
+            // serverConfig may be the saved config object (with templateUrl, canvasWidth/Height)
+            const savedConfig = serverConfig;
+            const savedTemplateUrl = serverConfig.templateUrl ?? null;
+            const savedWidth = serverConfig.canvasWidth ?? serverConfig.canvas_width ?? null;
+            const savedHeight = serverConfig.canvasHeight ?? serverConfig.canvas_height ?? null;
+
+            if (savedConfig) {
+              setConfig(savedConfig);
+              setHasUnsavedChanges(false);
+            }
+
+            if (savedWidth && savedHeight) {
+              setCanvasWidth(savedWidth);
+              setCanvasHeight(savedHeight);
+              if (fabricCanvasRef.current) {
+                fabricCanvasRef.current.setDimensions({ width: savedWidth, height: savedHeight });
+              }
+            }
+
+            if (savedTemplateUrl) {
+              const img = new Image();
+              img.onload = () => {
+                if (!savedWidth || !savedHeight) {
+                  setCanvasWidth(img.width);
+                  setCanvasHeight(img.height);
+                  if (fabricCanvasRef.current) {
+                    fabricCanvasRef.current.setDimensions({ width: img.width, height: img.height });
+                  }
+                }
+                setTemplateUrl(savedTemplateUrl);
+              };
+              img.src = getAbsoluteUrl(savedTemplateUrl) || savedTemplateUrl;
+            }
+
+            toast({ title: "Loaded", description: "Loaded template from event", duration: 2000 });
+            return;
+          }
+
+          // If no server config found, fall back to localStorage
+          loadFromLocal();
+        } catch (err) {
+          
+          // fallback
+          loadFromLocal();
+        }
+      })();
+    } else {
+      // No eventId -> use local storage
+      loadFromLocal();
     }
   }, [eventId, cardType]); // Load when eventId or cardType changes
 
@@ -1203,7 +1316,7 @@ export default function CardBuilderV2({ eventId, fullscreen = false }: CardBuild
     }
 
     if (!template) {
-      console.error("No template found for", elementKey);
+      
       setDraggingElement(null);
       return;
     }
@@ -1473,8 +1586,9 @@ export default function CardBuilderV2({ eventId, fullscreen = false }: CardBuild
     if (!file) {
       return;
     }
-    if (!file.type.startsWith("image/")) {
-      toast({ title: "Invalid file", description: "Please select an image file", variant: "destructive" });
+    const allowed = ["image/png", "image/jpeg"];
+    if (!allowed.includes(file.type)) {
+      toast({ title: "Invalid file type", description: "Please upload a PNG or JPEG image", variant: "destructive" });
       return;
     }
 
@@ -1509,12 +1623,12 @@ export default function CardBuilderV2({ eventId, fullscreen = false }: CardBuild
         });
       };
       reader.onerror = () => {
-        console.error("FileReader error");
+        
         toast({ title: "Upload failed", variant: "destructive" });
       };
       reader.readAsDataURL(file);
     } catch (err) {
-      console.error("Error uploading background:", err);
+      
       toast({ title: "Upload failed", variant: "destructive" });
     }
 
@@ -1525,7 +1639,13 @@ export default function CardBuilderV2({ eventId, fullscreen = false }: CardBuild
   // Headshot upload
   const handleHeadshotUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !file.type.startsWith("image/")) return;
+    const allowed = ["image/png", "image/jpeg"];
+    if (!file) return;
+    if (!allowed.includes(file.type)) {
+      toast({ title: "Invalid file type", description: "Headshot must be PNG or JPEG", variant: "destructive" });
+      e.target.value = '';
+      return;
+    }
     const url = URL.createObjectURL(file);
     setCropImageUrl(url);
     setCropMode("headshot");
@@ -1535,7 +1655,13 @@ export default function CardBuilderV2({ eventId, fullscreen = false }: CardBuild
   // Logo upload
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !file.type.startsWith("image/")) return;
+    const allowed = ["image/png", "image/jpeg"];
+    if (!file) return;
+    if (!allowed.includes(file.type)) {
+      toast({ title: "Invalid file type", description: "Logo must be PNG or JPEG", variant: "destructive" });
+      e.target.value = '';
+      return;
+    }
     const url = URL.createObjectURL(file);
     setCropImageUrl(url);
     setCropMode("logo");
@@ -1574,7 +1700,7 @@ export default function CardBuilderV2({ eventId, fullscreen = false }: CardBuild
         toast({ title: "Test logo uploaded" });
       }
     } catch (err) {
-      console.error("Image upload error:", err);
+      
       toast({ title: "Image error", variant: "destructive" });
     } finally {
       setCropDialogOpen(false);
@@ -1591,23 +1717,68 @@ export default function CardBuilderV2({ eventId, fullscreen = false }: CardBuild
     // Also save to backend if eventId exists
     if (eventId) {
       try {
-        const { createPromoConfig } = await import("@/lib/api");
+        // Dynamically import API helpers so this file doesn't eagerly bundle all api methods
+        const api = await import("@/lib/api");
+        const { createPromoConfig, uploadFile } = api;
+
+        // If templateUrl is a data: or blob: URL, upload it to the /uploads endpoint
+        // and replace it with the returned public URL when saving to the server.
+        let finalTemplateUrl = templateUrl;
+
+        if (templateUrl && (templateUrl.startsWith("data:") || templateUrl.startsWith("blob:"))) {
+          try {
+            // Convert data/blob URL to a Blob, then to a File for upload
+            const fetched = await fetch(templateUrl);
+            const blob = await fetched.blob();
+            const fileName = `template-${Date.now()}`;
+            const file = new File([blob], `${fileName}.${(blob.type || "image/png").split("/").pop()}`, { type: blob.type || "image/png" });
+
+            const uploadRes = await uploadFile(file, undefined, eventId);
+            const uploadedUrl = uploadRes?.public_url ?? uploadRes?.publicUrl ?? uploadRes?.url ?? uploadRes?.id ?? null;
+
+            if (uploadedUrl) {
+              finalTemplateUrl = uploadedUrl;
+              // update local state so UI reflects the server URL
+              setTemplateUrl(finalTemplateUrl);
+            }
+          } catch (uploadErr) {
+            
+            // Continue and attempt to save the data URL if upload fails; notify user
+            toast({ title: "Upload failed", description: "Could not upload background image to server. Saved locally instead.", variant: "destructive" });
+          }
+        }
 
         // Save the full config to the promo-cards API (include canvas dimensions for proper scaling)
-        await createPromoConfig({
+        const saved = await createPromoConfig({
           eventId,
           promoType: cardType,
           config: {
             ...config,
-            templateUrl, // Include background URL in config
+            templateUrl: finalTemplateUrl, // include uploaded URL when available; server may normalize/override
             canvasWidth, // Save canvas dimensions for scaling
             canvasHeight,
           },
         });
 
+        // Prefer the canonical templateUrl returned by the server's config endpoint
+        const serverTemplateUrl = saved?.templateUrl ?? saved?.config?.templateUrl ?? saved?.config?.template_url ?? null;
+        if (serverTemplateUrl) {
+          setTemplateUrl(serverTemplateUrl);
+          // update localStorage entry so the canonical URL is persisted locally too
+          try {
+            const storageKey = `${cardType}-card-config-${eventId || "default"}`;
+            const existing = localStorage.getItem(storageKey);
+            const parsed = existing ? JSON.parse(existing) : {};
+            parsed.templateUrl = serverTemplateUrl;
+            localStorage.setItem(storageKey, JSON.stringify(parsed));
+          } catch (e) {
+            // ignore localStorage errors
+          }
+        }
+
         toast({ title: "Saved", description: `${cardType === "promo" ? "Promo" : "Website"} card template saved` });
       } catch (err: any) {
-        console.error("Failed to save template to event:", err);
+        
         toast({ title: "Saved locally", description: "Template saved to browser, but failed to sync with server" });
       }
     } else {
@@ -1673,6 +1844,7 @@ export default function CardBuilderV2({ eventId, fullscreen = false }: CardBuild
 
   return (
     <>
+      <MissingFormDialog open={missingFormDialogOpen} onOpenChange={setMissingFormDialogOpen} eventId={eventId || ""} />
       <ImageCropDialog
         open={cropDialogOpen}
         onOpenChange={(open) => {
@@ -1868,11 +2040,36 @@ export default function CardBuilderV2({ eventId, fullscreen = false }: CardBuild
                     disabled={!selectedElement || !["name", "title", "company"].includes(selectedElement)}
                     className="h-7 px-2 text-xs border border-border rounded bg-background disabled:opacity-50"
                   >
-                    <option value="Inter">Inter</option>
-                    <option value="Arial">Arial</option>
-                    <option value="Helvetica">Helvetica</option>
-                    <option value="Georgia">Georgia</option>
-                    <option value="Times New Roman">Times</option>
+                    <option value="Roboto">Roboto</option>
+                    <option value="Open Sans">Open Sans</option>
+                    <option value="Lato">Lato</option>
+                    <option value="Montserrat">Montserrat</option>
+                    <option value="Poppins">Poppins</option>
+                    <option value="Raleway">Raleway</option>
+                    <option value="Noto Sans">Noto Sans</option>
+                    <option value="Source Sans Pro">Source Sans Pro</option>
+                    <option value="Merriweather">Merriweather</option>
+                    <option value="Playfair Display">Playfair Display</option>
+                    <option value="Nunito">Nunito</option>
+                    <option value="Ubuntu">Ubuntu</option>
+                    <option value="PT Sans">PT Sans</option>
+                    <option value="Karla">Karla</option>
+                    <option value="Oswald">Oswald</option>
+                    <option value="Fira Sans">Fira Sans</option>
+                    <option value="Work Sans">Work Sans</option>
+                    <option value="Inconsolata">Inconsolata</option>
+                    <option value="Josefin Sans">Josefin Sans</option>
+                    <option value="Alegreya">Alegreya</option>
+                    <option value="Cabin">Cabin</option>
+                    <option value="Titillium Web">Titillium Web</option>
+                    <option value="Mulish">Mulish</option>
+                    <option value="Quicksand">Quicksand</option>
+                    <option value="Anton">Anton</option>
+                    <option value="Droid Sans">Droid Sans</option>
+                    <option value="Archivo">Archivo</option>
+                    <option value="Hind">Hind</option>
+                    <option value="Bitter">Bitter</option>
+                    <option value="Libre Franklin">Libre Franklin</option>
                   </select>
 
                   {/* Font Size */}
@@ -2067,7 +2264,7 @@ export default function CardBuilderV2({ eventId, fullscreen = false }: CardBuild
               <ImageIcon className="h-5 w-5" />
               <span className="text-xs">Background</span>
             </button>
-            <input ref={fileInputRef} type="file" accept="image/*" onChange={handleBackgroundUpload} className="hidden" />
+            <input ref={fileInputRef} type="file" accept="image/png,image/jpeg" onChange={handleBackgroundUpload} className="hidden" />
 
             <div className="h-px w-12 bg-border" />
 
@@ -2310,7 +2507,7 @@ export default function CardBuilderV2({ eventId, fullscreen = false }: CardBuild
 
             <div>
               <Label className="text-xs mb-2 block">Headshot</Label>
-              <input ref={headshotInputRef} type="file" accept="image/*" onChange={handleHeadshotUpload} className="hidden" />
+              <input ref={headshotInputRef} type="file" accept="image/png,image/jpeg" onChange={handleHeadshotUpload} className="hidden" />
               <Button onClick={() => headshotInputRef.current?.click()} variant="outline" size="sm" className="w-full">
                 <Upload className="h-3 w-3 mr-2" />
                 Upload Test Image
@@ -2331,7 +2528,7 @@ export default function CardBuilderV2({ eventId, fullscreen = false }: CardBuild
             <div>
               <Label className="text-xs mb-1 block">Company Logo</Label>
               <p className="text-xs text-muted-foreground mb-2">Drop zone for logos (free crop)</p>
-              <input ref={logoInputRef} type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
+              <input ref={logoInputRef} type="file" accept="image/png,image/jpeg" onChange={handleLogoUpload} className="hidden" />
               <Button onClick={() => logoInputRef.current?.click()} variant="outline" size="sm" className="w-full">
                 <Upload className="h-3 w-3 mr-2" />
                 Upload Test Image
