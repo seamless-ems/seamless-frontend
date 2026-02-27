@@ -103,66 +103,23 @@ End of briefing.
 ---
 
 ## Recent Changes
-1. 🚧 **Speaker Portal Card Rendering** (2026-02-11) - IN PROGRESS, NOT WORKING YET
-   - **Goal:** Display promo/website cards on speaker portal with real speaker data
+1. ⏳ **Card Image Generation** (2026-02-11) - WAITING FOR BACKEND
+   - **Decision:** Backend generation is the recommended approach (stable, scalable, solves CORS)
    - **What was done:**
-     - Fixed custom fields saving/loading (backend strips underscores from field keys)
-     - Added `canvasWidth` and `canvasHeight` to saved config for proper scaling
-     - Created `cardRenderer.ts` - shared rendering utility extracted from CardBuilderV2
-     - Updated `PromoCardCanvasRenderer` to use shared utility
-     - Changed layout: cards stack vertically instead of side-by-side
-     - Added extensive console logging for debugging
-     - Backend API integration: saves config to `/promo-cards/config` endpoint
-   - **Issues (NOT RESOLVED):**
-     - Cards not fully visible on speaker portal
-     - Placeholder text ("Wakko Warner") appearing instead of real speaker names
-     - Headshot and company logo not rendering (possible CORS issue with uploaded images)
-     - Text formatting doesn't match Card Builder
-   - **Next steps:** Debug using console logs, check element key mapping, verify speaker data flow
-   - **Files changed:** `cardRenderer.ts` (new), `PromoCardCanvasRenderer.tsx`, `SpeakerPreviews.tsx`, `CardBuilderV2.tsx`
+     - Attempted frontend SVG→PNG generation (blocked by CORS and font rendering issues)
+     - Cleaned up experimental code to keep codebase simple
+     - Documented comprehensive backend specification in `API_GAPS.md`
+     - Added CORS headers requirement to `API_GAPS.md`
+   - **Current state:**
+     - CardBuilderV2 is complete and saves templates
+     - SpeakerPreviews shows placeholder waiting for backend
+     - Ready to integrate once backend implements `/api/promo-cards/generate`
+   - **Files:** `SpeakerPreviews.tsx` (clean placeholder), `API_GAPS.md` (backend spec)
 
-2. 🚧 **WebsiteCardBuilder - Initial Build** (2026-01-29) - Created new component using tldraw as alternative to Fabric.js
-   - Installed tldraw package
-   - Built component with same drop-zone architecture as PromoCardBuilder
-   - Features: Background upload (with crop), headshot upload (with crop + shape options), logo upload (with crop), test data elements (Name/Title/Company)
-   - Uses tldraw native tools for all editing (drag, resize, rotate, style)
-   - Text elements use geo shapes with text labels (tldraw API requirement)
-   - Save/load template to localStorage, PNG export
-   - ImageCropDialog integration for all uploads
-   - Test route added: `/test/website-builder`
-   - Next: Test functionality, fix any bugs, evaluate tldraw vs Fabric.js for this use case
-2. ✅ **CRITICAL RULE ADDED** - NO completion/summary documents (burns credits). Just do work, test, report verbally.
-3. ✅ **PromoCardBuilder UX Fixes** (2026-01-28) - Fixed multi-select bug, all number inputs use onBlur (no deselection), moved Undo/Redo to canvas controls, added background to layers panel
-4. ✅ **Documentation Update** - Added critical frontend-only guidelines
-2. ✅ **PromoCardBuilder Migration** - Migrated from react-draggable to Fabric.js (2026-01-28)
-   - Professional canvas-based editor with snapping to edges, centers, and other elements
-   - Direct manipulation of images and text with resize/drag handles
-   - Suitable for design teams - matches industry-standard tools like Canva
-3. ✅ **PromoCardBuilder Enhancements** - Professional UX improvements (2026-01-28)
-   - **Visual snap guides**: Pink dashed lines appear when elements align during drag
-   - **Layers panel**: Full z-index management with visibility toggles and reordering
-   - **Alignment toolbar**: Quick-align buttons (left/center/right, top/middle/bottom)
-   - **Multi-select support**: Hold Shift + click or drag-select multiple elements
-   - **Persistent selection**: Selection maintained after moving (click canvas to deselect)
-   - **Enhanced snapping**: Snaps to all edges (left/right/top/bottom), centers, and adjacent elements
-4. ✅ **PromoCardBuilder UX Overhaul** - Element library + Undo/Redo (2026-01-28)
-   - **Empty canvas start**: Clean slate instead of pre-populated elements
-   - **Add Elements library**: Click-to-add interface for adding elements to canvas
-   - **Undo/Redo**: Full history stack (Ctrl+Z/Ctrl+Y) with 50-state memory
-   - **Centered placement**: New elements appear at canvas center
-   - **Better scalability**: Only render what users need (frontend-only = perfect for this)
-   - **Bundle size**: 1.26MB minified (347KB gzipped) - optimal for a rich editor
-5. ✅ **PromoCardBuilder Bug Fixes + Zoom** (2026-01-28)
-   - **Fixed**: Elements disappearing when dragging (render cycle conflict resolved)
-   - **Fixed**: Smart element centering (handles images vs text vs buttons correctly)
-   - **Zoom controls**: Zoom in/out buttons + fit-to-view + percentage display (10%-300%)
-   - **Better viewport**: Canvas container properly handles zoomed content with scrolling
-6. ✅ **PromoCardBuilder Phase 2 Refactor - COMPLETE** (2026-01-28)
-   - **Drop zone architecture**: Headshot/Logo are layout positions (NOT saved images)
-   - **Test images**: Preview-only in component state, never saved to config
-   - **Number inputs**: Replaced all sliders for precise control
-   - **Multi-select batch editing**: Select multiple elements (Shift+click), edit common properties at once
-   - **Removed legacy state**: headshotCropShape moved to config.headshot.shape
-   - **Save/Load updated**: Only saves template layout config, not test content
-   - **Better UX**: Clear messaging that test images are preview-only
-   - See `PROMO_CARD_REFACTOR_PLAN.md` for full details
+2. ✅ **CardBuilderV2 - Unified Card Builder** (2026-01-28 - 2026-02-11) - COMPLETE
+   - Replaced separate PromoCardBuilder and WebsiteCardBuilder
+   - Professional Fabric.js canvas with Canva-like UX
+   - Template system: saves layout config (NOT content)
+   - Dynamic elements from form config
+   - Full UX features: snap guides, layers panel, alignment, undo/redo, zoom
+   - Location: `src/components/CardBuilderV2.tsx`
