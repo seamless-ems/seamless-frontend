@@ -9,9 +9,10 @@ type Props = {
   speakers: any[];
   isLoading: boolean;
   eventId?: string | undefined;
+  selectedTab?: string;
 };
 
-export default function SpeakersTable({ speakers, isLoading, eventId }: Props) {
+export default function SpeakersTable({ speakers, isLoading, eventId, selectedTab }: Props) {
   const queryClient = useQueryClient();
 
   if (isLoading) {
@@ -70,24 +71,38 @@ export default function SpeakersTable({ speakers, isLoading, eventId }: Props) {
             </td>
 
             <td className="px-5 py-4">
-              <Badge
-                variant="outline"
-                className={`text-xs font-medium cursor-pointer ${
-                  speaker.intakeFormStatus === "approved"
-                    ? "bg-success/10 text-success border-success/30"
-                    : speaker.intakeFormStatus === "submitted"
-                    ? "bg-blue-500/10 text-blue-600 border-blue-500/30"
-                    : speaker.intakeFormStatus === "pending"
-                    ? "bg-warning/10 text-warning border-warning/30"
-                    : "bg-muted/50 text-muted-foreground border-muted/50"
-                }`}
-                onClick={() => window.location.href = `/organizer/event/${eventId}/speakers/${speaker.id}`}
-              >
-                {speaker.intakeFormStatus === "pending" && "Info Pending"}
-                {speaker.intakeFormStatus === "submitted" && "Info Submitted"}
-                {speaker.intakeFormStatus === "approved" && "Cards Approved"}
-                {!["pending", "submitted", "approved"].includes(speaker.intakeFormStatus) && speaker.intakeFormStatus}
-              </Badge>
+              {(() => {
+                // Choose status field based on selectedTab
+                const status = selectedTab === 'applications'
+                  ? (speaker.callForSpeakersStatus ?? speaker.call_for_speakers_status ?? speaker.call_for_speakers_status ?? speaker.callForSpeakersStatus ?? speaker.call_for_speakers_status)
+                  : (speaker.speakerInformationStatus ?? speaker.speaker_information_status ?? speaker.speakerInformationStatus ?? speaker.speaker_information_status);
+
+                // Fallback to intakeFormStatus if specific status not present
+                const finalStatus = status ?? speaker.intakeFormStatus ?? speaker.intake_form_status ?? 'pending';
+
+                const cls = finalStatus === 'approved' || finalStatus === 'cards_approved'
+                  ? 'bg-success/10 text-success border-success/30'
+                  : finalStatus === 'submitted'
+                  ? 'bg-blue-500/10 text-blue-600 border-blue-500/30'
+                  : finalStatus === 'pending'
+                  ? 'bg-warning/10 text-warning border-warning/30'
+                  : 'bg-muted/50 text-muted-foreground border-muted/50';
+
+                const label = finalStatus === 'pending' ? 'Info Pending'
+                  : finalStatus === 'submitted' ? 'Info Submitted'
+                  : (finalStatus === 'approved' || finalStatus === 'cards_approved') ? 'Cards Approved'
+                  : finalStatus;
+
+                return (
+                  <Badge
+                    variant="outline"
+                    className={`text-xs font-medium cursor-pointer ${cls}`}
+                    onClick={() => window.location.href = `/organizer/event/${eventId}/speakers/${speaker.id}`}
+                  >
+                    {label}
+                  </Badge>
+                );
+              })()}
             </td>
           </tr>
         ))}

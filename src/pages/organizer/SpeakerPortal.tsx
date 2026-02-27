@@ -170,9 +170,23 @@ export default function SpeakerPortal() {
     if (!id || !speakerId || !canApprove) return;
 
     try {
-      s.websiteCardApproved = !isApproved;
-      s.promoCardApproved = !isApproved; // Both cards approved together
-      await updateSpeaker(id, speakerId, s);
+      // Prepare payload so we only send the intended fields
+      const payload: any = {
+        id: speakerId,
+        firstName: s?.firstName ?? "",
+        lastName: s?.lastName ?? "",
+        email: s?.email ?? "",
+        formType: s?.formType ?? "speaker-info",
+        websiteCardApproved: !isApproved,
+        promoCardApproved: !isApproved,
+      };
+
+      // When approving, notify backend via speakerInformationStatus
+      if (!isApproved) {
+        payload.speakerInformationStatus = 'cards_approved';
+      }
+
+      await updateSpeaker(id, speakerId, payload);
       queryClient.invalidateQueries({ queryKey: ["event", id, "speaker", speakerId] });
       queryClient.invalidateQueries({ queryKey: ["event", id, "speakers"], exact: false });
       toast({ title: isApproved ? "Cards unapproved" : "Cards approved for embed" });

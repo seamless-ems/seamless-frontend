@@ -72,6 +72,7 @@ import {
 } from "lucide-react";
 import { FaLinkedin, FaTwitter, FaFacebook, FaInstagram, FaGithub } from "react-icons/fa";
 import { fabric } from "fabric";
+import { API_BASE } from '@/lib/api';
 import { ImageCropDialog } from "@/components/ImageCropDialog";
 import { toast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
@@ -602,7 +603,8 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
     // Render background if exists (1:1 scale, canvas is sized to match)
     if (templateUrl) {
       try {
-        const img = await loadImagePromise(templateUrl);
+        const bgUrl = getAbsoluteUrl(templateUrl) || templateUrl;
+        const img = await loadImagePromise(bgUrl);
         const fabricImg = new fabric.Image(img, {
           left: 0,
           top: 0,
@@ -1016,6 +1018,23 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
     });
   };
 
+  // Normalize template URLs: if the URL is relative (starts with '/'),
+  // prefix with API_BASE so requests go to the backend (not the frontend dev server).
+  const getAbsoluteUrl = (url: string | null | undefined) => {
+    if (!url) return url;
+    try {
+      // If url already absolute (has protocol), return as-is
+      const parsed = new URL(url);
+      return parsed.href;
+    } catch (e) {
+      // Not an absolute URL — likely a path like '/uploads/...'
+      // Ensure API_BASE does not end up with double slashes
+      const base = API_BASE?.replace(/\/$/, "") || "";
+      if (!base) return url; // fallback to raw value
+      return url.startsWith("/") ? `${base}${url}` : `${base}/${url}`;
+    }
+  };
+
   // Re-render when config changes
   useEffect(() => {
     if (fabricCanvasRef.current) {
@@ -1149,7 +1168,6 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
           // Load background image to get its dimensions (fallback if dimensions not saved)
           const img = new Image();
           img.onerror = (err) => {
-            
             toast({ title: "Background load failed", description: "Could not load background image due to CORS or network error. Try re-uploading the image.", variant: "destructive" });
             // clear template to avoid broken image state
             setTemplateUrl(null);
@@ -1172,7 +1190,7 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
             // Set background URL (will trigger re-render)
             setTemplateUrl(savedTemplateUrl);
           };
-          img.src = savedTemplateUrl;
+          img.src = getAbsoluteUrl(savedTemplateUrl) || savedTemplateUrl;
         }
         toast({ title: "Loaded", description: "Restored your previous card", duration: 2000 });
       } catch (err) {
@@ -1223,7 +1241,7 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
                 }
                 setTemplateUrl(savedTemplateUrl);
               };
-              img.src = savedTemplateUrl;
+              img.src = getAbsoluteUrl(savedTemplateUrl) || savedTemplateUrl;
             }
 
             toast({ title: "Loaded", description: "Loaded template from event", duration: 2000 });
@@ -1731,16 +1749,32 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
         }
 
         // Save the full config to the promo-cards API (include canvas dimensions for proper scaling)
-        await createPromoConfig({
+        const saved = await createPromoConfig({
           eventId,
           promoType: cardType,
           config: {
             ...config,
-            templateUrl: finalTemplateUrl, // Use uploaded URL when available
+            templateUrl: finalTemplateUrl, // include uploaded URL when available; server may normalize/override
             canvasWidth, // Save canvas dimensions for scaling
             canvasHeight,
           },
         });
+
+        // Prefer the canonical templateUrl returned by the server's config endpoint
+        const serverTemplateUrl = saved?.templateUrl ?? saved?.config?.templateUrl ?? saved?.config?.template_url ?? null;
+        if (serverTemplateUrl) {
+          setTemplateUrl(serverTemplateUrl);
+          // update localStorage entry so the canonical URL is persisted locally too
+          try {
+            const storageKey = `${cardType}-card-config-${eventId || "default"}`;
+            const existing = localStorage.getItem(storageKey);
+            const parsed = existing ? JSON.parse(existing) : {};
+            parsed.templateUrl = serverTemplateUrl;
+            localStorage.setItem(storageKey, JSON.stringify(parsed));
+          } catch (e) {
+            // ignore localStorage errors
+          }
+        }
 
         toast({ title: "Saved", description: `${cardType === "promo" ? "Promo" : "Website"} card template saved` });
       } catch (err: any) {
