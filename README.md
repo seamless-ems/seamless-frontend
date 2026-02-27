@@ -128,10 +128,14 @@ For design system, routing, and architecture details see `CLAUDE.md`.
 - Fix the background image in the website embed (it is not loading) DONE
 - Fix companyLogo being cropped in the rendered website embed DONE
 - For edit form we need both radio buttons and checkboxes as options for the builder DONE
+- Speaker intake - do what is in frontend DONE
+- Call for speakers -> `submitted`, `rejected`, `approved` (`approved` goes from call for speakers to speaker intake - `info pending`) DONE
+
 
 - The font weight/ width doesn't match what is actually created in the card builder (e.g. 400 is not showing up as normal weight) ***
 - For the text input in the card builder we need to add overflow options (e.g. wrap, truncate with ellipsis, overflow visible, resize) ***
 - Sort out complete beta flow ***
+
 
 - For the promo-card we can have it as a GET (and then when a user clicks approved it syncs with google drive and a download image button appears in the speaker assets area) *
 - For the linkedin URL we need to force url *
@@ -140,13 +144,9 @@ For design system, routing, and architecture details see `CLAUDE.md`.
 - Stop wrapping the text in the card builder (e.g. Lethrethrial Stormrage) *
 - Background image POST returning non - absolute *ish
 - Put download button for the promo card in the backend return, not in the speaker info frontend (so people can download without loggin in) *
-
-- Speaker intake - do what is in frontend
-- Call for speakers -> `submitted`, `rejected`, `approved` (`approved` goes from call for speakers to speaker intake - `info pending`) *
-
-
-
 - Reload website card builder when font changes in the form config *
+
+
 - Deal with onboarding flow redirect issue with google drive integration
 - Do folders in google drive by speaker information | {event_name}/ speaker name/ headshot.png
 - Do folders in google drive by call for speakers | {event_name}/ speaker name/ headshot.png
