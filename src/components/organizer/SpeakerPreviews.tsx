@@ -1,8 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { API_BASE } from '@/lib/api';
-import { toPng } from 'html-to-image';
-import { Button } from '@/components/ui/button';
 
 type Props = {
   s: any;
@@ -11,13 +9,10 @@ type Props = {
 
 export default function SpeakerPreviews({ s, eventData }: Props) {
   const { id: eventId } = useParams();
-  const [loading, setLoading] = useState(false);
   const [websiteLoading, setWebsiteLoading] = useState(false);
   const [websiteError, setWebsiteError] = useState<string | null>(null);
   const [promoLoading, setPromoLoading] = useState(false);
   const [promoError, setPromoError] = useState<string | null>(null);
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const websiteContainerRef = useRef<HTMLDivElement | null>(null);
   const promoContainerRef = useRef<HTMLDivElement | null>(null);
   const appendedHeadLinks = useRef<HTMLLinkElement[]>([]);
@@ -28,33 +23,6 @@ export default function SpeakerPreviews({ s, eventData }: Props) {
   const originalWindowOnclickPromo = useRef<any>(null);
   const controllerRef = useRef<AbortController | null>(null);
   const controllerRefPromo = useRef<AbortController | null>(null);
-
-  // Use html-to-image's toPng for exporting DOM nodes to PNG.
-
-  const handleDownloadPromo = async () => {
-    if (!promoContainerRef.current) return;
-    // find first element node inside container (the embedded card)
-    const el = Array.from(promoContainerRef.current.children).find((c) => c.nodeType === 1) as HTMLElement | undefined;
-    if (!el) {
-      setPromoError('No promo card found to download');
-      return;
-    }
-    setPromoLoading(true);
-    try {
-      const dataUrl = await toPng(el, { cacheBust: true, useCORS: true });
-      const a = document.createElement('a');
-      a.href = dataUrl;
-      const safeName = (s?.name || 'promo-card').replace(/[^a-z0-9-_]/gi, '_').toLowerCase();
-      a.download = `${safeName}.png`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-    } catch (err: any) {
-      setPromoError(err?.message || String(err));
-    } finally {
-      setPromoLoading(false);
-    }
-  };
 
   // Fetch and embed website card HTML when component mounts or when eventId/s.id changes
   useEffect(() => {
@@ -276,11 +244,6 @@ export default function SpeakerPreviews({ s, eventData }: Props) {
             <div className="w-full">
               <div className="text-sm text-muted-foreground text-center mb-2">
                 {promoLoading ? 'Loading promo card...' : promoError ? 'Failed to load promo card' : 'Promo card preview:'}
-              </div>
-              <div className="flex items-center justify-end mb-3">
-                <Button variant="outline" size="sm" onClick={handleDownloadPromo} disabled={promoLoading}>
-                  {promoLoading ? 'Preparing PNG...' : 'Download PNG'}
-                </Button>
               </div>
               <div className="bg-white p-4 rounded" style={{ minHeight: 120, maxHeight: 600, overflow: 'auto' }}>
                 {promoError && <div className="text-destructive text-sm mb-2">{promoError}</div>}

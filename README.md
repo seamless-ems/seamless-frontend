@@ -1,24 +1,20 @@
 # Seamless Events - Beta Frontend
 
-##IMPORTANT: Always remind James to do a GIT Pull before we start devlopment - do not start codeing until he tell you it is complete 
+## IMPORTANT: Always remind James to do a GIT Pull before we start development — do not start coding until he confirms it is complete
 
 A Vite + React + TypeScript frontend for Seamless Events, an operational event management system. Built with shadcn/ui component patterns and Tailwind CSS.
 
-**Project Philosophy:** "The Trello of event operations" - stays in the background, operational not decorative, professional not flashy.
+**Project Philosophy:** "The Trello of event operations" — stays in the background, operational not decorative, professional not flashy.
 
-**Progress & Updates:** Primary progress and session notes are maintained in [CLAUDE.md](CLAUDE.md). Ephemeral session files (e.g., session summaries) have been archived to `archive_docs/` to keep the repo root clean.
+**Current Status:** Beta phase — actively migrating features from offline prototype to production-ready app.
 
-**Current Status:** Beta phase - actively migrating features from offline prototype to production-ready app.
-
-⚠️ **IMPORTANT:** When making changes to this codebase, proceed carefully and do not make any structural changes (component refactors, major integrations, routing changes) without first requesting approval. Major changes can impact data flow and backend connectivity. Always test thoroughly and communicate changes clearly.
+⚠️ **IMPORTANT:** Proceed carefully and do not make any structural changes (component refactors, major integrations, routing changes) without first requesting approval. Major changes can impact data flow and backend connectivity.
 
 ## Quick start
 
 Requirements:
-- Node.js (v18+ recommended) or a compatible environment used by the team
-- npm or an alternative package manager (this project uses npm scripts)
-
-Clone the repo, install dependencies and run the dev server:
+- Node.js (v18+ recommended)
+- npm
 
 ```bash
 git clone <repo-url>
@@ -29,137 +25,34 @@ npm run dev
 
 Open http://localhost:5173 in your browser.
 
-## What you'll find here
-
-- Vite as the dev server & build tool (`vite`, `vite.config.ts`)
-- React 18 + TypeScript (`react`, `react-dom`, `typescript`)
-- Tailwind CSS for styling (`tailwind.config.ts`, `index.css`) and `tailwindcss-animate`
-# Seamless Events - Beta Frontend
-
-A Vite + React + TypeScript frontend for Seamless Events. This README focuses on setup, quickstart and where to find documentation.
-
-## Quick start
-
-Requirements:
-- Node.js (v18+ recommended)
-- npm
-
-Clone, install, and run:
-
-```bash
-git clone <repo-url>
-cd seamless-frontend
-npm install
-npm run dev
-```
-
-Open http://localhost:5173.
-
 ## What to read next
-- Development & onboarding: `CLAUDE.md` (brief project rules, priorities, and next steps)
+- Development & onboarding: `CLAUDE.md`
 - API gaps and backend notes: `API_GAPS.md`
 - Full API spec: `openapi.json`
 
 ## Notable folders
-
 - `src/` — app source (components, pages, hooks, lib, types)
 - `public/` — static assets
 
-## Components & Features
-
-### CardBuilder (`src/components/CardBuilder.tsx`)
-**Status:** ✅ Complete & Stable (Unified card builder - replaces PromoCardBuilder and WebsiteCardBuilder)
-
-Professional Canva-like design tool built with Fabric.js for creating both promo cards and website cards:
-
-**Architecture:**
-- **Unified builder**: Single component with card type toggle (Promo/Website)
-- **Dynamic elements**: Automatically generates card elements from event form configuration
-- **Drop zone system**: Templates define WHERE content goes (position, size, shape), NOT the actual content
-- **Test images**: Preview-only (never saved to config) - upload samples to see how layout looks
-- **Template config**: Saves layout positions, sizes, shapes, colors (NOT image URLs)
-- **Form integration**: Custom form fields can be toggled to appear in card builder via `showInCardBuilder` flag
-
-**3-Column Layout:**
-- **Left (50%):** Canvas with visual snap guides (pink dashed lines)
-- **Middle (25%):** Card type selector + Element library (click to add) + test image uploads + layers panel
-- **Right (25%):** Properties panel with number inputs for precision
-
-**Key Features:**
-- **Card Types**: Toggle between Promo and Website cards with separate configs
-- **Dynamic Elements**: Reads form config via API and creates elements from custom fields
-- **Social Media Icons**: LinkedIn, Twitter, Facebook, Instagram, GitHub support
-- Visual alignment snapping (edges, centers, adjacent elements)
-- Multi-select batch editing (font size, weight, color, opacity)
-- Layers panel with drag-to-reorder and z-index management
-- Alignment toolbar (6 quick-align buttons)
-- Undo/Redo (Ctrl+Z/Y) with 50-state history
-- Zoom controls (10%-300%)
-- Number inputs for precise positioning/sizing
-- Headshot shape toggle (circle/square/rectangle)
-- Empty canvas start with click-to-add elements
-- PNG export with proper clipping paths
-- localStorage persistence per event + card type
-
-**Access:**
-- Route: `/organizer/event/:id/card-builder`
-- Accessible from Speaker Module via "Card Builder" button
-- Fullscreen editing experience with back navigation
-
 ## Scripts
-
 - `npm run dev` — start dev server
 - `npm run build` — production build
 - `npm run preview` — preview production build
 - `npm run lint` — run ESLint
 
-For design system, routing, and architecture details see `CLAUDE.md`.
+## GitHub Workflow (WSL)
 
-##GitHub Push Do in WSL
-- git status
-- git add .
-- git commit -m "account, speaker portal updates" 
-- git push origin beta
+**Push:**
+```bash
+git status
+git add .
+git commit -m "your message"
+git push origin beta
+```
 
-##GitHub Pull
-- git pull origin beta
+**Pull:**
+```bash
+git pull origin beta
+```
 
 ## TODOs:
-- force all image uploads to be png or jpeg (no pdfs etc.) DONE
-- add form title and form description, boolean show_title_description for (FormConfig object) (default on with Event Title, "please submit") DONE
-- Fix the background image in the website embed (it is not loading) DONE
-- Fix companyLogo being cropped in the rendered website embed DONE
-- For edit form we need both radio buttons and checkboxes as options for the builder DONE
-- Speaker intake - do what is in frontend DONE
-- Call for speakers -> `submitted`, `rejected`, `approved` (`approved` goes from call for speakers to speaker intake - `info pending`) DONE
-
-
-- The font weight/ width doesn't match what is actually created in the card builder (e.g. 400 is not showing up as normal weight) ***
-- For the text input in the card builder we need to add overflow options (e.g. wrap, truncate with ellipsis, overflow visible, resize) ***
-- Sort out complete beta flow ***
-
-
-- For the promo-card we can have it as a GET (and then when a user clicks approved it syncs with google drive and a download image button appears in the speaker assets area) *
-- For the linkedin URL we need to force url *
-- Add the warning redirect for the embed link (if the website and promo card builder) (default square warning) *
-- Speaker information headshot needs to mirror cropping *
-- Stop wrapping the text in the card builder (e.g. Lethrethrial Stormrage) *
-- Background image POST returning non - absolute *ish
-- Put download button for the promo card in the backend return, not in the speaker info frontend (so people can download without loggin in) *
-- Reload website card builder when font changes in the form config *
-
-
-- Deal with onboarding flow redirect issue with google drive integration
-- Do folders in google drive by speaker information | {event_name}/ speaker name/ headshot.png
-- Do folders in google drive by call for speakers | {event_name}/ speaker name/ headshot.png
-- Make the call for speakers and speaker information fully seperate in master google sheet
-- Don't autofill sheet columns. On creation put instructions in the column headers
-- Add Speaker/ FormConfig optional field for "talk_topic"
-- For the select speakers make this default off
-- Add custom font upload for card builder (and then use that font in the card builder)
-- Apply to all button for card builder (speaker promo card download)
-- For custom fields in form config make it possible to add them to the promo card builder and website card builder
-- Add companyLogo field to speaker info table and make it a clickable modal with download option
-- Add companyLogo, headshot + promo card and website embed at the speaker info table level (not just in the card builder)
-- Add a splash screen for loading for the Event create POST as it is pretty slow when doing integration as well (~10s)
-- Match form names with website card builder names (e.g. "Company Name" in form config should be "Company Name" in the card builder element library and not "companyName")

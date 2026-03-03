@@ -1,56 +1,39 @@
 import { useState } from "react";
-import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getJson, createSpeaker } from "@/lib/api";
-import { toast } from "@/hooks/use-toast";
-import SpeakerFormBuilder from "@/components/SpeakerFormBuilder";
+import { useQuery } from "@tanstack/react-query";
+import { getJson } from "@/lib/api";
 import AddSpeakerDialog from "@/components/organizer/AddSpeakerDialog";
 import SpeakersTable from "@/components/organizer/SpeakersTable";
 import SpeakersControls from "@/components/organizer/SpeakersControls";
 import EmbedBuilder from "@/components/organizer/EmbedBuilder";
 import FormsTab from "@/components/organizer/FormsTab";
+import CardBuilder from "@/components/CardBuilder";
 
 export default function SpeakerModule() {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState("newest");
-  const getInitialTab = () => {
-    try {
-      const params = new URLSearchParams(location.search);
-      const t = params.get("tab");
-      if (t === "speakers" || t === "applications" || t === "forms" || t === "embed-builder") return t;
-    } catch (e) {
-      // ignore
-    }
-    return "speakers";
-  };
-
-  const [selectedTab, setSelectedTab] = useState<string>(getInitialTab);
-  // dialog and table are extracted into components
-  const [addOpen, setAddOpen] = useState(false);
+  // Derive active tab from URL path
+  const pathname = location.pathname;
+  const activeTab = pathname.endsWith('/applications') ? 'applications'
+    : pathname.endsWith('/forms') ? 'forms'
+    : pathname.endsWith('/embed') ? 'embed'
+    : pathname.endsWith('/promo-card-builder') ? 'promo-card-builder'
+    : pathname.endsWith('/website-card-builder') ? 'website-card-builder'
+    : 'speakers';
 
   const { data: rawSpeakers, isLoading } = useQuery<any, Error>({
-    queryKey: ["event", id, "speakers", selectedTab],
+    queryKey: ["event", id, "speakers", activeTab],
     queryFn: () => {
-      // Filter by form_type: speakers tab should show speaker-info, applications tab should show call-for-speakers
-      const formType = selectedTab === "speakers" ? "speaker-info" : (selectedTab === "applications" ? "call-for-speakers" : "speaker-info");
+      const formType = activeTab === "applications" ? "call-for-speakers" : "speaker-info";
       const qs = `?form_type=${encodeURIComponent(formType)}`;
       return getJson<any>(`/events/${id}/speakers${qs}`);
     },
-    enabled: Boolean(id),
+    enabled: Boolean(id) && (activeTab === "speakers" || activeTab === "applications"),
   });
 
   // Normalize response shapes into any[]
@@ -71,8 +54,8 @@ export default function SpeakerModule() {
       const companyRole = it.company_role ?? it.companyRole ?? "";
       const headshot = it.headshot ?? it.headshot_url ?? it.avatar_url ?? null;
       const intakeFormStatus = it.intake_form_status ?? it.intakeFormStatus ?? "pending";
-      const speakerInformationStatus = it.speaker_information_status ?? it.speakerInformationStatus ?? it.speakerInformationStatus ?? null;
-      const callForSpeakersStatus = it.call_for_speakers_status ?? it.callForSpeakersStatus ?? it.callForSpeakersStatus ?? null;
+      const speakerInformationStatus = it.speaker_information_status ?? it.speakerInformationStatus ?? null;
+      const callForSpeakersStatus = it.call_for_speakers_status ?? it.callForSpeakersStatus ?? null;
       const createdAt = it.registered_at ?? it.created_at ?? it.createdAt ?? null;
       const name = `${firstName} ${lastName}`.trim() || email;
 
@@ -107,10 +90,9 @@ export default function SpeakerModule() {
       } else if (statusFilter === "archived") {
         matchesStatus = isArchived;
       } else if (statusFilter !== "all") {
-        // Determine which status field to check based on selected tab
-        const effectiveStatus = selectedTab === 'applications'
-          ? (speaker.callForSpeakersStatus ?? speaker.call_for_speakers_status ?? speaker.callForSpeakersStatus ?? speaker.call_for_speakers_status)
-          : (speaker.speakerInformationStatus ?? speaker.speaker_information_status ?? speaker.speakerInformationStatus ?? speaker.speaker_information_status ?? speaker.intakeFormStatus ?? speaker.intake_form_status);
+        const effectiveStatus = activeTab === 'applications'
+          ? (speaker.callForSpeakersStatus ?? speaker.call_for_speakers_status)
+          : (speaker.speakerInformationStatus ?? speaker.speaker_information_status ?? speaker.intakeFormStatus ?? speaker.intake_form_status);
 
         if (statusFilter === 'approved' || statusFilter === 'cards_approved') {
           matchesStatus = ['approved', 'cards_approved'].includes(effectiveStatus);
@@ -137,92 +119,55 @@ export default function SpeakerModule() {
     });
 
   const pendingCount = speakerList.filter(s => {
-    const effectiveStatus = selectedTab === 'applications'
-      ? (s.callForSpeakersStatus ?? s.call_for_speakers_status ?? s.callForSpeakersStatus ?? s.call_for_speakers_status)
-      : (s.speakerInformationStatus ?? s.speaker_information_status ?? s.speakerInformationStatus ?? s.speaker_information_status ?? s.intakeFormStatus ?? s.intake_form_status);
+    const effectiveStatus = activeTab === 'applications'
+      ? (s.callForSpeakersStatus ?? s.call_for_speakers_status)
+      : (s.speakerInformationStatus ?? s.speaker_information_status ?? s.intakeFormStatus ?? s.intake_form_status);
     return effectiveStatus === 'pending';
   }).length;
   const totalCount = speakerList.length;
+
+  const tabClass = (tab: string) =>
+    `pb-3 border-b-2 transition-colors text-sm font-medium ${
+      activeTab === tab
+        ? "border-primary text-foreground"
+        : "border-transparent text-muted-foreground hover:text-foreground"
+    }`;
 
   return (
     <div className="space-y-0">
       {/* Tabs Navigation */}
       <div className="border-b border-border">
-        <div className="flex gap-8 px-0">
-          <button
-            onClick={() => setSelectedTab("speakers")}
-            className={`pb-3 border-b-2 transition-colors text-sm ${
-              selectedTab === "speakers"
-                ? "border-primary text-foreground font-semibold bg-muted/50 px-3 py-2 rounded-t"
-                : "border-transparent text-muted-foreground hover:text-foreground font-medium"
-            }`}
-          >
-            Speakers
+        <div className="flex gap-6 px-0">
+          <button onClick={() => navigate(`/organizer/event/${id}/speakers`)} className={tabClass("speakers")}>
+            Confirmed Speakers
           </button>
-          <button
-            onClick={() => setSelectedTab("applications")}
-            className={`pb-3 border-b-2 transition-colors text-sm ${
-              selectedTab === "applications"
-                ? "border-primary text-foreground font-semibold bg-muted/50 px-3 py-2 rounded-t"
-                : "border-transparent text-muted-foreground hover:text-foreground font-medium"
-            }`}
-          >
-            Call for Speakers
+          <button onClick={() => navigate(`/organizer/event/${id}/speakers/applications`)} className={tabClass("applications")}>
+            Applications
           </button>
-          <button
-            onClick={() => setSelectedTab("forms")}
-            className={`pb-3 border-b-2 transition-colors text-sm ${
-              selectedTab === "forms"
-                ? "border-primary text-foreground font-semibold bg-muted/50 px-3 py-2 rounded-t"
-                : "border-transparent text-muted-foreground hover:text-foreground font-medium"
-            }`}
-          >
+          <button onClick={() => navigate(`/organizer/event/${id}/speakers/forms`)} className={tabClass("forms")}>
             Forms
           </button>
-          <button
-            onClick={() => setSelectedTab("embed-builder")}
-            className={`pb-3 border-b-2 transition-colors text-sm ${
-              selectedTab === "embed-builder"
-                ? "border-primary text-foreground font-semibold bg-muted/50 px-3 py-2 rounded-t"
-                : "border-transparent text-muted-foreground hover:text-foreground font-medium"
-            }`}
-          >
-            Embed Builder
+          <button onClick={() => navigate(`/organizer/event/${id}/speakers/embed`)} className={tabClass("embed")}>
+            Embeds
           </button>
-          <button
-            onClick={() => navigate(`/organizer/event/${id}/website-card-builder`)}
-            className="pb-3 border-b-2 border-transparent text-muted-foreground hover:text-foreground font-medium transition-colors text-sm hover:border-primary"
-          >
+          <button onClick={() => navigate(`/organizer/event/${id}/website-card-builder`)} className={tabClass("website-card-builder")}>
             Website Card Builder
           </button>
-          <button
-            onClick={() => navigate(`/organizer/event/${id}/promo-card-builder`)}
-            className="pb-3 border-b-2 border-transparent text-muted-foreground hover:text-foreground font-medium transition-colors text-sm hover:border-primary"
-          >
+          <button onClick={() => navigate(`/organizer/event/${id}/promo-card-builder`)} className={tabClass("promo-card-builder")}>
             Promo Card Builder
           </button>
         </div>
       </div>
 
       {/* Speakers Tab Content */}
-      {selectedTab === "speakers" && (
+      {activeTab === "speakers" && (
         <div className="space-y-6 pt-6">
-          {/* Header and Action */}
-          <div className="flex justify-between items-center">
-            <div>
-              <p className="text-sm text-muted-foreground">Manage and approve event speakers</p>
-            </div>
-            {/* Dialog extracted to AddSpeakerDialog component */}
-            <div>
-              {/* AddSpeakerDialog renders its own trigger */}
-              {/* @ts-ignore: dynamic import component */}
-              <AddSpeakerDialog eventId={id} />
-            </div>
+          <div className="flex justify-end">
+            {/* @ts-ignore: dynamic import component */}
+            <AddSpeakerDialog eventId={id} />
           </div>
 
-          {/* Table Container */}
           <div className="space-y-4">
-            {/* Controls Bar (extracted) */}
             <SpeakersControls
               searchQuery={searchQuery}
               setSearchQuery={setSearchQuery}
@@ -234,22 +179,20 @@ export default function SpeakerModule() {
               pendingCount={pendingCount}
             />
 
-            {/* Speakers table extracted */}
             <div className="rounded-lg border border-border overflow-hidden">
               {/* @ts-ignore */}
-              <SpeakersTable speakers={filteredSpeakers} isLoading={isLoading} eventId={id} selectedTab={selectedTab} />
+              <SpeakersTable speakers={filteredSpeakers} isLoading={isLoading} eventId={id} selectedTab={activeTab} />
             </div>
           </div>
         </div>
       )}
 
       {/* Applications Tab */}
-      {selectedTab === "applications" && (
+      {activeTab === "applications" && (
         <div className="space-y-6 pt-6">
-          {/* Header */}
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <p className="text-sm text-muted-foreground mt-1">Review and approve speaker applications</p>
+              <p className="text-sm text-muted-foreground mt-1">Review and approve applications</p>
 
               <div className="flex items-center gap-3">
                 <div className="text-sm text-muted-foreground">{totalCount} applications</div>
@@ -269,7 +212,6 @@ export default function SpeakerModule() {
               </div>
             </div>
 
-            {/* Applications Table (reuse speakers controls + table but data is filtered by form_type) */}
             <SpeakersControls
               searchQuery={searchQuery}
               setSearchQuery={setSearchQuery}
@@ -283,26 +225,28 @@ export default function SpeakerModule() {
 
             <div className="rounded-lg border border-border overflow-hidden">
               {/* @ts-ignore */}
-              <SpeakersTable speakers={filteredSpeakers} isLoading={isLoading} eventId={id} selectedTab={selectedTab} />
+              <SpeakersTable speakers={filteredSpeakers} isLoading={isLoading} eventId={id} selectedTab={activeTab} />
             </div>
           </div>
         </div>
       )}
 
       {/* Forms Tab */}
-      {selectedTab === "forms" && (
+      {activeTab === "forms" && (
         <FormsTab eventId={id} />
       )}
 
       {/* Embed Builder Tab */}
-      {selectedTab === "embed-builder" && (
+      {activeTab === "embed" && (
         <EmbedBuilder eventId={id} />
       )}
 
+      {/* Card Builder Tabs */}
+      {(activeTab === "promo-card-builder" || activeTab === "website-card-builder") && (
+        <div className="-mx-6 -mb-6 mt-6" style={{ height: 'calc(100vh - 175px)' }}>
+          <CardBuilder key={activeTab} eventId={id} fullscreen />
+        </div>
+      )}
     </div>
   );
 }
-
-
-
-

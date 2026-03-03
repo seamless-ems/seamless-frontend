@@ -3,18 +3,16 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
 import Events from "./pages/organizer/Events";
-import EventDashboard from "./pages/organizer/EventDashboard";
 import SpeakerModule from "./pages/organizer/SpeakerModule";
-import SpeakerEmbed from "./pages/public/SpeakerEmbed";
-import SpeakerEmbedSingle from "./pages/public/SpeakerEmbedSingle";
 import PromoEmbedSingle from "./pages/public/PromoEmbedSingle";
 import SpeakerPortal from "./pages/organizer/SpeakerPortal";
 import SpeakerDashboard from "./pages/speaker/SpeakerDashboard";
 import SpeakerProfile from "./pages/speaker/Profile";
 import { DashboardLayout } from "./components/layout/DashboardLayout";
+import EventLayout from "./components/layout/EventLayout";
 import SpeakerIntakeForm from "./pages/public/SpeakerIntakeForm";
 import CreateEvent from "./pages/organizer/CreateEvent";
 import Settings from "./pages/organizer/Settings";
@@ -38,14 +36,9 @@ function RootRedirect() {
   return <Navigate to={`/${mode}`} replace />;
 }
 
-// Wrapper to pass eventId from route params to DashboardLayout
-function EventLayoutWrapper({ children, mode }: { children: React.ReactNode; mode: "organizer" | "speaker" }) {
-  const { id } = useParams();
-  return (
-    <DashboardLayout mode={mode} eventId={id}>
-      {children}
-    </DashboardLayout>
-  );
+
+function EventLayoutWrapper({ children }: { children: React.ReactNode }) {
+  return <EventLayout>{children}</EventLayout>;
 }
 
 const queryClient = new QueryClient();
@@ -78,7 +71,6 @@ const App = () => {
               }
             />
 
-            {/* Duplicate organizer routes under /organizer namespace (optional) */}
             <Route
               path="/organizer/events"
               element={
@@ -101,23 +93,57 @@ const App = () => {
               }
             />
 
+            {/* Event routes — flat, each wrapped in EventLayout */}
             <Route
-              path="/organizer/event/:id"
+              path="/organizer/event/:id/speakers"
               element={
                 <ProtectedRoute>
-                  <EventLayoutWrapper mode="organizer">
-                    <EventDashboard />
+                  <EventLayoutWrapper>
+                    <SpeakerModule />
                   </EventLayoutWrapper>
                 </ProtectedRoute>
               }
             />
 
             <Route
-              path="/organizer/event/:id/speakers"
+              path="/organizer/event/:id/speakers/applications"
               element={
                 <ProtectedRoute>
-                  <EventLayoutWrapper mode="organizer">
+                  <EventLayoutWrapper>
                     <SpeakerModule />
+                  </EventLayoutWrapper>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/organizer/event/:id/speakers/forms"
+              element={
+                <ProtectedRoute>
+                  <EventLayoutWrapper>
+                    <SpeakerModule />
+                  </EventLayoutWrapper>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/organizer/event/:id/speakers/embed"
+              element={
+                <ProtectedRoute>
+                  <EventLayoutWrapper>
+                    <SpeakerModule />
+                  </EventLayoutWrapper>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/organizer/event/:id/speakers/:speakerId"
+              element={
+                <ProtectedRoute>
+                  <EventLayoutWrapper>
+                    <SpeakerPortal />
                   </EventLayoutWrapper>
                 </ProtectedRoute>
               }
@@ -127,18 +153,21 @@ const App = () => {
               path="/organizer/event/:id/settings"
               element={
                 <ProtectedRoute>
-                  <EventLayoutWrapper mode="organizer">
+                  <EventLayoutWrapper>
                     <EventSettings />
                   </EventLayoutWrapper>
                 </ProtectedRoute>
               }
             />
 
+            {/* Card builders — rendered inside SpeakerModule so the tab bar stays visible */}
             <Route
               path="/organizer/event/:id/promo-card-builder"
               element={
                 <ProtectedRoute>
-                  <PromoCardBuilderPage />
+                  <EventLayoutWrapper>
+                    <SpeakerModule />
+                  </EventLayoutWrapper>
                 </ProtectedRoute>
               }
             />
@@ -147,28 +176,16 @@ const App = () => {
               path="/organizer/event/:id/website-card-builder"
               element={
                 <ProtectedRoute>
-                  <WebsiteCardBuilderPage />
-                </ProtectedRoute>
-              }
-            />
-
-            {/* Public embed route for speaker promo cards */}
-            {/* <Route path="/event/:id/speakers/embed" element={<SpeakerEmbed />} /> */}
-            <Route path="/event/:id/speakers/embed/promo" element={<PromoEmbed />} />
-            {/* Single-speaker embed routes (public) */}
-            {/* <Route path="/event/:id/speakers/embed/speaker/:speakerId" element={<SpeakerEmbedSingle />} /> */}
-            <Route path="/event/:id/speakers/embed/promo/:speakerId" element={<PromoEmbedSingle />} />
-
-            <Route
-              path="/organizer/event/:id/speakers/:speakerId"
-              element={
-                <ProtectedRoute>
-                  <EventLayoutWrapper mode="organizer">
-                    <SpeakerPortal />
+                  <EventLayoutWrapper>
+                    <SpeakerModule />
                   </EventLayoutWrapper>
                 </ProtectedRoute>
               }
             />
+
+            {/* Public embed routes */}
+            <Route path="/event/:id/speakers/embed/promo" element={<PromoEmbed />} />
+            <Route path="/event/:id/speakers/embed/promo/:speakerId" element={<PromoEmbedSingle />} />
 
             <Route
               path="/organizer/settings"
@@ -192,25 +209,10 @@ const App = () => {
               }
             />
 
-            <Route
-              path="/speaker-intake/:eventId"
-              element={
-                // <ProtectedRoute>
-                <SpeakerIntakeForm />
-                // </ProtectedRoute>
-              }
-            />
+            <Route path="/speaker-intake/:eventId" element={<SpeakerIntakeForm />} />
+            <Route path="/call-for-speakers/:eventId" element={<SpeakerIntakeForm />} />
 
-            <Route
-              path="/call-for-speakers/:eventId"
-              element={
-                // <ProtectedRoute>
-                <SpeakerIntakeForm />
-                // </ProtectedRoute>
-              }
-            /> 
-
-            {/* Speaker management routes (protected, /speaker namespace) */}
+            {/* Speaker management routes */}
             <Route
               path="/speaker"
               element={
@@ -232,6 +234,7 @@ const App = () => {
                 </ProtectedRoute>
               }
             />
+
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
