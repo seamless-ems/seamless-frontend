@@ -74,6 +74,7 @@ import { FaLinkedin, FaTwitter, FaFacebook, FaInstagram, FaGithub } from "react-
 import { fabric } from "fabric";
 import { API_BASE } from '@/lib/api';
 import { ImageCropDialog } from "@/components/ImageCropDialog";
+import ShadowContainer from "@/components/ShadowContainer";
 import { toast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import MissingFormDialog from "@/components/MissingFormDialog";
@@ -335,7 +336,11 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
 
   // Initialize Fabric canvas
   useEffect(() => {
-    if (canvasRef.current && !fabricCanvasRef.current) {
+    let initInterval: number | null = null;
+
+    const createCanvas = () => {
+      if (!canvasRef.current || fabricCanvasRef.current) return false;
+
       const canvas = new fabric.Canvas(canvasRef.current, {
         width: canvasWidth,
         height: canvasHeight,
@@ -584,7 +589,23 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
       });
     }
 
+    // Try to create immediately, otherwise poll until the canvas element is present (Shadow DOM mounts after parent)
+    if (!createCanvas()) {
+      initInterval = window.setInterval(() => {
+        if (createCanvas()) {
+          if (initInterval) {
+            clearInterval(initInterval);
+            initInterval = null;
+          }
+        }
+      }, 100);
+    }
+
     return () => {
+      if (initInterval) {
+        clearInterval(initInterval);
+        initInterval = null;
+      }
       fabricCanvasRef.current?.dispose();
     };
   }, []);
@@ -1842,6 +1863,149 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
     });
   };
 
+  // Generate standalone HTML snapshot of the current card config
+  const escapeHTML = (s: any) => {
+    if (s === null || s === undefined) return "";
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/\"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  };
+
+  const generateCardHTML = () => {
+    // Build HTML that matches backend structure (hard-coded acceptable)
+    const templateBg = templateUrl ? templateUrl : '';
+    const headshotSrc = testHeadshot || (config.headshot && config.headshot.src) || '';
+    const logoSrc = testLogo || (config.companyLogo && config.companyLogo.src) || '';
+
+    const nameEl = config.name || {};
+    const titleEl = config.title || {};
+    const companyEl = config.company || {};
+    const headshotEl = config.headshot || {};
+    const logoEl = config.companyLogo || {};
+
+    // Collect font families used by visible text elements so we can load them from Google Fonts
+    const usedFontFamilies = Array.from(
+      new Set([
+        nameEl.fontFamily,
+        titleEl.fontFamily,
+        companyEl.fontFamily,
+      ].filter(Boolean))
+    );
+
+    const fontFamilyFallback = usedFontFamilies[0] || nameEl.fontFamily || titleEl.fontFamily || companyEl.fontFamily || 'Inter';
+    const googleFontsHref = usedFontFamilies.length
+      ? `https://fonts.googleapis.com/css2?${usedFontFamilies.map(f => `family=${String(f).replace(/\s+/g,'+')}:wght@300;400;500;600;700;800`).join('&')}&display=swap`
+      : '';
+
+    const cardStyle = `width: ${canvasWidth}px; height: ${canvasHeight}px; position: relative; background-image: ${templateBg ? `url('${escapeHTML(templateBg)}')` : 'none'}; background-size: cover; overflow: hidden; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.15);`;
+
+    const headshotLeft = headshotEl.x || 0;
+    const headshotTop = headshotEl.y || 0;
+    const headshotW = headshotEl.size || headshotEl.width || 80;
+    const headshotH = headshotEl.size || headshotEl.height || headshotW;
+
+    const logoLeft = logoEl.x || 0;
+    const logoTop = logoEl.y || 0;
+    const logoW = logoEl.size || logoEl.width || 60;
+    const logoH = logoEl.size || logoEl.height || logoW;
+
+    const nameLeft = nameEl.x || 0;
+    const nameTop = nameEl.y || 0;
+    const nameW = nameEl.width || 300;
+    const nameFS = nameEl.fontSize || 32;
+    const nameFW = nameEl.fontWeight || 700;
+
+    const titleLeft = titleEl.x || 0;
+    const titleTop = titleEl.y || 0;
+    const titleW = titleEl.width || 300;
+    const titleFS = titleEl.fontSize || 20;
+    const titleFW = titleEl.fontWeight || 500;
+
+    const companyLeft = companyEl.x || 0;
+    const companyTop = companyEl.y || 0;
+    const companyW = companyEl.width || 300;
+    const companyFS = companyEl.fontSize || 18;
+    const companyFW = companyEl.fontWeight || 400;
+
+    const fullName = String(nameEl.text || nameEl.label || '').trim();
+    const firstName = fullName.split(/\s+/).shift() || '';
+    const lastName = fullName.split(/\s+/).slice(1).join(' ') || '';
+
+    const html = `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  ${ googleFontsHref ? `<link href="${googleFontsHref}" rel="stylesheet">` : '' }
+  <style>
+    body, .speaker-card { font-family: '${escapeHTML(fontFamilyFallback)}', sans-serif; }
+    .speaker-card:hover { transform: translateY(-5px); transition: transform 0.2s; }
+  </style>
+</head>
+<body>
+  <div style="display: grid; grid-template-columns: repeat(1, 1fr); gap: 30px; padding: 20px; justify-items: center;">
+    <div style="${cardStyle}" class="speaker-card embed-speaker-name" data-index="0">
+      ${ headshotSrc ? `<img src="${escapeHTML(headshotSrc)}" style="position:absolute; left:${headshotLeft}px; top:${headshotTop}px; z-index:1; opacity:1.0; width:${headshotW}px; height:${headshotH}px; object-fit: contain; object-position: center; background-color: transparent; ">` : `<div style="position:absolute; left:${headshotLeft}px; top:${headshotTop}px; z-index:1; width:${headshotW}px; height:${headshotH}px; background:#ddd;"></div>` }
+      <div style="position:absolute; left:${nameLeft}px; top:${nameTop}px; color:#000000; font-family:'${escapeHTML(nameEl.fontFamily || fontFamilyFallback)}', sans-serif; font-size:${nameFS}px; font-weight:${nameFW}; text-align:center; z-index:2; opacity:1.0; width:${nameW}px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHTML(nameEl.text || nameEl.label || 'Name')}</div>
+      <div style="position:absolute; left:${titleLeft}px; top:${titleTop}px; color:#000000; font-family:'${escapeHTML(titleEl.fontFamily || fontFamilyFallback)}', sans-serif; font-size:${titleFS}px; font-weight:${titleFW}; text-align:left; z-index:3; opacity:1.0; width:${titleW}px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHTML(titleEl.text || titleEl.label || 'Title')}</div>
+      <div style="position:absolute; left:${companyLeft}px; top:${companyTop}px; color:#000000; font-family:'${escapeHTML(companyEl.fontFamily || fontFamilyFallback)}', sans-serif; font-size:${companyFS}px; font-weight:${companyFW}; text-align:left; z-index:4; opacity:1.0; width:${companyW}px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHTML(companyEl.text || companyEl.label || 'Company')}</div>
+      ${ logoSrc ? `<img src="${escapeHTML(logoSrc)}" style="position:absolute; left:${logoLeft}px; top:${logoTop}px; z-index:5; opacity:1.0; width:${logoW}px; height:${logoH}px; object-fit: contain; object-position: center; background-color: transparent; ">` : '' }
+    </div>
+  </div>
+  <div id="bioModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background-color:rgba(0,0,0,0.5); z-index:9999999;">
+    <div style="background-color:#fff; margin:10% auto; padding:20px; width:50%; position:relative; z-index:10000000;">
+        <span id="closeModal" style="position:absolute; top:10px; right:20px; cursor:pointer; z-index:10000001;">&times;</span>
+        <div id="modalContent"></div>
+    </div>
+  </div>
+  <script>
+    const modal = document.getElementById('bioModal');
+    const modalContent = document.getElementById('modalContent');
+    const closeModal = document.getElementById('closeModal');
+    closeModal.onclick = function() { modal.style.display = 'none'; }
+    window.onclick = function(event) { if (event.target == modal) { modal.style.display = 'none'; } }
+    const speakersData = [{
+      "id": "${escapeHTML((config.id || 'speaker-1'))}",
+      "first_name": "${escapeHTML(firstName)}",
+      "last_name": "${escapeHTML(lastName)}",
+      "email": "${escapeHTML((config.email || ''))}",
+      "company_name": "${escapeHTML(companyEl.text || companyEl.label || '')}",
+      "company_role": "${escapeHTML(titleEl.text || titleEl.label || '')}",
+      "linkedin": null,
+      "bio": "${escapeHTML((config.bio || ''))}",
+      "headshot": "${escapeHTML(headshotSrc)}",
+      "company_logo": "${escapeHTML(logoSrc)}",
+      "form_type": "speaker-info",
+      "speaker_information_status": "${escapeHTML((config.speaker_information_status || 'info_pending'))}",
+      "call_for_speakers_status": "${escapeHTML((config.call_for_speakers_status || 'submitted'))}",
+      "custom_fields": ${JSON.stringify(config.custom_fields || config.customFields || {})},
+      "website_card_approved": ${!!(config.website_card_approved || config.websiteCardApproved || false)},
+      "promo_card_approved": ${!!(config.promo_card_approved || config.promoCardApproved || false)},
+      "internal_notes": ${config.internal_notes ? '"' + escapeHTML(config.internal_notes) + '"' : 'null'},
+      "created_at": new Date().toISOString(),
+      "updated_at": new Date().toISOString()
+    }];
+    const speakerElements = document.querySelectorAll('.embed-speaker-name');
+    speakerElements.forEach( (el) => {
+        const index = parseInt(el.getAttribute('data-index'), 10);
+        el.onclick = function() {
+          const s = speakersData[index];
+          modalContent.innerHTML = '<h2>' + (s.first_name || '') + ' ' + (s.last_name || '') + '</h2>' + '<p>' + (s.bio || '') + '</p>';
+          modal.style.display = 'block';
+        }
+    });
+  </script>
+</body>
+</html>`;
+
+    return html;
+  };
+
   return (
     <>
       <MissingFormDialog open={missingFormDialogOpen} onOpenChange={setMissingFormDialogOpen} eventId={eventId || ""} />
@@ -2249,6 +2413,25 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
               <Download className="h-4 w-4 mr-2" />
               Export
             </Button>
+            <Button
+              onClick={() => {
+                const html = generateCardHTML();
+                const blob = new Blob([html], { type: "text/html" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `card-${cardType}.html`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                toast({ title: "Exported", description: "HTML snapshot downloaded" });
+              }}
+              size="sm"
+              variant="outline"
+            >
+              Export HTML
+            </Button>
           </div>
         </div>
 
@@ -2480,9 +2663,15 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
               </button>
             </div>
 
-            <div className="border-2 border-border rounded-lg shadow-lg overflow-hidden" style={{ backgroundColor: "#f5f5f5" }}>
-              <canvas ref={canvasRef} style={{ display: "block" }} />
-            </div>
+            <ShadowContainer
+              className="border-2 border-border rounded-lg shadow-lg overflow-hidden"
+              injectStyles={`@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Roboto:wght@300;400;500;600;700;800&family=Open+Sans:wght@300;400;500;600;700;800&family=Lato:wght@300;400;500;600;700;800&family=Montserrat:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&family=Raleway:wght@300;400;500;600;700;800&family=Noto+Sans:wght@300;400;500;600;700;800&family=Source+Sans+Pro:wght@300;400;500;600;700;800&family=Merriweather:wght@300;400;500;600;700;800&family=Playfair+Display:wght@300;400;500;600;700;800&family=Nunito:wght@300;400;500;600;700;800&family=Ubuntu:wght@300;400;500;600;700;800&family=PT+Sans:wght@300;400;500;600;700;800&family=Karla:wght@300;400;500;600;700;800&family=Oswald:wght@300;400;500;600;700;800&family=Fira+Sans:wght@300;400;500;600;700;800&family=Work+Sans:wght@300;400;500;600;700;800&family=Inconsolata:wght@300;400;500;600;700;800&family=Josefin+Sans:wght@300;400;500;600;700;800&family=Alegreya:wght@300;400;500;600;700;800&family=Cabin:wght@300;400;500;600;700;800&family=Titillium+Web:wght@300;400;500;600;700;800&family=Mulish:wght@300;400;500;600;700;800&family=Quicksand:wght@300;400;500;600;700;800&family=Anton:wght@300;400;500;600;700;800&family=Droid+Sans:wght@300;400;500;600;700;800&family=Archivo:wght@300;400;500;600;700;800&family=Hind:wght@300;400;500;600;700;800&family=Bitter:wght@300;400;500;600;700;800&family=Libre+Franklin:wght@300;400;500;600;700;800&display=swap'); :host{all:initial;display:block;font-family:Inter, Roboto, 'Open Sans', Lato, Montserrat, Poppins, Raleway, 'Noto Sans', 'Source Sans Pro', 'Merriweather', 'Playfair Display', Nunito, Ubuntu, 'PT Sans', Karla, Oswald, 'Fira Sans', 'Work Sans', Inconsolata, 'Josefin Sans', Alegreya, Cabin, 'Titillium Web', Mulish, Quicksand, Anton, 'Droid Sans', Archivo, Hind, Bitter, 'Libre Franklin', sans-serif;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;} *{box-sizing:border-box;} canvas{display:block;}
+              .card-root{background-color:#f5f5f5;}`} 
+            >
+              <div className="card-root" style={{ width: canvasWidth, height: canvasHeight }}>
+                <canvas ref={canvasRef} style={{ display: "block" }} />
+              </div>
+            </ShadowContainer>
 
           </div>
 
