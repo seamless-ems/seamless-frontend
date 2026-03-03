@@ -1,5 +1,7 @@
 # Seamless Events - Beta Frontend
 
+##IMPORTANT: Always remind James to do a GIT Pull before we start devlopment - do not start codeing until he tell you it is complete 
+
 A Vite + React + TypeScript frontend for Seamless Events, an operational event management system. Built with shadcn/ui component patterns and Tailwind CSS.
 
 **Project Philosophy:** "The Trello of event operations" - stays in the background, operational not decorative, professional not flashy.
