@@ -1,5 +1,5 @@
 import { useParams } from "react-router-dom";
-import CardBuilder from "@/components/CardBuilder";
+import CardBuilder from "@/components/CardBuilder_SPX";
 
 export default function WebsiteCardBuilderPage() {
   const { id } = useParams();

@@ -8,7 +8,7 @@ import SpeakersTable from "@/components/organizer/SpeakersTable";
 import SpeakersControls from "@/components/organizer/SpeakersControls";
 import EmbedBuilder from "@/components/organizer/EmbedBuilder";
 import FormsTab from "@/components/organizer/FormsTab";
-import CardBuilder from "@/components/CardBuilder";
+import CardBuilder from "@/components/CardBuilder_SPX";
 
 export default function SpeakerModule() {
   const { id } = useParams();
@@ -133,9 +133,12 @@ export default function SpeakerModule() {
         : "border-transparent text-muted-foreground hover:text-foreground"
     }`;
 
+  const isCardBuilder = activeTab === "promo-card-builder" || activeTab === "website-card-builder";
+
   return (
     <div className="space-y-0">
-      {/* Tabs Navigation */}
+      {/* Tabs Navigation — hidden when card builder is active */}
+      {!isCardBuilder && (
       <div className="border-b border-border">
         <div className="flex gap-6 px-0">
           <button onClick={() => navigate(`/organizer/event/${id}/speakers`)} className={tabClass("speakers")}>
@@ -158,6 +161,7 @@ export default function SpeakerModule() {
           </button>
         </div>
       </div>
+      )}
 
       {/* Speakers Tab Content */}
       {activeTab === "speakers" && (
@@ -242,9 +246,9 @@ export default function SpeakerModule() {
       )}
 
       {/* Card Builder Tabs */}
-      {(activeTab === "promo-card-builder" || activeTab === "website-card-builder") && (
-        <div className="-mx-6 -mb-6 mt-6" style={{ height: 'calc(100vh - 175px)' }}>
-          <CardBuilder key={activeTab} eventId={id} fullscreen />
+      {isCardBuilder && (
+        <div style={{ height: '100vh' }}>
+          <CardBuilder key={activeTab} eventId={id} fullscreen onBack={() => navigate(`/organizer/event/${id}/speakers`)} />
         </div>
       )}
     </div>
