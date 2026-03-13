@@ -1150,18 +1150,34 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
           const width = cfg.width || cfg.size || 60;
           const height = cfg.height || cfg.size || 60;
 
-          const rect = new fabric.Rect({
+          // Two-rect approach: fill covers full group area (no gap); dashed border inset on top.
+          // A single rect with stroke would render half the stroke outside the rect bounds,
+          // creating a visible gap between the grey fill and the dashed border on first drop.
+          const fillRect = new fabric.Rect({
             left: 0,
             top: 0,
             width: width,
             height: height,
             fill: '#e5e7eb',
-            stroke: '#d1d5db',
-            strokeWidth: 2,
-            strokeDashArray: [5, 5],
-            strokeUniform: true,
+            strokeWidth: 0,
             rx: 4,
             ry: 4,
+            selectable: false,
+            evented: false,
+          });
+
+          const borderRect = new fabric.Rect({
+            left: 2,
+            top: 2,
+            width: width - 4,
+            height: height - 4,
+            fill: 'transparent',
+            stroke: '#9ca3af',
+            strokeWidth: 1.5,
+            strokeDashArray: [5, 5],
+            strokeUniform: true,
+            rx: 3,
+            ry: 3,
             selectable: false,
             evented: false,
           });
@@ -1170,7 +1186,7 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
             left: width / 2,
             top: height / 2,
             fontSize: Math.min(Math.max(11, width / 8), 18), // Cap at 18px
-            fill: '#9ca3af',
+            fill: '#6b7280',
             fontFamily: 'Inter',
             originX: 'center',
             originY: 'center',
@@ -1178,7 +1194,7 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
             evented: false,
           });
 
-          const group = new fabric.Group([rect, text], {
+          const group = new fabric.Group([fillRect, borderRect, text], {
             left: cfg.x,
             top: cfg.y,
             selectable: true,
@@ -1654,7 +1670,33 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
             const savedHeight = serverConfig.canvasHeight ?? serverConfig.canvas_height ?? null;
 
             if (savedConfig) {
-              setConfig(savedConfig);
+              // Merge: server config as base, but restore x/y/width/height from localStorage.
+              // localStorage is written before the server save (and on every drag via auto-save),
+              // so its positions are always at least as fresh as the server.
+              // This prevents the server returning stale positions from overwriting recent drags.
+              let configToSet = savedConfig;
+              try {
+                const localRaw = localStorage.getItem(storageKey);
+                if (localRaw) {
+                  const { config: localConfig } = JSON.parse(localRaw);
+                  if (localConfig && typeof localConfig === 'object') {
+                    const merged = { ...savedConfig };
+                    for (const key of Object.keys(merged)) {
+                      if (merged[key]?.visible && localConfig[key]) {
+                        merged[key] = {
+                          ...merged[key],
+                          ...(localConfig[key].x !== undefined ? { x: localConfig[key].x } : {}),
+                          ...(localConfig[key].y !== undefined ? { y: localConfig[key].y } : {}),
+                          ...(localConfig[key].width !== undefined ? { width: localConfig[key].width } : {}),
+                          ...(localConfig[key].height !== undefined ? { height: localConfig[key].height } : {}),
+                        };
+                      }
+                    }
+                    configToSet = merged;
+                  }
+                }
+              } catch (e) { /* ignore localStorage errors */ }
+              setConfig(configToSet);
               setHasUnsavedChanges(false);
             }
 

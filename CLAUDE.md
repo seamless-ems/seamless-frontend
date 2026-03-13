@@ -64,29 +64,19 @@ import CardBuilder from "@/components/CardBuilder_SPX";
 import CardBuilder from "@/components/CardBuilder";
 ```
 
-**SPX goals:** ✅ gradient overlay element, ✅ rounded rectangle headshot, ✅ full-bleed headshot, ✅ retina-crisp rendering
-
-**SPX — completed (branch: feature/website-card-builder, all sessions combined):**
-- Full-bleed headshot shape: covers entire canvas (object-fit: cover), locked at 0,0, crop uses card aspect ratio
-- Gradient overlay: 5-stop cinematic ramp (transparent until 45%, fast ramp to 88%, full at 100%), default opacity 92%
-- Rounded rect headshot shape; headshot shape changeable in-place via toolbar
-- Retina-crisp rendering: `enableRetinaScaling: true` + `document.fonts.ready` await before Fabric render
-- Default font changed to Montserrat (closest Google Font to Gotham); all weights pre-loaded in index.html
-- Default placeholder text: Lisa Young / Vice President of Corporate Partnerships / Seattle Seahawks
-- HEX colour input fixed (local state, propagates only on valid 6-char hex)
-- Snap lines: SNAP_THRESHOLD=10, SNAP_RELEASE=16, bright pink (#FF3C78), 600ms linger
-- Single h-11 toolbar row (saves canvas space); EventLayout header hidden on card builder routes
-- Speaker tabs hidden when card builder active; back chevron returns to speakers list
-- Logo crop is free-form (NaN aspect ratio, PNG output); drop zone has inset padding
-- Context-sensitive toolbar, per-element opacity, alignment tools, undo/redo, zoom
-- Canvas presets (Square/Landscape/Portrait/Banner), starter templates (Classic/Centred/Overlay)
-- Background colour picker, Delete/Backspace removes elements, save shows unsaved dot
-- Textboxes: width-only resize (mr handle), scaleX/Y locked to 1 to prevent font size distortion
-- Logo placeholder: pixel width/height from getBoundingRect(), scale cleared on resize (no compounding)
-- All TypeScript errors resolved (0 errors)
+**SPX — key non-obvious behaviours:**
+- Canvas sidebar popovers (Templates, Canvas/Background) expand **inline** — do NOT change back to floating `absolute left-full` popovers, they get clipped by `overflow-y-auto` on the sidebar
+- `skipRerenderRef`: set to `true` before any `setConfig` call that is position/size-only (drag end, arrow nudge) to prevent full canvas rebuild. Missing this causes erratic element movement
+- Gradient overlay ramp starts at 20% opacity (not 0%) — matches Canva's heavier feel. Default opacity 0.90
+- Text elements get a hairline stroke (`strokeWidth: fontSize * 0.015`) to compensate for canvas grayscale antialiasing appearing lighter than CSS subpixel rendering
+- `nameFormat: "single" | "two-line"` on the name element config — backend must honour this when rendering (see API_GAPS.md)
+- Canvas size + background colour + background image all live in the "Canvas" section of the left sidebar (unified — do not split them back out to the toolbar)
+- Ctrl+Z undo: the keyboard handler must check undo/redo **before** the input-tag guard, because Fabric keeps a hidden `<textarea>` focused on the canvas
+- Alignment (multi-select): aligns to the **group's own bounding box**, not the canvas — same as PowerPoint/Canva
 
 **Known outstanding (backend team):**
-- `company` and `companyLogo` elements not persisting after server save/reload — backend investigation needed (server config shape may be stripping/transforming keys)
+- `company` and `companyLogo` elements not persisting after server save/reload
+- Embed HTML rendering broken — see API_GAPS.md for full spec
 
 Mandatory agent check
 - Before making any API-related changes, every agent MUST check the local API specification at:

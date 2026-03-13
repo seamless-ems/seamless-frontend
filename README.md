@@ -47,12 +47,12 @@ Open http://localhost:5173 in your browser.
 git status
 git add .
 git commit -m "your message"
-git push origin beta
+git push origin <branch>
 ```
 
 **Pull:**
 ```bash
-git pull origin beta
+git pull
 ```
 
-## TODOs:
+Active branches: `main` (stable), `feature/website-card-builder` (SPX card builder)
