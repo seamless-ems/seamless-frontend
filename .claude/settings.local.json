@@ -21,7 +21,9 @@
       "Bash(git pull:*)",
       "Bash(git:*)",
       "Bash(node -e \"const l = require\\('/mnt/c/Users/james/OneDrive/Documents/Seamless/seamless-frontend/node_modules/lucide-react'\\); const alignKeys = Object.keys\\(l\\).filter\\(k => k.toLowerCase\\(\\).includes\\('align'\\)\\); console.log\\(alignKeys.join\\('\\\\n'\\)\\);\")",
-      "Bash(ls /mnt/c/Users/james/OneDrive/Documents/Seamless/seamless-frontend/node_modules/lucide-react/dist/esm/icons/ 2>/dev/null | grep -i \"align\" | grep -v map | grep -v \".js$\" | head -30; ls /mnt/c/Users/james/OneDrive/Documents/Seamless/seamless-frontend/node_modules/lucide-react/dist/esm/icons/ 2>/dev/null | grep -i \"align\" | grep \".js$\" | grep -v map | tail -20)"
+      "Bash(ls /mnt/c/Users/james/OneDrive/Documents/Seamless/seamless-frontend/node_modules/lucide-react/dist/esm/icons/ 2>/dev/null | grep -i \"align\" | grep -v map | grep -v \".js$\" | head -30; ls /mnt/c/Users/james/OneDrive/Documents/Seamless/seamless-frontend/node_modules/lucide-react/dist/esm/icons/ 2>/dev/null | grep -i \"align\" | grep \".js$\" | grep -v map | tail -20)",
+      "WebSearch",
+      "WebFetch(domain:www.canva.com)"
     ]
   }
 }

@@ -150,6 +150,47 @@ function HexColorInput({
   );
 }
 
+// Font size input — local text state so the user can type freely (e.g. clear "23" fully);
+// propagates only when a valid integer in [8,120] is entered; clamps + restores on blur.
+function FontSizeInput({
+  value,
+  onChange,
+  className,
+}: {
+  value: number;
+  onChange: (size: number) => void;
+  className?: string;
+}) {
+  const [text, setText] = useState(String(value));
+  useEffect(() => { setText(String(value)); }, [value]);
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      value={text}
+      onChange={(e) => {
+        const raw = e.target.value.replace(/[^0-9]/g, "");
+        setText(raw);
+        const val = parseInt(raw, 10);
+        if (!isNaN(val) && val >= 8 && val <= 120) onChange(val);
+      }}
+      onBlur={() => {
+        const val = parseInt(text, 10);
+        if (!isNaN(val)) {
+          const clamped = Math.max(8, Math.min(120, val));
+          onChange(clamped);
+          setText(String(clamped));
+        } else {
+          setText(String(value));
+        }
+      }}
+      className={className}
+      maxLength={3}
+      spellCheck={false}
+    />
+  );
+}
+
 // Helper to convert hex colour + alpha to rgba string
 const hexToRgba = (hex: string, alpha: number): string => {
   const clean = hex.replace('#', '');
@@ -240,6 +281,7 @@ const ELEMENT_TEMPLATES = {
   name: {
     label: "Name",
     text: "Lisa Young",
+    nameFormat: "single" as "single" | "two-line", // "single" = "Lisa Young", "two-line" = "Lisa\nYoung"
     x: 150,
     y: 50,
     fontSize: 32,
@@ -344,6 +386,8 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
   const headshotInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const elementRefs = useRef<{ [key: string]: fabric.Object }>({});
+  // Skip full canvas rebuild when only position/size changed via Fabric drag (avoids flicker)
+  const skipRerenderRef = useRef(false);
 
   const [canvasWidth, setCanvasWidth] = useState(600);
   const [canvasHeight, setCanvasHeight] = useState(600);
@@ -358,11 +402,17 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
   // Track unsaved changes
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
+  // Multi-selection tracking — for applying formatting to all selected text elements at once
+  const [multiSelectedKeys, setMultiSelectedKeys] = useState<string[]>([]);
+  // Right-click context menu
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; elementKey: string } | null>(null);
+
   // Background colour
   const [bgColor, setBgColor] = useState<string>("#ffffff");
 
   // Template presets popup
   const [templatePresetsOpen, setTemplatePresetsOpen] = useState(false);
+  const [bgPanelOpen, setBgPanelOpen] = useState(false);
 
   // Fetch form configuration to get fields marked for card builder
   const [missingFormDialogOpen, setMissingFormDialogOpen] = useState(false);
@@ -488,6 +538,13 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
 
       fabricCanvasRef.current = canvas;
 
+      // Maximise canvas text rendering quality
+      const ctx = canvas.getContext() as CanvasRenderingContext2D | null;
+      if (ctx) {
+        ctx.imageSmoothingEnabled = true;
+        (ctx as any).imageSmoothingQuality = 'high';
+      }
+
       // Canva/PowerPoint-style control handles — small circles, thin border
       fabric.Object.prototype.cornerSize = 8;
       fabric.Object.prototype.cornerStyle = 'circle';
@@ -509,10 +566,12 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
         if (all.length > 1) {
           setSelectedElement(null);
           setMultiSelectActive(true);
+          setMultiSelectedKeys(all.map(o => o.data?.elementKey).filter(Boolean) as string[]);
         } else {
           const obj = e.selected?.[0];
           if (obj?.data?.elementKey) setSelectedElement(obj.data.elementKey);
           setMultiSelectActive(false);
+          setMultiSelectedKeys([]);
         }
       });
 
@@ -521,15 +580,19 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
         if (all.length > 1) {
           setSelectedElement(null);
           setMultiSelectActive(true);
+          setMultiSelectedKeys(all.map(o => o.data?.elementKey).filter(Boolean) as string[]);
         } else {
           const obj = all[0];
           if (obj?.data?.elementKey) setSelectedElement(obj.data.elementKey);
           setMultiSelectActive(false);
+          setMultiSelectedKeys([]);
         }
       });
 
       canvas.on("selection:cleared", () => {
         setMultiSelectActive(false);
+        setMultiSelectedKeys([]);
+        setContextMenu(null);
       });
 
       // Don't auto-clear selection - keep it persistent
@@ -539,10 +602,34 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
       // 3. User clicks canvas background (handled below)
 
       canvas.on("mouse:down", (e) => {
-        // Only clear selection if clicking on empty canvas (not on an object)
+        setContextMenu(null); // dismiss right-click menu on any canvas click
         if (!e.target) {
           setSelectedElement(null);
           setMultiSelectActive(false);
+          setMultiSelectedKeys([]);
+        }
+      });
+
+      // Right-click context menu
+      canvas.on("contextmenu" as any, (opt: any) => {
+        opt.e.preventDefault();
+        const target = canvas.findTarget(opt.e, false);
+        if (target?.data?.elementKey) {
+          canvas.setActiveObject(target);
+          canvas.renderAll();
+          setSelectedElement(target.data.elementKey);
+          setContextMenu({ x: opt.e.clientX, y: opt.e.clientY, elementKey: target.data.elementKey });
+        } else {
+          setContextMenu(null);
+        }
+      });
+
+      // Double-click on headshot/logo placeholder triggers upload directly
+      canvas.on("mouse:dblclick", (e) => {
+        if (e.target?.data?.elementKey === "headshot") {
+          headshotInputRef.current?.click();
+        } else if (e.target?.data?.elementKey === "companyLogo") {
+          logoInputRef.current?.click();
         }
       });
 
@@ -558,11 +645,11 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
       const createSnapLine = (x1: number, y1: number, x2: number, y2: number) =>
         new fabric.Line([x1, y1, x2, y2], {
           stroke: "#FF3C78",   // bright pink — visible on any background
-          strokeWidth: 2,
+          strokeWidth: 1,
           selectable: false,
           evented: false,
           strokeUniform: true,
-          opacity: 1,
+          opacity: 0.9,
         });
 
       const clearSnapLines = () => {
@@ -596,13 +683,13 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
           if (d < SNAP_THRESHOLD) snapY.push({ dist: d, delta: val - ref, pos: val });
         };
 
-        // Canvas edges + centre
-        tryX(oL, 0);   tryX(oL, cW / 2);   tryX(oL, cW);
-        tryX(oR, 0);   tryX(oR, cW / 2);   tryX(oR, cW);
-        tryX(oCX, cW / 2);
-        tryY(oT, 0);   tryY(oT, cH / 2);   tryY(oT, cH);
-        tryY(oB, 0);   tryY(oB, cH / 2);   tryY(oB, cH);
-        tryY(oCY, cH / 2);
+        // Canvas edges, centre and thirds (like PowerPoint/Canva)
+        [0, cW / 3, cW / 2, (2 * cW) / 3, cW].forEach(snap => {
+          tryX(oL, snap); tryX(oR, snap); tryX(oCX, snap);
+        });
+        [0, cH / 3, cH / 2, (2 * cH) / 3, cH].forEach(snap => {
+          tryY(oT, snap); tryY(oB, snap); tryY(oCY, snap);
+        });
 
         // Other objects — all edge-to-edge combinations (like Canva/Figma)
         canvas.forEachObject((other) => {
@@ -708,6 +795,7 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
           // Save pixel dimensions for groups (placeholders) — avoids compounding scale bugs
           if (obj.type === "group") {
             const bounds = obj.getBoundingRect(true);
+            skipRerenderRef.current = true; // position-only change; no need to rebuild canvas
             setConfig(prev => {
               const newConfig = {
                 ...prev,
@@ -741,6 +829,7 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
           }
 
           setHasUnsavedChanges(true); // Mark as unsaved when elements are modified
+          skipRerenderRef.current = true; // position/size-only change; update Fabric object directly
           setConfig(prev => {
             const newConfig = {
               ...prev,
@@ -821,8 +910,9 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
       }
     }
 
-    // Render elements
-    for (const [key, cfg] of Object.entries(config)) {
+    // Render elements in zIndex order (lowest first → highest renders on top)
+    const sortedEntries = Object.entries(config).sort((a, b) => (a[1].zIndex || 0) - (b[1].zIndex || 0));
+    for (const [key, cfg] of sortedEntries) {
       if (!cfg.visible) continue;
 
       if (key === "headshot") {
@@ -1105,12 +1195,25 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
           elementRefs.current.companyLogo = group;
         }
       } else if (["name", "title", "company"].includes(key)) {
-        const text = new fabric.Textbox(cfg.text || cfg.label, {
+        // For the name element, honour nameFormat: "two-line" splits "Lisa Young" → "Lisa\nYoung"
+        let displayText = cfg.text || cfg.label;
+        if (key === "name" && cfg.nameFormat === "two-line") {
+          const parts = displayText.trim().split(/\s+/);
+          displayText = parts.length >= 2
+            ? parts.slice(0, -1).join(" ") + "\n" + parts[parts.length - 1]
+            : displayText;
+        }
+        const text = new fabric.Textbox(displayText, {
           left: cfg.x,
           top: cfg.y,
           fontSize: cfg.fontSize,
           fontFamily: cfg.fontFamily,
           fill: cfg.color,
+          // Hairline stroke compensates for canvas grayscale antialiasing — makes text
+          // appear the same visual weight as CSS/Canva subpixel-antialiased text.
+          stroke: cfg.color,
+          strokeWidth: Math.max(0.2, (cfg.fontSize || 16) * 0.015),
+          paintFirst: "fill" as any,
           fontWeight: cfg.fontWeight,
           fontStyle: cfg.fontStyle || "normal",
           textAlign: cfg.textAlign,
@@ -1224,6 +1327,10 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
             fontSize: cfg.fontSize,
             fontFamily: cfg.fontFamily,
             fill: cfg.color,
+            // Hairline stroke — same fix as name/title/company
+            stroke: cfg.color,
+            strokeWidth: Math.max(0.2, (cfg.fontSize || 16) * 0.015),
+            paintFirst: "fill" as any,
             fontWeight: cfg.fontWeight,
             textAlign: cfg.textAlign,
             width: cfg.width,
@@ -1256,7 +1363,7 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
         const width = cfg.width || canvasWidth;
         const height = cfg.height || canvasHeight / 2;
         const color = cfg.gradientColor || "#000000";
-        const opacity = cfg.overlayOpacity ?? 0.75;
+        const opacity = cfg.overlayOpacity ?? 0.90;
         const direction = cfg.gradientDirection || "bottom";
 
         // Gradient coordinate pairs: [transparent end, solid end]
@@ -1278,11 +1385,13 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
             type: 'linear',
             gradientUnits: 'pixels',
             coords,
+            // Canva-matched ramp: starts at 20%, hits near-full by 75%
+            // Feels heavier/more readable than the old 45%-start ramp
             colorStops: [
               { offset: 0,    color: hexToRgba(color, 0) },
-              { offset: 0.45, color: hexToRgba(color, 0) },
-              { offset: 0.72, color: hexToRgba(color, opacity * 0.45) },
-              { offset: 0.88, color: hexToRgba(color, opacity * 0.78) },
+              { offset: 0.20, color: hexToRgba(color, 0) },
+              { offset: 0.50, color: hexToRgba(color, opacity * 0.55) },
+              { offset: 0.75, color: hexToRgba(color, opacity * 0.88) },
               { offset: 1,    color: hexToRgba(color, opacity) },
             ],
           }),
@@ -1327,8 +1436,12 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
     }
   };
 
-  // Re-render when config changes
+  // Re-render when config changes (skip if only position/size was updated via Fabric drag)
   useEffect(() => {
+    if (skipRerenderRef.current) {
+      skipRerenderRef.current = false;
+      return;
+    }
     if (fabricCanvasRef.current) {
       renderAllElements();
     }
@@ -1337,22 +1450,29 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
   // Keyboard shortcuts for undo/redo and arrow key nudging
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't handle if user is typing in an input
-      const target = e.target as HTMLElement;
-      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') {
-        return;
-      }
-
+      // Undo/redo fire globally — must be checked BEFORE the input guard
+      // because Fabric.js keeps a hidden <textarea> focused on the canvas.
       // Undo: Ctrl+Z (Windows/Linux) or Cmd+Z (Mac)
       if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
         e.preventDefault();
         undo();
         return;
       }
-      // Redo: Ctrl+Shift+Z or Ctrl+Y (Windows/Linux) or Cmd+Shift+Z (Mac)
+      // Redo: Ctrl+Shift+Z or Ctrl+Y
       if (((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'z') || (e.ctrlKey && e.key === 'y')) {
         e.preventDefault();
         redo();
+        return;
+      }
+
+      // Don't handle other shortcuts if user is typing in a real input
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'SELECT') {
+        return;
+      }
+      // Allow Delete/Arrow/Escape through from Fabric's hidden textarea, but
+      // block them from real textareas (e.g. text editing inside a Textbox).
+      if (target.tagName === 'TEXTAREA' && !target.hasAttribute('data-fabric-hiddentextarea')) {
         return;
       }
 
@@ -1430,33 +1550,29 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [historyIndex, history, selectedElement]);
 
-  // Close popovers when clicking outside
+  // Close shape popup when clicking outside (Templates/BG are inline, no close-outside needed)
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (shapePopupOpen || templatePresetsOpen) {
+      if (shapePopupOpen) {
         const target = e.target as HTMLElement;
         if (!target.closest('[data-popover]')) {
           setShapePopupOpen(false);
-          setTemplatePresetsOpen(false);
         }
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [shapePopupOpen, templatePresetsOpen]);
+  }, [shapePopupOpen]);
 
-  // Warn before leaving with unsaved changes
+  // Auto-save: 3 seconds after any change, silently persist to localStorage + server.
+  // The orange dot on Save still shows until explicitly dismissed; auto-save just prevents data loss.
   useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (hasUnsavedChanges) {
-        e.preventDefault();
-        e.returnValue = '';
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [hasUnsavedChanges]);
+    if (!hasUnsavedChanges) return;
+    const timer = window.setTimeout(() => {
+      handleSave(true); // silent=true — no toast
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [config, bgColor, templateUrl, canvasWidth, canvasHeight, hasUnsavedChanges]);
 
   // Load saved config on mount: prefer server config for eventId, fallback to localStorage
   useEffect(() => {
@@ -1902,65 +2018,74 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
     canvas.requestRenderAll();
   };
 
-  // Alignment - single element aligns to canvas; multi-select aligns to selection bounds (PowerPoint-style)
+  // Alignment — PowerPoint/Canva standard:
+  //   Single element  → aligns to canvas edges/centre
+  //   Multi-select    → aligns to the group's own bounding box (not the canvas)
+  //
+  // Implementation: compute all new positions first, then apply in ONE setConfig call
+  // so renderAllElements only fires once and nothing gets wiped mid-operation.
   const alignSelection = (direction: 'left' | 'right' | 'centerH' | 'top' | 'bottom' | 'centerV') => {
-    const canvas = fabricCanvasRef.current;
-    if (!canvas) return;
+    const keys = multiSelectedKeys.length > 0
+      ? multiSelectedKeys
+      : selectedElement ? [selectedElement] : [];
+    if (keys.length === 0) return;
 
-    const activeObjects = canvas.getActiveObjects();
-    if (activeObjects.length === 0) return;
-
-    if (activeObjects.length === 1) {
-      const obj = activeObjects[0];
+    // getBoundingRect(true) returns absolute canvas-space coords even when the
+    // object is inside a Fabric ActiveSelection group.
+    const items = keys.flatMap(key => {
+      const obj = elementRefs.current[key];
+      if (!obj) return [];
       const bounds = obj.getBoundingRect(true);
+      return [{ key, bounds }];
+    });
+    if (items.length === 0) return;
+
+    const updates: Record<string, { x: number; y: number }> = {};
+
+    if (items.length === 1) {
+      // Single: align to canvas
+      const { key, bounds } = items[0];
+      let newX = bounds.left, newY = bounds.top;
       switch (direction) {
-        case 'left':    obj.set('left', 0); break;
-        case 'right':   obj.set('left', canvasWidth - bounds.width); break;
-        case 'centerH': obj.set('left', (canvasWidth - bounds.width) / 2); break;
-        case 'top':     obj.set('top', 0); break;
-        case 'bottom':  obj.set('top', canvasHeight - bounds.height); break;
-        case 'centerV': obj.set('top', (canvasHeight - bounds.height) / 2); break;
+        case 'left':    newX = 0; break;
+        case 'right':   newX = canvasWidth - bounds.width; break;
+        case 'centerH': newX = (canvasWidth - bounds.width) / 2; break;
+        case 'top':     newY = 0; break;
+        case 'bottom':  newY = canvasHeight - bounds.height; break;
+        case 'centerV': newY = (canvasHeight - bounds.height) / 2; break;
       }
-      obj.setCoords();
-      canvas.renderAll();
-      if (obj.data?.elementKey) updateElement(obj.data.elementKey, { x: obj.left || 0, y: obj.top || 0 });
-      return;
+      updates[key] = { x: newX, y: newY };
+    } else {
+      // Multi: align to the selection's own bounding box
+      const selLeft    = Math.min(...items.map(i => i.bounds.left));
+      const selRight   = Math.max(...items.map(i => i.bounds.left + i.bounds.width));
+      const selTop     = Math.min(...items.map(i => i.bounds.top));
+      const selBottom  = Math.max(...items.map(i => i.bounds.top + i.bounds.height));
+      const selCenterX = (selLeft + selRight) / 2;
+      const selCenterY = (selTop + selBottom) / 2;
+
+      items.forEach(({ key, bounds }) => {
+        let newX = bounds.left, newY = bounds.top;
+        switch (direction) {
+          case 'left':    newX = selLeft; break;
+          case 'right':   newX = selRight - bounds.width; break;
+          case 'centerH': newX = selCenterX - bounds.width / 2; break;
+          case 'top':     newY = selTop; break;
+          case 'bottom':  newY = selBottom - bounds.height; break;
+          case 'centerV': newY = selCenterY - bounds.height / 2; break;
+        }
+        updates[key] = { x: newX, y: newY };
+      });
     }
 
-    // Multi-select: capture absolute canvas-space bounds before discarding
-    const captured = activeObjects.map(obj => ({
-      obj,
-      bounds: obj.getBoundingRect(true),
-      key: obj.data?.elementKey as string | undefined,
-    }));
-
-    const selLeft   = Math.min(...captured.map(c => c.bounds.left));
-    const selRight  = Math.max(...captured.map(c => c.bounds.left + c.bounds.width));
-    const selTop    = Math.min(...captured.map(c => c.bounds.top));
-    const selBottom = Math.max(...captured.map(c => c.bounds.top + c.bounds.height));
-    const selCenterX = (selLeft + selRight) / 2;
-    const selCenterY = (selTop + selBottom) / 2;
-
-    // Discard so objects return to canvas coordinate space
-    canvas.discardActiveObject();
-
-    captured.forEach(({ obj, bounds, key }) => {
-      switch (direction) {
-        case 'left':    obj.set('left', selLeft); break;
-        case 'right':   obj.set('left', selRight - bounds.width); break;
-        case 'centerH': obj.set('left', selCenterX - bounds.width / 2); break;
-        case 'top':     obj.set('top', selTop); break;
-        case 'bottom':  obj.set('top', selBottom - bounds.height); break;
-        case 'centerV': obj.set('top', selCenterY - bounds.height / 2); break;
-      }
-      obj.setCoords();
-      if (key) setConfig(prev => ({ ...prev, [key]: { ...prev[key], x: obj.left || 0, y: obj.top || 0 } }));
+    // Single config update → single renderAllElements call, nothing vanishes
+    setConfig(prev => {
+      const next = { ...prev };
+      Object.entries(updates).forEach(([key, { x, y }]) => {
+        next[key] = { ...prev[key], x, y };
+      });
+      return next;
     });
-
-    // Restore the selection
-    const newSel = new fabric.ActiveSelection(activeObjects, { canvas });
-    canvas.setActiveObject(newSel);
-    canvas.requestRenderAll();
   };
 
   // Background upload - no crop needed, canvas adjusts to image size
@@ -2094,8 +2219,8 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
     }
   };
 
-  // Save
-  const handleSave = async () => {
+  // Save — pass silent=true from auto-save to suppress the toast
+  const handleSave = async (silent = false) => {
     const storageKey = `${cardType}-card-config-${eventId || "default"}`;
     localStorage.setItem(storageKey, JSON.stringify({ config, templateUrl, canvasWidth, canvasHeight, bgColor }));
 
@@ -2162,24 +2287,39 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
           }
         }
 
-        toast({ title: "Saved", description: `${cardType === "promo" ? "Promo" : "Website"} card template saved` });
+        if (!silent) toast({ title: "Saved", description: `${cardType === "promo" ? "Promo" : "Website"} card template saved` });
       } catch (err: any) {
-        
-        toast({ title: "Saved locally", description: "Template saved to browser, but failed to sync with server" });
+
+        if (!silent) toast({ title: "Saved locally", description: "Template saved to browser, but failed to sync with server" });
       }
     } else {
-      toast({ title: "Saved", description: `${cardType === "promo" ? "Promo" : "Website"} card saved locally` });
+      if (!silent) toast({ title: "Saved", description: `${cardType === "promo" ? "Promo" : "Website"} card saved locally` });
     }
 
     setHasUnsavedChanges(false);
   };
 
-  // Export PNG
+  // Export PNG — reset zoom/transform first so we always get the full 1:1 card
   const handleExport = () => {
     const canvas = fabricCanvasRef.current;
     if (!canvas) return;
 
+    // Snapshot current viewport state
+    const savedTransform = canvas.viewportTransform ? [...canvas.viewportTransform] : [1, 0, 0, 1, 0, 0];
+    const savedW = canvas.getWidth();
+    const savedH = canvas.getHeight();
+
+    // Reset to 1:1 for clean export
+    canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
+    canvas.setDimensions({ width: canvasWidth, height: canvasHeight });
+
     const dataURL = canvas.toDataURL({ format: "png", quality: 1, multiplier: 2 });
+
+    // Restore previous viewport
+    canvas.setDimensions({ width: savedW, height: savedH });
+    canvas.setViewportTransform(savedTransform as [number, number, number, number, number, number]);
+    canvas.renderAll();
+
     const link = document.createElement("a");
     link.href = dataURL;
     link.download = `${cardType}-card-${Date.now()}.png`;
@@ -2205,6 +2345,11 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
     setTestLogo(null);
     setSelectedElement(null);
 
+    // Reset canvas to default size (Square 600×600 — best practice for speaker cards)
+    setCanvasWidth(600);
+    setCanvasHeight(600);
+    setBgColor("#ffffff");
+
     // Clear localStorage
     const storageKey = `${cardType}-card-config-${eventId || "default"}`;
     localStorage.removeItem(storageKey);
@@ -2217,9 +2362,15 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
     // Clear canvas
     if (fabricCanvasRef.current) {
       fabricCanvasRef.current.clear();
+      fabricCanvasRef.current.setDimensions({ width: 600, height: 600 });
       fabricCanvasRef.current.backgroundColor = "#ffffff";
       fabricCanvasRef.current.requestRenderAll();
     }
+
+    // Reset file inputs so the same file can be re-selected after reset
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    if (headshotInputRef.current) headshotInputRef.current.value = "";
+    if (logoInputRef.current) logoInputRef.current.value = "";
 
     toast({
       title: "Card reset",
@@ -2436,57 +2587,110 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
       />
 
       <div className="h-full w-full flex flex-col bg-background">
-        {/* ── Single combined toolbar ── */}
-        <div className="flex items-center gap-1 px-3 h-11 bg-card border-b border-border shrink-0">
-          {/* Left: back + wordmark + canvas size */}
-          <div className="flex items-center gap-1.5 shrink-0">
-            {onBack && (
-              <>
-                <button onClick={onBack} className="p-1.5 rounded hover:bg-accent text-muted-foreground hover:text-foreground" title="Back to Speakers">
-                  <ChevronLeft className="h-4 w-4" />
-                </button>
-                <div className="h-5 w-px bg-border mx-0.5" />
-              </>
-            )}
-            <div className="flex items-baseline gap-1 leading-none select-none">
-              <span className="text-sm font-semibold text-primary" style={{ letterSpacing: '-0.01em' }}>Seamless</span>
-              <span className="text-xs font-normal text-muted-foreground">Website Card Builder</span>
+        {/* ── Two-row toolbar ── */}
+        <div className="flex flex-col bg-card border-b border-border shrink-0">
+
+          {/* Row 1: Branding + navigation + global actions */}
+          <div className="flex items-center gap-1 px-3 h-10 border-b border-border/40">
+            {/* Left: back + wordmark + card type */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              {onBack && (
+                <>
+                  <button onClick={onBack} className="p-1.5 rounded hover:bg-accent text-muted-foreground hover:text-foreground" title="Back to Speakers">
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  <div className="h-5 w-px bg-border mx-0.5" />
+                </>
+              )}
+              <div className="flex items-baseline gap-1 leading-none select-none">
+                <span className="text-sm font-semibold text-primary" style={{ letterSpacing: '-0.01em' }}>Seamless</span>
+                <span className="text-xs font-normal text-muted-foreground">Card Builder</span>
+              </div>
+              {!fullscreen && (
+                <>
+                  <div className="h-4 w-px bg-border mx-0.5" />
+                  <div className="inline-flex items-center gap-0.5 p-0.5 bg-muted rounded-md">
+                    <button onClick={() => setCardType("promo")} className={`px-2.5 py-0.5 text-xs font-medium rounded transition-all ${cardType === "promo" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-background/50"}`}>Promo</button>
+                    <button onClick={() => setCardType("website")} className={`px-2.5 py-0.5 text-xs font-medium rounded transition-all ${cardType === "website" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-background/50"}`}>Website</button>
+                  </div>
+                </>
+              )}
             </div>
-            {!fullscreen && (
-              <>
-                <div className="h-4 w-px bg-border mx-0.5" />
-                <div className="inline-flex items-center gap-0.5 p-0.5 bg-muted rounded-md">
-                  <button onClick={() => setCardType("promo")} className={`px-2.5 py-0.5 text-xs font-medium rounded transition-all ${cardType === "promo" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-background/50"}`}>Promo</button>
-                  <button onClick={() => setCardType("website")} className={`px-2.5 py-0.5 text-xs font-medium rounded transition-all ${cardType === "website" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-background/50"}`}>Website</button>
-                </div>
-              </>
-            )}
-            <div className="h-5 w-px bg-border mx-0.5" />
-            <select
-              value={["600x600","1200x628","900x1200","1584x396"].includes(`${canvasWidth}x${canvasHeight}`) ? `${canvasWidth}x${canvasHeight}` : "custom"}
-              onChange={(e) => {
-                if (e.target.value === "custom") return;
-                const [w, h] = e.target.value.split('x').map(Number);
-                setCanvasWidth(w); setCanvasHeight(h);
-                if (fabricCanvasRef.current) { fabricCanvasRef.current.setDimensions({ width: w, height: h }); fabricCanvasRef.current.renderAll(); }
-              }}
-              className="h-7 px-2 text-xs border border-border rounded bg-background"
-              title={`${canvasWidth} × ${canvasHeight}`}
-            >
-              <option value="600x600">Square</option>
-              <option value="1200x628">Landscape</option>
-              <option value="900x1200">Portrait</option>
-              <option value="1584x396">Banner</option>
-              <option value="custom" disabled>{canvasWidth}×{canvasHeight}</option>
-            </select>
+
+            <div className="flex-1" />
+
+            {/* Right: Layers, undo/redo, zoom, export, save */}
+            <div className="flex items-center gap-1 shrink-0">
+              {/* Layers panel */}
+              <div className="relative">
+                <button onClick={() => setLayersPanelOpen(!layersPanelOpen)} className={`p-1.5 rounded hover:bg-accent text-muted-foreground hover:text-foreground ${layersPanelOpen ? 'bg-accent' : ''}`} title="Layers">
+                  <Layers className="h-4 w-4" />
+                </button>
+                {layersPanelOpen && (
+                  <div className="absolute top-full mt-2 right-0 bg-card border border-border rounded-lg shadow-xl p-3 z-50 w-64">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-sm font-semibold">Layers</h3>
+                      <button onClick={() => setLayersPanelOpen(false)} className="text-muted-foreground hover:text-foreground"><X className="h-3 w-3" /></button>
+                    </div>
+                    <div className="space-y-1 max-h-96 overflow-y-auto">
+                      {Object.entries(config)
+                        .sort((a, b) => (b[1].zIndex || 0) - (a[1].zIndex || 0))
+                        .map(([key, element]) => (
+                          <div
+                            key={key}
+                            className={`flex items-center justify-between p-2 rounded text-sm hover:bg-accent cursor-pointer ${selectedElement === key ? 'bg-accent' : ''}`}
+                            onClick={() => { const canvas = fabricCanvasRef.current; const obj = elementRefs.current[key]; if (canvas && obj) { canvas.setActiveObject(obj); canvas.renderAll(); setSelectedElement(key); } }}
+                          >
+                            <span className="flex-1 truncate">{element.label || key}</span>
+                            <div className="flex items-center gap-2">
+                              <button onClick={(e) => { e.stopPropagation(); updateElement(key, { visible: !element.visible }); }} className="p-1 hover:bg-muted rounded" title={element.visible !== false ? "Hide" : "Show"}>
+                                {element.visible !== false ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
+                              </button>
+                              <div className="flex flex-col">
+                                <button onClick={(e) => { e.stopPropagation(); const sorted = Object.entries(config).sort((a,b)=>(b[1].zIndex||0)-(a[1].zIndex||0)); const ci=sorted.findIndex(([k])=>k===key); if(ci>0){const [pk]=sorted[ci-1];const nc={...config};const tz=nc[key].zIndex;nc[key].zIndex=nc[pk].zIndex;nc[pk].zIndex=tz;setConfig(nc);} }} className="p-0.5 hover:bg-muted rounded" title="Move up"><ChevronUp className="h-3 w-3" /></button>
+                                <button onClick={(e) => { e.stopPropagation(); const sorted = Object.entries(config).sort((a,b)=>(b[1].zIndex||0)-(a[1].zIndex||0)); const ci=sorted.findIndex(([k])=>k===key); if(ci<sorted.length-1){const [nk]=sorted[ci+1];const nc={...config};const tz=nc[key].zIndex;nc[key].zIndex=nc[nk].zIndex;nc[nk].zIndex=tz;setConfig(nc);} }} className="p-0.5 hover:bg-muted rounded" title="Move down"><ChevronDown className="h-3 w-3" /></button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="h-5 w-px bg-border mx-0.5" />
+              <button onClick={undo} disabled={historyIndex <= 0} className="p-1.5 rounded hover:bg-accent disabled:opacity-30" title="Undo (Ctrl+Z)"><Undo2 className="h-3.5 w-3.5" /></button>
+              <button onClick={redo} disabled={historyIndex >= history.length - 1} className="p-1.5 rounded hover:bg-accent disabled:opacity-30" title="Redo (Ctrl+Shift+Z)"><Redo2 className="h-3.5 w-3.5" /></button>
+              <div className="h-5 w-px bg-border mx-0.5" />
+              <button onClick={handleZoomOut} disabled={zoom <= 0.1} className="p-1.5 rounded hover:bg-accent disabled:opacity-30" title="Zoom Out"><ZoomOut className="h-3.5 w-3.5" /></button>
+              <button onClick={() => { const c = fabricCanvasRef.current; if (!c) return; c.setViewportTransform([1,0,0,1,0,0]); c.setDimensions({ width: canvasWidth, height: canvasHeight }); setZoom(1); c.renderAll(); }} className="text-xs font-mono w-10 text-center py-1 rounded hover:bg-accent cursor-pointer" title="Reset zoom">{(zoom * 100).toFixed(0)}%</button>
+              <button onClick={handleZoomIn} disabled={zoom >= 3} className="p-1.5 rounded hover:bg-accent disabled:opacity-30" title="Zoom In"><ZoomIn className="h-3.5 w-3.5" /></button>
+              <button onClick={handleZoomFit} className="p-1.5 rounded hover:bg-accent" title="Fit to content"><Maximize2 className="h-3.5 w-3.5" /></button>
+              <div className="h-5 w-px bg-border mx-0.5" />
+              <button onClick={() => { const html = generateCardHTML(); const blob = new Blob([html], { type: "text/html" }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `card-${cardType}.html`; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url); toast({ title: "Exported", description: "HTML snapshot downloaded" }); }} className="px-2 py-1 text-xs rounded hover:bg-accent font-mono text-muted-foreground hover:text-foreground" title="Export HTML">&lt;/&gt;</button>
+              <button onClick={handleReset} className="p-1.5 rounded hover:bg-accent text-muted-foreground hover:text-foreground" title="Reset canvas"><RotateCcw className="h-3.5 w-3.5" /></button>
+              <div className="h-5 w-px bg-border mx-0.5" />
+              <Button onClick={() => handleSave()} size="sm" variant="outline" className={`relative h-7 text-xs font-semibold ${hasUnsavedChanges ? 'border-primary text-primary hover:bg-primary/5' : ''}`}>
+                <Save className="h-3 w-3 mr-1" />Save
+                {hasUnsavedChanges && <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-orange-400" />}
+              </Button>
+              <Button onClick={handleExport} size="sm" variant="default" className="h-7 text-xs">
+                <Download className="h-3 w-3 mr-1" />Export
+              </Button>
+            </div>
           </div>
 
-          {/* Middle: context-sensitive controls */}
-          <div className="flex items-center gap-2 flex-1 min-w-0 overflow-x-auto px-2">
-            {/* Alignment tools */}
+          {/* Row 2: Context-sensitive formatting bar */}
+          <div className="flex items-center gap-2 px-3 h-10 overflow-x-auto bg-muted/10 shrink-0">
+
+            {/* Default (nothing selected): hint */}
+            {!selectedElement && !multiSelectActive && (
+              <span className="text-xs text-muted-foreground/40 italic shrink-0">← use the left panel to add elements and set the canvas</span>
+            )}
+
+            {/* Alignment (shown whenever anything is selected) */}
             {(selectedElement || multiSelectActive) && (
               <div className="flex items-center gap-0.5 px-1.5 py-0.5 bg-muted/40 rounded-md shrink-0">
-                <span className="text-xs text-muted-foreground mr-1 whitespace-nowrap">{multiSelectActive ? "Align sel." : "Align"}</span>
+                <span className="text-xs text-muted-foreground mr-1 whitespace-nowrap">Align</span>
                 <button onClick={() => alignSelection('left')}    className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground" title="Align Left"><AlignStartHorizontal className="h-3.5 w-3.5" /></button>
                 <button onClick={() => alignSelection('centerH')} className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground" title="Centre H"><AlignCenterHorizontal className="h-3.5 w-3.5" /></button>
                 <button onClick={() => alignSelection('right')}   className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground" title="Align Right"><AlignEndHorizontal className="h-3.5 w-3.5" /></button>
@@ -2497,368 +2701,169 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
               </div>
             )}
 
-            {!selectedElement && !multiSelectActive && (
-              <span className="text-xs text-muted-foreground/50">Select an element to edit</span>
-            )}
-
-            {/* Text formatting - shown when text element selected */}
-            {selectedElement && (["name", "title", "company"].includes(selectedElement) || (config[selectedElement]?.type === "dynamic-text")) && (
-              <>
-                <div className="h-6 w-px bg-border" />
-                <div
-                  className="flex items-center gap-2 px-2 py-1 bg-muted/30 rounded-md"
-                  onMouseDown={(e) => e.stopPropagation()}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {/* Font Family */}
-                  <select
-                    value={config[selectedElement]?.fontFamily || "Inter"}
-                    onChange={(e) => updateElement(selectedElement, { fontFamily: e.target.value })}
-                    className="h-7 px-2 text-xs border border-border rounded bg-background"
-                  >
-                    <option value="Roboto" style={{ fontFamily: 'Roboto' }}>Roboto</option>
-                    <option value="Open Sans" style={{ fontFamily: 'Open Sans' }}>Open Sans</option>
-                    <option value="Lato" style={{ fontFamily: 'Lato' }}>Lato</option>
-                    <option value="Montserrat" style={{ fontFamily: 'Montserrat' }}>Montserrat</option>
-                    <option value="Poppins" style={{ fontFamily: 'Poppins' }}>Poppins</option>
-                    <option value="Raleway" style={{ fontFamily: 'Raleway' }}>Raleway</option>
-                    <option value="Noto Sans" style={{ fontFamily: 'Noto Sans' }}>Noto Sans</option>
-                    <option value="Source Sans Pro" style={{ fontFamily: 'Source Sans Pro' }}>Source Sans Pro</option>
-                    <option value="Merriweather" style={{ fontFamily: 'Merriweather' }}>Merriweather</option>
-                    <option value="Playfair Display" style={{ fontFamily: 'Playfair Display' }}>Playfair Display</option>
-                    <option value="Nunito" style={{ fontFamily: 'Nunito' }}>Nunito</option>
-                    <option value="Ubuntu" style={{ fontFamily: 'Ubuntu' }}>Ubuntu</option>
-                    <option value="PT Sans" style={{ fontFamily: 'PT Sans' }}>PT Sans</option>
-                    <option value="Karla" style={{ fontFamily: 'Karla' }}>Karla</option>
-                    <option value="Oswald" style={{ fontFamily: 'Oswald' }}>Oswald</option>
-                    <option value="Fira Sans" style={{ fontFamily: 'Fira Sans' }}>Fira Sans</option>
-                    <option value="Work Sans" style={{ fontFamily: 'Work Sans' }}>Work Sans</option>
-                    <option value="Inconsolata" style={{ fontFamily: 'Inconsolata' }}>Inconsolata</option>
-                    <option value="Josefin Sans" style={{ fontFamily: 'Josefin Sans' }}>Josefin Sans</option>
-                    <option value="Alegreya" style={{ fontFamily: 'Alegreya' }}>Alegreya</option>
-                    <option value="Cabin" style={{ fontFamily: 'Cabin' }}>Cabin</option>
-                    <option value="Titillium Web" style={{ fontFamily: 'Titillium Web' }}>Titillium Web</option>
-                    <option value="Mulish" style={{ fontFamily: 'Mulish' }}>Mulish</option>
-                    <option value="Quicksand" style={{ fontFamily: 'Quicksand' }}>Quicksand</option>
-                    <option value="Anton" style={{ fontFamily: 'Anton' }}>Anton</option>
-                    <option value="Droid Sans" style={{ fontFamily: 'Droid Sans' }}>Droid Sans</option>
-                    <option value="Archivo" style={{ fontFamily: 'Archivo' }}>Archivo</option>
-                    <option value="Hind" style={{ fontFamily: 'Hind' }}>Hind</option>
-                    <option value="Bitter" style={{ fontFamily: 'Bitter' }}>Bitter</option>
-                    <option value="Libre Franklin" style={{ fontFamily: 'Libre Franklin' }}>Libre Franklin</option>
-                  </select>
-
-                  {/* Font Size */}
-                  <Input
-                    type="number"
-                    value={config[selectedElement]?.fontSize || 16}
-                    onChange={(e) => {
-                      const val = parseInt(e.target.value);
-                      if (!isNaN(val)) updateElement(selectedElement, { fontSize: val });
-                    }}
-                    onBlur={(e) => {
-                      const val = parseInt(e.target.value);
-                      if (!isNaN(val)) {
-                        const clamped = Math.max(8, Math.min(120, val));
-                        updateElement(selectedElement, { fontSize: clamped });
-                      }
-                    }}
-                    className="w-16 h-7 text-xs text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                    min={8}
-                    max={120}
-                  />
-
-                  <div className="h-4 w-px bg-border" />
-
-                  {/* Bold / Italic / Underline */}
-                  <div className="flex items-center gap-0.5 p-0.5 bg-muted/50 rounded-md">
-                    <button
-                      onClick={() => {
-                        const current = config[selectedElement]?.fontWeight || 400;
-                        updateElement(selectedElement, { fontWeight: current === 700 ? 400 : 700 });
-                      }}
-                      className={`h-6 w-6 flex items-center justify-center rounded transition-colors ${
-                        config[selectedElement]?.fontWeight === 700 ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-                      }`}
-                      title="Bold"
-                    ><Bold className="h-3.5 w-3.5" /></button>
-                    <button
-                      onClick={() => {
-                        const current = config[selectedElement]?.fontStyle || "normal";
-                        updateElement(selectedElement, { fontStyle: current === "italic" ? "normal" : "italic" });
-                      }}
-                      className={`h-6 w-6 flex items-center justify-center rounded transition-colors ${
-                        config[selectedElement]?.fontStyle === "italic" ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-                      }`}
-                      title="Italic"
-                    ><Italic className="h-3.5 w-3.5" /></button>
-                    <button
-                      onClick={() => {
-                        const current = config[selectedElement]?.underline || false;
-                        updateElement(selectedElement, { underline: !current });
-                      }}
-                      className={`h-6 w-6 flex items-center justify-center rounded transition-colors ${
-                        config[selectedElement]?.underline ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-                      }`}
-                      title="Underline"
-                    ><Underline className="h-3.5 w-3.5" /></button>
-                  </div>
-
-                  <div className="h-4 w-px bg-border" />
-
-                  {/* Text Align */}
-                  <div className="flex items-center gap-0.5 p-0.5 bg-muted/50 rounded-md">
-                    {([
-                      { val: "left",   icon: <AlignLeft className="h-3.5 w-3.5" />,   title: "Left" },
-                      { val: "center", icon: <AlignCenter className="h-3.5 w-3.5" />, title: "Center" },
-                      { val: "right",  icon: <AlignRight className="h-3.5 w-3.5" />,  title: "Right" },
-                    ] as const).map(({ val, icon, title }) => (
-                      <button
-                        key={val}
-                        onClick={() => updateElement(selectedElement, { textAlign: val })}
-                        className={`h-6 w-6 flex items-center justify-center rounded transition-colors ${
-                          config[selectedElement]?.textAlign === val ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-                        }`}
-                        title={`Align ${title}`}
-                      >{icon}</button>
-                    ))}
-                  </div>
-
-                  <div className="h-4 w-px bg-border" />
-
-                  {/* Color Picker — swatch + HEX input */}
-                  <div className="flex items-center gap-1">
-                    <div className="relative w-7 h-7 rounded border border-border overflow-hidden cursor-pointer flex-shrink-0" title="Pick text colour">
-                      <div className="absolute inset-0" style={{ backgroundColor: config[selectedElement]?.color || "#000000" }} />
-                      <input
-                        type="color"
-                        value={config[selectedElement]?.color || "#000000"}
-                        onChange={(e) => updateElement(selectedElement, { color: e.target.value })}
-                        className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
-                      />
-                    </div>
-                    <HexColorInput
-                      value={config[selectedElement]?.color || "#000000"}
-                      onChange={(hex) => updateElement(selectedElement, { color: hex })}
-                      className="w-20 h-7 text-xs font-mono px-1.5 rounded border border-border bg-background"
+            {/* Text formatting — single text OR multi-select of all-text elements */}
+            {(() => {
+              const isSingleText = !!(selectedElement && (["name","title","company"].includes(selectedElement) || config[selectedElement]?.type === "dynamic-text"));
+              const isMultiText = multiSelectActive && multiSelectedKeys.length > 0 && multiSelectedKeys.every(k => ["name","title","company"].includes(k) || config[k]?.type === "dynamic-text");
+              if (!isSingleText && !isMultiText) return null;
+              const activeKey = isSingleText ? selectedElement! : multiSelectedKeys[0];
+              const applyUpdate = (updates: Partial<ElementConfig>) => {
+                if (isSingleText) { updateElement(selectedElement!, updates); }
+                else { multiSelectedKeys.forEach(k => updateElement(k, updates)); }
+              };
+              return (
+                <>
+                  <div className="h-6 w-px bg-border shrink-0" />
+                  <div className="flex items-center gap-2 shrink-0" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+                    {/* Font family */}
+                    <select
+                      value={config[activeKey]?.fontFamily || "Montserrat"}
+                      onChange={(e) => applyUpdate({ fontFamily: e.target.value })}
+                      className="h-7 px-2 text-xs border border-border rounded bg-background"
+                    >
+                      {["Roboto","Open Sans","Lato","Montserrat","Poppins","Raleway","Noto Sans","Source Sans Pro","Merriweather","Playfair Display","Nunito","Ubuntu","PT Sans","Karla","Oswald","Fira Sans","Work Sans","Inconsolata","Josefin Sans","Alegreya","Cabin","Titillium Web","Mulish","Quicksand","Anton","Droid Sans","Archivo","Hind","Bitter","Libre Franklin"].map(f => (
+                        <option key={f} value={f}>{f}</option>
+                      ))}
+                    </select>
+                    {/* Font size — uses local-state input to allow clearing and retyping freely */}
+                    <FontSizeInput
+                      value={config[activeKey]?.fontSize || 16}
+                      onChange={(val) => applyUpdate({ fontSize: val })}
+                      className="w-12 h-7 text-xs text-center px-1 rounded border border-border bg-background font-mono"
                     />
+                    <div className="h-4 w-px bg-border" />
+                    {/* Bold / Italic / Underline */}
+                    <div className="flex items-center gap-0.5 p-0.5 bg-muted/50 rounded-md">
+                      <button onClick={() => applyUpdate({ fontWeight: config[activeKey]?.fontWeight === 700 ? 400 : 700 })} className={`h-6 w-6 flex items-center justify-center rounded transition-colors ${config[activeKey]?.fontWeight === 700 ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`} title="Bold"><Bold className="h-3.5 w-3.5" /></button>
+                      <button onClick={() => applyUpdate({ fontStyle: config[activeKey]?.fontStyle === "italic" ? "normal" : "italic" })} className={`h-6 w-6 flex items-center justify-center rounded transition-colors ${config[activeKey]?.fontStyle === "italic" ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`} title="Italic"><Italic className="h-3.5 w-3.5" /></button>
+                      <button onClick={() => applyUpdate({ underline: !config[activeKey]?.underline })} className={`h-6 w-6 flex items-center justify-center rounded transition-colors ${config[activeKey]?.underline ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`} title="Underline"><Underline className="h-3.5 w-3.5" /></button>
+                    </div>
+                    <div className="h-4 w-px bg-border" />
+                    {/* Text align */}
+                    <div className="flex items-center gap-0.5 p-0.5 bg-muted/50 rounded-md">
+                      {([{ val: "left", icon: <AlignLeft className="h-3.5 w-3.5" />, title: "Left" }, { val: "center", icon: <AlignCenter className="h-3.5 w-3.5" />, title: "Center" }, { val: "right", icon: <AlignRight className="h-3.5 w-3.5" />, title: "Right" }] as const).map(({ val, icon, title }) => (
+                        <button key={val} onClick={() => applyUpdate({ textAlign: val })} className={`h-6 w-6 flex items-center justify-center rounded transition-colors ${config[activeKey]?.textAlign === val ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`} title={`Align ${title}`}>{icon}</button>
+                      ))}
+                    </div>
+                    <div className="h-4 w-px bg-border" />
+                    {/* Colour — preset swatches + swatch picker + hex */}
+                    <div className="flex items-center gap-1">
+                      <div className="flex gap-0.5">
+                        {["#ffffff","#000000","#374151","#dc2626","#2563eb","#16a34a","#d97706","#9333ea"].map(c => (
+                          <button key={c} onClick={() => applyUpdate({ color: c })} className="w-4 h-4 rounded-sm border border-border/60 flex-shrink-0 hover:scale-110 transition-transform" style={{ backgroundColor: c }} title={c} />
+                        ))}
+                      </div>
+                      <div className="relative w-6 h-6 rounded border border-border overflow-hidden cursor-pointer flex-shrink-0" title="Custom colour">
+                        <div className="absolute inset-0" style={{ backgroundColor: config[activeKey]?.color || "#000000" }} />
+                        <input type="color" value={config[activeKey]?.color || "#000000"} onChange={(e) => applyUpdate({ color: e.target.value })} className="absolute inset-0 opacity-0 w-full h-full cursor-pointer" />
+                      </div>
+                      <HexColorInput value={config[activeKey]?.color || "#000000"} onChange={(hex) => applyUpdate({ color: hex })} className="w-20 h-7 text-xs font-mono px-1.5 rounded border border-border bg-background" />
+                    </div>
+                    <div className="h-4 w-px bg-border" />
+                    {/* Line height */}
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-muted-foreground" title="Line height">↕</span>
+                      <input type="number" value={config[activeKey]?.lineHeight || 1.2} onChange={(e) => { const v=parseFloat(e.target.value); if(!isNaN(v)&&v>=0.5&&v<=3) applyUpdate({lineHeight:v}); }} className="w-14 h-7 text-xs text-center px-1 rounded border border-border bg-background" step={0.1} min={0.5} max={3} title="Line Height" />
+                    </div>
+                    {/* Letter spacing */}
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-muted-foreground" title="Letter spacing">↔</span>
+                      <input type="number" value={config[activeKey]?.charSpacing || 0} onChange={(e) => { const v=parseInt(e.target.value); if(!isNaN(v)&&v>=-100&&v<=500) applyUpdate({charSpacing:v}); }} className="w-14 h-7 text-xs text-center px-1 rounded border border-border bg-background" min={-100} max={500} title="Letter Spacing" />
+                    </div>
+                    <div className="h-4 w-px bg-border" />
+                    {/* Opacity */}
+                    <input type="range" min={0} max={1} step={0.05} value={config[activeKey]?.opacity ?? 1} onChange={(e) => applyUpdate({ opacity: parseFloat(e.target.value) })} className="w-16 h-4 accent-primary" title="Opacity" />
+                    <span className="text-xs w-8 tabular-nums">{Math.round((config[activeKey]?.opacity ?? 1) * 100)}%</span>
+                    {/* Name format — only shown when the name element is selected */}
+                    {isSingleText && selectedElement === "name" && (
+                      <>
+                        <div className="h-4 w-px bg-border" />
+                        <span className="text-xs text-muted-foreground shrink-0">Name</span>
+                        <select
+                          value={config["name"]?.nameFormat || "single"}
+                          onChange={(e) => updateElement("name", { nameFormat: e.target.value })}
+                          className="h-7 px-2 text-xs border border-border rounded bg-background shrink-0"
+                          title="How the speaker's name is displayed on the card"
+                        >
+                          <option value="single">Single line — Lisa Young</option>
+                          <option value="two-line">Two lines — Lisa / Young</option>
+                        </select>
+                      </>
+                    )}
                   </div>
+                </>
+              );
+            })()}
 
-                  <div className="h-4 w-px bg-border" />
-
-                  {/* Line Height */}
-                  <Input
-                    type="number"
-                    value={config[selectedElement]?.lineHeight || 1.2}
-                    onChange={(e) => {
-                      const val = parseFloat(e.target.value);
-                      if (!isNaN(val) && val >= 0.5 && val <= 3) {
-                        updateElement(selectedElement, { lineHeight: val });
-                      }
-                    }}
-                    className="w-12 h-7 text-xs text-center"
-                    step={0.1}
-                    min={0.5}
-                    max={3}
-                    title="Line Height"
-                  />
-
-                  {/* Letter Spacing */}
-                  <Input
-                    type="number"
-                    value={config[selectedElement]?.charSpacing || 0}
-                    onChange={(e) => {
-                      const val = parseInt(e.target.value);
-                      if (!isNaN(val) && val >= -100 && val <= 500) {
-                        updateElement(selectedElement, { charSpacing: val });
-                      }
-                    }}
-                    className="w-12 h-7 text-xs text-center"
-                    min={-100}
-                    max={500}
-                    title="Letter Spacing"
-                  />
-                </div>
-
-                {/* Opacity for text elements */}
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">Opacity</span>
-                  <input type="range" min={0} max={1} step={0.05}
-                    value={config[selectedElement]?.opacity ?? 1}
-                    onChange={(e) => updateElement(selectedElement, { opacity: parseFloat(e.target.value) })}
-                    className="w-20 h-4 accent-primary"
-                  />
-                  <span className="text-xs w-8">{Math.round((config[selectedElement]?.opacity ?? 1) * 100)}%</span>
-                </div>
-              </>
-            )}
-
-            {/* Headshot shape controls */}
+            {/* Headshot controls */}
             {selectedElement === "headshot" && (
               <>
-                <div className="h-6 w-px bg-border" />
-                <div className="flex items-center gap-2 px-2 py-1 bg-muted/30 rounded-md">
+                <div className="h-6 w-px bg-border shrink-0" />
+                <div className="flex items-center gap-2 shrink-0">
                   <span className="text-xs text-muted-foreground">Shape</span>
                   {(["circle","square","vertical","horizontal","rounded","full-bleed"] as const).map((shape) => (
-                    <button
-                      key={shape}
-                      onClick={() => updateElement("headshot", shape === "full-bleed" ? { shape, x: 0, y: 0 } : { shape })}
-                      className={`h-7 px-2 text-xs rounded border capitalize ${
-                        config.headshot?.shape === shape ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-accent"
-                      }`}
-                    >
-                      {shape}
-                    </button>
+                    <button key={shape} onClick={() => updateElement("headshot", shape === "full-bleed" ? { shape, x: 0, y: 0 } : { shape })} className={`h-7 px-2 text-xs rounded border capitalize ${config.headshot?.shape === shape ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-accent"}`}>{shape}</button>
                   ))}
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">Opacity</span>
-                  <input type="range" min={0} max={1} step={0.05}
-                    value={config[selectedElement]?.opacity ?? 1}
-                    onChange={(e) => updateElement(selectedElement, { opacity: parseFloat(e.target.value) })}
-                    className="w-20 h-4 accent-primary"
-                  />
-                  <span className="text-xs w-8">{Math.round((config[selectedElement]?.opacity ?? 1) * 100)}%</span>
+                  <div className="h-4 w-px bg-border" />
+                  <input type="range" min={0} max={1} step={0.05} value={config.headshot?.opacity ?? 1} onChange={(e) => updateElement("headshot", { opacity: parseFloat(e.target.value) })} className="w-16 h-4 accent-primary" />
+                  <span className="text-xs w-8 tabular-nums">{Math.round((config.headshot?.opacity ?? 1) * 100)}%</span>
+                  <div className="h-4 w-px bg-border" />
+                  <Button onClick={() => headshotInputRef.current?.click()} variant="outline" size="sm" className="h-7 text-xs shrink-0">
+                    <Upload className="h-3 w-3 mr-1" />Test Image
+                  </Button>
                 </div>
               </>
             )}
 
-            {/* Gradient Overlay Controls - visible only when overlay is selected */}
+            {/* Logo controls */}
+            {selectedElement === "companyLogo" && (
+              <>
+                <div className="h-6 w-px bg-border shrink-0" />
+                <div className="flex items-center gap-2 shrink-0">
+                  <input type="range" min={0} max={1} step={0.05} value={config.companyLogo?.opacity ?? 1} onChange={(e) => updateElement("companyLogo", { opacity: parseFloat(e.target.value) })} className="w-16 h-4 accent-primary" />
+                  <span className="text-xs w-8 tabular-nums">{Math.round((config.companyLogo?.opacity ?? 1) * 100)}%</span>
+                  <div className="h-4 w-px bg-border" />
+                  <Button onClick={() => logoInputRef.current?.click()} variant="outline" size="sm" className="h-7 text-xs shrink-0">
+                    <Upload className="h-3 w-3 mr-1" />Test Logo
+                  </Button>
+                </div>
+              </>
+            )}
+
+            {/* Gradient Overlay Controls */}
             {selectedElement && config[selectedElement]?.type === "gradient-overlay" && (
               <>
-                <div className="h-6 w-px bg-border" />
-                <div
-                  className="flex items-center gap-2 px-2 py-1 bg-muted/30 rounded-md"
-                  onMouseDown={(e) => e.stopPropagation()}
-                  onClick={(e) => e.stopPropagation()}
-                >
+                <div className="h-6 w-px bg-border shrink-0" />
+                <div className="flex items-center gap-2 shrink-0" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
                   <span className="text-xs text-muted-foreground">Colour</span>
                   <div className="flex items-center gap-1">
-                    <div className="relative w-7 h-7 rounded border border-border overflow-hidden cursor-pointer flex-shrink-0" title="Pick gradient colour">
+                    <div className="relative w-6 h-6 rounded border border-border overflow-hidden cursor-pointer flex-shrink-0">
                       <div className="absolute inset-0" style={{ backgroundColor: config[selectedElement]?.gradientColor || "#000000" }} />
-                      <input
-                        type="color"
-                        value={config[selectedElement]?.gradientColor || "#000000"}
-                        onChange={(e) => updateElement(selectedElement, { gradientColor: e.target.value })}
-                        className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
-                      />
+                      <input type="color" value={config[selectedElement]?.gradientColor || "#000000"} onChange={(e) => updateElement(selectedElement, { gradientColor: e.target.value })} className="absolute inset-0 opacity-0 w-full h-full cursor-pointer" />
                     </div>
-                    <HexColorInput
-                      value={config[selectedElement]?.gradientColor || "#000000"}
-                      onChange={(hex) => updateElement(selectedElement, { gradientColor: hex })}
-                      className="w-20 h-7 text-xs font-mono px-1.5 rounded border border-border bg-background"
-                    />
+                    <HexColorInput value={config[selectedElement]?.gradientColor || "#000000"} onChange={(hex) => updateElement(selectedElement, { gradientColor: hex })} className="w-20 h-7 text-xs font-mono px-1.5 rounded border border-border bg-background" />
                   </div>
-
                   <div className="h-4 w-px bg-border" />
-
                   <span className="text-xs text-muted-foreground">Opacity</span>
-                  <input
-                    type="range"
-                    min={0}
-                    max={1}
-                    step={0.05}
-                    value={config[selectedElement]?.overlayOpacity ?? 0.75}
-                    onChange={(e) => updateElement(selectedElement, { overlayOpacity: parseFloat(e.target.value) })}
-                    className="w-20 h-4 accent-primary"
-                    title="Overlay Opacity"
-                  />
-                  <span className="text-xs w-8">
-                    {Math.round((config[selectedElement]?.overlayOpacity ?? 0.75) * 100)}%
-                  </span>
-
+                  <input type="range" min={0} max={1} step={0.05} value={config[selectedElement]?.overlayOpacity ?? 0.90} onChange={(e) => updateElement(selectedElement, { overlayOpacity: parseFloat(e.target.value) })} className="w-16 h-4 accent-primary" />
+                  <span className="text-xs w-8 tabular-nums">{Math.round((config[selectedElement]?.overlayOpacity ?? 0.90) * 100)}%</span>
                   <div className="h-4 w-px bg-border" />
-
                   <span className="text-xs text-muted-foreground">Direction</span>
-                  {(["bottom", "top", "left", "right"] as const).map((dir) => (
-                    <button
-                      key={dir}
-                      onClick={() => updateElement(selectedElement, { gradientDirection: dir })}
-                      className={`h-7 px-2 text-xs rounded border ${
-                        (config[selectedElement]?.gradientDirection || "bottom") === dir
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "border-border hover:bg-accent"
-                      }`}
-                      title={`Fade from ${dir}`}
-                    >
-                      {dir.charAt(0).toUpperCase() + dir.slice(1)}
-                    </button>
+                  {(["bottom","top","left","right"] as const).map((dir) => (
+                    <button key={dir} onClick={() => updateElement(selectedElement, { gradientDirection: dir })} className={`h-7 px-2 text-xs rounded border ${(config[selectedElement]?.gradientDirection || "bottom") === dir ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-accent"}`}>{dir.charAt(0).toUpperCase() + dir.slice(1)}</button>
                   ))}
                 </div>
               </>
             )}
 
-            {/* Opacity for other selected elements (companyLogo, dynamic icon-links) */}
-            {selectedElement && !["name","title","company"].includes(selectedElement) && config[selectedElement]?.type !== "gradient-overlay" && config[selectedElement]?.type !== "dynamic-text" && selectedElement !== "headshot" && (
-              <div className="flex items-center gap-2 shrink-0">
+            {/* Opacity for other elements (dynamic icon-links etc.) */}
+            {selectedElement && !["name","title","company"].includes(selectedElement) && config[selectedElement]?.type !== "gradient-overlay" && config[selectedElement]?.type !== "dynamic-text" && selectedElement !== "headshot" && selectedElement !== "companyLogo" && (
+              <div className="flex items-center gap-1.5 shrink-0">
                 <span className="text-xs text-muted-foreground">Opacity</span>
-                <input type="range" min={0} max={1} step={0.05}
-                  value={config[selectedElement]?.opacity ?? 1}
-                  onChange={(e) => updateElement(selectedElement, { opacity: parseFloat(e.target.value) })}
-                  className="w-20 h-4 accent-primary"
-                />
-                <span className="text-xs w-8">{Math.round((config[selectedElement]?.opacity ?? 1) * 100)}%</span>
+                <input type="range" min={0} max={1} step={0.05} value={config[selectedElement]?.opacity ?? 1} onChange={(e) => updateElement(selectedElement, { opacity: parseFloat(e.target.value) })} className="w-16 h-4 accent-primary" />
+                <span className="text-xs w-8 tabular-nums">{Math.round((config[selectedElement]?.opacity ?? 1) * 100)}%</span>
               </div>
             )}
-          </div>
-
-          {/* Right: fixed action controls */}
-          <div className="flex items-center gap-1 shrink-0">
-            {/* Layers */}
-            <div className="relative">
-              <button onClick={() => setLayersPanelOpen(!layersPanelOpen)} className="p-1.5 rounded hover:bg-accent text-muted-foreground hover:text-foreground" title="Layers">
-                <Layers className="h-4 w-4" />
-              </button>
-              {layersPanelOpen && (
-                <div className="absolute top-full mt-2 right-0 bg-card border border-border rounded-lg shadow-xl p-3 z-50 w-64">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-sm font-semibold">Layers</h3>
-                    <button onClick={() => setLayersPanelOpen(false)} className="text-muted-foreground hover:text-foreground"><X className="h-3 w-3" /></button>
-                  </div>
-                  <div className="space-y-1 max-h-96 overflow-y-auto">
-                    {Object.entries(config)
-                      .sort((a, b) => (b[1].zIndex || 0) - (a[1].zIndex || 0))
-                      .map(([key, element]) => (
-                        <div
-                          key={key}
-                          className={`flex items-center justify-between p-2 rounded text-sm hover:bg-accent cursor-pointer ${selectedElement === key ? 'bg-accent' : ''}`}
-                          onClick={() => { const canvas = fabricCanvasRef.current; const obj = elementRefs.current[key]; if (canvas && obj) { canvas.setActiveObject(obj); canvas.renderAll(); } }}
-                        >
-                          <span className="flex-1 truncate">{element.label || key}</span>
-                          <div className="flex items-center gap-2">
-                            <button onClick={(e) => { e.stopPropagation(); updateElement(key, { visible: !element.visible }); }} className="p-1 hover:bg-muted rounded">
-                              {element.visible !== false ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
-                            </button>
-                            <div className="flex flex-col">
-                              <button onClick={(e) => { e.stopPropagation(); const entries = Object.entries(config); const ci = entries.findIndex(([k]) => k === key); if (ci > 0) { const [pk] = entries[ci - 1]; const nc = { ...config }; const tz = nc[key].zIndex; nc[key].zIndex = nc[pk].zIndex; nc[pk].zIndex = tz; setConfig(nc); } }} className="p-0.5 hover:bg-muted rounded"><ChevronUp className="h-3 w-3" /></button>
-                              <button onClick={(e) => { e.stopPropagation(); const entries = Object.entries(config); const ci = entries.findIndex(([k]) => k === key); if (ci < entries.length - 1) { const [nk] = entries[ci + 1]; const nc = { ...config }; const tz = nc[key].zIndex; nc[key].zIndex = nc[nk].zIndex; nc[nk].zIndex = tz; setConfig(nc); } }} className="p-0.5 hover:bg-muted rounded"><ChevronDown className="h-3 w-3" /></button>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                </div>
-              )}
-            </div>
-            <div className="h-5 w-px bg-border mx-0.5" />
-            <button onClick={undo} disabled={historyIndex <= 0} className="p-1.5 rounded hover:bg-accent disabled:opacity-30" title="Undo (Ctrl+Z)"><Undo2 className="h-3.5 w-3.5" /></button>
-            <button onClick={redo} disabled={historyIndex >= history.length - 1} className="p-1.5 rounded hover:bg-accent disabled:opacity-30" title="Redo"><Redo2 className="h-3.5 w-3.5" /></button>
-            <div className="h-5 w-px bg-border mx-0.5" />
-            <button onClick={handleZoomOut} disabled={zoom <= 0.1} className="p-1.5 rounded hover:bg-accent disabled:opacity-30" title="Zoom Out"><ZoomOut className="h-3.5 w-3.5" /></button>
-            <button onClick={() => { const c = fabricCanvasRef.current; if (!c) return; c.setViewportTransform([1,0,0,1,0,0]); c.setDimensions({ width: canvasWidth, height: canvasHeight }); setZoom(1); c.renderAll(); }} className="text-xs font-mono w-10 text-center py-1 rounded hover:bg-accent cursor-pointer" title="Reset zoom">{(zoom * 100).toFixed(0)}%</button>
-            <button onClick={handleZoomIn} disabled={zoom >= 3} className="p-1.5 rounded hover:bg-accent disabled:opacity-30" title="Zoom In"><ZoomIn className="h-3.5 w-3.5" /></button>
-            <button onClick={handleZoomFit} className="p-1.5 rounded hover:bg-accent" title="Fit"><Maximize2 className="h-3.5 w-3.5" /></button>
-            <div className="h-5 w-px bg-border mx-0.5" />
-            <button onClick={() => { const html = generateCardHTML(); const blob = new Blob([html], { type: "text/html" }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `card-${cardType}.html`; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url); toast({ title: "Exported", description: "HTML snapshot downloaded" }); }} className="px-2 py-1 text-xs rounded hover:bg-accent font-mono text-muted-foreground hover:text-foreground" title="Export HTML">&lt;/&gt;</button>
-            <button onClick={handleReset} className="p-1.5 rounded hover:bg-accent text-muted-foreground hover:text-foreground" title="Reset"><RotateCcw className="h-3.5 w-3.5" /></button>
-            <div className="h-5 w-px bg-border mx-0.5" />
-            <Button onClick={handleSave} size="sm" variant="outline" className={`relative h-7 text-xs font-semibold ${hasUnsavedChanges ? 'border-primary text-primary hover:bg-primary/5' : ''}`}>
-              <Save className="h-3 w-3 mr-1" />Save
-              {hasUnsavedChanges && <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-orange-400" />}
-            </Button>
-            <Button onClick={handleExport} size="sm" variant="default" className="h-7 text-xs">
-              <Download className="h-3 w-3 mr-1" />Export
-            </Button>
           </div>
         </div>
 
@@ -2869,24 +2874,22 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
             <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50 w-full px-3">Elements</span>
 
             {/* Starter Templates */}
-            <div className="relative w-full px-2">
+            <div className="w-full px-2">
               <button
                 onClick={() => setTemplatePresetsOpen(!templatePresetsOpen)}
-                className="w-full flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-accent transition-colors"
+                className={`w-full flex flex-col items-center gap-1 p-2 rounded-lg transition-colors ${templatePresetsOpen ? 'bg-accent' : 'hover:bg-accent'}`}
                 title="Starter Templates"
-                data-popover="true"
               >
                 <Layers className="h-5 w-5" />
                 <span className="text-xs">Templates</span>
               </button>
               {templatePresetsOpen && (
-                <div className="absolute left-full ml-2 top-0 bg-card border border-border rounded-lg shadow-xl p-3 z-50 w-48" data-popover="true">
-                  <div className="text-xs font-semibold mb-2">Starter Templates</div>
+                <div className="mt-1 rounded-lg border border-border bg-card p-1">
                   {STARTER_PRESETS.map((preset) => (
                     <button
                       key={preset.name}
                       onClick={preset.apply}
-                      className="w-full text-left px-2 py-2 rounded hover:bg-accent text-xs mb-1"
+                      className="w-full text-left px-2 py-2 rounded hover:bg-accent text-xs mb-0.5"
                     >
                       <div className="font-medium">{preset.name}</div>
                       <div className="text-muted-foreground">{preset.description}</div>
@@ -2896,36 +2899,85 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
               )}
             </div>
 
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="w-full flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-accent transition-colors"
-              title="Upload Background"
-            >
-              <ImageIcon className="h-5 w-5" />
-              <span className="text-xs">Background</span>
-            </button>
-            <input ref={fileInputRef} type="file" accept="image/png,image/jpeg" onChange={handleBackgroundUpload} className="hidden" />
-
-            {/* Background colour picker */}
-            <div className="flex flex-col items-center gap-1 w-full px-2">
-              <Label className="text-xs text-muted-foreground">BG Colour</Label>
-              <div className="flex items-center gap-1 w-full">
-                <div className="relative w-7 h-7 rounded border border-border overflow-hidden cursor-pointer flex-shrink-0" title="Pick background colour">
-                  <div className="absolute inset-0" style={{ backgroundColor: bgColor }} />
-                  <input
-                    type="color"
-                    value={bgColor}
-                    onChange={(e) => setBgColor(e.target.value)}
-                    className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
-                  />
+            {/* Background — colour + image, unified inline panel */}
+            <div className="w-full px-2">
+              <button
+                onClick={() => setBgPanelOpen(!bgPanelOpen)}
+                className={`w-full flex flex-col items-center gap-1 p-2 rounded-lg transition-colors ${bgPanelOpen ? 'bg-accent' : 'hover:bg-accent'}`}
+                title="Background colour or image"
+              >
+                <div className="relative">
+                  <ImageIcon className="h-5 w-5" />
+                  <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-sm border border-border/80 shadow-sm" style={{ backgroundColor: bgColor }} />
                 </div>
-                <HexColorInput
-                  value={bgColor}
-                  onChange={(hex) => setBgColor(hex)}
-                  className="w-full h-7 text-xs font-mono px-1.5 rounded border border-border bg-background"
-                />
-              </div>
+                <span className="text-xs">Canvas</span>
+              </button>
+
+              {bgPanelOpen && (
+                <div className="mt-1 rounded-lg border border-border bg-card p-2 space-y-2">
+                  {/* Canvas size */}
+                  <div>
+                    <div className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Size</div>
+                    <select
+                      value={["600x600","1200x628","900x1200","1584x396"].includes(`${canvasWidth}x${canvasHeight}`) ? `${canvasWidth}x${canvasHeight}` : "custom"}
+                      onChange={(e) => {
+                        if (e.target.value === "custom") return;
+                        const [w, h] = e.target.value.split('x').map(Number);
+                        setCanvasWidth(w); setCanvasHeight(h);
+                        setHasUnsavedChanges(true);
+                        if (fabricCanvasRef.current) { fabricCanvasRef.current.setDimensions({ width: w, height: h }); fabricCanvasRef.current.renderAll(); }
+                      }}
+                      className="w-full h-7 px-2 text-xs border border-border rounded bg-background"
+                    >
+                      <option value="600x600">Square (600×600)</option>
+                      <option value="1200x628">Landscape (1200×628)</option>
+                      <option value="900x1200">Portrait (900×1200)</option>
+                      <option value="1584x396">Banner (1584×396)</option>
+                      <option value="custom" disabled>Custom: {canvasWidth}×{canvasHeight}</option>
+                    </select>
+                  </div>
+
+                  {/* Colour swatches */}
+                  <div>
+                    <div className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Colour</div>
+                    <div className="flex flex-wrap gap-1 mb-1.5">
+                      {["#ffffff","#000000","#1e293b","#0f172a","#1d4ed8","#dc2626","#16a34a","#d97706","#7c3aed","#db2777","#0891b2","#374151"].map(c => (
+                        <button
+                          key={c}
+                          onClick={() => { setBgColor(c); setHasUnsavedChanges(true); }}
+                          className={`w-5 h-5 rounded border-2 transition-transform hover:scale-110 ${bgColor === c ? 'border-primary' : 'border-border/60'}`}
+                          style={{ backgroundColor: c }}
+                          title={c}
+                        />
+                      ))}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <div className="relative w-6 h-6 rounded border border-border overflow-hidden cursor-pointer flex-shrink-0">
+                        <div className="absolute inset-0" style={{ backgroundColor: bgColor }} />
+                        <input type="color" value={bgColor} onChange={(e) => { setBgColor(e.target.value); setHasUnsavedChanges(true); }} className="absolute inset-0 opacity-0 w-full h-full cursor-pointer" />
+                      </div>
+                      <HexColorInput value={bgColor} onChange={(hex) => { setBgColor(hex); setHasUnsavedChanges(true); }} className="flex-1 h-6 text-xs font-mono px-1 rounded border border-border bg-background min-w-0" />
+                    </div>
+                  </div>
+
+                  {/* Image upload */}
+                  <div>
+                    <div className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Background</div>
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className={`w-full flex items-center gap-1.5 px-2 py-1.5 rounded border text-xs transition-colors ${templateUrl ? 'border-primary/40 bg-primary/5 text-primary' : 'border-border hover:bg-accent'}`}
+                    >
+                      <Upload className="h-3 w-3 shrink-0" />
+                      <span className="truncate">{templateUrl ? "Replace" : "Upload"}</span>
+                    </button>
+                    {templateUrl && (
+                      <button onClick={() => { setTemplateUrl(null); setHasUnsavedChanges(true); }} className="w-full text-[10px] text-muted-foreground hover:text-destructive text-left mt-1">✕ Remove image</button>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
+            <input ref={fileInputRef} type="file" accept="image/png,image/jpeg" onChange={handleBackgroundUpload} className="hidden" />
 
             <div className="h-px w-12 bg-border" />
 
@@ -3230,6 +3282,54 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
           </div>
         </div>
       </div>
+
+      {/* Right-click context menu */}
+      {contextMenu && (
+        <div
+          className="fixed z-[9999] bg-card border border-border rounded-lg shadow-xl py-1 min-w-[160px] text-sm"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+          onMouseLeave={() => setContextMenu(null)}
+        >
+          {(["name","title","company"].includes(contextMenu.elementKey) || config[contextMenu.elementKey]?.type === "dynamic-text") && (
+            <>
+              <button className="w-full text-left px-3 py-1.5 hover:bg-accent flex items-center gap-2" onClick={() => { updateElement(contextMenu.elementKey, { fontWeight: config[contextMenu.elementKey]?.fontWeight === 700 ? 400 : 700 }); setContextMenu(null); }}>
+                <Bold className="h-3.5 w-3.5" />{config[contextMenu.elementKey]?.fontWeight === 700 ? "Remove Bold" : "Bold"}
+              </button>
+              <button className="w-full text-left px-3 py-1.5 hover:bg-accent flex items-center gap-2" onClick={() => { updateElement(contextMenu.elementKey, { fontStyle: config[contextMenu.elementKey]?.fontStyle === "italic" ? "normal" : "italic" }); setContextMenu(null); }}>
+                <Italic className="h-3.5 w-3.5" />{config[contextMenu.elementKey]?.fontStyle === "italic" ? "Remove Italic" : "Italic"}
+              </button>
+              <button className="w-full text-left px-3 py-1.5 hover:bg-accent flex items-center gap-2" onClick={() => { updateElement(contextMenu.elementKey, { underline: !config[contextMenu.elementKey]?.underline }); setContextMenu(null); }}>
+                <Underline className="h-3.5 w-3.5" />{config[contextMenu.elementKey]?.underline ? "Remove Underline" : "Underline"}
+              </button>
+              <div className="border-t border-border my-1" />
+            </>
+          )}
+          {contextMenu.elementKey === "headshot" && (
+            <>
+              <button className="w-full text-left px-3 py-1.5 hover:bg-accent flex items-center gap-2" onClick={() => { headshotInputRef.current?.click(); setContextMenu(null); }}>
+                <Upload className="h-3.5 w-3.5" />Upload Test Image
+              </button>
+              <div className="border-t border-border my-1" />
+            </>
+          )}
+          {contextMenu.elementKey === "companyLogo" && (
+            <>
+              <button className="w-full text-left px-3 py-1.5 hover:bg-accent flex items-center gap-2" onClick={() => { logoInputRef.current?.click(); setContextMenu(null); }}>
+                <Upload className="h-3.5 w-3.5" />Upload Test Logo
+              </button>
+              <div className="border-t border-border my-1" />
+            </>
+          )}
+          <button className="w-full text-left px-3 py-1.5 hover:bg-accent flex items-center gap-2" onClick={() => { updateElement(contextMenu.elementKey, { visible: !config[contextMenu.elementKey]?.visible }); setContextMenu(null); }}>
+            {config[contextMenu.elementKey]?.visible !== false ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+            {config[contextMenu.elementKey]?.visible !== false ? "Hide" : "Show"}
+          </button>
+          <div className="border-t border-border my-1" />
+          <button className="w-full text-left px-3 py-1.5 hover:bg-accent text-destructive flex items-center gap-2" onClick={() => { setConfig(prev => { const n = { ...prev }; delete n[contextMenu.elementKey]; return n; }); setSelectedElement(null); setContextMenu(null); }}>
+            <X className="h-3.5 w-3.5" />Delete
+          </button>
+        </div>
+      )}
     </>
   );
 }
