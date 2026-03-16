@@ -71,6 +71,7 @@ export default function EventSettings() {
   });
 
   const [formData, setFormData] = useState({
+    id: "",
     title: "",
     startDate: "",
     endDate: "",
@@ -118,6 +119,7 @@ export default function EventSettings() {
 
     setFormData((prev) => ({
       ...prev,
+      id: rawEvent.id ?? rawEvent.event_id ?? "",
       title: rawEvent.title ?? "",
       startDate: toDateInput(rawEvent.start_date ?? rawEvent.startDate ?? ""),
       endDate: toDateInput(rawEvent.end_date ?? rawEvent.endDate ?? ""),
@@ -207,6 +209,7 @@ export default function EventSettings() {
       selectedModules.forEach((m) => (modulesObj[m] = true));
 
       const payload: any = {
+        id: eventId,
         title: formData.title,
         start_date: formData.startDate || undefined,
         end_date: formData.endDate || undefined,

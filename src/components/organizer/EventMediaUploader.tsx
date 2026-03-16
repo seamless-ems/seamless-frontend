@@ -29,8 +29,11 @@ export default function EventMediaUploader({
 
   const handleCropComplete = async (croppedBlob: Blob) => {
     try {
-      const fileName = cropTarget === "promo" ? "promo.jpg" : "event.jpg";
-      const file = new File([croppedBlob], fileName, { type: "image/jpeg" });
+      const mime = (croppedBlob as Blob & { type?: string }).type || "image/jpeg";
+      const rawExt = mime.includes("/") ? mime.split("/")[1] : "jpeg";
+      const ext = rawExt.split("+")[0] === "jpeg" ? "jpg" : rawExt.split("+")[0];
+      const fileName = cropTarget === "promo" ? `promo.${ext}` : `event.${ext}`;
+      const file = new File([croppedBlob], fileName, { type: mime });
       setEventImageFile(file);
       const url = URL.createObjectURL(file);
       setEventImagePreview(url);
