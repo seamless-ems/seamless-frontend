@@ -32,7 +32,9 @@
       "Bash(git branch:*)",
       "WebFetch(domain:shows-api.seamlessevents.io)",
       "Bash(find /mnt/c/Users/james/OneDrive/Documents/Seamless/seamless-frontend/src -type f -name \"*auth*\" -o -name \"*firebase*\" -o -name \"*login*\" 2>/dev/null | head -20)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(git checkout:*)",
+      "WebSearch"
     ]
   }
 }

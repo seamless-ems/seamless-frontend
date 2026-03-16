@@ -55,4 +55,4 @@ git push origin beta
 git pull origin beta
 ```
 
-Active branches: `main` (stable), `feature/website-card-builder` (SPX card builder)
+Active branches: `main` (stable), `beta` (active development)
