@@ -40,12 +40,35 @@ Immediate next steps
 - **Custom fields:** Backend strips underscores from custom field keys (e.g., `custom_123` becomes `custom123`). Frontend handles this with fallback logic in field lookups.
 
 Where to look first
-- `src/components/CardBuilder.tsx` — Unified card builder (template creator)
+- `src/components/CardBuilder.tsx` — Primary card builder (Fabric.js, all card types)
 - `src/components/organizer/SpeakerPreviews.tsx` — Fetches and embeds card HTML from API
 - `src/pages/organizer/SpeakerPortal.tsx` — Speaker details page
-- `src/pages/organizer/SpeakerModule.tsx` — Speaker module main page
+- `src/pages/organizer/SpeakerModule.tsx` — Speaker module main page ⚠️ see routing note below
 - `src/lib/api.ts` — API functions
 - `openapi.json` — API spec (source of truth for all endpoints)
+
+## ⚠️ Card Builder Routing — READ THIS
+
+The website card builder URL (`/organizer/event/:id/website-card-builder`) is handled by **SpeakerModule**, not WebsiteCardBuilderPage. This is a quirk of the routing setup.
+
+**Currently active:**
+- `src/pages/organizer/SpeakerModule.tsx` → imports `CardBuilder` ← this is the one that matters
+- `src/pages/organizer/WebsiteCardBuilderPage.tsx` → imports `CardBuilder` (secondary, kept in sync)
+- `src/pages/organizer/PromoCardBuilderPage.tsx` → imports `CardBuilder`
+
+**CardBuilder — key non-obvious behaviours:**
+- Canvas sidebar popovers (Templates, Canvas/Background) expand **inline** — do NOT change back to floating `absolute left-full` popovers, they get clipped by `overflow-y-auto` on the sidebar
+- `skipRerenderRef`: set to `true` before any `setConfig` call that is position/size-only (drag end, arrow nudge) to prevent full canvas rebuild. Missing this causes erratic element movement
+- Gradient overlay ramp starts at 20% opacity (not 0%) — matches Canva's heavier feel. Default opacity 0.90
+- Text elements get a hairline stroke (`strokeWidth: fontSize * 0.015`) to compensate for canvas grayscale antialiasing appearing lighter than CSS subpixel rendering
+- `nameFormat: "single" | "two-line"` on the name element config — backend must honour this when rendering (see API_GAPS.md)
+- Canvas size + background colour + background image all live in the "Canvas" section of the left sidebar (unified — do not split them back out to the toolbar)
+- Ctrl+Z undo: the keyboard handler must check undo/redo **before** the input-tag guard, because Fabric keeps a hidden `<textarea>` focused on the canvas
+- Alignment (multi-select): aligns to the **group's own bounding box**, not the canvas — same as PowerPoint/Canva
+
+**Known outstanding (backend team):**
+- `company` and `companyLogo` elements not persisting after server save/reload
+- Embed HTML rendering broken — see API_GAPS.md for full spec
 
 Mandatory agent check
 - Before making any API-related changes, every agent MUST check the local API specification at:

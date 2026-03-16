@@ -31,11 +31,12 @@ export default function EventLayout({ children }: { children: ReactNode }) {
   const eventName = eventData?.title || eventData?.name || '…';
 
   const isOnSpeakerPortal = /\/speakers\/(?!applications$|forms$|embed$)[^/]+$/.test(location.pathname);
+  const isCardBuilder = location.pathname.endsWith('/website-card-builder') || location.pathname.endsWith('/promo-card-builder');
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      {/* Top bar */}
-      <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-card/95 px-4">
+      {/* Top bar — hidden when card builder is active (it has its own full toolbar) */}
+      <header className={`sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-card/95 px-4 ${isCardBuilder ? 'hidden' : ''}`}>
         <nav className="flex items-center gap-1.5 text-sm">
           <Link to="/organizer" className="text-muted-foreground hover:text-foreground transition-colors">
             Events
@@ -167,7 +168,7 @@ export default function EventLayout({ children }: { children: ReactNode }) {
       </header>
 
       {/* Main content */}
-      <main className="flex-1 bg-background p-6">
+      <main className={`flex-1 bg-background ${isCardBuilder ? 'p-0 overflow-hidden' : 'p-6'}`}>
         {children}
       </main>
     </div>

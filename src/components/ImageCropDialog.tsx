@@ -76,12 +76,26 @@ export function ImageCropDialog({
     const cropper = cropperRef.current?.cropper;
     if (!cropper) return;
 
-    const canvas = cropper.getCroppedCanvas({
-      width: 800,
-      height: aspectRatio === 1 ? 800 : undefined,
-      imageSmoothingEnabled: true,
-      imageSmoothingQuality: 'high',
-    });
+    const isFreeForm = isNaN(aspectRatio);
+    // For free-form (logo): preserve natural crop aspect ratio, cap longest side at 1200px
+    // For fixed ratio: force square at 800px (or use explicit height)
+    let canvasOptions: any = { imageSmoothingEnabled: true, imageSmoothingQuality: 'high' };
+    if (isFreeForm) {
+      const cropData = cropper.getCropBoxData();
+      const imageData = cropper.getImageData();
+      const ratio = imageData.naturalWidth / imageData.width;
+      const naturalCropW = cropData.width * ratio;
+      const naturalCropH = cropData.height * ratio;
+      const maxSide = 1200;
+      const scale = Math.min(1, maxSide / Math.max(naturalCropW, naturalCropH));
+      canvasOptions.width = Math.round(naturalCropW * scale);
+      canvasOptions.height = Math.round(naturalCropH * scale);
+    } else {
+      canvasOptions.width = 800;
+      canvasOptions.height = aspectRatio === 1 ? 800 : undefined;
+    }
+
+    const canvas = cropper.getCroppedCanvas(canvasOptions);
 
     if (!canvas) {
       

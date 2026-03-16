@@ -17,7 +17,24 @@
       "Bash(pkill:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(git merge:*)",
+      "Bash(git stash:*)",
+      "Bash(cd /mnt/c/Users/james/OneDrive/Documents/Seamless && npm create vite@latest seamless-shows -- --template react-ts)",
+      "Bash(cd /mnt/c/Users/james/OneDrive/Documents/Seamless/seamless-shows && npm install -D tailwindcss postcss autoprefixer && npx tailwindcss init -p)",
+      "Bash(cd /mnt/c/Users/james/OneDrive/Documents/Seamless/seamless-shows && ./node_modules/.bin/tailwindcss init -p)",
+      "Bash(cd /mnt/c/Users/james/OneDrive/Documents/Seamless/seamless-shows && node_modules/.bin/tailwindcss init -p)",
+      "Read(//usr/local/bin/**)",
+      "Read(//usr/bin/**)",
+      "Bash(nvm use:*)",
+      "Bash(node.exe --version && npm --version)",
+      "Bash(git init:*)",
+      "Bash(git branch:*)",
+      "WebFetch(domain:shows-api.seamlessevents.io)",
+      "Bash(find /mnt/c/Users/james/OneDrive/Documents/Seamless/seamless-frontend/src -type f -name \"*auth*\" -o -name \"*firebase*\" -o -name \"*login*\" 2>/dev/null | head -20)",
+      "Bash(rm:*)",
+      "Bash(git checkout:*)",
+      "WebSearch"
     ]
   }
 }

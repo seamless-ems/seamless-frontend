@@ -55,4 +55,4 @@ git push origin beta
 git pull origin beta
 ```
 
-## TODOs:
+Active branches: `main` (stable), `beta` (active development)
