@@ -40,8 +40,7 @@ Immediate next steps
 - **Custom fields:** Backend strips underscores from custom field keys (e.g., `custom_123` becomes `custom123`). Frontend handles this with fallback logic in field lookups.
 
 Where to look first
-- `src/components/CardBuilder.tsx` — Stable V1 card builder — **DO NOT MODIFY**
-- `src/components/CardBuilder_SPX.tsx` — Website card builder in active development (branch: `feature/website-card-builder`)
+- `src/components/CardBuilder.tsx` — Primary card builder (Fabric.js, all card types)
 - `src/components/organizer/SpeakerPreviews.tsx` — Fetches and embeds card HTML from API
 - `src/pages/organizer/SpeakerPortal.tsx` — Speaker details page
 - `src/pages/organizer/SpeakerModule.tsx` — Speaker module main page ⚠️ see routing note below
@@ -52,19 +51,12 @@ Where to look first
 
 The website card builder URL (`/organizer/event/:id/website-card-builder`) is handled by **SpeakerModule**, not WebsiteCardBuilderPage. This is a quirk of the routing setup.
 
-**Currently active (SPX development):**
-- `src/pages/organizer/SpeakerModule.tsx` → imports `CardBuilder_SPX` ← this is the one that matters
-- `src/pages/organizer/WebsiteCardBuilderPage.tsx` → imports `CardBuilder_SPX` (secondary, kept in sync)
+**Currently active:**
+- `src/pages/organizer/SpeakerModule.tsx` → imports `CardBuilder` ← this is the one that matters
+- `src/pages/organizer/WebsiteCardBuilderPage.tsx` → imports `CardBuilder` (secondary, kept in sync)
+- `src/pages/organizer/PromoCardBuilderPage.tsx` → imports `CardBuilder`
 
-**To revert to V1** (swap both back):
-```ts
-// In SpeakerModule.tsx AND WebsiteCardBuilderPage.tsx, change:
-import CardBuilder from "@/components/CardBuilder_SPX";
-// back to:
-import CardBuilder from "@/components/CardBuilder";
-```
-
-**SPX — key non-obvious behaviours:**
+**CardBuilder — key non-obvious behaviours:**
 - Canvas sidebar popovers (Templates, Canvas/Background) expand **inline** — do NOT change back to floating `absolute left-full` popovers, they get clipped by `overflow-y-auto` on the sidebar
 - `skipRerenderRef`: set to `true` before any `setConfig` call that is position/size-only (drag end, arrow nudge) to prevent full canvas rebuild. Missing this causes erratic element movement
 - Gradient overlay ramp starts at 20% opacity (not 0%) — matches Canva's heavier feel. Default opacity 0.90

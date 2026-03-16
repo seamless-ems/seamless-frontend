@@ -1,43 +1,42 @@
 /**
- * CardBuilder - Unified Card Builder Component
+ * CardBuilder — Fabric.js-based card design tool for creating speaker website cards.
  *
- * A professional Canva-like design tool built with Fabric.js for creating both
- * promo cards and website cards. Replaces the previous separate builders.
+ * ARCHITECTURE:
  *
- * KEY ARCHITECTURE DECISIONS:
+ * 1. CONFIG STATE  — `config: CardConfig`
+ *    - Flat map of elementKey → ElementConfig (position, size, styling, text)
+ *    - Saved to both localStorage (immediate) and server (via createPromoConfig)
+ *    - Does NOT store test image data — test images are preview-only React state
  *
- * 1. DROP ZONE SYSTEM
- *    - Templates define layout (position, size, shape) NOT content
- *    - Test images are preview-only, never saved to config
- *    - Config stores: baseSize, scaleX, scaleY, position, styling
- *    - Actual images will come from real speaker data at runtime
+ * 2. ELEMENT TYPES
+ *    - "headshot"       → image dropzone placeholder; shapes: circle, square, rounded, vertical, horizontal, full-bleed
+ *    - "companyLogo"    → free-form image dropzone (any aspect ratio), rendered as Fabric Group
+ *    - "name/title/company" → Fabric Textbox; width-only resize via mr handle; scale locked to 1
+ *    - "gradientOverlay"→ Fabric Rect with linear gradient fill; 5-stop cinematic ramp
+ *    - "dynamic_*"      → generated from form config fields with showInCardBuilder: true
  *
- * 2. DYNAMIC ELEMENTS
- *    - Fetches form config via API (getFormConfigForEvent)
- *    - Creates elements for fields marked with showInCardBuilder: true
- *    - Allows custom form fields to appear as card elements
+ * 3. RENDERING (`renderAllElements`)
+ *    - Called via useEffect on [config, templateUrl, testHeadshot, testLogo, bgColor]
+ *    - Awaits `document.fonts.ready` before drawing — prevents blurry fallback fonts
+ *    - Canvas has `enableRetinaScaling: true` for crisp HiDPI rendering
+ *    - Skips elements where `cfg.visible` is falsy
  *
- * 3. PLACEHOLDER RENDERING
- *    - Headshot: lockUniScaling + corner-only controls (maintains aspect ratio)
- *    - Logo: Free resize with all handles (width/height independent)
- *    - Gray rect fills selection box: rect at (0,0), text centered, selectable:false
+ * 4. SCALE MANAGEMENT
+ *    - Textboxes: width stored directly, scaleX/Y always 1 (avoids compounding)
+ *    - Images: actualWidth/Height from getBoundingRect() stored; scaleX/Y also stored
+ *    - Groups (logo placeholder): pixel width/height from getBoundingRect(), scale cleared to 1
  *
- * 4. PERSISTENT SELECTION
- *    - Selection stays active when clicking toolbar controls
- *    - Only clears on: canvas background click, selecting another element, or ESC key
- *    - Prevents toolbar interactions from deselecting elements
+ * 5. SNAP SYSTEM
+ *    - SNAP_THRESHOLD = 10px to attract; SNAP_RELEASE = 16px to unstick
+ *    - Bright pink snap lines (#FF3C78), strokeWidth 2, linger 600ms after release
  *
- * 5. SCALE MANAGEMENT
- *    - Placeholders render at: actualSize = baseSize × scaleX/Y
- *    - On resize: calculate new scale from getBoundingRect() / baseSize
- *    - Store scale in config for persistence
+ * 6. SAVE / LOAD
+ *    - Save: config merged with { templateUrl, canvasWidth, canvasHeight, bgColor } → server + localStorage
+ *    - Load: server preferred (getPromoConfigForEvent), falls back to localStorage
+ *    - NOTE: server config object includes templateUrl/canvasWidth/canvasHeight/bgColor as top-level keys
+ *      alongside element keys — non-object keys are safely skipped in renderAllElements (visible check)
  *
- * MVP SIMPLIFICATIONS:
- * - Test image uploads disabled (gray placeholders only)
- * - Position alignment removed (too complex, just use drag)
- * - Text alignment simplified (content alignment only, like PowerPoint)
- *
- * @component
+ * DEFAULT FONT: Montserrat (closest Google Font to Gotham — all weights loaded in index.html)
  */
 
 import { useState, useRef, useEffect } from "react";
@@ -65,10 +64,28 @@ import {
   EyeOff,
   ChevronUp,
   ChevronDown,
+  ChevronLeft,
   RotateCcw,
   AlignLeft,
   AlignRight,
+  AlignCenter,
   AlignCenterHorizontal,
+  AlignCenterVertical,
+  AlignStartHorizontal,
+  AlignEndHorizontal,
+  AlignStartVertical,
+  AlignEndVertical,
+  Square,
+  Bold,
+  Italic,
+  Underline,
+  Lock,
+  Unlock,
+  Copy,
+  ChevronsUp,
+  ChevronsDown,
+  ChevronUp as BringForward,
+  ChevronDown as SendBackward,
 } from "lucide-react";
 import { FaLinkedin, FaTwitter, FaFacebook, FaInstagram, FaGithub } from "react-icons/fa";
 import { fabric } from "fabric";
@@ -86,6 +103,7 @@ type CardType = "promo" | "website";
 interface CardBuilderProps {
   eventId?: string;
   fullscreen?: boolean;
+  onBack?: () => void;
 }
 
 interface ElementConfig {
@@ -95,6 +113,119 @@ interface ElementConfig {
 interface CardConfig {
   [key: string]: ElementConfig;
 }
+
+// Hex colour input — local text state so the user can type freely;
+// propagates upward only when a valid 6-digit hex is complete.
+// Syncs back when the external value changes (e.g. from the swatch picker).
+function HexColorInput({
+  value,
+  onChange,
+  className,
+}: {
+  value: string;
+  onChange: (hex: string) => void;
+  className?: string;
+}) {
+  const [text, setText] = useState(value);
+
+  // Keep local text in sync when value changes externally (swatch pick, template load, etc.)
+  useEffect(() => {
+    setText(value);
+  }, [value]);
+
+  return (
+    <input
+      type="text"
+      value={text}
+      onChange={(e) => {
+        const raw = e.target.value;
+        setText(raw);
+        const hex = raw.startsWith('#') ? raw : '#' + raw;
+        if (/^#[0-9A-Fa-f]{6}$/.test(hex)) onChange(hex);
+      }}
+      onBlur={() => {
+        // On blur, snap back to the last valid value so the field is never left in a broken state
+        setText(value);
+      }}
+      className={className}
+      maxLength={7}
+      spellCheck={false}
+    />
+  );
+}
+
+// Font size input — local text state so the user can type freely (e.g. clear "23" fully);
+// propagates only when a valid integer in [8,120] is entered; clamps + restores on blur.
+function FontSizeInput({
+  value,
+  onChange,
+  className,
+}: {
+  value: number;
+  onChange: (size: number) => void;
+  className?: string;
+}) {
+  const [text, setText] = useState(String(value));
+  useEffect(() => { setText(String(value)); }, [value]);
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      value={text}
+      onChange={(e) => {
+        const raw = e.target.value.replace(/[^0-9]/g, "");
+        setText(raw);
+        const val = parseInt(raw, 10);
+        if (!isNaN(val) && val >= 8 && val <= 120) onChange(val);
+      }}
+      onBlur={() => {
+        const val = parseInt(text, 10);
+        if (!isNaN(val)) {
+          const clamped = Math.max(8, Math.min(120, val));
+          onChange(clamped);
+          setText(String(clamped));
+        } else {
+          setText(String(value));
+        }
+      }}
+      className={className}
+      maxLength={3}
+      spellCheck={false}
+    />
+  );
+}
+
+// Position input — local text state so the user can type freely; propagates on valid integer
+function PositionInput({ value, onChange, className }: { value: number; onChange: (v: number) => void; className?: string }) {
+  const [text, setText] = useState(String(Math.round(value)));
+  useEffect(() => { setText(String(Math.round(value))); }, [value]);
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      value={text}
+      onChange={(e) => {
+        const raw = e.target.value.replace(/[^0-9\-]/g, "");
+        setText(raw);
+        const val = parseInt(raw, 10);
+        if (!isNaN(val)) onChange(val);
+      }}
+      onBlur={() => setText(String(Math.round(value)))}
+      className={className}
+      maxLength={5}
+      spellCheck={false}
+    />
+  );
+}
+
+// Helper to convert hex colour + alpha to rgba string
+const hexToRgba = (hex: string, alpha: number): string => {
+  const clean = hex.replace('#', '');
+  const r = parseInt(clean.slice(0, 2), 16);
+  const g = parseInt(clean.slice(2, 4), 16);
+  const b = parseInt(clean.slice(4, 6), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+};
 
 // Helper to map form field IDs to icons and element types
 const getFieldIcon = (fieldId: string) => {
@@ -176,11 +307,12 @@ const ELEMENT_TEMPLATES = {
   },
   name: {
     label: "Name",
-    text: "Lethrethriel Stormrage",
+    text: "Lisa Young",
+    nameFormat: "single" as "single" | "two-line", // "single" = "Lisa Young", "two-line" = "Lisa\nYoung"
     x: 150,
     y: 50,
     fontSize: 32,
-    fontFamily: "Roboto",
+    fontFamily: "Montserrat",
     color: "#000000",
     fontWeight: 700,
     visible: true,
@@ -190,11 +322,11 @@ const ELEMENT_TEMPLATES = {
   },
   title: {
     label: "Title",
-    text: "Chief Executive Officer",
+    text: "Vice President of Corporate Partnerships",
     x: 150,
     y: 90,
     fontSize: 20,
-    fontFamily: "Roboto",
+    fontFamily: "Montserrat",
     color: "#000000",
     fontWeight: 500,
     visible: true,
@@ -204,11 +336,11 @@ const ELEMENT_TEMPLATES = {
   },
   company: {
     label: "Company",
-    text: "JensenGuuard Inc.",
+    text: "Seattle Seahawks",
     x: 150,
     y: 115,
     fontSize: 18,
-    fontFamily: "Roboto",
+    fontFamily: "Montserrat",
     color: "#000000",
     fontWeight: 400,
     visible: true,
@@ -227,9 +359,22 @@ const ELEMENT_TEMPLATES = {
     opacity: 1,
     zIndex: 5,
   },
+  gradientOverlay: {
+    label: "Gradient Overlay",
+    type: "gradient-overlay",
+    x: 0,
+    y: 0,
+    width: 600,
+    height: 300,
+    gradientColor: "#000000",
+    gradientDirection: "bottom", // transparent top → solid bottom
+    overlayOpacity: 0.92,
+    visible: true,
+    zIndex: 3,
+  },
 };
 
-export default function CardBuilder({ eventId, fullscreen = false }: CardBuilderProps) {
+export default function CardBuilder({ eventId, fullscreen = false, onBack }: CardBuilderProps) {
   // State
   const location = useLocation();
   const deriveInitialCardType = (): CardType => {
@@ -242,6 +387,7 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
   const [cardType, setCardType] = useState<CardType>(deriveInitialCardType);
   const [config, setConfig] = useState<CardConfig>({});
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
+  const [multiSelectActive, setMultiSelectActive] = useState(false);
   const [templateUrl, setTemplateUrl] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
   const [history, setHistory] = useState<CardConfig[]>([]);
@@ -267,6 +413,10 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
   const headshotInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const elementRefs = useRef<{ [key: string]: fabric.Object }>({});
+  // Skip full canvas rebuild when only position/size changed via Fabric drag (avoids flicker)
+  const skipRerenderRef = useRef(false);
+  // Ref mirror of historyIndex — always current, avoids stale closure in addToHistory
+  const historyIndexRef = useRef(-1);
 
   const [canvasWidth, setCanvasWidth] = useState(600);
   const [canvasHeight, setCanvasHeight] = useState(600);
@@ -281,6 +431,18 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
   // Track unsaved changes
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
+  // Multi-selection tracking — for applying formatting to all selected text elements at once
+  const [multiSelectedKeys, setMultiSelectedKeys] = useState<string[]>([]);
+  // Right-click context menu
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; elementKey: string } | null>(null);
+
+  // Background colour
+  const [bgColor, setBgColor] = useState<string>("#ffffff");
+
+  // Template presets popup
+  const [templatePresetsOpen, setTemplatePresetsOpen] = useState(false);
+  const [bgPanelOpen, setBgPanelOpen] = useState(false);
+
   // Fetch form configuration to get fields marked for card builder
   const [missingFormDialogOpen, setMissingFormDialogOpen] = useState(false);
 
@@ -290,7 +452,7 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
       try {
         return await getFormConfigForEvent(eventId || "", "speaker-info");
       } catch (err: any) {
-        console.log("Error fetching form config:", err);
+        // 404 = no form configured for this event yet — show setup dialog
         if (err && (err.status === 404 || err?.status === 404)) {
           setMissingFormDialogOpen(true);
         }
@@ -334,6 +496,59 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
     });
   };
 
+  // Starter template presets
+  const STARTER_PRESETS = [
+    {
+      name: "Classic",
+      description: "Photo left, text right",
+      apply: () => {
+        setConfig({
+          headshot: { ...ELEMENT_TEMPLATES.headshot, shape: "circle", x: 40, y: 220, size: 160 },
+          name: { ...ELEMENT_TEMPLATES.name, x: 230, y: 220, fontSize: 28 },
+          title: { ...ELEMENT_TEMPLATES.title, x: 230, y: 265, fontSize: 18 },
+          company: { ...ELEMENT_TEMPLATES.company, x: 230, y: 295, fontSize: 16 },
+        });
+        setCanvasWidth(600); setCanvasHeight(600);
+        if (fabricCanvasRef.current) fabricCanvasRef.current.setDimensions({ width: 600, height: 600 });
+        setTemplatePresetsOpen(false);
+        setHasUnsavedChanges(true);
+      }
+    },
+    {
+      name: "Centred",
+      description: "Everything centred",
+      apply: () => {
+        setConfig({
+          headshot: { ...ELEMENT_TEMPLATES.headshot, shape: "circle", x: 220, y: 80, size: 160 },
+          name: { ...ELEMENT_TEMPLATES.name, x: 100, y: 270, textAlign: "center", width: 400, fontSize: 30 },
+          title: { ...ELEMENT_TEMPLATES.title, x: 100, y: 315, textAlign: "center", width: 400, fontSize: 18 },
+          company: { ...ELEMENT_TEMPLATES.company, x: 100, y: 345, textAlign: "center", width: 400, fontSize: 16 },
+        });
+        setCanvasWidth(600); setCanvasHeight(600);
+        if (fabricCanvasRef.current) fabricCanvasRef.current.setDimensions({ width: 600, height: 600 });
+        setTemplatePresetsOpen(false);
+        setHasUnsavedChanges(true);
+      }
+    },
+    {
+      name: "Overlay",
+      description: "Photo full card, text over gradient",
+      apply: () => {
+        setConfig({
+          headshot: { ...ELEMENT_TEMPLATES.headshot, shape: "square", x: 0, y: 0, size: 600 },
+          gradientOverlay: { ...ELEMENT_TEMPLATES.gradientOverlay, x: 0, y: 300, width: 600, height: 300, gradientDirection: "bottom", overlayOpacity: 0.92 },
+          name: { ...ELEMENT_TEMPLATES.name, x: 30, y: 430, color: "#ffffff", fontSize: 30, width: 540 },
+          title: { ...ELEMENT_TEMPLATES.title, x: 30, y: 475, color: "#ffffff", fontSize: 18, width: 540 },
+          company: { ...ELEMENT_TEMPLATES.company, x: 30, y: 505, color: "#cccccc", fontSize: 15, width: 540 },
+        });
+        setCanvasWidth(600); setCanvasHeight(600);
+        if (fabricCanvasRef.current) fabricCanvasRef.current.setDimensions({ width: 600, height: 600 });
+        setTemplatePresetsOpen(false);
+        setHasUnsavedChanges(true);
+      }
+    },
+  ];
+
   // Initialize Fabric canvas
   useEffect(() => {
     let initInterval: number | null = null;
@@ -347,23 +562,67 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
         backgroundColor: "#ffffff",
         selection: true,
         preserveObjectStacking: true,
+        enableRetinaScaling: true,
       });
 
       fabricCanvasRef.current = canvas;
 
+      // Maximise canvas text rendering quality
+      const ctx = canvas.getContext() as CanvasRenderingContext2D | null;
+      if (ctx) {
+        ctx.imageSmoothingEnabled = true;
+        (ctx as any).imageSmoothingQuality = 'high';
+      }
+
+      // Canva/PowerPoint-style control handles — small circles, thin border
+      fabric.Object.prototype.cornerSize = 8;
+      fabric.Object.prototype.cornerStyle = 'circle';
+      fabric.Object.prototype.transparentCorners = false;
+      fabric.Object.prototype.cornerColor = '#ffffff';
+      fabric.Object.prototype.cornerStrokeColor = '#4F9CFB';
+      fabric.Object.prototype.borderColor = '#4F9CFB';
+      fabric.Object.prototype.borderScaleFactor = 1;
+      fabric.Object.prototype.padding = 6;
+
+      // Selection box style (rubber-band multi-select)
+      canvas.selectionColor = 'rgba(79,156,251,0.08)';
+      canvas.selectionBorderColor = '#4F9CFB';
+      canvas.selectionLineWidth = 1;
+
       // Selection change handler
       canvas.on("selection:created", (e) => {
-        const obj = e.selected?.[0];
-        if (obj?.data?.elementKey) {
-          setSelectedElement(obj.data.elementKey);
+        const all = canvas.getActiveObjects();
+        if (all.length > 1) {
+          setSelectedElement(null);
+          setMultiSelectActive(true);
+          setMultiSelectedKeys(all.map(o => o.data?.elementKey).filter(Boolean) as string[]);
+        } else {
+          const obj = e.selected?.[0];
+          if (obj?.data?.elementKey) setSelectedElement(obj.data.elementKey);
+          setMultiSelectActive(false);
+          setMultiSelectedKeys([]);
         }
       });
 
       canvas.on("selection:updated", (e) => {
-        const obj = e.selected?.[0];
-        if (obj?.data?.elementKey) {
-          setSelectedElement(obj.data.elementKey);
+        const all = canvas.getActiveObjects();
+        if (all.length > 1) {
+          setSelectedElement(null);
+          setMultiSelectActive(true);
+          setMultiSelectedKeys(all.map(o => o.data?.elementKey).filter(Boolean) as string[]);
+        } else {
+          const obj = all[0];
+          if (obj?.data?.elementKey) setSelectedElement(obj.data.elementKey);
+          setMultiSelectActive(false);
+          setMultiSelectedKeys([]);
         }
+      });
+
+      canvas.on("selection:cleared", () => {
+        setSelectedElement(null);
+        setMultiSelectActive(false);
+        setMultiSelectedKeys([]);
+        setContextMenu(null);
       });
 
       // Don't auto-clear selection - keep it persistent
@@ -373,152 +632,164 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
       // 3. User clicks canvas background (handled below)
 
       canvas.on("mouse:down", (e) => {
-        // Only clear selection if clicking on empty canvas (not on an object)
+        setContextMenu(null); // dismiss right-click menu on any canvas click
         if (!e.target) {
           setSelectedElement(null);
+          setMultiSelectActive(false);
+          setMultiSelectedKeys([]);
         }
       });
 
-      // PowerPoint-style snapping - snap to CLOSEST object
+      // Right-click context menu is handled via onContextMenu on the container div (outside shadow DOM)
+      // to ensure e.preventDefault() actually suppresses the browser's native menu.
+
+      // Double-click on headshot/logo placeholder triggers upload directly
+      canvas.on("mouse:dblclick", (e) => {
+        if (e.target?.data?.elementKey === "headshot") {
+          headshotInputRef.current?.click();
+        } else if (e.target?.data?.elementKey === "companyLogo") {
+          logoInputRef.current?.click();
+        }
+      });
+
+      // Canva/Figma-style snapping
       let alignmentLines: fabric.Line[] = [];
-      const SNAP_THRESHOLD = 15; // Generous threshold like PowerPoint
+      let snapClearTimer: number | null = null;
+      // Threshold to enter snap; release needs extra movement to break out (sticky feel)
+      const SNAP_THRESHOLD = 10;
+      const SNAP_RELEASE = 16;
+      let snapLockedX: number | null = null; // currently locked snap X position
+      let snapLockedY: number | null = null; // currently locked snap Y position
+
+      const createSnapLine = (x1: number, y1: number, x2: number, y2: number) =>
+        new fabric.Line([x1, y1, x2, y2], {
+          stroke: "#FF3C78",   // bright pink — visible on any background
+          strokeWidth: 1,
+          selectable: false,
+          evented: false,
+          strokeUniform: true,
+          opacity: 0.9,
+        });
+
+      const clearSnapLines = () => {
+        alignmentLines.forEach((l) => canvas.remove(l));
+        alignmentLines = [];
+        canvas.renderAll();
+      };
 
       canvas.on("object:moving", (e) => {
         const obj = e.target;
         if (!obj) return;
 
-        // Remove old guides
-        alignmentLines.forEach((line) => canvas.remove(line));
-        alignmentLines = [];
+        if (snapClearTimer) { clearTimeout(snapClearTimer); snapClearTimer = null; }
+        clearSnapLines();
 
-        const objBounds = obj.getBoundingRect();
-        const objLeft = objBounds.left;
-        const objTop = objBounds.top;
-        const objRight = objLeft + objBounds.width;
-        const objBottom = objTop + objBounds.height;
-        const objCenterX = objLeft + objBounds.width / 2;
-        const objCenterY = objTop + objBounds.height / 2;
+        const b = obj.getBoundingRect();
+        const oL = b.left, oT = b.top, oR = b.left + b.width, oB = b.top + b.height;
+        const oCX = oL + b.width / 2, oCY = oT + b.height / 2;
+        const cW = canvas.width!, cH = canvas.height!;
 
-        // Canvas center
-        const canvasCenterX = canvas.width! / 2;
-        const canvasCenterY = canvas.height! / 2;
+        type SnapPoint = { dist: number; delta: number; pos: number };
+        const snapX: SnapPoint[] = [];
+        const snapY: SnapPoint[] = [];
 
-        // Helper to create snap lines
-        const createSnapLine = (x1: number, y1: number, x2: number, y2: number) => {
-          return new fabric.Line([x1, y1, x2, y2], {
-            stroke: "#FF1493",
-            strokeWidth: 1,
-            strokeDashArray: [4, 4],
-            selectable: false,
-            evented: false,
-            strokeUniform: true,
-            opacity: 0.9,
-          });
+        const tryX = (ref: number, val: number) => {
+          const d = Math.abs(ref - val);
+          if (d < SNAP_THRESHOLD) snapX.push({ dist: d, delta: val - ref, pos: val });
+        };
+        const tryY = (ref: number, val: number) => {
+          const d = Math.abs(ref - val);
+          if (d < SNAP_THRESHOLD) snapY.push({ dist: d, delta: val - ref, pos: val });
         };
 
-        // Collect all possible snap points with distances
-        const snapPointsX: Array<{dist: number, target: number, line: fabric.Line}> = [];
-        const snapPointsY: Array<{dist: number, target: number, line: fabric.Line}> = [];
-
-        // Canvas center snaps
-        const distToCenterX = Math.abs(objCenterX - canvasCenterX);
-        const distToCenterY = Math.abs(objCenterY - canvasCenterY);
-
-        if (distToCenterX < SNAP_THRESHOLD) {
-          snapPointsX.push({
-            dist: distToCenterX,
-            target: canvasCenterX - objCenterX,
-            line: createSnapLine(canvasCenterX, 0, canvasCenterX, canvas.height!)
-          });
-        }
-
-        if (distToCenterY < SNAP_THRESHOLD) {
-          snapPointsY.push({
-            dist: distToCenterY,
-            target: canvasCenterY - objCenterY,
-            line: createSnapLine(0, canvasCenterY, canvas.width!, canvasCenterY)
-          });
-        }
-
-        // Check other objects - find CLOSEST snap for each type
-        canvas.forEachObject((other) => {
-          if (other === obj || !other.data?.elementKey) return;
-
-          const otherBounds = other.getBoundingRect();
-          const otherLeft = otherBounds.left;
-          const otherTop = otherBounds.top;
-          const otherRight = otherLeft + otherBounds.width;
-          const otherBottom = otherTop + otherBounds.height;
-          const otherCenterX = otherLeft + otherBounds.width / 2;
-          const otherCenterY = otherTop + otherBounds.height / 2;
-
-          const minY = Math.min(objTop, otherTop);
-          const maxY = Math.max(objBottom, otherBottom);
-          const minX = Math.min(objLeft, otherLeft);
-          const maxX = Math.max(objRight, otherRight);
-
-          // X-axis snaps
-          const snapChecksX = [
-            { dist: Math.abs(objLeft - otherLeft), target: otherLeft - objLeft, pos: otherLeft },
-            { dist: Math.abs(objRight - otherRight), target: otherRight - objRight, pos: otherRight },
-            { dist: Math.abs(objCenterX - otherCenterX), target: otherCenterX - objCenterX, pos: otherCenterX },
-          ];
-
-          for (const check of snapChecksX) {
-            if (check.dist < SNAP_THRESHOLD) {
-              snapPointsX.push({
-                dist: check.dist,
-                target: check.target,
-                line: createSnapLine(check.pos, minY, check.pos, maxY)
-              });
-            }
-          }
-
-          // Y-axis snaps
-          const snapChecksY = [
-            { dist: Math.abs(objTop - otherTop), target: otherTop - objTop, pos: otherTop },
-            { dist: Math.abs(objBottom - otherBottom), target: otherBottom - objBottom, pos: otherBottom },
-            { dist: Math.abs(objCenterY - otherCenterY), target: otherCenterY - objCenterY, pos: otherCenterY },
-          ];
-
-          for (const check of snapChecksY) {
-            if (check.dist < SNAP_THRESHOLD) {
-              snapPointsY.push({
-                dist: check.dist,
-                target: check.target,
-                line: createSnapLine(minX, check.pos, maxX, check.pos)
-              });
-            }
-          }
+        // Canvas edges, centre and thirds (like PowerPoint/Canva)
+        [0, cW / 3, cW / 2, (2 * cW) / 3, cW].forEach(snap => {
+          tryX(oL, snap); tryX(oR, snap); tryX(oCX, snap);
+        });
+        [0, cH / 3, cH / 2, (2 * cH) / 3, cH].forEach(snap => {
+          tryY(oT, snap); tryY(oB, snap); tryY(oCY, snap);
         });
 
-        // Apply ONLY the closest snap in each direction
-        if (snapPointsX.length > 0) {
-          snapPointsX.sort((a, b) => a.dist - b.dist);
-          const closest = snapPointsX[0];
-          obj.set({ left: obj.left! + closest.target });
+        // Other objects — all edge-to-edge combinations (like Canva/Figma)
+        canvas.forEachObject((other) => {
+          if (other === obj || !other.data?.elementKey) return;
+          const ob = other.getBoundingRect();
+          const tL = ob.left, tT = ob.top, tR = tL + ob.width, tB = tT + ob.height;
+          const tCX = tL + ob.width / 2, tCY = tT + ob.height / 2;
+
+          // X: left↔left, left↔right, right↔right, right↔left, center↔center
+          tryX(oL, tL); tryX(oL, tR); tryX(oR, tR); tryX(oR, tL); tryX(oCX, tCX);
+          // Y: top↔top, top↔bottom, bottom↔bottom, bottom↔top, center↔center
+          tryY(oT, tT); tryY(oT, tB); tryY(oB, tB); tryY(oB, tT); tryY(oCY, tCY);
+        });
+
+        // X axis — sticky snap: snap in at SNAP_THRESHOLD, only release at SNAP_RELEASE
+        if (snapX.length > 0) {
+          snapX.sort((a, b) => a.dist - b.dist);
+          const s = snapX[0];
+          snapLockedX = s.pos;
+          obj.set({ left: (obj.left || 0) + s.delta });
           obj.setCoords();
-          alignmentLines.push(closest.line);
+          alignmentLines.push(createSnapLine(s.pos, 0, s.pos, cH));
+        } else if (snapLockedX !== null) {
+          // Check if we've moved far enough to break free of previous snap
+          const distFromLock = Math.min(
+            Math.abs(oL - snapLockedX), Math.abs(oR - snapLockedX), Math.abs(oCX - snapLockedX)
+          );
+          if (distFromLock < SNAP_RELEASE) {
+            // Stay locked — pull back to snap
+            const delta = snapLockedX - oL < 0 ? snapLockedX - oR : snapLockedX - oCX < 0 ? snapLockedX - oCX : snapLockedX - oL;
+            obj.set({ left: (obj.left || 0) + delta });
+            obj.setCoords();
+            alignmentLines.push(createSnapLine(snapLockedX, 0, snapLockedX, cH));
+          } else {
+            snapLockedX = null;
+          }
         }
 
-        if (snapPointsY.length > 0) {
-          snapPointsY.sort((a, b) => a.dist - b.dist);
-          const closest = snapPointsY[0];
-          obj.set({ top: obj.top! + closest.target });
+        // Y axis — sticky snap
+        if (snapY.length > 0) {
+          snapY.sort((a, b) => a.dist - b.dist);
+          const s = snapY[0];
+          snapLockedY = s.pos;
+          obj.set({ top: (obj.top || 0) + s.delta });
           obj.setCoords();
-          alignmentLines.push(closest.line);
+          alignmentLines.push(createSnapLine(0, s.pos, cW, s.pos));
+        } else if (snapLockedY !== null) {
+          const distFromLock = Math.min(
+            Math.abs(oT - snapLockedY), Math.abs(oB - snapLockedY), Math.abs(oCY - snapLockedY)
+          );
+          if (distFromLock < SNAP_RELEASE) {
+            const delta = snapLockedY - oT < 0 ? snapLockedY - oB : snapLockedY - oCY < 0 ? snapLockedY - oCY : snapLockedY - oT;
+            obj.set({ top: (obj.top || 0) + delta });
+            obj.setCoords();
+            alignmentLines.push(createSnapLine(0, snapLockedY, cW, snapLockedY));
+          } else {
+            snapLockedY = null;
+          }
         }
 
-        // Add guide lines to canvas
-        alignmentLines.forEach((line) => canvas.add(line));
+        alignmentLines.forEach((l) => canvas.add(l));
         canvas.renderAll();
       });
 
-      // Remove guides after moving
+      // Clear snap lock on release; lines linger 600ms so you can see where you snapped
+      canvas.on("mouse:up", () => {
+        snapLockedX = null;
+        snapLockedY = null;
+        if (snapClearTimer) clearTimeout(snapClearTimer);
+        snapClearTimer = window.setTimeout(() => {
+          clearSnapLines();
+          snapClearTimer = null;
+        }, 600);
+      });
+
       canvas.on("object:modified", (e) => {
-        alignmentLines.forEach((line) => canvas.remove(line));
-        alignmentLines = [];
-        canvas.renderAll();
+        if (snapClearTimer) clearTimeout(snapClearTimer);
+        snapClearTimer = window.setTimeout(() => {
+          clearSnapLines();
+          snapClearTimer = null;
+        }, 600);
       });
 
       // Update config when objects are moved/modified/resized
@@ -531,49 +802,52 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
             y: obj.top || 0,
           };
 
-          // Save scale for images
+          // Save actual pixel dimensions for images (scale relative to natural size is misleading)
+          // Use getScaledWidth/Height — getBoundingRect includes 6px padding and inflates on every save
           if (obj.type === "image") {
+            updates.actualWidth = Math.round(obj.getScaledWidth());
+            updates.actualHeight = Math.round(obj.getScaledHeight());
             updates.scaleX = obj.scaleX || 1;
             updates.scaleY = obj.scaleY || 1;
           }
 
-          // Save scale for groups (placeholders)
-          // Calculate scale from actual dimensions vs base size
+          // Save pixel dimensions for groups (placeholders) — avoids compounding scale bugs
           if (obj.type === "group") {
+            skipRerenderRef.current = true; // position-only change; no need to rebuild canvas
             setConfig(prev => {
-              const baseSize = prev[elementKey]?.size || 60;
-              const bounds = obj.getBoundingRect();
-
-              // Calculate scale from actual pixel dimensions
-              const newScaleX = bounds.width / baseSize;
-              const newScaleY = bounds.height / baseSize;
-
               const newConfig = {
                 ...prev,
                 [elementKey]: {
                   ...prev[elementKey],
                   x: obj.left || 0,
                   y: obj.top || 0,
-                  scaleX: newScaleX,
-                  scaleY: newScaleY,
+                  width: Math.round(obj.getScaledWidth()),
+                  height: Math.round(obj.getScaledHeight()),
+                  // Clear stale scale so rendering uses width/height directly
+                  scaleX: 1,
+                  scaleY: 1,
                 },
               };
-
               setHasUnsavedChanges(true);
               addToHistory(newConfig);
               return newConfig;
             });
-            return; // Early return since we handled setConfig above
+            return;
           }
 
-          // Save width for text elements
+          // Save actual pixel dimensions for rect (gradient overlay)
+          if (obj.type === "rect") {
+            updates.width = Math.round((obj.width || 300) * (obj.scaleX || 1));
+            updates.height = Math.round((obj.height || 300) * (obj.scaleY || 1));
+          }
+
+          // Save width for text elements (no scale — textboxes use width only)
           if (obj.type === "textbox") {
             updates.width = obj.width || 300;
-            updates.scaleX = obj.scaleX || 1;
-            updates.scaleY = obj.scaleY || 1;
           }
 
           setHasUnsavedChanges(true); // Mark as unsaved when elements are modified
+          skipRerenderRef.current = true; // position/size-only change; update Fabric object directly
           setConfig(prev => {
             const newConfig = {
               ...prev,
@@ -615,10 +889,12 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
     const canvas = fabricCanvasRef.current;
     if (!canvas) return;
 
+    // Wait for all fonts to be ready before rendering (prevents pixelated fallback fonts)
+    try { await document.fonts.ready; } catch (_) {}
 
     // Clear canvas
     canvas.clear();
-    canvas.backgroundColor = "#ffffff";
+    canvas.backgroundColor = bgColor;
     elementRefs.current = {};
 
     // Render background if exists (1:1 scale, canvas is sized to match)
@@ -652,8 +928,9 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
       }
     }
 
-    // Render elements
-    for (const [key, cfg] of Object.entries(config)) {
+    // Render elements in zIndex order (lowest first → highest renders on top)
+    const sortedEntries = Object.entries(config).sort((a, b) => (a[1].zIndex || 0) - (b[1].zIndex || 0));
+    for (const [key, cfg] of sortedEntries) {
       if (!cfg.visible) continue;
 
       if (key === "headshot") {
@@ -663,6 +940,7 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
           const fabricImg = new fabric.Image(img, {
             left: cfg.x,
             top: cfg.y,
+            opacity: cfg.opacity ?? 1,
             selectable: true,
             hasControls: true,
             lockRotation: true,
@@ -723,6 +1001,39 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
                 originY: 'center',
               }),
             });
+          } else if (shape === "rounded") {
+            // Square with bevelled corners
+            const actualWidth = cfg.size * scaleX;
+            fabricImg.scaleToWidth(actualWidth);
+            const rx = 16 / (fabricImg.scaleX || 1);
+            fabricImg.set({
+              clipPath: new fabric.Rect({
+                width: actualWidth / (fabricImg.scaleX || 1),
+                height: actualWidth / (fabricImg.scaleY || 1),
+                rx,
+                ry: rx,
+                originX: 'center',
+                originY: 'center',
+              }),
+            });
+          } else if (shape === "full-bleed") {
+            // Scale to cover entire canvas (object-fit: cover)
+            // No clipPath needed — canvas element clips to its own bounds naturally,
+            // and the ShadowContainer CSS (overflow:hidden + border-radius) handles rounding.
+            const imgNaturalW = img.width || 1;
+            const imgNaturalH = img.height || 1;
+            const coverScale = Math.max(canvasWidth / imgNaturalW, canvasHeight / imgNaturalH);
+            fabricImg.set({
+              left: 0,
+              top: 0,
+              scaleX: coverScale,
+              scaleY: coverScale,
+              hasControls: false,
+              lockMovementX: true,
+              lockMovementY: true,
+              lockScalingX: true,
+              lockScalingY: true,
+            });
           }
 
           canvas.add(fabricImg);
@@ -740,6 +1051,9 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
             baseHeight = cfg.size * 4 / 3;
           } else if (shape === "horizontal") {
             baseHeight = cfg.size * 3 / 4;
+          } else if (shape === "full-bleed") {
+            baseWidth = canvasWidth;
+            baseHeight = canvasHeight;
           }
 
           // Calculate actual dimensions (base × scale)
@@ -755,8 +1069,8 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
             stroke: '#d1d5db',
             strokeWidth: 2,
             strokeUniform: true,
-            rx: shape === "circle" ? width / 2 : 4,
-            ry: shape === "circle" ? height / 2 : 4,
+            rx: shape === "circle" ? width / 2 : shape === "rounded" || shape === "full-bleed" ? 16 : 4,
+            ry: shape === "circle" ? height / 2 : shape === "rounded" || shape === "full-bleed" ? 16 : 4,
             selectable: false,
             evented: false,
           });
@@ -792,6 +1106,19 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
             mb: false,
           });
 
+          // Full-bleed placeholder: lock position/size, snap to 0,0
+          if (shape === "full-bleed") {
+            group.set({
+              left: 0,
+              top: 0,
+              lockMovementX: true,
+              lockMovementY: true,
+              lockScalingX: true,
+              lockScalingY: true,
+              hasControls: false,
+            });
+          }
+
           canvas.add(group);
           elementRefs.current.headshot = group;
         }
@@ -802,50 +1129,73 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
           const fabricImg = new fabric.Image(img, {
             left: cfg.x,
             top: cfg.y,
+            opacity: cfg.opacity ?? 1,
             selectable: true,
             hasControls: true,
             lockRotation: true,
-            lockUniScaling: true, // Maintain aspect ratio
+            lockUniScaling: false, // Logos can be stretched freely
             data: { elementKey: "companyLogo" },
           });
 
-          // Hide middle edge controls - force corner-only resizing
-          fabricImg.setControlsVisibility({
-            ml: false,
-            mt: false,
-            mr: false,
-            mb: false,
-          });
+          const LOGO_PAD = 10; // inset buffer so logo never clips the drop zone edge
+          const dropW = cfg.width || cfg.size;
+          const dropH = cfg.height || cfg.size;
 
-          // Use actual size (base size × scale) to match the resized placeholder
-          const scaleX = cfg.scaleX || 1;
-          const actualWidth = cfg.size * scaleX;
-          fabricImg.scaleToWidth(actualWidth);
+          if (cfg.actualWidth) {
+            // Already placed — restore saved size and position directly
+            fabricImg.scaleToWidth(cfg.actualWidth);
+          } else {
+            // First placement — scale to fit inside the drop zone with padding
+            const naturalW = (fabricImg.width as number) || 1;
+            const naturalH = (fabricImg.height as number) || 1;
+            const maxW = dropW - LOGO_PAD * 2;
+            const maxH = dropH - LOGO_PAD * 2;
+            const scale = Math.min(maxW / naturalW, maxH / naturalH);
+            fabricImg.set({ scaleX: scale, scaleY: scale });
+            // Centre within the drop zone
+            const scaledW = naturalW * scale;
+            const scaledH = naturalH * scale;
+            fabricImg.set({
+              left: cfg.x + (dropW - scaledW) / 2,
+              top:  cfg.y + (dropH - scaledH) / 2,
+            });
+          }
 
           canvas.add(fabricImg);
           elementRefs.current.companyLogo = fabricImg;
         } else {
-          // Render placeholder - calculate actual size from base size × scale
-          const baseSize = cfg.size;
-          const scaleX = cfg.scaleX || 1;
-          const scaleY = cfg.scaleY || 1;
+          // Render placeholder — use saved pixel dimensions if available, else base size
+          const width = cfg.width || cfg.size || 60;
+          const height = cfg.height || cfg.size || 60;
 
-          // Calculate actual dimensions (base × scale)
-          const width = baseSize * scaleX;
-          const height = baseSize * scaleY;
-
-          const rect = new fabric.Rect({
+          // Two-rect approach: fill covers full group area (no gap); dashed border inset on top.
+          // A single rect with stroke would render half the stroke outside the rect bounds,
+          // creating a visible gap between the grey fill and the dashed border on first drop.
+          const fillRect = new fabric.Rect({
             left: 0,
             top: 0,
             width: width,
             height: height,
             fill: '#e5e7eb',
-            stroke: '#d1d5db',
-            strokeWidth: 2,
-            strokeDashArray: [5, 5],
-            strokeUniform: true,
+            strokeWidth: 0,
             rx: 4,
             ry: 4,
+            selectable: false,
+            evented: false,
+          });
+
+          const borderRect = new fabric.Rect({
+            left: 2,
+            top: 2,
+            width: width - 4,
+            height: height - 4,
+            fill: 'transparent',
+            stroke: '#9ca3af',
+            strokeWidth: 1.5,
+            strokeDashArray: [5, 5],
+            strokeUniform: true,
+            rx: 3,
+            ry: 3,
             selectable: false,
             evented: false,
           });
@@ -854,7 +1204,7 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
             left: width / 2,
             top: height / 2,
             fontSize: Math.min(Math.max(11, width / 8), 18), // Cap at 18px
-            fill: '#9ca3af',
+            fill: '#6b7280',
             fontFamily: 'Inter',
             originX: 'center',
             originY: 'center',
@@ -862,7 +1212,7 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
             evented: false,
           });
 
-          const group = new fabric.Group([rect, text], {
+          const group = new fabric.Group([fillRect, borderRect, text], {
             left: cfg.x,
             top: cfg.y,
             selectable: true,
@@ -879,12 +1229,25 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
           elementRefs.current.companyLogo = group;
         }
       } else if (["name", "title", "company"].includes(key)) {
-        const text = new fabric.Textbox(cfg.text || cfg.label, {
+        // For the name element, honour nameFormat: "two-line" splits "Lisa Young" → "Lisa\nYoung"
+        let displayText = cfg.text || cfg.label;
+        if (key === "name" && cfg.nameFormat === "two-line") {
+          const parts = displayText.trim().split(/\s+/);
+          displayText = parts.length >= 2
+            ? parts.slice(0, -1).join(" ") + "\n" + parts[parts.length - 1]
+            : displayText;
+        }
+        const text = new fabric.Textbox(displayText, {
           left: cfg.x,
           top: cfg.y,
           fontSize: cfg.fontSize,
           fontFamily: cfg.fontFamily,
           fill: cfg.color,
+          // Hairline stroke compensates for canvas grayscale antialiasing — makes text
+          // appear the same visual weight as CSS/Canva subpixel-antialiased text.
+          stroke: cfg.color,
+          strokeWidth: Math.max(0.2, (cfg.fontSize || 16) * 0.015),
+          paintFirst: "fill" as any,
           fontWeight: cfg.fontWeight,
           fontStyle: cfg.fontStyle || "normal",
           textAlign: cfg.textAlign,
@@ -892,27 +1255,28 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
           lineHeight: cfg.lineHeight || 1.2,
           charSpacing: cfg.charSpacing || 0,
           width: cfg.width,
+          opacity: cfg.opacity ?? 1,
           // fabric.Textbox options don't include `textBaseline` in the TypeScript defs;
           // the default baseline is acceptable, so omit this option to satisfy typings.
           selectable: true,
           editable: true,
           hasControls: true,
           lockRotation: true,
-          lockUniScaling: true, // Maintain aspect ratio
+          lockUniScaling: false,
           data: { elementKey: key },
         });
 
-        // Hide middle edge controls - force corner-only resizing
+        // Textboxes: only allow width resize via middle-right handle; no corner scale
         text.setControlsVisibility({
-          ml: false, // Hide middle-left
-          mt: false, // Hide middle-top
-          mr: false, // Hide middle-right
-          mb: false, // Hide middle-bottom
+          tl: false, tr: false, bl: false, br: false,
+          ml: false,
+          mt: false,
+          mr: true,  // Allow width resize
+          mb: false,
+          mtr: false,
         });
-
-        // Apply saved scale if exists (from user resizing)
-        if (cfg.scaleX !== undefined) text.set('scaleX', cfg.scaleX);
-        if (cfg.scaleY !== undefined) text.set('scaleY', cfg.scaleY);
+        // Never apply scale to textboxes — scale compounds and distorts fontSize
+        text.set({ scaleX: 1, scaleY: 1 });
 
         canvas.add(text);
         elementRefs.current[key] = text;
@@ -997,23 +1361,29 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
             fontSize: cfg.fontSize,
             fontFamily: cfg.fontFamily,
             fill: cfg.color,
+            // Hairline stroke — same fix as name/title/company
+            stroke: cfg.color,
+            strokeWidth: Math.max(0.2, (cfg.fontSize || 16) * 0.015),
+            paintFirst: "fill" as any,
             fontWeight: cfg.fontWeight,
             textAlign: cfg.textAlign,
             width: cfg.width,
+            opacity: cfg.opacity ?? 1,
             selectable: true,
             editable: true,
             hasControls: true,
             lockRotation: true,
-            lockUniScaling: true,
+            lockUniScaling: false,
             data: { elementKey: key, type: "dynamic-text" },
           });
 
-          // Hide middle edge controls
+          // Show middle-right for width resize; hide others
           text.setControlsVisibility({
             ml: false,
             mt: false,
-            mr: false,
+            mr: true,  // Allow width resize
             mb: false,
+            mtr: false, // Hide rotation handle
           });
 
           // Apply saved scale if exists
@@ -1023,8 +1393,67 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
           canvas.add(text);
           elementRefs.current[key] = text;
         }
+      } else if (cfg.type === "gradient-overlay") {
+        const width = cfg.width || canvasWidth;
+        const height = cfg.height || canvasHeight / 2;
+        const color = cfg.gradientColor || "#000000";
+        const opacity = cfg.overlayOpacity ?? 0.90;
+        const direction = cfg.gradientDirection || "bottom";
+
+        // Gradient coordinate pairs: [transparent end, solid end]
+        const coordMap: Record<string, { x1: number; y1: number; x2: number; y2: number }> = {
+          bottom: { x1: 0, y1: 0, x2: 0, y2: height },
+          top:    { x1: 0, y1: height, x2: 0, y2: 0 },
+          left:   { x1: width, y1: 0, x2: 0, y2: 0 },
+          right:  { x1: 0, y1: 0, x2: width, y2: 0 },
+        };
+        const coords = coordMap[direction] || coordMap.bottom;
+
+        const rect = new fabric.Rect({
+          left: cfg.x || 0,
+          top: cfg.y || 0,
+          width,
+          height,
+          opacity: cfg.opacity ?? 1,
+          fill: new fabric.Gradient({
+            type: 'linear',
+            gradientUnits: 'pixels',
+            coords,
+            // Canva-matched ramp: starts at 20%, hits near-full by 75%
+            // Feels heavier/more readable than the old 45%-start ramp
+            colorStops: [
+              { offset: 0,    color: hexToRgba(color, 0) },
+              { offset: 0.20, color: hexToRgba(color, 0) },
+              { offset: 0.50, color: hexToRgba(color, opacity * 0.55) },
+              { offset: 0.75, color: hexToRgba(color, opacity * 0.88) },
+              { offset: 1,    color: hexToRgba(color, opacity) },
+            ],
+          }),
+          selectable: true,
+          hasControls: true,
+          lockRotation: true,
+          data: { elementKey: key, type: "gradient-overlay" },
+        });
+
+        canvas.add(rect);
+        elementRefs.current[key] = rect;
       }
     }
+
+    // Apply lock state: locked elements can't be moved/resized but remain selectable for right-click
+    Object.entries(config).forEach(([key, cfg]) => {
+      const obj = elementRefs.current[key];
+      if (obj && cfg.locked) {
+        obj.set({
+          lockMovementX: true,
+          lockMovementY: true,
+          lockScalingX: true,
+          lockScalingY: true,
+          hasControls: false,
+          hoverCursor: 'not-allowed',
+        });
+      }
+    });
 
     canvas.renderAll();
   };
@@ -1056,32 +1485,49 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
     }
   };
 
-  // Re-render when config changes
+  // Re-render when config changes (skip if only position/size was updated via Fabric drag)
   useEffect(() => {
+    if (skipRerenderRef.current) {
+      skipRerenderRef.current = false;
+      return;
+    }
     if (fabricCanvasRef.current) {
       renderAllElements();
     }
-  }, [config, templateUrl, testHeadshot, testLogo]);
+  }, [config, templateUrl, testHeadshot, testLogo, bgColor]);
 
   // Keyboard shortcuts for undo/redo and arrow key nudging
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't handle if user is typing in an input
-      const target = e.target as HTMLElement;
-      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') {
-        return;
-      }
-
+      // Undo/redo fire globally — must be checked BEFORE the input guard
+      // because Fabric.js keeps a hidden <textarea> focused on the canvas.
       // Undo: Ctrl+Z (Windows/Linux) or Cmd+Z (Mac)
       if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
         e.preventDefault();
         undo();
         return;
       }
-      // Redo: Ctrl+Shift+Z or Ctrl+Y (Windows/Linux) or Cmd+Shift+Z (Mac)
+      // Redo: Ctrl+Shift+Z or Ctrl+Y
       if (((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'z') || (e.ctrlKey && e.key === 'y')) {
         e.preventDefault();
         redo();
+        return;
+      }
+      // Duplicate: Ctrl+D
+      if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
+        e.preventDefault();
+        if (selectedElement) duplicateElement(selectedElement);
+        return;
+      }
+
+      // Don't handle other shortcuts if user is typing in a real input
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'SELECT') {
+        return;
+      }
+      // Allow Delete/Arrow/Escape through from Fabric's hidden textarea, but
+      // block them from real textareas (e.g. text editing inside a Textbox).
+      if (target.tagName === 'TEXTAREA' && !target.hasAttribute('data-fabric-hiddentextarea')) {
         return;
       }
 
@@ -1097,67 +1543,93 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
         return;
       }
 
+      // Delete/Backspace: Remove selected element
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedElement) {
+        e.preventDefault();
+        setConfig(prev => {
+          const newConfig = { ...prev };
+          delete newConfig[selectedElement];
+          return newConfig;
+        });
+        setSelectedElement(null);
+        setHasUnsavedChanges(true);
+        return;
+      }
+
       // Arrow key nudging (PowerPoint-style)
       const canvas = fabricCanvasRef.current;
       const activeObject = canvas?.getActiveObject();
       if (!activeObject || !canvas) return;
 
       const nudgeAmount = e.shiftKey ? 10 : 1; // Shift for larger steps
-      let moved = false;
+      let dx = 0, dy = 0;
 
       switch (e.key) {
-        case 'ArrowLeft':
-          e.preventDefault();
-          activeObject.set('left', (activeObject.left || 0) - nudgeAmount);
-          moved = true;
-          break;
-        case 'ArrowRight':
-          e.preventDefault();
-          activeObject.set('left', (activeObject.left || 0) + nudgeAmount);
-          moved = true;
-          break;
-        case 'ArrowUp':
-          e.preventDefault();
-          activeObject.set('top', (activeObject.top || 0) - nudgeAmount);
-          moved = true;
-          break;
-        case 'ArrowDown':
-          e.preventDefault();
-          activeObject.set('top', (activeObject.top || 0) + nudgeAmount);
-          moved = true;
-          break;
+        case 'ArrowLeft':  e.preventDefault(); dx = -nudgeAmount; break;
+        case 'ArrowRight': e.preventDefault(); dx = nudgeAmount; break;
+        case 'ArrowUp':    e.preventDefault(); dy = -nudgeAmount; break;
+        case 'ArrowDown':  e.preventDefault(); dy = nudgeAmount; break;
+        default: return;
       }
 
-      if (moved) {
-        activeObject.setCoords();
-        canvas.requestRenderAll();
+      // Move the Fabric object(s) immediately for smooth visual feedback
+      activeObject.set('left', (activeObject.left || 0) + dx);
+      activeObject.set('top', (activeObject.top || 0) + dy);
+      activeObject.setCoords();
+      canvas.requestRenderAll();
 
-        // Update config
-        if (activeObject.data?.elementKey) {
-          updateElement(activeObject.data.elementKey, {
-            x: activeObject.left || 0,
-            y: activeObject.top || 0,
+      // Sync config without triggering a full canvas rebuild
+      skipRerenderRef.current = true;
+      const activeObjects = canvas.getActiveObjects();
+      if (activeObjects.length > 1) {
+        // Multi-select: apply same delta to each element's stored position
+        setConfig(prev => {
+          const next = { ...prev };
+          activeObjects.forEach(obj => {
+            const key = obj.data?.elementKey;
+            if (key && next[key]) {
+              next[key] = { ...next[key], x: (next[key].x || 0) + dx, y: (next[key].y || 0) + dy };
+            }
           });
-        }
+          addToHistory(next);
+          return next;
+        });
+        setHasUnsavedChanges(true);
+      } else if (activeObject.data?.elementKey) {
+        updateElement(activeObject.data.elementKey, {
+          x: activeObject.left || 0,
+          y: activeObject.top || 0,
+        });
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [historyIndex, history]);
+  }, [historyIndex, history, selectedElement]);
 
-  // Warn before leaving with unsaved changes
+  // Close shape popup when clicking outside (Templates/BG are inline, no close-outside needed)
   useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (hasUnsavedChanges) {
-        e.preventDefault();
-        e.returnValue = '';
+    const handleClickOutside = (e: MouseEvent) => {
+      if (shapePopupOpen) {
+        const target = e.target as HTMLElement;
+        if (!target.closest('[data-popover]')) {
+          setShapePopupOpen(false);
+        }
       }
     };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [shapePopupOpen]);
 
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [hasUnsavedChanges]);
+  // Auto-save: 3 seconds after any change, silently persist to localStorage + server.
+  // The orange dot on Save still shows until explicitly dismissed; auto-save just prevents data loss.
+  useEffect(() => {
+    if (!hasUnsavedChanges) return;
+    const timer = window.setTimeout(() => {
+      handleSave(true); // silent=true — no toast
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [config, bgColor, templateUrl, canvasWidth, canvasHeight, hasUnsavedChanges]);
 
   // Load saved config on mount: prefer server config for eventId, fallback to localStorage
   useEffect(() => {
@@ -1167,11 +1639,12 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
       const saved = localStorage.getItem(storageKey);
       if (!saved) return;
       try {
-        const { config: savedConfig, templateUrl: savedTemplateUrl, canvasWidth: savedWidth, canvasHeight: savedHeight } = JSON.parse(saved);
+        const { config: savedConfig, templateUrl: savedTemplateUrl, canvasWidth: savedWidth, canvasHeight: savedHeight, bgColor: savedBgColor } = JSON.parse(saved);
         if (savedConfig) {
           setConfig(savedConfig);
           setHasUnsavedChanges(false);
         }
+        if (savedBgColor) setBgColor(savedBgColor);
 
         // Load canvas dimensions if saved (preferred method)
         if (savedWidth && savedHeight) {
@@ -1238,7 +1711,33 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
             const savedHeight = serverConfig.canvasHeight ?? serverConfig.canvas_height ?? null;
 
             if (savedConfig) {
-              setConfig(savedConfig);
+              // Merge: server config as base, but restore x/y/width/height from localStorage.
+              // localStorage is written before the server save (and on every drag via auto-save),
+              // so its positions are always at least as fresh as the server.
+              // This prevents the server returning stale positions from overwriting recent drags.
+              let configToSet = savedConfig;
+              try {
+                const localRaw = localStorage.getItem(storageKey);
+                if (localRaw) {
+                  const { config: localConfig } = JSON.parse(localRaw);
+                  if (localConfig && typeof localConfig === 'object') {
+                    const merged = { ...savedConfig };
+                    for (const key of Object.keys(merged)) {
+                      if (merged[key]?.visible && localConfig[key]) {
+                        merged[key] = {
+                          ...merged[key],
+                          ...(localConfig[key].x !== undefined ? { x: localConfig[key].x } : {}),
+                          ...(localConfig[key].y !== undefined ? { y: localConfig[key].y } : {}),
+                          ...(localConfig[key].width !== undefined ? { width: localConfig[key].width } : {}),
+                          ...(localConfig[key].height !== undefined ? { height: localConfig[key].height } : {}),
+                        };
+                      }
+                    }
+                    configToSet = merged;
+                  }
+                }
+              } catch (e) { /* ignore localStorage errors */ }
+              setConfig(configToSet);
               setHasUnsavedChanges(false);
             }
 
@@ -1325,7 +1824,7 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
     const y = (e.clientY - rect.top) / zoom;
 
     // Get template (from static templates or create dynamic one)
-    let template = ELEMENT_TEMPLATES[elementKey as keyof typeof ELEMENT_TEMPLATES];
+    let template = ELEMENT_TEMPLATES[elementKey as keyof typeof ELEMENT_TEMPLATES] as ElementConfig;
 
     // Handle dynamic fields
     if (!template && elementKey.startsWith("dynamic_")) {
@@ -1397,7 +1896,7 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
   };
 
   const addElementToCanvas = (elementKey: string, customPos?: { x: number, y: number }, customProps?: any) => {
-    const template = ELEMENT_TEMPLATES[elementKey as keyof typeof ELEMENT_TEMPLATES];
+    const template = ELEMENT_TEMPLATES[elementKey as keyof typeof ELEMENT_TEMPLATES] as ElementConfig;
     if (!template) return;
 
     // Use custom position if provided, otherwise center element
@@ -1443,8 +1942,9 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
         [elementKey]: {
           ...template,
           ...customProps, // Apply custom properties like shape
-          x: posX,
-          y: posY,
+          // Allow customProps to explicitly set position (e.g. full-bleed forces x:0, y:0)
+          x: customProps?.x !== undefined ? customProps.x : posX,
+          y: customProps?.y !== undefined ? customProps.y : posY,
           zIndex: maxZ + 1,
         },
       };
@@ -1494,25 +1994,35 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
 
   // History management
   const addToHistory = (newConfig: CardConfig) => {
+    // Use ref so rapid successive calls (arrow key held down, etc.) never read a stale index
+    const currentIdx = historyIndexRef.current;
+    const nextIdx = Math.min(currentIdx + 1, 49);
+    historyIndexRef.current = nextIdx;
     setHistory(prev => {
-      const newHistory = prev.slice(0, historyIndex + 1);
+      const newHistory = prev.slice(0, currentIdx + 1);
       newHistory.push(JSON.parse(JSON.stringify(newConfig)));
       return newHistory.length > 50 ? newHistory.slice(-50) : newHistory;
     });
-    setHistoryIndex(prev => Math.min(prev + 1, 49));
+    setHistoryIndex(nextIdx);
   };
 
   const undo = () => {
-    if (historyIndex > 0) {
-      setHistoryIndex(historyIndex - 1);
-      setConfig(JSON.parse(JSON.stringify(history[historyIndex - 1])));
+    const currentIdx = historyIndexRef.current;
+    if (currentIdx > 0) {
+      const newIdx = currentIdx - 1;
+      historyIndexRef.current = newIdx;
+      setHistoryIndex(newIdx);
+      setConfig(JSON.parse(JSON.stringify(history[newIdx])));
     }
   };
 
   const redo = () => {
-    if (historyIndex < history.length - 1) {
-      setHistoryIndex(historyIndex + 1);
-      setConfig(JSON.parse(JSON.stringify(history[historyIndex + 1])));
+    const currentIdx = historyIndexRef.current;
+    if (currentIdx < history.length - 1) {
+      const newIdx = currentIdx + 1;
+      historyIndexRef.current = newIdx;
+      setHistoryIndex(newIdx);
+      setConfig(JSON.parse(JSON.stringify(history[newIdx])));
     }
   };
 
@@ -1601,6 +2111,157 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
     canvas.requestRenderAll();
   };
 
+  // Alignment — PowerPoint/Canva standard:
+  //   Single element  → aligns to canvas edges/centre
+  //   Multi-select    → aligns to the group's own bounding box (not the canvas)
+  //
+  // Implementation: compute all new positions first, then apply in ONE setConfig call
+  // so renderAllElements only fires once and nothing gets wiped mid-operation.
+  const alignSelection = (direction: 'left' | 'right' | 'centerH' | 'top' | 'bottom' | 'centerV') => {
+    const keys = multiSelectedKeys.length > 0
+      ? multiSelectedKeys
+      : selectedElement ? [selectedElement] : [];
+    if (keys.length === 0) return;
+
+    // Use config-stored x/y/width/height — always in canvas coordinate space.
+    // Avoids getBoundingRect issues: padding inflation and incorrect coords when
+    // objects are inside a Fabric ActiveSelection (where left/top are group-relative).
+    const items = keys.flatMap(key => {
+      const cfg = config[key];
+      if (!cfg) return [];
+      const obj = elementRefs.current[key];
+      const x = cfg.x || 0;
+      const y = cfg.y || 0;
+      // actualWidth/Height for images; width/height for groups/text; size fallback for shapes
+      const width  = cfg.actualWidth  ?? (obj ? Math.round(obj.getScaledWidth())  : cfg.width  ?? cfg.size ?? 100);
+      const height = cfg.actualHeight ?? (obj ? Math.round(obj.getScaledHeight()) : cfg.height ?? cfg.size ?? 100);
+      return [{ key, x, y, width, height }];
+    });
+    if (items.length === 0) return;
+
+    const updates: Record<string, { x: number; y: number }> = {};
+
+    if (items.length === 1) {
+      // Single: align to canvas edges/centre
+      const { key, x, y, width, height } = items[0];
+      let newX = x, newY = y;
+      switch (direction) {
+        case 'left':    newX = 0; break;
+        case 'right':   newX = canvasWidth - width; break;
+        case 'centerH': newX = (canvasWidth - width) / 2; break;
+        case 'top':     newY = 0; break;
+        case 'bottom':  newY = canvasHeight - height; break;
+        case 'centerV': newY = (canvasHeight - height) / 2; break;
+      }
+      updates[key] = { x: newX, y: newY };
+    } else {
+      // Multi: align to the selection's own bounding box (same as PowerPoint/Canva)
+      const selLeft    = Math.min(...items.map(i => i.x));
+      const selRight   = Math.max(...items.map(i => i.x + i.width));
+      const selTop     = Math.min(...items.map(i => i.y));
+      const selBottom  = Math.max(...items.map(i => i.y + i.height));
+      const selCenterX = (selLeft + selRight) / 2;
+      const selCenterY = (selTop + selBottom) / 2;
+
+      items.forEach(({ key, x, y, width, height }) => {
+        let newX = x, newY = y;
+        switch (direction) {
+          case 'left':    newX = selLeft; break;
+          case 'right':   newX = selRight - width; break;
+          case 'centerH': newX = selCenterX - width / 2; break;
+          case 'top':     newY = selTop; break;
+          case 'bottom':  newY = selBottom - height; break;
+          case 'centerV': newY = selCenterY - height / 2; break;
+        }
+        updates[key] = { x: newX, y: newY };
+      });
+    }
+
+    // Single config update → single renderAllElements call, nothing vanishes
+    setConfig(prev => {
+      const next = { ...prev };
+      Object.entries(updates).forEach(([key, { x, y }]) => {
+        next[key] = { ...prev[key], x, y };
+      });
+      addToHistory(next);
+      return next;
+    });
+    setHasUnsavedChanges(true);
+  };
+
+  // Duplicate an element (Ctrl+D / context menu). Fixed elements (headshot, name, etc.) are excluded.
+  const FIXED_KEYS = ["headshot", "name", "title", "company", "companyLogo"];
+  const duplicateElement = (key: string) => {
+    const cfg = config[key];
+    if (!cfg || FIXED_KEYS.includes(key)) return;
+    const newKey = cfg.type === "gradient-overlay"
+      ? `gradientOverlay_${Date.now()}`
+      : `dynamic_${Date.now()}`;
+    const maxZ = Math.max(0, ...Object.values(config).map(c => c.zIndex || 0));
+    const newCfg = { ...cfg, x: (cfg.x || 0) + 15, y: (cfg.y || 0) + 15, zIndex: maxZ + 1, locked: false };
+    setConfig(prev => {
+      const next = { ...prev, [newKey]: newCfg };
+      addToHistory(next);
+      return next;
+    });
+    setSelectedElement(newKey);
+    setHasUnsavedChanges(true);
+  };
+
+  // Z-order helpers — adjust zIndex then re-render will sort correctly
+  const bringToFront = (key: string) => {
+    const maxZ = Math.max(0, ...Object.values(config).map(c => c.zIndex || 0));
+    updateElement(key, { zIndex: maxZ + 1 });
+  };
+  const sendToBack = (key: string) => {
+    const minZ = Math.min(0, ...Object.values(config).map(c => c.zIndex || 0));
+    updateElement(key, { zIndex: minZ - 1 });
+  };
+  const bringForward = (key: string) => {
+    const currentZ = config[key]?.zIndex || 0;
+    // Find the next object above and swap
+    const above = Object.entries(config)
+      .filter(([k, v]) => k !== key && (v.zIndex || 0) > currentZ)
+      .sort((a, b) => (a[1].zIndex || 0) - (b[1].zIndex || 0))[0];
+    if (above) {
+      const aboveZ = above[1].zIndex || 0;
+      setConfig(prev => {
+        const next = {
+          ...prev,
+          [key]: { ...prev[key], zIndex: aboveZ },
+          [above[0]]: { ...prev[above[0]], zIndex: currentZ },
+        };
+        addToHistory(next);
+        return next;
+      });
+      setHasUnsavedChanges(true);
+    }
+  };
+  const sendBackward = (key: string) => {
+    const currentZ = config[key]?.zIndex || 0;
+    const below = Object.entries(config)
+      .filter(([k, v]) => k !== key && (v.zIndex || 0) < currentZ)
+      .sort((a, b) => (b[1].zIndex || 0) - (a[1].zIndex || 0))[0];
+    if (below) {
+      const belowZ = below[1].zIndex || 0;
+      setConfig(prev => {
+        const next = {
+          ...prev,
+          [key]: { ...prev[key], zIndex: belowZ },
+          [below[0]]: { ...prev[below[0]], zIndex: currentZ },
+        };
+        addToHistory(next);
+        return next;
+      });
+      setHasUnsavedChanges(true);
+    }
+  };
+
+  // Lock / unlock — locked elements show selection handles but can't be moved or resized
+  const toggleLock = (key: string) => {
+    updateElement(key, { locked: !config[key]?.locked });
+  };
+
   // Background upload - no crop needed, canvas adjusts to image size
   const handleBackgroundUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -1626,13 +2287,15 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
         setCanvasWidth(img.width);
         setCanvasHeight(img.height);
 
-        // Resize Fabric canvas
+        // Resize Fabric canvas and reset zoom to 1 so dimensions are clean
         if (fabricCanvasRef.current) {
           fabricCanvasRef.current.setDimensions({
             width: img.width,
             height: img.height,
           });
+          fabricCanvasRef.current.setViewportTransform([1, 0, 0, 1, 0, 0]);
         }
+        setZoom(1);
 
         // Set background URL (will trigger re-render)
         setTemplateUrl(dataUrl);
@@ -1730,10 +2393,10 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
     }
   };
 
-  // Save
-  const handleSave = async () => {
+  // Save — pass silent=true from auto-save to suppress the toast
+  const handleSave = async (silent = false) => {
     const storageKey = `${cardType}-card-config-${eventId || "default"}`;
-    localStorage.setItem(storageKey, JSON.stringify({ config, templateUrl, canvasWidth, canvasHeight }));
+    localStorage.setItem(storageKey, JSON.stringify({ config, templateUrl, canvasWidth, canvasHeight, bgColor }));
 
     // Also save to backend if eventId exists
     if (eventId) {
@@ -1778,6 +2441,7 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
             templateUrl: finalTemplateUrl, // include uploaded URL when available; server may normalize/override
             canvasWidth, // Save canvas dimensions for scaling
             canvasHeight,
+            bgColor,
           },
         });
 
@@ -1797,24 +2461,39 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
           }
         }
 
-        toast({ title: "Saved", description: `${cardType === "promo" ? "Promo" : "Website"} card template saved` });
+        if (!silent) toast({ title: "Saved", description: `${cardType === "promo" ? "Promo" : "Website"} card template saved` });
       } catch (err: any) {
-        
-        toast({ title: "Saved locally", description: "Template saved to browser, but failed to sync with server" });
+
+        if (!silent) toast({ title: "Saved locally", description: "Template saved to browser, but failed to sync with server" });
       }
     } else {
-      toast({ title: "Saved", description: `${cardType === "promo" ? "Promo" : "Website"} card saved locally` });
+      if (!silent) toast({ title: "Saved", description: `${cardType === "promo" ? "Promo" : "Website"} card saved locally` });
     }
 
     setHasUnsavedChanges(false);
   };
 
-  // Export PNG
+  // Export PNG — reset zoom/transform first so we always get the full 1:1 card
   const handleExport = () => {
     const canvas = fabricCanvasRef.current;
     if (!canvas) return;
 
+    // Snapshot current viewport state
+    const savedTransform = canvas.viewportTransform ? [...canvas.viewportTransform] : [1, 0, 0, 1, 0, 0];
+    const savedW = canvas.getWidth();
+    const savedH = canvas.getHeight();
+
+    // Reset to 1:1 for clean export
+    canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
+    canvas.setDimensions({ width: canvasWidth, height: canvasHeight });
+
     const dataURL = canvas.toDataURL({ format: "png", quality: 1, multiplier: 2 });
+
+    // Restore previous viewport
+    canvas.setDimensions({ width: savedW, height: savedH });
+    canvas.setViewportTransform(savedTransform as [number, number, number, number, number, number]);
+    canvas.renderAll();
+
     const link = document.createElement("a");
     link.href = dataURL;
     link.download = `${cardType}-card-${Date.now()}.png`;
@@ -1840,21 +2519,33 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
     setTestLogo(null);
     setSelectedElement(null);
 
+    // Reset canvas to default size (Square 600×600 — best practice for speaker cards)
+    setCanvasWidth(600);
+    setCanvasHeight(600);
+    setBgColor("#ffffff");
+
     // Clear localStorage
     const storageKey = `${cardType}-card-config-${eventId || "default"}`;
     localStorage.removeItem(storageKey);
 
     // Reset history
     setHistory([]);
+    historyIndexRef.current = -1;
     setHistoryIndex(-1);
     setHasUnsavedChanges(false);
 
     // Clear canvas
     if (fabricCanvasRef.current) {
       fabricCanvasRef.current.clear();
+      fabricCanvasRef.current.setDimensions({ width: 600, height: 600 });
       fabricCanvasRef.current.backgroundColor = "#ffffff";
       fabricCanvasRef.current.requestRenderAll();
     }
+
+    // Reset file inputs so the same file can be re-selected after reset
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    if (headshotInputRef.current) headshotInputRef.current.value = "";
+    if (logoInputRef.current) logoInputRef.current.value = "";
 
     toast({
       title: "Card reset",
@@ -1900,12 +2591,13 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
       ? `https://fonts.googleapis.com/css2?${usedFontFamilies.map(f => `family=${String(f).replace(/\s+/g,'+')}:wght@300;400;500;600;700;800`).join('&')}&display=swap`
       : '';
 
-    const cardStyle = `width: ${canvasWidth}px; height: ${canvasHeight}px; position: relative; background-image: ${templateBg ? `url('${escapeHTML(templateBg)}')` : 'none'}; background-size: cover; overflow: hidden; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.15);`;
+    const cardStyle = `width: ${canvasWidth}px; height: ${canvasHeight}px; position: relative; background-color: ${escapeHTML(bgColor)}; background-image: ${templateBg ? `url('${escapeHTML(templateBg)}')` : 'none'}; background-size: cover; overflow: hidden; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.15);`;
 
-    const headshotLeft = headshotEl.x || 0;
-    const headshotTop = headshotEl.y || 0;
-    const headshotW = headshotEl.size || headshotEl.width || 80;
-    const headshotH = headshotEl.size || headshotEl.height || headshotW;
+    const _isFullBleed = headshotEl.shape === 'full-bleed';
+    const headshotLeft = _isFullBleed ? 0 : (headshotEl.x || 0);
+    const headshotTop = _isFullBleed ? 0 : (headshotEl.y || 0);
+    const headshotW = _isFullBleed ? canvasWidth : (headshotEl.size || headshotEl.width || 80);
+    const headshotH = _isFullBleed ? canvasHeight : (headshotEl.size || headshotEl.height || headshotW);
 
     const logoLeft = logoEl.x || 0;
     const logoTop = logoEl.y || 0;
@@ -1934,6 +2626,37 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
     const firstName = fullName.split(/\s+/).shift() || '';
     const lastName = fullName.split(/\s+/).slice(1).join(' ') || '';
 
+    // Headshot shape border-radius for HTML output
+    const headshotShape = headshotEl.shape || 'circle';
+    const headshotBorderRadius = headshotShape === 'circle' ? 'border-radius: 50%;' : headshotShape === 'rounded' ? 'border-radius: 16px;' : '';
+    const headshotZIndex = headshotEl.zIndex ?? 1;
+
+    // Gradient overlay HTML
+    const overlayEl = config.gradientOverlay;
+    const overlayHTML = (() => {
+      if (!overlayEl || !overlayEl.visible) return '';
+      const ox = overlayEl.x || 0;
+      const oy = overlayEl.y || 0;
+      const ow = overlayEl.width || canvasWidth;
+      const oh = overlayEl.height || canvasHeight / 2;
+      const oColor = overlayEl.gradientColor || '#000000';
+      const oOpacity = overlayEl.overlayOpacity ?? 0.92;
+      const oDir = overlayEl.gradientDirection || 'bottom';
+      const oZ = overlayEl.zIndex ?? 3;
+      const dirMap: Record<string, string> = {
+        bottom: 'to bottom',
+        top:    'to top',
+        left:   'to left',
+        right:  'to right',
+      };
+      const cssDir = dirMap[oDir] || 'to bottom';
+      // Parse hex color to rgb for rgba stops
+      const r = parseInt(oColor.slice(1, 3), 16);
+      const g = parseInt(oColor.slice(3, 5), 16);
+      const b = parseInt(oColor.slice(5, 7), 16);
+      return `<div style="position:absolute; left:${ox}px; top:${oy}px; width:${ow}px; height:${oh}px; background:linear-gradient(${cssDir}, rgba(${r},${g},${b},0) 0%, rgba(${r},${g},${b},0) 45%, rgba(${r},${g},${b},${+(oOpacity*0.45).toFixed(3)}) 72%, rgba(${r},${g},${b},${+(oOpacity*0.78).toFixed(3)}) 88%, rgba(${r},${g},${b},${oOpacity}) 100%); z-index:${oZ}; pointer-events:none;"></div>`;
+    })();
+
     const html = `<!doctype html>
 <html>
 <head>
@@ -1950,11 +2673,12 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
 <body>
   <div style="display: grid; grid-template-columns: repeat(1, 1fr); gap: 30px; padding: 20px; justify-items: center;">
     <div style="${cardStyle}" class="speaker-card embed-speaker-name" data-index="0">
-      ${ headshotSrc ? `<img src="${escapeHTML(headshotSrc)}" style="position:absolute; left:${headshotLeft}px; top:${headshotTop}px; z-index:1; opacity:1.0; width:${headshotW}px; height:${headshotH}px; object-fit: contain; object-position: center; background-color: transparent; ">` : `<div style="position:absolute; left:${headshotLeft}px; top:${headshotTop}px; z-index:1; width:${headshotW}px; height:${headshotH}px; background:#ddd;"></div>` }
-      <div style="position:absolute; left:${nameLeft}px; top:${nameTop}px; color:#000000; font-family:'${escapeHTML(nameEl.fontFamily || fontFamilyFallback)}', sans-serif; font-size:${nameFS}px; font-weight:${nameFW}; text-align:center; z-index:2; opacity:1.0; width:${nameW}px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHTML(nameEl.text || nameEl.label || 'Name')}</div>
-      <div style="position:absolute; left:${titleLeft}px; top:${titleTop}px; color:#000000; font-family:'${escapeHTML(titleEl.fontFamily || fontFamilyFallback)}', sans-serif; font-size:${titleFS}px; font-weight:${titleFW}; text-align:left; z-index:3; opacity:1.0; width:${titleW}px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHTML(titleEl.text || titleEl.label || 'Title')}</div>
-      <div style="position:absolute; left:${companyLeft}px; top:${companyTop}px; color:#000000; font-family:'${escapeHTML(companyEl.fontFamily || fontFamilyFallback)}', sans-serif; font-size:${companyFS}px; font-weight:${companyFW}; text-align:left; z-index:4; opacity:1.0; width:${companyW}px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHTML(companyEl.text || companyEl.label || 'Company')}</div>
-      ${ logoSrc ? `<img src="${escapeHTML(logoSrc)}" style="position:absolute; left:${logoLeft}px; top:${logoTop}px; z-index:5; opacity:1.0; width:${logoW}px; height:${logoH}px; object-fit: contain; object-position: center; background-color: transparent; ">` : '' }
+      ${ headshotSrc ? `<img src="${escapeHTML(headshotSrc)}" style="position:absolute; left:${headshotLeft}px; top:${headshotTop}px; z-index:${headshotZIndex}; opacity:1.0; width:${headshotW}px; height:${headshotH}px; object-fit: cover; object-position: center; background-color: transparent; ${headshotBorderRadius}">` : `<div style="position:absolute; left:${headshotLeft}px; top:${headshotTop}px; z-index:${headshotZIndex}; width:${headshotW}px; height:${headshotH}px; background:#ddd; ${headshotBorderRadius}"></div>` }
+      ${overlayHTML}
+      <div style="position:absolute; left:${nameLeft}px; top:${nameTop}px; color:${escapeHTML(nameEl.color || '#000000')}; font-family:'${escapeHTML(nameEl.fontFamily || fontFamilyFallback)}', sans-serif; font-size:${nameFS}px; font-weight:${nameFW}; text-align:center; z-index:${nameEl.zIndex ?? 2}; opacity:1.0; width:${nameW}px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHTML(nameEl.text || nameEl.label || 'Name')}</div>
+      <div style="position:absolute; left:${titleLeft}px; top:${titleTop}px; color:${escapeHTML(titleEl.color || '#000000')}; font-family:'${escapeHTML(titleEl.fontFamily || fontFamilyFallback)}', sans-serif; font-size:${titleFS}px; font-weight:${titleFW}; text-align:left; z-index:${titleEl.zIndex ?? 3}; opacity:1.0; width:${titleW}px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHTML(titleEl.text || titleEl.label || 'Title')}</div>
+      <div style="position:absolute; left:${companyLeft}px; top:${companyTop}px; color:${escapeHTML(companyEl.color || '#000000')}; font-family:'${escapeHTML(companyEl.fontFamily || fontFamilyFallback)}', sans-serif; font-size:${companyFS}px; font-weight:${companyFW}; text-align:left; z-index:${companyEl.zIndex ?? 4}; opacity:1.0; width:${companyW}px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHTML(companyEl.text || companyEl.label || 'Company')}</div>
+      ${ logoSrc ? `<img src="${escapeHTML(logoSrc)}" style="position:absolute; left:${logoLeft}px; top:${logoTop}px; z-index:${logoEl.zIndex ?? 5}; opacity:1.0; width:${logoW}px; height:${logoH}px; object-fit: contain; object-position: center; background-color: transparent; ">` : '' }
     </div>
   </div>
   <div id="bioModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background-color:rgba(0,0,0,0.5); z-index:9999999;">
@@ -2021,446 +2745,464 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
         imageUrl={cropImageUrl}
         onCropComplete={handleCropComplete}
         aspectRatio={
-          cropMode === "headshot"
-            ? (config.headshot?.shape === "vertical" ? 3/4 : config.headshot?.shape === "horizontal" ? 4/3 : 1)
-            : undefined
+          cropMode === "logo"
+            ? NaN  // Free-form: logos come in all shapes
+            : cropMode === "headshot"
+              ? (config.headshot?.shape === "vertical" ? 3/4 : config.headshot?.shape === "horizontal" ? 4/3 : config.headshot?.shape === "full-bleed" ? canvasWidth / canvasHeight : 1)
+              : undefined
         }
         cropShape={
           cropMode === "headshot"
-            ? (config.headshot?.shape || "circle")
+            ? (config.headshot?.shape === "rounded" || config.headshot?.shape === "full-bleed" ? "square" : (config.headshot?.shape || "circle"))
             : "square"
         }
+        title={cropMode === "logo" ? "Crop Logo" : "Crop Image"}
+        instructions={cropMode === "logo" ? "Drag to reposition, scroll to zoom. Crop to the logo boundary — any shape is fine." : "Drag to reposition, scroll to zoom, adjust to fit perfectly."}
+        imageFormat={cropMode === "logo" ? "png" : "jpeg"}
       />
 
       <div className="h-full w-full flex flex-col bg-background">
-        {/* Top Bar - Canva Style */}
-        <div className="flex items-center justify-between px-6 py-3 border-b bg-card/30">
-          {/* Left: Card Type Toggle (hidden in fullscreen mode) */}
-          {!fullscreen && (
-            <div className="inline-flex items-center gap-1 p-1 bg-muted/50 rounded-lg">
-              <button
-                onClick={() => setCardType("promo")}
-                className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${
-                  cardType === "promo"
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                Promo Card
-              </button>
-              <button
-                onClick={() => setCardType("website")}
-                className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${
-                  cardType === "website"
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                Website Card
-              </button>
-            </div>
-          )}
-          {fullscreen && <div></div>}
+        {/* ── Two-row toolbar ── */}
+        <div className="flex flex-col bg-card border-b border-border shrink-0">
 
-          {/* Center: Zoom + Undo/Redo */}
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1 px-2 py-1 bg-muted/30 rounded-md">
-              <button onClick={handleZoomOut} disabled={zoom <= 0.1} className="p-1.5 rounded hover:bg-accent disabled:opacity-30">
-                <ZoomOut className="h-4 w-4" />
-              </button>
-              <span className="text-sm font-medium min-w-[3.5rem] text-center">{(zoom * 100).toFixed(0)}%</span>
-              <button onClick={handleZoomIn} disabled={zoom >= 3} className="p-1.5 rounded hover:bg-accent disabled:opacity-30">
-                <ZoomIn className="h-4 w-4" />
-              </button>
-              <button onClick={handleZoomFit} className="p-1.5 rounded hover:bg-accent">
-                <Maximize2 className="h-4 w-4" />
-              </button>
-            </div>
-
-            <div className="flex items-center gap-1">
-              <button onClick={undo} disabled={historyIndex <= 0} className="p-2 rounded hover:bg-accent disabled:opacity-30">
-                <Undo2 className="h-4 w-4" />
-              </button>
-              <button onClick={redo} disabled={historyIndex >= history.length - 1} className="p-2 rounded hover:bg-accent disabled:opacity-30">
-                <Redo2 className="h-4 w-4" />
-              </button>
-            </div>
-
-            {/* Layers Panel */}
-            <div className="relative">
-              <button
-                onClick={() => setLayersPanelOpen(!layersPanelOpen)}
-                className="p-2 rounded hover:bg-accent"
-                title="Layers"
-              >
-                <Layers className="h-4 w-4" />
-              </button>
-
-              {layersPanelOpen && (
-                <div className="absolute top-full mt-2 right-0 bg-card border border-border rounded-lg shadow-xl p-3 z-50 w-64">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-sm font-semibold">Layers</h3>
-                    <button onClick={() => setLayersPanelOpen(false)} className="text-muted-foreground hover:text-foreground">
-                      <X className="h-3 w-3" />
-                    </button>
+          {/* Row 1: Branding + navigation + global actions */}
+          <div className="flex items-center gap-1 px-3 h-10 border-b border-border/40">
+            {/* Left: back + wordmark + card type */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              {onBack && (
+                <>
+                  <button onClick={onBack} className="p-1.5 rounded hover:bg-accent text-muted-foreground hover:text-foreground" title="Back to Speakers">
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  <div className="h-5 w-px bg-border mx-0.5" />
+                </>
+              )}
+              <div className="flex items-baseline gap-1 leading-none select-none">
+                <span className="text-sm font-semibold text-primary" style={{ letterSpacing: '-0.01em' }}>Seamless</span>
+                <span className="text-xs font-normal text-muted-foreground">Card Builder</span>
+              </div>
+              {!fullscreen && (
+                <>
+                  <div className="h-4 w-px bg-border mx-0.5" />
+                  <div className="inline-flex items-center gap-0.5 p-0.5 bg-muted rounded-md">
+                    <button onClick={() => setCardType("promo")} className={`px-2.5 py-0.5 text-xs font-medium rounded transition-all ${cardType === "promo" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-background/50"}`}>Promo</button>
+                    <button onClick={() => setCardType("website")} className={`px-2.5 py-0.5 text-xs font-medium rounded transition-all ${cardType === "website" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-background/50"}`}>Website</button>
                   </div>
-                  <div className="space-y-1 max-h-96 overflow-y-auto">
-                    {Object.entries(config)
-                      .sort((a, b) => (b[1].zIndex || 0) - (a[1].zIndex || 0))
-                      .map(([key, element]) => (
-                        <div
-                          key={key}
-                          className={`flex items-center justify-between p-2 rounded text-sm hover:bg-accent cursor-pointer ${
-                            selectedElement === key ? 'bg-accent' : ''
-                          }`}
-                          onClick={() => {
-                            const canvas = fabricCanvasRef.current;
-                            const obj = elementRefs.current[key];
-                            if (canvas && obj) {
-                              canvas.setActiveObject(obj);
-                              canvas.renderAll();
-                            }
-                          }}
-                        >
-                          <span className="flex-1 truncate">{element.label || key}</span>
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                updateElement(key, { visible: !element.visible });
-                              }}
-                              className="p-1 hover:bg-muted rounded"
-                            >
-                              {element.visible !== false ? (
-                                <Eye className="h-3 w-3" />
-                              ) : (
-                                <EyeOff className="h-3 w-3" />
-                              )}
-                            </button>
-                            <div className="flex flex-col">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const entries = Object.entries(config);
-                                  const currentIndex = entries.findIndex(([k]) => k === key);
-                                  if (currentIndex > 0) {
-                                    const [prevKey] = entries[currentIndex - 1];
-                                    const newConfig = { ...config };
-                                    const tempZ = newConfig[key].zIndex;
-                                    newConfig[key].zIndex = newConfig[prevKey].zIndex;
-                                    newConfig[prevKey].zIndex = tempZ;
-                                    setConfig(newConfig);
-                                  }
-                                }}
-                                className="p-0.5 hover:bg-muted rounded"
-                              >
-                                <ChevronUp className="h-3 w-3" />
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const entries = Object.entries(config);
-                                  const currentIndex = entries.findIndex(([k]) => k === key);
-                                  if (currentIndex < entries.length - 1) {
-                                    const [nextKey] = entries[currentIndex + 1];
-                                    const newConfig = { ...config };
-                                    const tempZ = newConfig[key].zIndex;
-                                    newConfig[key].zIndex = newConfig[nextKey].zIndex;
-                                    newConfig[nextKey].zIndex = tempZ;
-                                    setConfig(newConfig);
-                                  }
-                                }}
-                                className="p-0.5 hover:bg-muted rounded"
-                              >
-                                <ChevronDown className="h-3 w-3" />
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                </div>
+                </>
               )}
             </div>
 
-            {/* Text Formatting - always visible, disabled when no text selected */}
-            <>
-              <div className="h-6 w-px bg-border" />
+            <div className="flex-1" />
 
-              {/* Text Style Controls - prevent canvas interference */}
-              <div
-                className="flex items-center gap-2 px-2 py-1 bg-muted/30 rounded-md"
-                onMouseDown={(e) => {
-                  e.stopPropagation();
-                }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                }}
-              >
-                  {/* Font Family */}
-                  <select
-                    value={selectedElement && config[selectedElement] ? (config[selectedElement].fontFamily || "Inter") : "Inter"}
-                    onChange={(e) => selectedElement && updateElement(selectedElement, { fontFamily: e.target.value })}
-                    disabled={!selectedElement || !["name", "title", "company"].includes(selectedElement)}
-                    className="h-7 px-2 text-xs border border-border rounded bg-background disabled:opacity-50"
-                  >
-                    <option value="Roboto">Roboto</option>
-                    <option value="Open Sans">Open Sans</option>
-                    <option value="Lato">Lato</option>
-                    <option value="Montserrat">Montserrat</option>
-                    <option value="Poppins">Poppins</option>
-                    <option value="Raleway">Raleway</option>
-                    <option value="Noto Sans">Noto Sans</option>
-                    <option value="Source Sans Pro">Source Sans Pro</option>
-                    <option value="Merriweather">Merriweather</option>
-                    <option value="Playfair Display">Playfair Display</option>
-                    <option value="Nunito">Nunito</option>
-                    <option value="Ubuntu">Ubuntu</option>
-                    <option value="PT Sans">PT Sans</option>
-                    <option value="Karla">Karla</option>
-                    <option value="Oswald">Oswald</option>
-                    <option value="Fira Sans">Fira Sans</option>
-                    <option value="Work Sans">Work Sans</option>
-                    <option value="Inconsolata">Inconsolata</option>
-                    <option value="Josefin Sans">Josefin Sans</option>
-                    <option value="Alegreya">Alegreya</option>
-                    <option value="Cabin">Cabin</option>
-                    <option value="Titillium Web">Titillium Web</option>
-                    <option value="Mulish">Mulish</option>
-                    <option value="Quicksand">Quicksand</option>
-                    <option value="Anton">Anton</option>
-                    <option value="Droid Sans">Droid Sans</option>
-                    <option value="Archivo">Archivo</option>
-                    <option value="Hind">Hind</option>
-                    <option value="Bitter">Bitter</option>
-                    <option value="Libre Franklin">Libre Franklin</option>
-                  </select>
-
-                  {/* Font Size */}
-                  <Input
-                    type="number"
-                    value={selectedElement && config[selectedElement] ? (config[selectedElement].fontSize || 16) : 16}
-                    onChange={(e) => {
-                      if (!selectedElement) return;
-                      // Allow free typing - update immediately
-                      const val = parseInt(e.target.value);
-                      if (!isNaN(val)) {
-                        updateElement(selectedElement, { fontSize: val });
-                      }
-                    }}
-                    onBlur={(e) => {
-                      if (!selectedElement) return;
-                      // Validate on blur - clamp to valid range
-                      const val = parseInt(e.target.value);
-                      if (!isNaN(val)) {
-                        const clamped = Math.max(8, Math.min(120, val));
-                        updateElement(selectedElement, { fontSize: clamped });
-                      }
-                    }}
-                    disabled={!selectedElement || !["name", "title", "company"].includes(selectedElement)}
-                    className="w-14 h-7 text-xs text-center disabled:opacity-50"
-                    min={8}
-                    max={120}
-                  />
-
-                  <div className="h-4 w-px bg-border" />
-
-                  {/* Bold */}
-                  <button
-                    onClick={() => {
-                      if (!selectedElement) return;
-                      const current = config[selectedElement]?.fontWeight || 400;
-                      updateElement(selectedElement, { fontWeight: current === 700 ? 400 : 700 });
-                    }}
-                    disabled={!selectedElement || !["name", "title", "company"].includes(selectedElement)}
-                    className={`h-7 w-7 flex items-center justify-center rounded font-bold disabled:opacity-50 ${
-                      selectedElement && config[selectedElement]?.fontWeight === 700 ? 'bg-primary text-primary-foreground' : 'hover:bg-accent border border-border'
-                    }`}
-                    title="Bold"
-                  >
-                    B
-                  </button>
-                  {/* Italic */}
-                  <button
-                    onClick={() => {
-                      if (!selectedElement) return;
-                      const current = config[selectedElement]?.fontStyle || "normal";
-                      updateElement(selectedElement, { fontStyle: current === "italic" ? "normal" : "italic" });
-                    }}
-                    disabled={!selectedElement || !["name", "title", "company"].includes(selectedElement)}
-                    className={`h-7 w-7 flex items-center justify-center rounded italic disabled:opacity-50 ${
-                      selectedElement && config[selectedElement]?.fontStyle === "italic" ? 'bg-primary text-primary-foreground' : 'hover:bg-accent border border-border'
-                    }`}
-                    title="Italic"
-                  >
-                    I
-                  </button>
-                  {/* Underline */}
-                  <button
-                    onClick={() => {
-                      if (!selectedElement) return;
-                      const current = config[selectedElement]?.underline || false;
-                      updateElement(selectedElement, { underline: !current });
-                    }}
-                    disabled={!selectedElement || !["name", "title", "company"].includes(selectedElement)}
-                    className={`h-7 w-7 flex items-center justify-center rounded underline disabled:opacity-50 ${
-                      selectedElement && config[selectedElement]?.underline ? 'bg-primary text-primary-foreground' : 'hover:bg-accent border border-border'
-                    }`}
-                    title="Underline"
-                  >
-                    U
-                  </button>
-
-                  <div className="h-4 w-px bg-border" />
-
-                  {/* Text Align */}
-                  <button
-                    onClick={() => selectedElement && updateElement(selectedElement, { textAlign: "left" })}
-                    disabled={!selectedElement || !["name", "title", "company"].includes(selectedElement)}
-                    className={`h-7 px-2 flex items-center justify-center rounded text-xs disabled:opacity-50 ${
-                      selectedElement && config[selectedElement]?.textAlign === "left" ? 'bg-primary text-primary-foreground' : 'hover:bg-accent border border-border'
-                    }`}
-                    title="Align Text Left"
-                  >
-                    <AlignLeft className="h-3 w-3" />
-                  </button>
-                  <button
-                    onClick={() => selectedElement && updateElement(selectedElement, { textAlign: "center" })}
-                    disabled={!selectedElement || !["name", "title", "company"].includes(selectedElement)}
-                    className={`h-7 px-2 flex items-center justify-center rounded text-xs disabled:opacity-50 ${
-                      selectedElement && config[selectedElement]?.textAlign === "center" ? 'bg-primary text-primary-foreground' : 'hover:bg-accent border border-border'
-                    }`}
-                    title="Align Text Center"
-                  >
-                    <AlignCenterHorizontal className="h-3 w-3" />
-                  </button>
-                  <button
-                    onClick={() => selectedElement && updateElement(selectedElement, { textAlign: "right" })}
-                    disabled={!selectedElement || !["name", "title", "company"].includes(selectedElement)}
-                    className={`h-7 px-2 flex items-center justify-center rounded text-xs disabled:opacity-50 ${
-                      selectedElement && config[selectedElement]?.textAlign === "right" ? 'bg-primary text-primary-foreground' : 'hover:bg-accent border border-border'
-                    }`}
-                    title="Align Text Right"
-                  >
-                    <AlignRight className="h-3 w-3" />
-                  </button>
-
-                  <div className="h-4 w-px bg-border" />
-
-                  {/* Color Picker */}
-                  <input
-                    type="color"
-                    value={selectedElement && config[selectedElement] ? (config[selectedElement].color || "#000000") : "#000000"}
-                    onChange={(e) => selectedElement && updateElement(selectedElement, { color: e.target.value })}
-                    disabled={!selectedElement || !["name", "title", "company"].includes(selectedElement)}
-                    className="w-7 h-7 rounded border border-border cursor-pointer disabled:opacity-50"
-                    title="Text Color"
-                  />
-
-                  <div className="h-4 w-px bg-border" />
-
-                  {/* Line Height */}
-                  <Input
-                    type="number"
-                    value={selectedElement && config[selectedElement] ? (config[selectedElement].lineHeight || 1.2) : 1.2}
-                    onChange={(e) => {
-                      if (!selectedElement) return;
-                      const val = parseFloat(e.target.value);
-                      if (!isNaN(val) && val >= 0.5 && val <= 3) {
-                        updateElement(selectedElement, { lineHeight: val });
-                      }
-                    }}
-                    disabled={!selectedElement || !["name", "title", "company"].includes(selectedElement)}
-                    className="w-12 h-7 text-xs text-center disabled:opacity-50"
-                    step={0.1}
-                    min={0.5}
-                    max={3}
-                    title="Line Height"
-                  />
-
-                  {/* Letter Spacing */}
-                  <Input
-                    type="number"
-                    value={selectedElement && config[selectedElement] ? (config[selectedElement].charSpacing || 0) : 0}
-                    onChange={(e) => {
-                      if (!selectedElement) return;
-                      const val = parseInt(e.target.value);
-                      if (!isNaN(val) && val >= -100 && val <= 500) {
-                        updateElement(selectedElement, { charSpacing: val });
-                      }
-                    }}
-                    disabled={!selectedElement || !["name", "title", "company"].includes(selectedElement)}
-                    className="w-12 h-7 text-xs text-center disabled:opacity-50"
-                    min={-100}
-                    max={500}
-                    title="Letter Spacing"
-                  />
-                </div>
-              </>
+            {/* Right: Layers, undo/redo, zoom, export, save */}
+            <div className="flex items-center gap-1 shrink-0">
+              {/* Layers panel */}
+              <div className="relative">
+                <button onClick={() => setLayersPanelOpen(!layersPanelOpen)} className={`p-1.5 rounded hover:bg-accent text-muted-foreground hover:text-foreground ${layersPanelOpen ? 'bg-accent' : ''}`} title="Layers">
+                  <Layers className="h-4 w-4" />
+                </button>
+                {layersPanelOpen && (
+                  <div className="absolute top-full mt-2 right-0 bg-card border border-border rounded-lg shadow-xl p-3 z-50 w-64">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-sm font-semibold">Layers</h3>
+                      <button onClick={() => setLayersPanelOpen(false)} className="text-muted-foreground hover:text-foreground"><X className="h-3 w-3" /></button>
+                    </div>
+                    <div className="space-y-1 max-h-96 overflow-y-auto">
+                      {Object.entries(config)
+                        .sort((a, b) => (b[1].zIndex || 0) - (a[1].zIndex || 0))
+                        .map(([key, element]) => (
+                          <div
+                            key={key}
+                            className={`flex items-center justify-between p-2 rounded text-sm hover:bg-accent cursor-pointer ${selectedElement === key ? 'bg-accent' : ''}`}
+                            onClick={() => { const canvas = fabricCanvasRef.current; const obj = elementRefs.current[key]; if (canvas && obj) { canvas.setActiveObject(obj); canvas.renderAll(); setSelectedElement(key); } }}
+                          >
+                            <span className="flex-1 truncate">{element.label || key}</span>
+                            <div className="flex items-center gap-1">
+                              <button onClick={(e) => { e.stopPropagation(); toggleLock(key); }} className={`p-1 hover:bg-muted rounded ${element.locked ? 'text-amber-500' : 'text-muted-foreground/40 hover:text-muted-foreground'}`} title={element.locked ? "Unlock" : "Lock"}>
+                                {element.locked ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
+                              </button>
+                              <button onClick={(e) => { e.stopPropagation(); updateElement(key, { visible: !element.visible }); }} className="p-1 hover:bg-muted rounded" title={element.visible !== false ? "Hide" : "Show"}>
+                                {element.visible !== false ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
+                              </button>
+                              <div className="flex flex-col">
+                                <button onClick={(e) => { e.stopPropagation(); const sorted = Object.entries(config).sort((a,b)=>(b[1].zIndex||0)-(a[1].zIndex||0)); const ci=sorted.findIndex(([k])=>k===key); if(ci>0){const [pk]=sorted[ci-1];const nc={...config};const tz=nc[key].zIndex;nc[key].zIndex=nc[pk].zIndex;nc[pk].zIndex=tz;setConfig(nc);} }} className="p-0.5 hover:bg-muted rounded" title="Move up"><ChevronUp className="h-3 w-3" /></button>
+                                <button onClick={(e) => { e.stopPropagation(); const sorted = Object.entries(config).sort((a,b)=>(b[1].zIndex||0)-(a[1].zIndex||0)); const ci=sorted.findIndex(([k])=>k===key); if(ci<sorted.length-1){const [nk]=sorted[ci+1];const nc={...config};const tz=nc[key].zIndex;nc[key].zIndex=nc[nk].zIndex;nc[nk].zIndex=tz;setConfig(nc);} }} className="p-0.5 hover:bg-muted rounded" title="Move down"><ChevronDown className="h-3 w-3" /></button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="h-5 w-px bg-border mx-0.5" />
+              <button onClick={undo} disabled={historyIndex <= 0} className="p-1.5 rounded hover:bg-accent disabled:opacity-30" title="Undo (Ctrl+Z)"><Undo2 className="h-3.5 w-3.5" /></button>
+              <button onClick={redo} disabled={historyIndex >= history.length - 1} className="p-1.5 rounded hover:bg-accent disabled:opacity-30" title="Redo (Ctrl+Shift+Z)"><Redo2 className="h-3.5 w-3.5" /></button>
+              <div className="h-5 w-px bg-border mx-0.5" />
+              <button onClick={handleZoomOut} disabled={zoom <= 0.1} className="p-1.5 rounded hover:bg-accent disabled:opacity-30" title="Zoom Out"><ZoomOut className="h-3.5 w-3.5" /></button>
+              <button onClick={() => { const c = fabricCanvasRef.current; if (!c) return; c.setViewportTransform([1,0,0,1,0,0]); c.setDimensions({ width: canvasWidth, height: canvasHeight }); setZoom(1); c.renderAll(); }} className="text-xs font-mono w-10 text-center py-1 rounded hover:bg-accent cursor-pointer" title="Reset zoom">{(zoom * 100).toFixed(0)}%</button>
+              <button onClick={handleZoomIn} disabled={zoom >= 3} className="p-1.5 rounded hover:bg-accent disabled:opacity-30" title="Zoom In"><ZoomIn className="h-3.5 w-3.5" /></button>
+              <button onClick={handleZoomFit} className="p-1.5 rounded hover:bg-accent" title="Fit to content"><Maximize2 className="h-3.5 w-3.5" /></button>
+              <div className="h-5 w-px bg-border mx-0.5" />
+              <button onClick={() => { const html = generateCardHTML(); const blob = new Blob([html], { type: "text/html" }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `card-${cardType}.html`; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url); toast({ title: "Exported", description: "HTML snapshot downloaded" }); }} className="px-2 py-1 text-xs rounded hover:bg-accent font-mono text-muted-foreground hover:text-foreground" title="Export HTML">&lt;/&gt;</button>
+              <button onClick={handleReset} className="p-1.5 rounded hover:bg-accent text-muted-foreground hover:text-foreground" title="Reset canvas"><RotateCcw className="h-3.5 w-3.5" /></button>
+              <div className="h-5 w-px bg-border mx-0.5" />
+              <Button onClick={() => handleSave()} size="sm" variant="outline" className={`relative h-7 text-xs font-semibold ${hasUnsavedChanges ? 'border-primary text-primary hover:bg-primary/5' : ''}`}>
+                <Save className="h-3 w-3 mr-1" />Save
+                {hasUnsavedChanges && <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-orange-400" />}
+              </Button>
+              <Button onClick={handleExport} size="sm" variant="default" className="h-7 text-xs">
+                <Download className="h-3 w-3 mr-1" />Export
+              </Button>
+            </div>
           </div>
 
-          {/* Right: Actions - Always visible */}
-          <div className="flex gap-2">
-            <Button onClick={handleReset} size="sm" variant="outline" className="text-destructive hover:text-destructive">
-              <RotateCcw className="h-4 w-4 mr-2" />
-              Reset
-            </Button>
-            <Button onClick={handleSave} size="sm" variant="outline">
-              <Save className="h-4 w-4 mr-2" />
-              Save
-            </Button>
-            <Button onClick={handleExport} size="sm">
-              <Download className="h-4 w-4 mr-2" />
-              Export
-            </Button>
-            <Button
-              onClick={() => {
-                const html = generateCardHTML();
-                const blob = new Blob([html], { type: "text/html" });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = `card-${cardType}.html`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-                toast({ title: "Exported", description: "HTML snapshot downloaded" });
-              }}
-              size="sm"
-              variant="outline"
-            >
-              Export HTML
-            </Button>
+          {/* Row 2: Context-sensitive formatting bar */}
+          <div className="flex items-center gap-2 px-3 h-10 overflow-x-auto bg-muted/10 shrink-0">
+
+            {/* Default (nothing selected): hint */}
+            {!selectedElement && !multiSelectActive && (
+              <span className="text-xs text-muted-foreground/40 italic shrink-0">← use the left panel to add elements and set the canvas</span>
+            )}
+
+            {/* Alignment (shown whenever anything is selected) */}
+            {(selectedElement || multiSelectActive) && (
+              <div className="flex items-center gap-0.5 px-1.5 py-0.5 bg-muted/40 rounded-md shrink-0">
+                <span className="text-xs text-muted-foreground mr-1 whitespace-nowrap">Align</span>
+                <button onClick={() => alignSelection('left')}    className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground" title="Align Left"><AlignStartVertical className="h-3.5 w-3.5" /></button>
+                <button onClick={() => alignSelection('centerH')} className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground" title="Centre H"><AlignCenterVertical className="h-3.5 w-3.5" /></button>
+                <button onClick={() => alignSelection('right')}   className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground" title="Align Right"><AlignEndVertical className="h-3.5 w-3.5" /></button>
+                <div className="h-3.5 w-px bg-border mx-0.5" />
+                <button onClick={() => alignSelection('top')}     className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground" title="Align Top"><AlignStartHorizontal className="h-3.5 w-3.5" /></button>
+                <button onClick={() => alignSelection('centerV')} className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground" title="Centre V"><AlignCenterHorizontal className="h-3.5 w-3.5" /></button>
+                <button onClick={() => alignSelection('bottom')}  className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground" title="Align Bottom"><AlignEndHorizontal className="h-3.5 w-3.5" /></button>
+              </div>
+            )}
+
+            {/* X/Y position inputs — single element only (not multi-select) */}
+            {selectedElement && !multiSelectActive && config[selectedElement] && (
+              <div className="flex items-center gap-1 shrink-0" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+                <div className="h-6 w-px bg-border mr-1" />
+                <span className="text-[10px] text-muted-foreground font-mono">X</span>
+                <PositionInput
+                  value={config[selectedElement].x || 0}
+                  onChange={(v) => {
+                    skipRerenderRef.current = true;
+                    const obj = elementRefs.current[selectedElement];
+                    if (obj) { obj.set('left', v); obj.setCoords(); fabricCanvasRef.current?.requestRenderAll(); }
+                    updateElement(selectedElement, { x: v });
+                  }}
+                  className="w-14 h-7 text-xs text-center px-1 rounded border border-border bg-background font-mono"
+                />
+                <span className="text-[10px] text-muted-foreground font-mono">Y</span>
+                <PositionInput
+                  value={config[selectedElement].y || 0}
+                  onChange={(v) => {
+                    skipRerenderRef.current = true;
+                    const obj = elementRefs.current[selectedElement];
+                    if (obj) { obj.set('top', v); obj.setCoords(); fabricCanvasRef.current?.requestRenderAll(); }
+                    updateElement(selectedElement, { y: v });
+                  }}
+                  className="w-14 h-7 text-xs text-center px-1 rounded border border-border bg-background font-mono"
+                />
+              </div>
+            )}
+
+            {/* Text formatting — single text OR multi-select of all-text elements */}
+            {(() => {
+              const isSingleText = !!(selectedElement && (["name","title","company"].includes(selectedElement) || config[selectedElement]?.type === "dynamic-text"));
+              const isMultiText = multiSelectActive && multiSelectedKeys.length > 0 && multiSelectedKeys.every(k => ["name","title","company"].includes(k) || config[k]?.type === "dynamic-text");
+              if (!isSingleText && !isMultiText) return null;
+              const activeKey = isSingleText ? selectedElement! : multiSelectedKeys[0];
+              const applyUpdate = (updates: Partial<ElementConfig>) => {
+                if (isSingleText) { updateElement(selectedElement!, updates); }
+                else { multiSelectedKeys.forEach(k => updateElement(k, updates)); }
+              };
+              return (
+                <>
+                  <div className="h-6 w-px bg-border shrink-0" />
+                  <div className="flex items-center gap-2 shrink-0" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+                    {/* Font family */}
+                    <select
+                      value={config[activeKey]?.fontFamily || "Montserrat"}
+                      onChange={(e) => applyUpdate({ fontFamily: e.target.value })}
+                      className="h-7 px-2 text-xs border border-border rounded bg-background"
+                    >
+                      {["Roboto","Open Sans","Lato","Montserrat","Poppins","Raleway","Noto Sans","Source Sans Pro","Merriweather","Playfair Display","Nunito","Ubuntu","PT Sans","Karla","Oswald","Fira Sans","Work Sans","Inconsolata","Josefin Sans","Alegreya","Cabin","Titillium Web","Mulish","Quicksand","Anton","Droid Sans","Archivo","Hind","Bitter","Libre Franklin"].map(f => (
+                        <option key={f} value={f}>{f}</option>
+                      ))}
+                    </select>
+                    {/* Font size — uses local-state input to allow clearing and retyping freely */}
+                    <FontSizeInput
+                      value={config[activeKey]?.fontSize || 16}
+                      onChange={(val) => applyUpdate({ fontSize: val })}
+                      className="w-12 h-7 text-xs text-center px-1 rounded border border-border bg-background font-mono"
+                    />
+                    <div className="h-4 w-px bg-border" />
+                    {/* Bold / Italic / Underline */}
+                    <div className="flex items-center gap-0.5 p-0.5 bg-muted/50 rounded-md">
+                      <button onClick={() => applyUpdate({ fontWeight: config[activeKey]?.fontWeight === 700 ? 400 : 700 })} className={`h-6 w-6 flex items-center justify-center rounded transition-colors ${config[activeKey]?.fontWeight === 700 ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`} title="Bold"><Bold className="h-3.5 w-3.5" /></button>
+                      <button onClick={() => applyUpdate({ fontStyle: config[activeKey]?.fontStyle === "italic" ? "normal" : "italic" })} className={`h-6 w-6 flex items-center justify-center rounded transition-colors ${config[activeKey]?.fontStyle === "italic" ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`} title="Italic"><Italic className="h-3.5 w-3.5" /></button>
+                      <button onClick={() => applyUpdate({ underline: !config[activeKey]?.underline })} className={`h-6 w-6 flex items-center justify-center rounded transition-colors ${config[activeKey]?.underline ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`} title="Underline"><Underline className="h-3.5 w-3.5" /></button>
+                    </div>
+                    <div className="h-4 w-px bg-border" />
+                    {/* Text align */}
+                    <div className="flex items-center gap-0.5 p-0.5 bg-muted/50 rounded-md">
+                      {([{ val: "left", icon: <AlignLeft className="h-3.5 w-3.5" />, title: "Left" }, { val: "center", icon: <AlignCenter className="h-3.5 w-3.5" />, title: "Center" }, { val: "right", icon: <AlignRight className="h-3.5 w-3.5" />, title: "Right" }] as const).map(({ val, icon, title }) => (
+                        <button key={val} onClick={() => applyUpdate({ textAlign: val })} className={`h-6 w-6 flex items-center justify-center rounded transition-colors ${config[activeKey]?.textAlign === val ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`} title={`Align ${title}`}>{icon}</button>
+                      ))}
+                    </div>
+                    <div className="h-4 w-px bg-border" />
+                    {/* Colour — preset swatches + swatch picker + hex */}
+                    <div className="flex items-center gap-1">
+                      <div className="flex gap-0.5">
+                        {["#ffffff","#000000","#374151","#dc2626","#2563eb","#16a34a","#d97706","#9333ea"].map(c => (
+                          <button key={c} onClick={() => applyUpdate({ color: c })} className="w-4 h-4 rounded-sm border border-border/60 flex-shrink-0 hover:scale-110 transition-transform" style={{ backgroundColor: c }} title={c} />
+                        ))}
+                      </div>
+                      <div className="relative w-6 h-6 rounded border border-border overflow-hidden cursor-pointer flex-shrink-0" title="Custom colour">
+                        <div className="absolute inset-0" style={{ backgroundColor: config[activeKey]?.color || "#000000" }} />
+                        <input type="color" value={config[activeKey]?.color || "#000000"} onChange={(e) => applyUpdate({ color: e.target.value })} className="absolute inset-0 opacity-0 w-full h-full cursor-pointer" />
+                      </div>
+                      <HexColorInput value={config[activeKey]?.color || "#000000"} onChange={(hex) => applyUpdate({ color: hex })} className="w-20 h-7 text-xs font-mono px-1.5 rounded border border-border bg-background" />
+                    </div>
+                    <div className="h-4 w-px bg-border" />
+                    {/* Line height */}
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-muted-foreground" title="Line height">↕</span>
+                      <input type="number" value={config[activeKey]?.lineHeight || 1.2} onChange={(e) => { const v=parseFloat(e.target.value); if(!isNaN(v)&&v>=0.5&&v<=3) applyUpdate({lineHeight:v}); }} className="w-14 h-7 text-xs text-center px-1 rounded border border-border bg-background" step={0.1} min={0.5} max={3} title="Line Height" />
+                    </div>
+                    {/* Letter spacing */}
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-muted-foreground" title="Letter spacing">↔</span>
+                      <input type="number" value={config[activeKey]?.charSpacing || 0} onChange={(e) => { const v=parseInt(e.target.value); if(!isNaN(v)&&v>=-100&&v<=500) applyUpdate({charSpacing:v}); }} className="w-14 h-7 text-xs text-center px-1 rounded border border-border bg-background" min={-100} max={500} title="Letter Spacing" />
+                    </div>
+                    <div className="h-4 w-px bg-border" />
+                    {/* Opacity */}
+                    <input type="range" min={0} max={1} step={0.05} value={config[activeKey]?.opacity ?? 1} onChange={(e) => applyUpdate({ opacity: parseFloat(e.target.value) })} className="w-16 h-4 accent-primary" title="Opacity" />
+                    <span className="text-xs w-8 tabular-nums">{Math.round((config[activeKey]?.opacity ?? 1) * 100)}%</span>
+                    {/* Name format — only shown when the name element is selected */}
+                    {isSingleText && selectedElement === "name" && (
+                      <>
+                        <div className="h-4 w-px bg-border" />
+                        <span className="text-xs text-muted-foreground shrink-0">Name</span>
+                        <select
+                          value={config["name"]?.nameFormat || "single"}
+                          onChange={(e) => updateElement("name", { nameFormat: e.target.value })}
+                          className="h-7 px-2 text-xs border border-border rounded bg-background shrink-0"
+                          title="How the speaker's name is displayed on the card"
+                        >
+                          <option value="single">Single line — Lisa Young</option>
+                          <option value="two-line">Two lines — Lisa / Young</option>
+                        </select>
+                      </>
+                    )}
+                  </div>
+                </>
+              );
+            })()}
+
+            {/* Headshot controls */}
+            {selectedElement === "headshot" && (
+              <>
+                <div className="h-6 w-px bg-border shrink-0" />
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-xs text-muted-foreground">Shape</span>
+                  {(["circle","square","vertical","horizontal","rounded","full-bleed"] as const).map((shape) => (
+                    <button key={shape} onClick={() => updateElement("headshot", shape === "full-bleed" ? { shape, x: 0, y: 0 } : { shape })} className={`h-7 px-2 text-xs rounded border capitalize ${config.headshot?.shape === shape ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-accent"}`}>{shape}</button>
+                  ))}
+                  <div className="h-4 w-px bg-border" />
+                  <input type="range" min={0} max={1} step={0.05} value={config.headshot?.opacity ?? 1} onChange={(e) => updateElement("headshot", { opacity: parseFloat(e.target.value) })} className="w-16 h-4 accent-primary" />
+                  <span className="text-xs w-8 tabular-nums">{Math.round((config.headshot?.opacity ?? 1) * 100)}%</span>
+                  <div className="h-4 w-px bg-border" />
+                  <Button onClick={() => headshotInputRef.current?.click()} variant="outline" size="sm" className="h-7 text-xs shrink-0">
+                    <Upload className="h-3 w-3 mr-1" />Test Image
+                  </Button>
+                </div>
+              </>
+            )}
+
+            {/* Logo controls */}
+            {selectedElement === "companyLogo" && (
+              <>
+                <div className="h-6 w-px bg-border shrink-0" />
+                <div className="flex items-center gap-2 shrink-0">
+                  <input type="range" min={0} max={1} step={0.05} value={config.companyLogo?.opacity ?? 1} onChange={(e) => updateElement("companyLogo", { opacity: parseFloat(e.target.value) })} className="w-16 h-4 accent-primary" />
+                  <span className="text-xs w-8 tabular-nums">{Math.round((config.companyLogo?.opacity ?? 1) * 100)}%</span>
+                  <div className="h-4 w-px bg-border" />
+                  <Button onClick={() => logoInputRef.current?.click()} variant="outline" size="sm" className="h-7 text-xs shrink-0">
+                    <Upload className="h-3 w-3 mr-1" />Test Logo
+                  </Button>
+                </div>
+              </>
+            )}
+
+            {/* Gradient Overlay Controls */}
+            {selectedElement && config[selectedElement]?.type === "gradient-overlay" && (
+              <>
+                <div className="h-6 w-px bg-border shrink-0" />
+                <div className="flex items-center gap-2 shrink-0" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+                  <span className="text-xs text-muted-foreground">Colour</span>
+                  <div className="flex items-center gap-1">
+                    <div className="relative w-6 h-6 rounded border border-border overflow-hidden cursor-pointer flex-shrink-0">
+                      <div className="absolute inset-0" style={{ backgroundColor: config[selectedElement]?.gradientColor || "#000000" }} />
+                      <input type="color" value={config[selectedElement]?.gradientColor || "#000000"} onChange={(e) => updateElement(selectedElement, { gradientColor: e.target.value })} className="absolute inset-0 opacity-0 w-full h-full cursor-pointer" />
+                    </div>
+                    <HexColorInput value={config[selectedElement]?.gradientColor || "#000000"} onChange={(hex) => updateElement(selectedElement, { gradientColor: hex })} className="w-20 h-7 text-xs font-mono px-1.5 rounded border border-border bg-background" />
+                  </div>
+                  <div className="h-4 w-px bg-border" />
+                  <span className="text-xs text-muted-foreground">Opacity</span>
+                  <input type="range" min={0} max={1} step={0.05} value={config[selectedElement]?.overlayOpacity ?? 0.90} onChange={(e) => updateElement(selectedElement, { overlayOpacity: parseFloat(e.target.value) })} className="w-16 h-4 accent-primary" />
+                  <span className="text-xs w-8 tabular-nums">{Math.round((config[selectedElement]?.overlayOpacity ?? 0.90) * 100)}%</span>
+                  <div className="h-4 w-px bg-border" />
+                  <span className="text-xs text-muted-foreground">Direction</span>
+                  {(["bottom","top","left","right"] as const).map((dir) => (
+                    <button key={dir} onClick={() => updateElement(selectedElement, { gradientDirection: dir })} className={`h-7 px-2 text-xs rounded border ${(config[selectedElement]?.gradientDirection || "bottom") === dir ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-accent"}`}>{dir.charAt(0).toUpperCase() + dir.slice(1)}</button>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* Opacity for other elements (dynamic icon-links etc.) */}
+            {selectedElement && !["name","title","company"].includes(selectedElement) && config[selectedElement]?.type !== "gradient-overlay" && config[selectedElement]?.type !== "dynamic-text" && selectedElement !== "headshot" && selectedElement !== "companyLogo" && (
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className="text-xs text-muted-foreground">Opacity</span>
+                <input type="range" min={0} max={1} step={0.05} value={config[selectedElement]?.opacity ?? 1} onChange={(e) => updateElement(selectedElement, { opacity: parseFloat(e.target.value) })} className="w-16 h-4 accent-primary" />
+                <span className="text-xs w-8 tabular-nums">{Math.round((config[selectedElement]?.opacity ?? 1) * 100)}%</span>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Main Area */}
         <div className="flex-1 flex overflow-hidden">
           {/* Left Sidebar - Elements */}
-          <div className="w-20 border-r bg-card/30 flex flex-col items-center py-4 gap-4">
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="flex flex-col items-center gap-1 p-3 rounded-lg hover:bg-accent transition-colors"
-              title="Upload Background"
-            >
-              <ImageIcon className="h-5 w-5" />
-              <span className="text-xs">Background</span>
-            </button>
+          <div className="w-36 border-r border-border/60 bg-muted/20 flex flex-col items-center pt-3 pb-4 gap-3 overflow-y-auto">
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50 w-full px-3">Elements</span>
+
+            {/* Starter Templates */}
+            <div className="w-full px-2">
+              <button
+                onClick={() => setTemplatePresetsOpen(!templatePresetsOpen)}
+                className={`w-full flex flex-col items-center gap-1 p-2 rounded-lg transition-colors ${templatePresetsOpen ? 'bg-accent' : 'hover:bg-accent'}`}
+                title="Starter Templates"
+              >
+                <Layers className="h-5 w-5" />
+                <span className="text-xs">Templates</span>
+              </button>
+              {templatePresetsOpen && (
+                <div className="mt-1 rounded-lg border border-border bg-card p-1">
+                  {STARTER_PRESETS.map((preset) => (
+                    <button
+                      key={preset.name}
+                      onClick={preset.apply}
+                      className="w-full text-left px-2 py-2 rounded hover:bg-accent text-xs mb-0.5"
+                    >
+                      <div className="font-medium">{preset.name}</div>
+                      <div className="text-muted-foreground">{preset.description}</div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Background — colour + image, unified inline panel */}
+            <div className="w-full px-2">
+              <button
+                onClick={() => setBgPanelOpen(!bgPanelOpen)}
+                className={`w-full flex flex-col items-center gap-1 p-2 rounded-lg transition-colors ${bgPanelOpen ? 'bg-accent' : 'hover:bg-accent'}`}
+                title="Background colour or image"
+              >
+                <div className="relative">
+                  <ImageIcon className="h-5 w-5" />
+                  <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-sm border border-border/80 shadow-sm" style={{ backgroundColor: bgColor }} />
+                </div>
+                <span className="text-xs">Canvas</span>
+              </button>
+
+              {bgPanelOpen && (
+                <div className="mt-1 rounded-lg border border-border bg-card p-2 space-y-2">
+                  {/* Canvas size */}
+                  <div>
+                    <div className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Size</div>
+                    <select
+                      value={["600x600","1200x628","900x1200","1584x396"].includes(`${canvasWidth}x${canvasHeight}`) ? `${canvasWidth}x${canvasHeight}` : "custom"}
+                      onChange={(e) => {
+                        if (e.target.value === "custom") return;
+                        const [w, h] = e.target.value.split('x').map(Number);
+                        setCanvasWidth(w); setCanvasHeight(h);
+                        setHasUnsavedChanges(true);
+                        if (fabricCanvasRef.current) { fabricCanvasRef.current.setDimensions({ width: w, height: h }); fabricCanvasRef.current.renderAll(); }
+                      }}
+                      className="w-full h-7 px-2 text-xs border border-border rounded bg-background"
+                    >
+                      <option value="600x600">Square (600×600)</option>
+                      <option value="1200x628">Landscape (1200×628)</option>
+                      <option value="900x1200">Portrait (900×1200)</option>
+                      <option value="1584x396">Banner (1584×396)</option>
+                      <option value="custom" disabled>Custom: {canvasWidth}×{canvasHeight}</option>
+                    </select>
+                  </div>
+
+                  {/* Colour swatches */}
+                  <div>
+                    <div className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Colour</div>
+                    <div className="flex flex-wrap gap-1 mb-1.5">
+                      {["#ffffff","#000000","#1e293b","#0f172a","#1d4ed8","#dc2626","#16a34a","#d97706","#7c3aed","#db2777","#0891b2","#374151"].map(c => (
+                        <button
+                          key={c}
+                          onClick={() => { setBgColor(c); setHasUnsavedChanges(true); }}
+                          className={`w-5 h-5 rounded border-2 transition-transform hover:scale-110 ${bgColor === c ? 'border-primary' : 'border-border/60'}`}
+                          style={{ backgroundColor: c }}
+                          title={c}
+                        />
+                      ))}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <div className="relative w-6 h-6 rounded border border-border overflow-hidden cursor-pointer flex-shrink-0">
+                        <div className="absolute inset-0" style={{ backgroundColor: bgColor }} />
+                        <input type="color" value={bgColor} onChange={(e) => { setBgColor(e.target.value); setHasUnsavedChanges(true); }} className="absolute inset-0 opacity-0 w-full h-full cursor-pointer" />
+                      </div>
+                      <HexColorInput value={bgColor} onChange={(hex) => { setBgColor(hex); setHasUnsavedChanges(true); }} className="flex-1 h-6 text-xs font-mono px-1 rounded border border-border bg-background min-w-0" />
+                    </div>
+                  </div>
+
+                  {/* Image upload */}
+                  <div>
+                    <div className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Background</div>
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className={`w-full flex items-center gap-1.5 px-2 py-1.5 rounded border text-xs transition-colors ${templateUrl ? 'border-primary/40 bg-primary/5 text-primary' : 'border-border hover:bg-accent'}`}
+                    >
+                      <Upload className="h-3 w-3 shrink-0" />
+                      <span className="truncate">{templateUrl ? "Replace" : "Upload"}</span>
+                    </button>
+                    {templateUrl && (
+                      <button onClick={() => { setTemplateUrl(null); setHasUnsavedChanges(true); }} className="w-full text-[10px] text-muted-foreground hover:text-destructive text-left mt-1">✕ Remove image</button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
             <input ref={fileInputRef} type="file" accept="image/png,image/jpeg" onChange={handleBackgroundUpload} className="hidden" />
 
             <div className="h-px w-12 bg-border" />
 
             {shouldShowElement("headshot") && (
-              <div className="relative">
+              <div className="relative w-full px-2">
                 <button
                   draggable
                   onDragStart={(e) => handleDragStart(e, "headshot")}
-                  onClick={() => setShapePopupOpen(!shapePopupOpen)}
-                  className={`flex flex-col items-center gap-1 p-3 rounded-lg transition-colors cursor-move ${
+                  onClick={(e) => {
+                    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                    setShapePopupPosition({ x: rect.right + 8, y: rect.top });
+                    setShapePopupOpen(!shapePopupOpen);
+                  }}
+                  className={`w-full flex flex-col items-center gap-1 p-2 rounded-lg transition-colors cursor-move ${
                     config.headshot ? 'bg-primary/10 border-2 border-primary/30' : 'hover:bg-accent'
                   }`}
                   title="Drag to canvas or click for options"
+                  data-popover="true"
                 >
                   <Users className={`h-5 w-5 ${config.headshot ? 'text-primary' : ''}`} />
                   <span className={`text-xs ${config.headshot ? 'text-primary font-semibold' : ''}`}>Headshot</span>
@@ -2471,6 +3213,7 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
                 <div
                   className="fixed bg-card border border-border rounded-lg shadow-xl p-2 z-50 w-36"
                   style={{ left: shapePopupPosition.x, top: shapePopupPosition.y }}
+                  data-popover="true"
                 >
                   <div className="text-xs font-semibold mb-2 px-1">Select Shape</div>
                   <button
@@ -2517,6 +3260,28 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
                     <div className="w-4 h-3 rounded bg-muted border border-border"></div>
                     Horizontal
                   </button>
+                  <button
+                    onClick={() => {
+                      const dropPos = (window as any).__headshotDropPos;
+                      addElementToCanvas("headshot", dropPos, { shape: "rounded" });
+                      setShapePopupOpen(false);
+                    }}
+                    className="w-full text-left px-2 py-1.5 text-xs rounded hover:bg-accent flex items-center gap-2"
+                  >
+                    <div className="w-4 h-4 rounded-xl bg-muted border border-border"></div>
+                    Rounded
+                  </button>
+                  <button
+                    onClick={() => {
+                      const dropPos = (window as any).__headshotDropPos;
+                      addElementToCanvas("headshot", dropPos, { shape: "full-bleed", x: 0, y: 0 });
+                      setShapePopupOpen(false);
+                    }}
+                    className="w-full text-left px-2 py-1.5 text-xs rounded hover:bg-accent flex items-center gap-2"
+                  >
+                    <div className="w-4 h-3 bg-muted border border-border"></div>
+                    Full Bleed
+                  </button>
                 </div>
               )}
               </div>
@@ -2527,7 +3292,7 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
                 draggable
                 onDragStart={(e) => handleDragStart(e, "name")}
                 onClick={() => toggleElement("name")}
-                className={`flex flex-col items-center gap-1 p-3 rounded-lg transition-colors cursor-move ${
+                className={`w-full flex flex-col items-center gap-1 p-2 rounded-lg transition-colors cursor-move ${
                   config.name ? 'bg-primary/10 border-2 border-primary/30' : 'hover:bg-accent'
                 }`}
                 title={config.name ? "Click to remove" : "Drag to canvas or click to add"}
@@ -2542,7 +3307,7 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
                 draggable
                 onDragStart={(e) => handleDragStart(e, "title")}
                 onClick={() => toggleElement("title")}
-                className={`flex flex-col items-center gap-1 p-3 rounded-lg transition-colors cursor-move ${
+                className={`w-full flex flex-col items-center gap-1 p-2 rounded-lg transition-colors cursor-move ${
                   config.title ? 'bg-primary/10 border-2 border-primary/30' : 'hover:bg-accent'
                 }`}
                 title={config.title ? "Click to remove" : "Drag to canvas or click to add"}
@@ -2557,7 +3322,7 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
                 draggable
                 onDragStart={(e) => handleDragStart(e, "company")}
                 onClick={() => toggleElement("company")}
-                className={`flex flex-col items-center gap-1 p-3 rounded-lg transition-colors cursor-move ${
+                className={`w-full flex flex-col items-center gap-1 p-2 rounded-lg transition-colors cursor-move ${
                   config.company ? 'bg-primary/10 border-2 border-primary/30' : 'hover:bg-accent'
                 }`}
                 title={config.company ? "Click to remove" : "Drag to canvas or click to add"}
@@ -2572,7 +3337,7 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
                 draggable
                 onDragStart={(e) => handleDragStart(e, "companyLogo")}
                 onClick={() => toggleElement("companyLogo")}
-                className={`flex flex-col items-center gap-1 p-3 rounded-lg transition-colors cursor-move ${
+                className={`w-full flex flex-col items-center gap-1 p-2 rounded-lg transition-colors cursor-move ${
                   config.companyLogo ? 'bg-primary/10 border-2 border-primary/30' : 'hover:bg-accent'
                 }`}
                 title={config.companyLogo ? "Click to remove" : "Drag to canvas or click to add"}
@@ -2581,6 +3346,36 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
                 <span className={`text-xs ${config.companyLogo ? 'text-primary font-semibold' : ''}`}>Logo</span>
               </button>
             )}
+
+            <div className="h-px w-12 bg-border" />
+
+            <button
+              onClick={() => {
+                const newKey = `gradientOverlay_${Date.now()}`;
+                setConfig(prev => {
+                  const maxZ = Math.max(0, ...Object.values(prev).map(c => c.zIndex || 0));
+                  const next = {
+                    ...prev,
+                    [newKey]: {
+                      ...ELEMENT_TEMPLATES.gradientOverlay,
+                      x: 0, y: Math.round(canvasHeight / 2),
+                      width: canvasWidth, height: Math.round(canvasHeight / 2),
+                      gradientDirection: "bottom" as const,
+                      overlayOpacity: 0.90,
+                      zIndex: maxZ + 1,
+                    },
+                  };
+                  addToHistory(next);
+                  return next;
+                });
+                setHasUnsavedChanges(true);
+              }}
+              className="w-full flex flex-col items-center gap-1 p-2 rounded-lg transition-colors hover:bg-accent"
+              title="Add a gradient overlay (can add multiple)"
+            >
+              <Square className="h-5 w-5" />
+              <span className="text-xs">+ Overlay</span>
+            </button>
 
             {/* Dynamic fields from form builder */}
             {cardBuilderFields.length > 0 && (
@@ -2612,14 +3407,14 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
                           addElementToCanvas(fieldKey, undefined, template);
                         }
                       }}
-                      className={`flex flex-col items-center gap-1 p-3 rounded-lg transition-colors cursor-move ${
+                      className={`w-full flex flex-col items-center gap-1 p-2 rounded-lg transition-colors cursor-move ${
                         isActive ? 'bg-primary/10 border-2 border-primary/30' : 'hover:bg-accent'
                       }`}
                       title={isActive ? "Click to remove" : `Drag ${field.label} to canvas or click to add`}
                     >
                       <Icon className={`h-5 w-5 ${isActive ? 'text-primary' : ''}`} />
-                      <span className={`text-xs ${isActive ? 'text-primary font-semibold' : ''}`}>
-                        {field.label.length > 8 ? field.label.substring(0, 7) + '...' : field.label}
+                      <span className={`text-xs line-clamp-1 w-full text-center ${isActive ? 'text-primary font-semibold' : ''}`}>
+                        {field.label}
                       </span>
                     </button>
                   );
@@ -2634,41 +3429,51 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
             className="flex-1 flex items-center justify-center bg-muted/10 p-8 relative overflow-auto"
             onDragOver={handleDragOver}
             onDrop={handleDrop}
+            onClick={(e) => {
+              // Deselect when clicking the grey area outside the card (not the canvas itself)
+              if (e.target === e.currentTarget) {
+                const canvas = fabricCanvasRef.current;
+                if (canvas) { canvas.discardActiveObject(); canvas.renderAll(); }
+                setSelectedElement(null);
+                setMultiSelectActive(false);
+                setMultiSelectedKeys([]);
+              }
+            }}
+            onContextMenu={(e) => {
+              // Handler lives here (outside shadow DOM) so preventDefault() reliably suppresses
+              // the browser's native context menu, which shadow DOM events cannot guarantee.
+              e.preventDefault();
+              const canvas = fabricCanvasRef.current;
+              if (!canvas) return;
+              const target = canvas.findTarget(e.nativeEvent as any, false);
+              if (target?.data?.elementKey) {
+                canvas.setActiveObject(target);
+                canvas.renderAll();
+                setSelectedElement(target.data.elementKey);
+                setContextMenu({ x: e.clientX, y: e.clientY, elementKey: target.data.elementKey });
+              } else {
+                setContextMenu(null);
+              }
+            }}
           >
-            {/* Floating Zoom Controls - always visible */}
-            <div className="absolute bottom-4 right-4 flex items-center gap-1 bg-card border border-border rounded-lg shadow-lg p-1.5 z-10">
-              <button
-                onClick={handleZoomOut}
-                disabled={zoom <= 0.1}
-                className="p-1.5 rounded hover:bg-accent disabled:opacity-30"
-                title="Zoom Out"
-              >
-                <ZoomOut className="h-4 w-4" />
-              </button>
-              <span className="text-sm font-medium min-w-[3.5rem] text-center px-2">{(zoom * 100).toFixed(0)}%</span>
-              <button
-                onClick={handleZoomIn}
-                disabled={zoom >= 3}
-                className="p-1.5 rounded hover:bg-accent disabled:opacity-30"
-                title="Zoom In"
-              >
-                <ZoomIn className="h-4 w-4" />
-              </button>
-              <button
-                onClick={handleZoomFit}
-                className="p-1.5 rounded hover:bg-accent"
-                title="Fit to View"
-              >
-                <Maximize2 className="h-4 w-4" />
-              </button>
-            </div>
+            {/* Empty state overlay */}
+            {Object.keys(config).length === 0 && !templateUrl && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-10">
+                <div className="bg-card/90 border border-border rounded-xl p-6 text-center shadow-lg max-w-xs">
+                  <ImageIcon className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-sm font-medium mb-1">Start designing</p>
+                  <p className="text-xs text-muted-foreground">Upload a background image or pick a BG colour,<br />then drag elements from the left panel onto the card.</p>
+                </div>
+              </div>
+            )}
+
 
             <ShadowContainer
               className="border-2 border-border rounded-lg shadow-lg overflow-hidden"
               injectStyles={`@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Roboto:wght@300;400;500;600;700;800&family=Open+Sans:wght@300;400;500;600;700;800&family=Lato:wght@300;400;500;600;700;800&family=Montserrat:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&family=Raleway:wght@300;400;500;600;700;800&family=Noto+Sans:wght@300;400;500;600;700;800&family=Source+Sans+Pro:wght@300;400;500;600;700;800&family=Merriweather:wght@300;400;500;600;700;800&family=Playfair+Display:wght@300;400;500;600;700;800&family=Nunito:wght@300;400;500;600;700;800&family=Ubuntu:wght@300;400;500;600;700;800&family=PT+Sans:wght@300;400;500;600;700;800&family=Karla:wght@300;400;500;600;700;800&family=Oswald:wght@300;400;500;600;700;800&family=Fira+Sans:wght@300;400;500;600;700;800&family=Work+Sans:wght@300;400;500;600;700;800&family=Inconsolata:wght@300;400;500;600;700;800&family=Josefin+Sans:wght@300;400;500;600;700;800&family=Alegreya:wght@300;400;500;600;700;800&family=Cabin:wght@300;400;500;600;700;800&family=Titillium+Web:wght@300;400;500;600;700;800&family=Mulish:wght@300;400;500;600;700;800&family=Quicksand:wght@300;400;500;600;700;800&family=Anton:wght@300;400;500;600;700;800&family=Droid+Sans:wght@300;400;500;600;700;800&family=Archivo:wght@300;400;500;600;700;800&family=Hind:wght@300;400;500;600;700;800&family=Bitter:wght@300;400;500;600;700;800&family=Libre+Franklin:wght@300;400;500;600;700;800&display=swap'); :host{all:initial;display:block;font-family:Inter, Roboto, 'Open Sans', Lato, Montserrat, Poppins, Raleway, 'Noto Sans', 'Source Sans Pro', 'Merriweather', 'Playfair Display', Nunito, Ubuntu, 'PT Sans', Karla, Oswald, 'Fira Sans', 'Work Sans', Inconsolata, 'Josefin Sans', Alegreya, Cabin, 'Titillium Web', Mulish, Quicksand, Anton, 'Droid Sans', Archivo, Hind, Bitter, 'Libre Franklin', sans-serif;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;} *{box-sizing:border-box;} canvas{display:block;}
               .card-root{background-color:#f5f5f5;}`} 
             >
-              <div className="card-root" style={{ width: canvasWidth, height: canvasHeight }}>
+              <div className="card-root" style={{ width: canvasWidth * zoom, height: canvasHeight * zoom }}>
                 <canvas ref={canvasRef} style={{ display: "block" }} />
               </div>
             </ShadowContainer>
@@ -2676,19 +3481,7 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
           </div>
 
           {/* Right Sidebar - Test Images */}
-          {/*
-            DEVELOPER NOTE (MVP): Test image uploads temporarily disabled for MVP.
-            Gray placeholder boxes will be used for card design instead.
-
-            Issue: Drop zone sizing and test image scaling need further refinement.
-            When re-enabling, ensure:
-            1. Gray placeholder fills entire selection box
-            2. Test images match resized drop zone dimensions
-            3. Scale compound logic works correctly on resize
-
-            To re-enable: Uncomment the div below and test thoroughly.
-          */}
-          {/* <div className="w-64 border-l bg-card/30 p-4 space-y-4">
+          <div className="w-56 border-l bg-card/30 p-4 overflow-y-auto space-y-4">
             <div>
               <h3 className="text-sm font-semibold mb-2">Test Images</h3>
               <p className="text-xs text-muted-foreground mb-3">Preview only (not saved)</p>
@@ -2734,9 +3527,95 @@ export default function CardBuilder({ eventId, fullscreen = false }: CardBuilder
                 </div>
               )}
             </div>
-          </div> */}
+          </div>
         </div>
       </div>
+
+      {/* Right-click context menu */}
+      {contextMenu && (() => {
+        const menuW = 200, menuH = 340;
+        const x = contextMenu.x + menuW > window.innerWidth  ? contextMenu.x - menuW : contextMenu.x;
+        const y = contextMenu.y + menuH > window.innerHeight ? contextMenu.y - menuH : contextMenu.y;
+        return (
+        <div
+          className="fixed z-[9999] bg-card border border-border rounded-lg shadow-xl py-1 min-w-[180px] text-sm"
+          style={{ left: Math.max(4, x), top: Math.max(4, y) }}
+          onMouseLeave={() => setContextMenu(null)}
+        >
+          {/* Text style shortcuts */}
+          {(["name","title","company"].includes(contextMenu.elementKey) || config[contextMenu.elementKey]?.type === "dynamic-text") && (
+            <>
+              <div className="px-3 py-1 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Text</div>
+              <button className="w-full text-left px-3 py-1.5 hover:bg-accent flex items-center gap-2" onClick={() => { updateElement(contextMenu.elementKey, { fontWeight: config[contextMenu.elementKey]?.fontWeight === 700 ? 400 : 700 }); setContextMenu(null); }}>
+                <Bold className="h-3.5 w-3.5" />{config[contextMenu.elementKey]?.fontWeight === 700 ? "Remove Bold" : "Bold"}
+              </button>
+              <button className="w-full text-left px-3 py-1.5 hover:bg-accent flex items-center gap-2" onClick={() => { updateElement(contextMenu.elementKey, { fontStyle: config[contextMenu.elementKey]?.fontStyle === "italic" ? "normal" : "italic" }); setContextMenu(null); }}>
+                <Italic className="h-3.5 w-3.5" />{config[contextMenu.elementKey]?.fontStyle === "italic" ? "Remove Italic" : "Italic"}
+              </button>
+              <button className="w-full text-left px-3 py-1.5 hover:bg-accent flex items-center gap-2" onClick={() => { updateElement(contextMenu.elementKey, { underline: !config[contextMenu.elementKey]?.underline }); setContextMenu(null); }}>
+                <Underline className="h-3.5 w-3.5" />{config[contextMenu.elementKey]?.underline ? "Remove Underline" : "Underline"}
+              </button>
+              <div className="border-t border-border my-1" />
+            </>
+          )}
+
+          {/* Upload shortcuts */}
+          {contextMenu.elementKey === "headshot" && (
+            <>
+              <button className="w-full text-left px-3 py-1.5 hover:bg-accent flex items-center gap-2" onClick={() => { headshotInputRef.current?.click(); setContextMenu(null); }}>
+                <Upload className="h-3.5 w-3.5" />Upload Test Image
+              </button>
+              <div className="border-t border-border my-1" />
+            </>
+          )}
+          {contextMenu.elementKey === "companyLogo" && (
+            <>
+              <button className="w-full text-left px-3 py-1.5 hover:bg-accent flex items-center gap-2" onClick={() => { logoInputRef.current?.click(); setContextMenu(null); }}>
+                <Upload className="h-3.5 w-3.5" />Upload Test Logo
+              </button>
+              <div className="border-t border-border my-1" />
+            </>
+          )}
+
+          {/* Arrange */}
+          <div className="px-3 py-1 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Arrange</div>
+          {!FIXED_KEYS.includes(contextMenu.elementKey) && (
+            <button className="w-full text-left px-3 py-1.5 hover:bg-accent flex items-center gap-2" onClick={() => { duplicateElement(contextMenu.elementKey); setContextMenu(null); }}>
+              <Copy className="h-3.5 w-3.5" />Duplicate <span className="ml-auto text-xs text-muted-foreground">Ctrl+D</span>
+            </button>
+          )}
+          <button className="w-full text-left px-3 py-1.5 hover:bg-accent flex items-center gap-2" onClick={() => { bringToFront(contextMenu.elementKey); setContextMenu(null); }}>
+            <ChevronsUp className="h-3.5 w-3.5" />Bring to Front
+          </button>
+          <button className="w-full text-left px-3 py-1.5 hover:bg-accent flex items-center gap-2" onClick={() => { bringForward(contextMenu.elementKey); setContextMenu(null); }}>
+            <BringForward className="h-3.5 w-3.5" />Bring Forward
+          </button>
+          <button className="w-full text-left px-3 py-1.5 hover:bg-accent flex items-center gap-2" onClick={() => { sendBackward(contextMenu.elementKey); setContextMenu(null); }}>
+            <SendBackward className="h-3.5 w-3.5" />Send Backward
+          </button>
+          <button className="w-full text-left px-3 py-1.5 hover:bg-accent flex items-center gap-2" onClick={() => { sendToBack(contextMenu.elementKey); setContextMenu(null); }}>
+            <ChevronsDown className="h-3.5 w-3.5" />Send to Back
+          </button>
+          <div className="border-t border-border my-1" />
+
+          {/* Visibility & lock */}
+          <button className="w-full text-left px-3 py-1.5 hover:bg-accent flex items-center gap-2" onClick={() => { updateElement(contextMenu.elementKey, { visible: !config[contextMenu.elementKey]?.visible }); setContextMenu(null); }}>
+            {config[contextMenu.elementKey]?.visible !== false ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+            {config[contextMenu.elementKey]?.visible !== false ? "Hide" : "Show"}
+          </button>
+          <button className="w-full text-left px-3 py-1.5 hover:bg-accent flex items-center gap-2" onClick={() => { toggleLock(contextMenu.elementKey); setContextMenu(null); }}>
+            {config[contextMenu.elementKey]?.locked ? <Unlock className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
+            {config[contextMenu.elementKey]?.locked ? "Unlock" : "Lock"}
+          </button>
+          <div className="border-t border-border my-1" />
+
+          {/* Delete */}
+          <button className="w-full text-left px-3 py-1.5 hover:bg-accent text-destructive flex items-center gap-2" onClick={() => { setConfig(prev => { const n = { ...prev }; delete n[contextMenu.elementKey]; return n; }); setSelectedElement(null); setContextMenu(null); }}>
+            <X className="h-3.5 w-3.5" />Delete <span className="ml-auto text-xs text-muted-foreground">Del</span>
+          </button>
+        </div>
+        );
+      })()}
     </>
   );
 }
