@@ -132,8 +132,13 @@ export default function SpeakerPortal() {
         setUploadingLogo(true);
       }
 
-      // Convert blob to file
-      const file = new File([croppedBlob], `${cropType}.jpg`, { type: "image/jpeg" });
+      // Convert blob to file and preserve original mime/extension when possible
+      const mime = (croppedBlob as Blob & { type?: string }).type || "image/jpeg";
+      console.log("Cropped image mime type:", mime);
+      const rawExt = mime.includes("/") ? mime.split("/")[1] : "jpeg";
+      const ext = rawExt.split("+")[0] === "jpeg" ? "jpg" : rawExt.split("+")[0];
+      const fileName = `${cropType}.${ext}`;
+      const file = new File([croppedBlob], fileName, { type: mime });
       const res = await uploadFile(file, undefined, speakerId, id);
       const url = res?.public_url ?? res?.publicUrl ?? res?.url ?? null;
       if (!url) throw new Error("Upload did not return a file url");

@@ -8,7 +8,7 @@ import SpeakersTable from "@/components/organizer/SpeakersTable";
 import SpeakersControls from "@/components/organizer/SpeakersControls";
 import EmbedBuilder from "@/components/organizer/EmbedBuilder";
 import FormsTab from "@/components/organizer/FormsTab";
-import CardBuilder from "@/components/CardBuilder_SPX";
+import CardBuilder from "@/components/CardBuilder";
 
 export default function SpeakerModule() {
   const { id } = useParams();

@@ -267,8 +267,12 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
     try {
       const isHeadshot = cropType === "headshot";
       
-      // Convert blob to file
-      const file = new File([croppedBlob], `${cropType}.jpg`, { type: "image/jpeg" });
+      // Convert blob to file and preserve original mime/extension when possible
+      const mime = (croppedBlob as Blob & { type?: string }).type || "image/jpeg";
+      const rawExt = mime.includes("/") ? mime.split("/")[1] : "jpeg";
+      const ext = rawExt.split("+")[0] === "jpeg" ? "jpg" : rawExt.split("+")[0];
+      const fileName = `${cropType}.${ext}`;
+      const file = new File([croppedBlob], fileName, { type: mime });
       
       if (isHeadshot) {
         setHeadshot(file);

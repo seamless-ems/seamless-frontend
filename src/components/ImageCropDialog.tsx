@@ -102,17 +102,24 @@ export function ImageCropDialog({
       return;
     }
 
+    // Infer output MIME from provided `imageFormat` or from the source `imageUrl` (data URL includes MIME).
+    const inferMimeFromDataUrl = (src: string | undefined): string | null => {
+      if (!src) return null;
+      const m = src.match(/^data:([^;]+);/i);
+      return m ? m[1] : null;
+    };
+
+    const inferredMime = inferMimeFromDataUrl(imageUrl) || (imageFormat === "png" ? "image/png" : "image/jpeg");
+
     canvas.toBlob(
-        (blob: Blob | null) => {
+      (blob: Blob | null) => {
         if (blob) {
           onCropComplete(blob);
           onOpenChange(false);
-        } else {
-          
         }
       },
-      imageFormat === "png" ? "image/png" : "image/jpeg",
-      imageFormat === "png" ? undefined : imageQuality
+      inferredMime,
+      inferredMime === "image/jpeg" ? imageQuality : undefined
     );
   };
 
