@@ -1225,10 +1225,7 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
           fontSize: cfg.fontSize,
           fontFamily: cfg.fontFamily,
           fill: cfg.color,
-          // Hairline stroke compensates for canvas grayscale antialiasing — makes text
-          // appear the same visual weight as CSS/Canva subpixel-antialiased text.
-          stroke: cfg.color,
-          strokeWidth: Math.max(0.2, (cfg.fontSize || 16) * 0.015),
+          // No stroke: remove hairline stroke that alters text rendering
           paintFirst: "fill" as any,
           fontWeight: cfg.fontWeight,
           fontStyle: cfg.fontStyle || "normal",
@@ -1343,9 +1340,9 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
             fontSize: cfg.fontSize,
             fontFamily: cfg.fontFamily,
             fill: cfg.color,
-            // Hairline stroke — same fix as name/title/company
-            stroke: cfg.color,
-            strokeWidth: Math.max(0.2, (cfg.fontSize || 16) * 0.015),
+            // No stroke: remove hairline stroke that alters text rendering
+            // @CLAUDE please do not add stroke to text as we need to make sure
+            // that the backend and the frontend look the same
             paintFirst: "fill" as any,
             fontWeight: cfg.fontWeight,
             textAlign: cfg.textAlign,
