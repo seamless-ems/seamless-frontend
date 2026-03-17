@@ -1,0 +1,53 @@
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+    body, .speaker-card {
+        font-family: 'Montserrat', sans-serif;
+    }
+
+    .speaker-card:hover {
+        transform: translateY(-5px);
+        transition: transform 0.2s;
+    }
+</style>
+<div style="display: grid; grid-template-columns: repeat(1, 1fr); gap: 30px; padding: 20px; justify-items: center;">
+    <div style="width: 600px; height: 600px; position: relative; background-image: url('http://localhost:8080/uploads/proxy/events/a0ee5bd1-2beb-4ac5-8463-9ece7a44a8c5/template-1773655976495.png'); background-size: cover; overflow: hidden; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.15);" class="speaker-card embed-speaker-name" data-index="0">
+        <img src="http://localhost:8080/uploads/proxy/speakers/b81afabc-5d38-4996-9934-dd21ba84eeeb/headshot.jpg" style="position:absolute; left:0.00000px; top:0.00000px; z-index:1; opacity:1.0; width:600.00000px; height:600.00000px; object-fit: contain; object-position: center; background-color: transparent; ">
+        <div style="position:absolute; left:0.00000px; top:300.00000px; z-index:3; width:600.00000px; height:300.00000px; pointer-events:none; background: linear-gradient(to bottom, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.92));"></div>
+        <img src="http://localhost:8080/uploads/proxy/events/b81afabc-5d38-4996-9934-dd21ba84eeeb/logo.png" style="position:absolute; left:471.00000px; top:44.00000px; z-index:6; opacity:1.0; width:85.00000px; height:60.00000px; object-fit: contain; object-position: center; background-color: transparent; ">
+        <div style="position:absolute; left:30.00000px; top:476.90000px; color:#ffffff; font-family:'Montserrat', sans-serif; font-size:20px; font-weight:500; text-align:left; z-index:8; opacity:1.0; width:533px; white-space: normal; word-wrap: break-word; overflow-wrap: break-word; overflow: hidden;">Vice President of Corporate Partnerships</div>
+        <div style="position:absolute; left:30.00000px; top:431.92000px; color:#ffffff; font-family:'Montserrat', sans-serif; font-size:32px; font-weight:700; text-align:left; z-index:10; opacity:1.0; width:300px; white-space: normal; word-wrap: break-word; overflow-wrap: break-word; overflow: hidden;">Lisa Young</div>
+        <div style="position:absolute; left:30.00000px; top:512.50000px; color:#ffffff; font-family:'Montserrat', sans-serif; font-size:18px; font-weight:400; text-align:left; z-index:12; opacity:1.0; width:300px; white-space: normal; word-wrap: break-word; overflow-wrap: break-word; overflow: hidden;">Seattle Seahawks</div>
+    </div>
+</div>
+<div id="bioModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background-color:rgba(0,0,0,0.5); z-index:9999999;">
+    <div style="background-color:#fff; margin:10% auto; padding:20px; width:50%; position:relative; z-index:10000000;">
+        <span id="closeModal" style="position:absolute; top:10px; right:20px; cursor:pointer; z-index:10000001;">&times;</span>
+        <div id="modalContent"></div>
+    </div>
+</div>
+<script>
+    const modal = document.getElementById('bioModal');
+    const modalContent = document.getElementById('modalContent');
+    const closeModal = document.getElementById('closeModal');
+    closeModal.onclick = function() {
+        modal.style.display = 'none';
+    }
+    window.onclick = function(event) {
+        if (event.target == modal) {
+            modal.style.display = 'none';
+        }
+    }
+    const speakersData = [];
+    const speakerElements = document.querySelectorAll('.embed-speaker-name');
+    speakerElements.forEach( (el) => {
+        const index = parseInt(el.getAttribute('data-index'), 10);
+        el.onclick = function() {
+            const s = speakersData[index];
+            modalContent.innerHTML = `<h2>${s.first_name} ${s.last_name}</h2><p>${s.bio}</p>`;
+            modal.style.display = 'block';
+        }
+    }
+    );
+</script>

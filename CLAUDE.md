@@ -13,6 +13,7 @@ How to onboard quickly
 3. Check `API_GAPS.md` for missing backend fields/endpoints before coding.
 
 Working rules (short)
+- For the CardBuilder, we render raw html based on the config that the CardBuilder.tsx sends to the backend. Please do not add any frontend-only styling (e.g., hairline text stroke) that is not also implemented in the backend rendering logic. The frontend and backend must look identical, so any visual changes must be made in both places. For an example of the raw html rendering, see `example-speaker-website-card.html`. The corresponding config json used to create that card is in `corresponding-config-speaker-website-card.json`.
 - Frontend-only: do not propose or commit backend changes. If a backend change is required, document it in `API_GAPS.md` and ask the user.
 - Use mock data only with explicit approval; mark mocks with `// TODO: Replace with API data`.
 - Keep changes incremental: one small task per branch and preserve existing behavior.
