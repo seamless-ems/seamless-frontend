@@ -32,10 +32,12 @@ Working rules (short)
 - Commit policy: the user will explicitly instruct when to commit or push. Do not create commits or push changes without explicit permission.
 
 Current priority
-- To be defined at the start of each session with the user.
+- **Promo Card Templates** — build a template/onboarding flow for the promo card builder, mirroring the website card builder pattern but with promo-appropriate layouts.
 
 Immediate next steps
-- To be defined at the start of each session with the user.
+1. Design and implement `PROMO_PRESETS` (equivalent of `SQUARE_PRESETS` etc.) with layouts suited to promo cards (social media formats: square 1:1, landscape 16:9, story 9:16).
+2. Add a promo-specific onboarding flow gated behind `cardType === 'promo'` — separate state, separate localStorage key, separate modal steps.
+3. Ensure no website template logic bleeds into promo and vice versa (see Card Builder — website vs promo split below).
 
 **Known Issues:**
 - **Custom fields:** Backend strips underscores from custom field keys (e.g., `custom_123` becomes `custom123`). Frontend handles this with fallback logic in field lookups.
@@ -56,6 +58,24 @@ The website card builder URL (`/organizer/event/:id/website-card-builder`) is ha
 - `src/pages/organizer/SpeakerModule.tsx` → imports `CardBuilder` ← this is the one that matters
 - `src/pages/organizer/WebsiteCardBuilderPage.tsx` → imports `CardBuilder` (secondary, kept in sync)
 - `src/pages/organizer/PromoCardBuilderPage.tsx` → imports `CardBuilder`
+
+## ⚠️ Card Builder — Website vs Promo split — READ THIS
+
+The CardBuilder component (`src/components/CardBuilder.tsx`) serves both card types via the `cardType` prop (`"website" | "promo"`). They share the same canvas engine but have completely separate template/onboarding systems.
+
+**Website card builder — template system (DONE)**
+- 9 starter templates: 3 shapes (Square 600×600, Landscape 900×600, Portrait 600×900) × 3 layouts (Overlay, Split/Side-by-side, Spotlight/Brand-forward)
+- 4-step onboarding modal: (1) blank vs template, (2) shape picker, (3) template picker, (4) Quick Setup (colour, font, gradient)
+- All gated behind `cardType === 'website'` — toolbar Templates button, sidebar Templates button, empty canvas copy, onboarding modal, post-template tip modal
+- localStorage key: `seamless-card-builder-onboarding-website-v1`
+- Post-template tip localStorage key: `seamless-card-builder-template-tip-v1`
+- Preset arrays: `SQUARE_PRESETS`, `LANDSCAPE_PRESETS`, `PORTRAIT_PRESETS` (inside component, above canvas useEffect)
+
+**Promo card builder — template system (TODO)**
+- No templates yet — promo card builder opens to a blank canvas
+- Next session: implement `PROMO_PRESETS` with social media formats
+- Must use its own state variables, localStorage keys (`seamless-card-builder-onboarding-promo-v1`), and be gated behind `cardType === 'promo'`
+- Do NOT reuse or modify the website preset arrays
 
 **CardBuilder — key non-obvious behaviours:**
 - Canvas sidebar popovers (Templates, Canvas/Background) expand **inline** — do NOT change back to floating `absolute left-full` popovers, they get clipped by `overflow-y-auto` on the sidebar

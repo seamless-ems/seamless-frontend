@@ -1,0 +1,43 @@
+FONT RENDERING — CARD BUILDER NOTES FOR BACKEND TEAM
+=====================================================
+
+ISSUE: Font weights in the frontend card builder are not matching backend-rendered output.
+
+HOW THE FRONTEND HANDLES FONTS
+--------------------------------
+- 31 Google Font families are loaded at page load (index.html), each with weights 300–800.
+- Canvas (Fabric.js) waits for document.fonts.ready before rendering to avoid fallback fonts.
+- Font weight is passed as a numeric value (e.g. 700, 500, 400) directly to Fabric.js.
+
+Default weights per element:
+  Name    — Montserrat, weight 700
+  Title   — Montserrat, weight 500
+  Company — Montserrat, weight 400
+
+WHAT THE EMBED HTML CONTAINS
+------------------------------
+The generated embed HTML includes:
+  - A <link> tag to Google Fonts loading all weights (wght@300;400;500;600;700;800)
+  - Inline styles with font-family, font-size, and font-weight on each text element
+  e.g. style="font-family:'Montserrat', sans-serif; font-size:32px; font-weight:700;"
+
+LIKELY CAUSES OF MISMATCH
+---------------------------
+1. Font not loaded before render — if screenshotting with Puppeteer/headless Chrome,
+   ensure fonts are fully loaded before capture.
+   Recommended: waitUntil: 'networkidle0' or explicitly wait for font load events.
+
+2. Server-side canvas library — if using node-canvas or similar, Google Fonts are not
+   auto-loaded. Each font family must be registered locally at each weight variant
+   (e.g. Montserrat-Regular.ttf, Montserrat-Medium.ttf, Montserrat-Bold.ttf).
+   A missing weight will silently fall back to the closest available, usually 400.
+
+3. Note: the frontend canvas applies a hairline stroke to text (strokeWidth = fontSize * 0.015)
+   to compensate for canvas antialiasing. This makes canvas text appear slightly bolder
+   than the HTML embed — a minor, expected difference.
+
+SUMMARY
+--------
+The embed HTML output is correct. The fix is on the rendering side:
+ensure Google Fonts (or local equivalents) are fully loaded at the correct weights
+before the card is captured/rendered.
