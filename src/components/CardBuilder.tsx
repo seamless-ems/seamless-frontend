@@ -296,7 +296,7 @@ const ELEMENT_TEMPLATES = {
   },
   name: {
     label: "Name",
-    text: "Lisa Young",
+    text: "Victoria Bartholomew-Richardson",
     nameFormat: "single" as "single" | "two-line", // "single" = "Lisa Young", "two-line" = "Lisa\nYoung"
     x: 150,
     y: 50,
@@ -458,7 +458,11 @@ interface StarterPreset {
   thumbnailShape: "square" | "landscape" | "portrait";
   defaultBg: string;
   defaultTextColor: string;
-  apply: (bg?: string, textColor?: string, font?: string, canvasW?: number, canvasH?: number) => void;
+  canvasW: number;
+  canvasH: number;
+  // Shapes offered in Quick Setup headshot picker (first = default). Empty = no picker shown.
+  allowedHeadshotShapes: string[];
+  apply: (bg?: string, textColor?: string, font?: string, canvasW?: number, canvasH?: number, headshotShape?: string) => void;
 }
 
 // CSS div-based previews using the actual template colours so each one
@@ -503,18 +507,19 @@ function TemplateThumbnail({ type }: { type: string }) {
     case "split":
       return (
         <div className="relative w-full h-full overflow-hidden" style={{ background: TN_BG }}>
-          {/* circle headshot right zone */}
+          {/* name full-width at top */}
+          <div className="absolute rounded-sm" style={{ top: "8%", left: "5%", right: "5%", height: 9, background: TN_NAME }} />
+          {/* circle headshot right — oversized, clips edge */}
           <div className="absolute flex items-center justify-center rounded-full"
-            style={{ right: "8%", top: "50%", transform: "translateY(-55%)", width: "38%", aspectRatio: "1", background: TN_PHOTO }}>
+            style={{ right: "-4%", top: "26%", width: "50%", aspectRatio: "1", background: TN_PHOTO }}>
             <PersonSilhouette size={36} />
           </div>
-          {/* logo top-left */}
-          <div className="absolute top-3 left-3 rounded" style={{ width: "30%", height: "10%", background: TN_LOGO }} />
-          {/* text stack left-centre */}
-          <div className="absolute flex flex-col gap-1.5" style={{ left: "6%", bottom: "20%" }}>
-            <div className="rounded-sm" style={{ height: 7, width: 52, background: TN_NAME }} />
-            <div className="rounded-sm" style={{ height: 5, width: 40, background: TN_SUB }} />
-            <div className="rounded-sm" style={{ height: 4, width: 30, background: TN_SUB }} />
+          {/* logo top-left, below name */}
+          <div className="absolute rounded" style={{ left: "5%", top: "22%", width: "28%", height: "9%", background: TN_LOGO }} />
+          {/* text stack left-column, mid-card */}
+          <div className="absolute flex flex-col gap-1.5" style={{ left: "5%", top: "38%" }}>
+            <div className="rounded-sm" style={{ height: 5, width: 44, background: TN_SUB }} />
+            <div className="rounded-sm" style={{ height: 4, width: 34, background: TN_SUB }} />
           </div>
         </div>
       );
@@ -540,20 +545,21 @@ function TemplateThumbnail({ type }: { type: string }) {
     case "brand-forward":
       return (
         <div className="relative w-full h-full flex flex-col overflow-hidden" style={{ background: TN_BG }}>
-          {/* company logo hero top */}
-          <div className="flex items-center justify-center mx-3 mt-3 rounded" style={{ height: "28%", background: TN_PHOTO }}>
-            <div className="rounded" style={{ width: "45%", height: "50%", background: TN_LOGO }} />
+          {/* company logo HERO — dominates the top half */}
+          <div className="flex items-center justify-center mx-2 mt-2 rounded" style={{ height: "44%", background: TN_PHOTO }}>
+            <div className="rounded" style={{ width: "65%", height: "38%", background: TN_LOGO }} />
           </div>
-          {/* bottom: circle headshot left + text right */}
-          <div className="flex items-center gap-2 px-3 mt-3 flex-1">
-            <div className="flex-shrink-0 flex items-center justify-center rounded-full" style={{ width: "34%", aspectRatio: "1", background: TN_PHOTO }}>
-              <PersonSilhouette size={28} />
+          {/* centered circle headshot */}
+          <div className="flex items-center justify-center mt-2">
+            <div className="flex items-center justify-center rounded-full" style={{ width: "26%", aspectRatio: "1", background: TN_PHOTO }}>
+              <PersonSilhouette size={20} />
             </div>
-            <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-              <div className="rounded-sm" style={{ height: 8, width: "95%", background: TN_NAME }} />
-              <div className="rounded-sm" style={{ height: 5, width: "78%", background: TN_SUB }} />
-              <div className="rounded-sm" style={{ height: 4, width: "60%", background: TN_SUB }} />
-            </div>
+          </div>
+          {/* centered text stack */}
+          <div className="flex flex-col items-center gap-1.5 mt-2 px-2">
+            <div className="rounded-sm" style={{ height: 7, width: "70%", background: TN_NAME }} />
+            <div className="rounded-sm" style={{ height: 4, width: "56%", background: TN_SUB }} />
+            <div className="rounded-sm" style={{ height: 4, width: "44%", background: TN_SUB }} />
           </div>
         </div>
       );
@@ -574,6 +580,45 @@ function TemplateThumbnail({ type }: { type: string }) {
           </div>
           {/* logo bottom-left */}
           <div className="absolute rounded" style={{ left: "8%", bottom: "8%", width: "30%", height: "10%", background: TN_LOGO }} />
+        </div>
+      );
+
+    case "wide-photo":
+      return (
+        <div className="relative w-full h-full flex flex-col overflow-hidden" style={{ background: TN_BG }}>
+          {/* full-width banner photo at top */}
+          <div className="relative flex items-center justify-center flex-shrink-0" style={{ height: "42%", background: TN_PHOTO }}>
+            <PersonSilhouette size={36} />
+          </div>
+          {/* text stack below */}
+          <div className="flex flex-col gap-1.5 px-3 mt-3">
+            <div className="rounded-sm" style={{ height: 8, width: "72%", background: TN_NAME }} />
+            <div className="rounded-sm" style={{ height: 5, width: "58%", background: TN_SUB }} />
+            <div className="rounded-sm" style={{ height: 4, width: "44%", background: TN_SUB }} />
+          </div>
+          {/* logo bottom-right */}
+          <div className="absolute bottom-3 right-3 rounded" style={{ width: "26%", height: "8%", background: TN_LOGO }} />
+        </div>
+      );
+
+    case "editorial":
+      return (
+        <div className="relative w-full h-full overflow-hidden" style={{ background: TN_PHOTO }}>
+          {/* full-bleed photo */}
+          <div className="absolute inset-0 flex items-center justify-center opacity-30">
+            <PersonSilhouette size={60} />
+          </div>
+          {/* heavy gradient — lower half, very dark to distinguish from overlay */}
+          <div className="absolute bottom-0 left-0 right-0" style={{ height: "55%", background: "linear-gradient(to top, rgba(0,0,0,0.82) 0%, transparent 100%)" }} />
+          {/* logo top-right — sits in clear photo area */}
+          <div className="absolute top-3 right-3 rounded" style={{ width: "20%", height: "8%", background: "rgba(255,255,255,0.6)" }} />
+          {/* oversized name — two bars to convey large bold headline */}
+          <div className="absolute" style={{ bottom: "18%", left: "8%", right: "8%" }}>
+            <div className="rounded-sm mb-1.5" style={{ height: 13, width: "90%", background: "#ffffff" }} />
+            <div className="rounded-sm mb-2.5" style={{ height: 13, width: "58%", background: "#ffffff" }} />
+            <div className="rounded-sm mb-1" style={{ height: 5, width: "72%", background: "rgba(255,255,255,0.65)" }} />
+            <div className="rounded-sm" style={{ height: 4, width: "44%", background: "rgba(255,255,255,0.45)" }} />
+          </div>
         </div>
       );
 
@@ -617,6 +662,8 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
   const elementRefs = useRef<{ [key: string]: fabric.Object }>({});
   // Skip full canvas rebuild when only position/size changed via Fabric drag (avoids flicker)
   const skipRerenderRef = useRef(false);
+  // Incremented on every render trigger — stale async renders bail out when their gen doesn't match
+  const renderGenRef = useRef(0);
   // Ref mirror of historyIndex — always current, avoids stale closure in addToHistory
   const historyIndexRef = useRef(-1);
 
@@ -650,6 +697,7 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
   const [quickTextColor, setQuickTextColor] = useState("#111827");
   const [quickFont, setQuickFont] = useState("Montserrat");
   const [quickShape, setQuickShape] = useState<"square" | "landscape" | "portrait">("square");
+  const [quickHeadshotShape, setQuickHeadshotShape] = useState("circle");
   const [bgGradient, setBgGradient] = useState<{ from: string; to: string } | null>(null);
   const [bgGradientStyle, setBgGradientStyle] = useState<"dark" | "tonal" | "soft" | null>(null);
   const [showCanvasTip, setShowCanvasTip] = useState(false);
@@ -716,9 +764,15 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
   // Colors and font come from the Quick Setup step (or use defaults if called directly).
 
   const makeApply = (buildConfig: (bg: string, textColor: string, font: string, canvasW: number, canvasH: number) => CardConfig) =>
-    (bg = "#ffffff", textColor = "#000000", font = "Montserrat", canvasW = 600, canvasH = 600) => {
-      const newConfig = buildConfig(bg, textColor, font, canvasW, canvasH);
+    (bg = "#ffffff", textColor = "#000000", font = "Montserrat", canvasW = 600, canvasH = 600, headshotShape?: string) => {
+      let newConfig = buildConfig(bg, textColor, font, canvasW, canvasH);
+      // Override headshot shape if specified (e.g. circle vs square vs rounded in Quick Setup picker)
+      if (headshotShape && newConfig.headshot) {
+        newConfig = { ...newConfig, headshot: { ...newConfig.headshot, shape: headshotShape } };
+      }
       setBgColor(bg);
+      setBgGradient(null);
+      setBgGradientStyle(null);
       setTemplateUrl(null);
       setConfig(newConfig);
       addToHistory(newConfig);
@@ -732,165 +786,195 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
   // Do NOT add promo templates here — promo gets its own separate preset arrays (TODO).
 
   // ── SQUARE 600×600 ─────────────────────────────────────────────────────────────────────────
+  // Font standard: name 55px / title 28px / company 28px. Logo standard: 128×64 (≈ name line height).
   const SQUARE_PRESETS: StarterPreset[] = [
     {
-      // Full-bleed headshot, gradient bottom half, text over it. Positions match the reference HTML.
+      // Full-bleed headshot, heavy gradient lower third, text anchored to bottom.
+      // Logo 128×64 standard. Gradient extended to y:270 to fully cover 55px name at y:418.
       name: "Overlay",
       description: "Full-bleed photo, gradient reveals text at the bottom",
       thumbnail: "overlay",
       thumbnailShape: "square",
-      defaultBg: "#ffffff",
+      defaultBg: "#000000",
       defaultTextColor: "#ffffff",
+      canvasW: 600, canvasH: 600,
+      allowedHeadshotShapes: [],
       apply: makeApply((bg, textColor, font) => ({
-        headshot:        { ...ELEMENT_TEMPLATES.headshot, shape: "square", x: 0, y: 0, size: 600, zIndex: 1 },
-        gradientOverlay: { ...ELEMENT_TEMPLATES.gradientOverlay, x: 0, y: 290, width: 600, height: 310, gradientDirection: "bottom", overlayOpacity: 0.90, zIndex: 3 },
-        companyLogo:     { ...ELEMENT_TEMPLATES.companyLogo, x: 470, y: 28, width: 96, height: 52, size: 60, zIndex: 6 },
-        name:            { ...ELEMENT_TEMPLATES.name, x: 30, y: 424, color: textColor, fontFamily: font, fontSize: 34, width: 540, fontWeight: 700, zIndex: 10 },
-        title:           { ...ELEMENT_TEMPLATES.title, x: 30, y: 472, color: textColor, fontFamily: font, fontSize: 18, width: 540, fontWeight: 500, zIndex: 8 },
-        company:         { ...ELEMENT_TEMPLATES.company, x: 30, y: 510, color: textColor, fontFamily: font, fontSize: 15, width: 350, fontWeight: 400, zIndex: 7 },
+        headshot:        { ...ELEMENT_TEMPLATES.headshot, shape: "full-bleed", x: 0, y: 0, size: 600, zIndex: 1 },
+        gradientOverlay: { ...ELEMENT_TEMPLATES.gradientOverlay, x: 0, y: 270, width: 600, height: 330, gradientDirection: "bottom", overlayOpacity: 0.90, zIndex: 3 },
+        companyLogo:     { ...ELEMENT_TEMPLATES.companyLogo, x: 432, y: 20, width: 148, height: 74, size: 70, zIndex: 6 },
+        name:            { ...ELEMENT_TEMPLATES.name, x: 30, y: 406, color: textColor, fontFamily: font, fontSize: 55, width: 540, fontWeight: 700, zIndex: 10 },
+        title:           { ...ELEMENT_TEMPLATES.title, x: 30, y: 471, color: textColor, fontFamily: font, fontSize: 28, width: 540, fontWeight: 500, zIndex: 8 },
+        company:         { ...ELEMENT_TEMPLATES.company, x: 30, y: 509, color: textColor, fontFamily: font, fontSize: 28, width: 350, fontWeight: 400, zIndex: 7 },
       })),
     },
     {
-      // Circle clips the right edge intentionally — logo + text anchored top-left and centre-left.
-      // circle x:272, size:360 → right edge 632 (clips 32px). Vertically centred: (600-360)/2=120.
-      name: "Split",
-      description: "Oversized circle photo right, logo and text left",
-      thumbnail: "split",
+      // Text block spans full width at top — name/title/company all 552px wide, standard font sizes.
+      // title_y = name_y(22) + name_fontSize(55) + 10 = 87. company_y = 87 + 28 + 10 = 125.
+      // Circle headshot centred below text (x:160, size:280) — starts y:200, bottom:480.
+      // Logo bottom-left (x:20, y:510) — 30px gap below headshot, fits within 600px canvas.
+      name: "Headline",
+      description: "Full-width name and details at top, circle photo below, logo bottom-left",
+      thumbnail: "headline",
       thumbnailShape: "square",
-      defaultBg: "#ffffff",
-      defaultTextColor: "#000000",
+      defaultBg: "#000000",
+      defaultTextColor: "#ffffff",
+      canvasW: 600, canvasH: 600,
+      allowedHeadshotShapes: ["circle", "square", "rounded"],
       apply: makeApply((bg, textColor, font) => ({
-        headshot:    { ...ELEMENT_TEMPLATES.headshot, shape: "circle", x: 272, y: 120, size: 360, zIndex: 1 },
-        companyLogo: { ...ELEMENT_TEMPLATES.companyLogo, x: 28, y: 28, width: 130, height: 48, size: 60, zIndex: 5 },
-        name:        { ...ELEMENT_TEMPLATES.name, x: 28, y: 260, color: textColor, fontFamily: font, fontSize: 26, width: 222, fontWeight: 700, zIndex: 4 },
-        title:       { ...ELEMENT_TEMPLATES.title, x: 28, y: 308, color: textColor, fontFamily: font, fontSize: 14, width: 222, fontWeight: 500, zIndex: 3 },
-        company:     { ...ELEMENT_TEMPLATES.company, x: 28, y: 372, color: textColor, fontFamily: font, fontSize: 13, width: 222, fontWeight: 400, zIndex: 2 },
+        name:        { ...ELEMENT_TEMPLATES.name, x: 24, y: 22, color: textColor, fontFamily: font, fontSize: 55, width: 552, fontWeight: 700, zIndex: 4 },
+        title:       { ...ELEMENT_TEMPLATES.title, x: 24, y: 87, color: textColor, fontFamily: font, fontSize: 28, width: 552, fontWeight: 500, zIndex: 3 },
+        company:     { ...ELEMENT_TEMPLATES.company, x: 24, y: 125, color: textColor, fontFamily: font, fontSize: 28, width: 552, fontWeight: 400, zIndex: 2 },
+        headshot:    { ...ELEMENT_TEMPLATES.headshot, shape: "circle", x: 160, y: 200, size: 280, zIndex: 1 },
+        companyLogo: { ...ELEMENT_TEMPLATES.companyLogo, x: 20, y: 510, width: 148, height: 74, size: 70, zIndex: 5 },
       })),
     },
     {
-      // Circle centred at top, text centred below, logo centred at bottom — clean and minimal.
-      // circle bottom: 32+250=282. Text starts at 325 (43px gap). Logo y:504 anchors the bottom.
+      // Circle x:175, size:250 → centre x:300 ✓. Text + logo centred below.
+      // Reduced size (280→250) tightens the layout; all text positions recalculated with 1.2 lineHeight.
+      // name_y:298 (circle bottom 270 + 28 gap). title_y=298+66+14=378. company_y=378+68+14=460. logo_y=516.
       name: "Spotlight",
       description: "Centered circle photo, centered text below, clean and minimal",
       thumbnail: "spotlight",
       thumbnailShape: "square",
-      defaultBg: "#ffffff",
-      defaultTextColor: "#000000",
+      defaultBg: "#000000",
+      defaultTextColor: "#ffffff",
+      canvasW: 600, canvasH: 600,
+      allowedHeadshotShapes: ["circle", "square", "rounded"],
       apply: makeApply((bg, textColor, font) => ({
-        headshot:    { ...ELEMENT_TEMPLATES.headshot, shape: "circle", x: 175, y: 32, size: 250, zIndex: 1 },
-        name:        { ...ELEMENT_TEMPLATES.name, x: 60, y: 325, color: textColor, fontFamily: font, fontSize: 30, width: 480, textAlign: "center", fontWeight: 700, zIndex: 4 },
-        title:       { ...ELEMENT_TEMPLATES.title, x: 60, y: 368, color: textColor, fontFamily: font, fontSize: 16, width: 480, textAlign: "center", fontWeight: 500, zIndex: 3 },
-        company:     { ...ELEMENT_TEMPLATES.company, x: 60, y: 406, color: textColor, fontFamily: font, fontSize: 14, width: 480, textAlign: "center", fontWeight: 400, zIndex: 2 },
-        companyLogo: { ...ELEMENT_TEMPLATES.companyLogo, x: 220, y: 504, width: 160, height: 60, size: 60, zIndex: 5 },
+        headshot:    { ...ELEMENT_TEMPLATES.headshot, shape: "circle", x: 175, y: 20, size: 250, zIndex: 1 },
+        name:        { ...ELEMENT_TEMPLATES.name, x: 60, y: 298, color: textColor, fontFamily: font, fontSize: 55, width: 480, textAlign: "center", fontWeight: 700, zIndex: 4 },
+        title:       { ...ELEMENT_TEMPLATES.title, x: 60, y: 363, color: textColor, fontFamily: font, fontSize: 28, width: 480, textAlign: "center", fontWeight: 500, zIndex: 3 },
+        company:     { ...ELEMENT_TEMPLATES.company, x: 60, y: 401, color: textColor, fontFamily: font, fontSize: 28, width: 480, textAlign: "center", fontWeight: 400, zIndex: 2 },
+        companyLogo: { ...ELEMENT_TEMPLATES.companyLogo, x: 204, y: 506, width: 192, height: 74, size: 70, zIndex: 5 },
       })),
     },
   ];
 
   // ── LANDSCAPE 900×600 ──────────────────────────────────────────────────────────────────────
+  // Fonts sized per-template by text zone width. Logo standard: 128×64.
   const LANDSCAPE_PRESETS: StarterPreset[] = [
     {
-      // full-bleed covers the full 900×600 canvas. Gradient bottom half, text left-aligned.
+      // Full-bleed, heavy gradient lower third. Gradient extended to y:240 to cover 55px name at y:405.
       name: "Overlay",
       description: "Full-bleed photo, gradient reveals text at the bottom",
       thumbnail: "overlay",
       thumbnailShape: "landscape",
-      defaultBg: "#ffffff",
+      defaultBg: "#000000",
       defaultTextColor: "#ffffff",
+      canvasW: 900, canvasH: 600,
+      allowedHeadshotShapes: [],
       apply: makeApply((bg, textColor, font) => ({
         headshot:        { ...ELEMENT_TEMPLATES.headshot, shape: "full-bleed", x: 0, y: 0, size: 900, zIndex: 1 },
         gradientOverlay: { ...ELEMENT_TEMPLATES.gradientOverlay, x: 0, y: 240, width: 900, height: 360, gradientDirection: "bottom", overlayOpacity: 0.90, zIndex: 3 },
-        companyLogo:     { ...ELEMENT_TEMPLATES.companyLogo, x: 790, y: 26, width: 84, height: 50, size: 60, zIndex: 6 },
-        name:            { ...ELEMENT_TEMPLATES.name, x: 40, y: 335, color: textColor, fontFamily: font, fontSize: 36, width: 560, fontWeight: 700, zIndex: 10 },
-        title:           { ...ELEMENT_TEMPLATES.title, x: 40, y: 395, color: textColor, fontFamily: font, fontSize: 18, width: 560, fontWeight: 500, zIndex: 8 },
-        company:         { ...ELEMENT_TEMPLATES.company, x: 40, y: 445, color: textColor, fontFamily: font, fontSize: 15, width: 380, fontWeight: 400, zIndex: 7 },
+        companyLogo:     { ...ELEMENT_TEMPLATES.companyLogo, x: 732, y: 18, width: 148, height: 74, size: 70, zIndex: 6 },
+        name:            { ...ELEMENT_TEMPLATES.name, x: 40, y: 400, color: textColor, fontFamily: font, fontSize: 55, width: 560, fontWeight: 700, zIndex: 10 },
+        title:           { ...ELEMENT_TEMPLATES.title, x: 40, y: 465, color: textColor, fontFamily: font, fontSize: 28, width: 560, fontWeight: 500, zIndex: 8 },
+        company:         { ...ELEMENT_TEMPLATES.company, x: 40, y: 503, color: textColor, fontFamily: font, fontSize: 28, width: 380, fontWeight: 400, zIndex: 7 },
       })),
     },
     {
-      // headshot left (x:36, size:480 → ends at 516). Text right column x:552, width:318.
-      // Name centred vertically in the column. Logo anchors bottom-right.
+      // Photo left (x:36, size:480). Right column x:556. Logo anchors top-right, speaker info below.
+      // Gaps between title/company are intentionally generous (20px+) to match backend HTML line-height rendering.
       name: "Side by Side",
-      description: "Large square photo left, name and title right — bold and wide",
-      thumbnail: "dark-editorial",
+      description: "Large square photo left, event logo and speaker info right",
+      thumbnail: "side-by-side",
       thumbnailShape: "landscape",
-      defaultBg: "#ffffff",
-      defaultTextColor: "#000000",
+      defaultBg: "#000000",
+      defaultTextColor: "#ffffff",
+      canvasW: 900, canvasH: 600,
+      allowedHeadshotShapes: ["square", "rounded", "circle"],
       apply: makeApply((bg, textColor, font) => ({
         headshot:    { ...ELEMENT_TEMPLATES.headshot, shape: "square", x: 36, y: 36, size: 480, zIndex: 1 },
-        name:        { ...ELEMENT_TEMPLATES.name, x: 552, y: 60, color: textColor, fontFamily: font, fontSize: 34, width: 318, fontWeight: 700, zIndex: 4 },
-        title:       { ...ELEMENT_TEMPLATES.title, x: 552, y: 150, color: textColor, fontFamily: font, fontSize: 16, width: 318, fontWeight: 500, zIndex: 3 },
-        company:     { ...ELEMENT_TEMPLATES.company, x: 552, y: 210, color: textColor, fontFamily: font, fontSize: 14, width: 318, fontWeight: 400, zIndex: 2 },
-        companyLogo: { ...ELEMENT_TEMPLATES.companyLogo, x: 552, y: 490, width: 150, height: 56, size: 60, zIndex: 5 },
+        companyLogo: { ...ELEMENT_TEMPLATES.companyLogo, x: 556, y: 36, width: 148, height: 74, size: 70, zIndex: 5 },
+        name:        { ...ELEMENT_TEMPLATES.name, x: 556, y: 124, color: textColor, fontFamily: font, fontSize: 38, width: 308, fontWeight: 700, zIndex: 4 },
+        title:       { ...ELEMENT_TEMPLATES.title, x: 556, y: 172, color: textColor, fontFamily: font, fontSize: 22, width: 308, fontWeight: 500, zIndex: 3 },
+        company:     { ...ELEMENT_TEMPLATES.company, x: 556, y: 204, color: textColor, fontFamily: font, fontSize: 22, width: 308, fontWeight: 400, zIndex: 2 },
       })),
     },
     {
-      // Circle clips right edge (x:466+500=966). Text+logo cluster in upper-left, clear of circle.
-      name: "Split",
-      description: "Oversized circle photo right, logo and text left",
-      thumbnail: "split",
+      // Full-bleed photo, very heavy gradient (0.95), oversized bold name (55px, weight:800) dominates.
+      // Logo in clear photo area top-right. Distinct from Overlay: type-forward, announcement/keynote feel.
+      name: "Editorial",
+      description: "Full-bleed photo, bold headline lower panel — speaker name leads the card",
+      thumbnail: "editorial",
       thumbnailShape: "landscape",
-      defaultBg: "#ffffff",
-      defaultTextColor: "#000000",
+      defaultBg: "#000000",
+      defaultTextColor: "#ffffff",
+      canvasW: 900, canvasH: 600,
+      allowedHeadshotShapes: [],
       apply: makeApply((bg, textColor, font) => ({
-        headshot:    { ...ELEMENT_TEMPLATES.headshot, shape: "circle", x: 466, y: 50, size: 500, zIndex: 1 },
-        companyLogo: { ...ELEMENT_TEMPLATES.companyLogo, x: 36, y: 36, width: 140, height: 52, size: 60, zIndex: 5 },
-        name:        { ...ELEMENT_TEMPLATES.name, x: 36, y: 190, color: textColor, fontFamily: font, fontSize: 34, width: 400, fontWeight: 700, zIndex: 4 },
-        title:       { ...ELEMENT_TEMPLATES.title, x: 36, y: 250, color: textColor, fontFamily: font, fontSize: 16, width: 400, fontWeight: 500, zIndex: 3 },
-        company:     { ...ELEMENT_TEMPLATES.company, x: 36, y: 305, color: textColor, fontFamily: font, fontSize: 14, width: 400, fontWeight: 400, zIndex: 2 },
+        headshot:        { ...ELEMENT_TEMPLATES.headshot, shape: "full-bleed", x: 0, y: 0, size: 900, zIndex: 1 },
+        gradientOverlay: { ...ELEMENT_TEMPLATES.gradientOverlay, x: 0, y: 240, width: 900, height: 360, gradientDirection: "bottom", overlayOpacity: 0.95, zIndex: 3 },
+        companyLogo:     { ...ELEMENT_TEMPLATES.companyLogo, x: 728, y: 24, width: 148, height: 74, size: 70, zIndex: 6 },
+        name:            { ...ELEMENT_TEMPLATES.name, x: 40, y: 400, color: textColor, fontFamily: font, fontSize: 55, width: 680, fontWeight: 800, zIndex: 10 },
+        title:           { ...ELEMENT_TEMPLATES.title, x: 40, y: 465, color: textColor, fontFamily: font, fontSize: 28, width: 580, fontWeight: 500, zIndex: 8 },
+        company:         { ...ELEMENT_TEMPLATES.company, x: 40, y: 503, color: textColor, fontFamily: font, fontSize: 28, width: 400, fontWeight: 400, zIndex: 7 },
       })),
     },
   ];
 
-  // ── PORTRAIT 600×900 ───────────────────────────────────────────────────────────────────────
+  // ── PORTRAIT ───────────────────────────────────────────────────────────────────────────────
+  // Fonts sized per-template by text zone width. Logo standard: 128×64.
+  // Heights: Overlay 600×800 (cinematic), Spotlight 600×640 (reduced from 720), Brand Forward 600×660 (redesigned).
   const PORTRAIT_PRESETS: StarterPreset[] = [
     {
-      // full-bleed covers the full 600×900 canvas. Gradient bottom half, text left-aligned.
+      // Full-bleed headshot, gradient bottom half. Gradient covers bottom 50% of 800px canvas.
+      // Text anchored to bottom — name at y:619 with 55px font, 27px bottom margin on company.
       name: "Overlay",
       description: "Full-bleed photo, gradient reveals text at the bottom",
       thumbnail: "overlay",
       thumbnailShape: "portrait",
-      defaultBg: "#ffffff",
+      defaultBg: "#000000",
       defaultTextColor: "#ffffff",
+      canvasW: 600, canvasH: 800,
+      allowedHeadshotShapes: [],
       apply: makeApply((bg, textColor, font) => ({
         headshot:        { ...ELEMENT_TEMPLATES.headshot, shape: "full-bleed", x: 0, y: 0, size: 600, zIndex: 1 },
-        gradientOverlay: { ...ELEMENT_TEMPLATES.gradientOverlay, x: 0, y: 450, width: 600, height: 450, gradientDirection: "bottom", overlayOpacity: 0.92, zIndex: 3 },
-        companyLogo:     { ...ELEMENT_TEMPLATES.companyLogo, x: 474, y: 36, width: 90, height: 52, size: 60, zIndex: 6 },
-        name:            { ...ELEMENT_TEMPLATES.name, x: 36, y: 598, color: textColor, fontFamily: font, fontSize: 36, width: 528, fontWeight: 700, zIndex: 10 },
-        title:           { ...ELEMENT_TEMPLATES.title, x: 36, y: 656, color: textColor, fontFamily: font, fontSize: 18, width: 528, fontWeight: 500, zIndex: 8 },
-        company:         { ...ELEMENT_TEMPLATES.company, x: 36, y: 700, color: textColor, fontFamily: font, fontSize: 15, width: 380, fontWeight: 400, zIndex: 7 },
+        gradientOverlay: { ...ELEMENT_TEMPLATES.gradientOverlay, x: 0, y: 400, width: 600, height: 400, gradientDirection: "bottom", overlayOpacity: 0.92, zIndex: 3 },
+        companyLogo:     { ...ELEMENT_TEMPLATES.companyLogo, x: 432, y: 20, width: 148, height: 74, size: 70, zIndex: 6 },
+        name:            { ...ELEMENT_TEMPLATES.name, x: 36, y: 602, color: textColor, fontFamily: font, fontSize: 55, width: 528, fontWeight: 700, zIndex: 10 },
+        title:           { ...ELEMENT_TEMPLATES.title, x: 36, y: 667, color: textColor, fontFamily: font, fontSize: 28, width: 528, fontWeight: 500, zIndex: 8 },
+        company:         { ...ELEMENT_TEMPLATES.company, x: 36, y: 705, color: textColor, fontFamily: font, fontSize: 28, width: 380, fontWeight: 400, zIndex: 7 },
       })),
     },
     {
-      // circle y:70, size:300 → bottom 370. Text block centred in remaining 530px.
-      // Calculated: name y:470, logo y:740 (w:180) — eliminates the huge gap from the original.
+      // Canvas reduced 720→640 to eliminate dead space with 55px fonts.
+      // Circle x:170, size:260 → centre x:300 ✓. Text centred (x:60, width:480 = 60px each side ✓).
       name: "Spotlight",
       description: "Centered circle photo, centered text below — clean poster feel",
       thumbnail: "spotlight",
       thumbnailShape: "portrait",
-      defaultBg: "#ffffff",
-      defaultTextColor: "#000000",
+      defaultBg: "#000000",
+      defaultTextColor: "#ffffff",
+      canvasW: 600, canvasH: 640,
+      allowedHeadshotShapes: ["circle", "square", "rounded"],
       apply: makeApply((bg, textColor, font) => ({
-        headshot:    { ...ELEMENT_TEMPLATES.headshot, shape: "circle", x: 150, y: 70, size: 300, zIndex: 1 },
-        name:        { ...ELEMENT_TEMPLATES.name, x: 60, y: 470, color: textColor, fontFamily: font, fontSize: 34, width: 480, textAlign: "center", fontWeight: 700, zIndex: 4 },
-        title:       { ...ELEMENT_TEMPLATES.title, x: 60, y: 555, color: textColor, fontFamily: font, fontSize: 17, width: 480, textAlign: "center", fontWeight: 500, zIndex: 3 },
-        company:     { ...ELEMENT_TEMPLATES.company, x: 60, y: 614, color: textColor, fontFamily: font, fontSize: 15, width: 480, textAlign: "center", fontWeight: 400, zIndex: 2 },
-        companyLogo: { ...ELEMENT_TEMPLATES.companyLogo, x: 210, y: 748, width: 180, height: 68, size: 60, zIndex: 5 },
+        headshot:    { ...ELEMENT_TEMPLATES.headshot, shape: "circle", x: 175, y: 30, size: 250, zIndex: 1 },
+        name:        { ...ELEMENT_TEMPLATES.name, x: 60, y: 308, color: textColor, fontFamily: font, fontSize: 55, width: 480, textAlign: "center", fontWeight: 700, zIndex: 4 },
+        title:       { ...ELEMENT_TEMPLATES.title, x: 60, y: 373, color: textColor, fontFamily: font, fontSize: 28, width: 480, textAlign: "center", fontWeight: 500, zIndex: 3 },
+        company:     { ...ELEMENT_TEMPLATES.company, x: 60, y: 411, color: textColor, fontFamily: font, fontSize: 28, width: 480, textAlign: "center", fontWeight: 400, zIndex: 2 },
+        companyLogo: { ...ELEMENT_TEMPLATES.companyLogo, x: 204, y: 518, width: 192, height: 74, size: 70, zIndex: 5 },
       })),
     },
     {
-      // Event logo hero at top (w:300, prominent but not overwhelming), circle photo below, info centred.
-      // logo x:150, y:60, w:300, h:100. headshot x:160, y:224, size:280. name y:560.
+      // REDESIGNED: company logo now dominates the top half (480×180, hero placement).
+      // Small centred circle + speaker info fills the bottom half. Canvas 600×660.
+      // Logo hero: x:60, y:36, width:480, height:180 → bottom:216. Circle: centred at y:268, size:160.
       name: "Brand Forward",
-      description: "Event logo hero at top, circle photo and speaker info centered below",
+      description: "Event logo dominates the top half, speaker photo and info fill the bottom",
       thumbnail: "brand-forward",
       thumbnailShape: "portrait",
-      defaultBg: "#ffffff",
-      defaultTextColor: "#000000",
+      defaultBg: "#000000",
+      defaultTextColor: "#ffffff",
+      canvasW: 600, canvasH: 660,
+      allowedHeadshotShapes: ["circle", "square", "rounded"],
       apply: makeApply((bg, textColor, font) => ({
-        companyLogo: { ...ELEMENT_TEMPLATES.companyLogo, x: 150, y: 60, width: 300, height: 100, size: 60, zIndex: 5 },
-        headshot:    { ...ELEMENT_TEMPLATES.headshot, shape: "circle", x: 160, y: 224, size: 280, zIndex: 1 },
-        name:        { ...ELEMENT_TEMPLATES.name, x: 60, y: 562, color: textColor, fontFamily: font, fontSize: 32, width: 480, textAlign: "center", fontWeight: 700, zIndex: 4 },
-        title:       { ...ELEMENT_TEMPLATES.title, x: 60, y: 618, color: textColor, fontFamily: font, fontSize: 16, width: 480, textAlign: "center", fontWeight: 500, zIndex: 3 },
-        company:     { ...ELEMENT_TEMPLATES.company, x: 60, y: 664, color: textColor, fontFamily: font, fontSize: 14, width: 480, textAlign: "center", fontWeight: 400, zIndex: 2 },
+        companyLogo: { ...ELEMENT_TEMPLATES.companyLogo, x: 60, y: 28, width: 480, height: 160, size: 60, zIndex: 5 },
+        headshot:    { ...ELEMENT_TEMPLATES.headshot, shape: "circle", x: 220, y: 228, size: 160, zIndex: 1 },
+        name:        { ...ELEMENT_TEMPLATES.name, x: 60, y: 408, color: textColor, fontFamily: font, fontSize: 48, width: 480, textAlign: "center", fontWeight: 700, zIndex: 4 },
+        title:       { ...ELEMENT_TEMPLATES.title, x: 60, y: 466, color: textColor, fontFamily: font, fontSize: 28, width: 480, textAlign: "center", fontWeight: 500, zIndex: 3 },
+        company:     { ...ELEMENT_TEMPLATES.company, x: 60, y: 504, color: textColor, fontFamily: font, fontSize: 28, width: 480, textAlign: "center", fontWeight: 400, zIndex: 2 },
       })),
     },
   ];
@@ -918,6 +1002,7 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
         selection: true,
         preserveObjectStacking: true,
         enableRetinaScaling: true,
+        renderOnAddRemove: false, // prevent deferred RAF renders on each add/remove; we call renderAll() explicitly
       });
 
       fabricCanvasRef.current = canvas;
@@ -1243,22 +1328,28 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
     const canvas = fabricCanvasRef.current;
     if (!canvas) return;
 
+    // Claim this render generation — if a newer render starts while we await, we bail out
+    const gen = ++renderGenRef.current;
+
     // Wait for all fonts to be ready before rendering (prevents pixelated fallback fonts)
     try { await document.fonts.ready; } catch (_) {}
 
-    // Clear canvas
+    // A newer render was triggered while we were awaiting — bail out to avoid overwriting it
+    if (gen !== renderGenRef.current) return;
+
+    // Clear canvas and set background — use setBackgroundColor for both cases so
+    // the background is always committed before the final renderAll() at the end.
     canvas.clear();
     if (bgGradient) {
-      // Diagonal 135° gradient background
       const grad = new fabric.Gradient({
         type: 'linear',
         gradientUnits: 'pixels',
         coords: { x1: 0, y1: 0, x2: canvasWidth, y2: canvasHeight },
         colorStops: [{ offset: 0, color: bgGradient.from }, { offset: 1, color: bgGradient.to }],
       });
-      canvas.setBackgroundColor(grad as any, () => canvas.renderAll());
+      canvas.setBackgroundColor(grad as any, () => {});
     } else {
-      canvas.backgroundColor = bgColor;
+      canvas.setBackgroundColor(bgColor, () => {});
     }
     elementRefs.current = {};
 
@@ -1293,8 +1384,10 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
       }
     }
 
-    // Render elements in zIndex order (lowest first → highest renders on top)
-    const sortedEntries = Object.entries(config).sort((a, b) => (a[1].zIndex || 0) - (b[1].zIndex || 0));
+    // Render elements in zIndex order (lowest first → highest renders on top).
+    const sortedEntries = Object.entries(config).sort((a, b) => {
+      return (a[1].zIndex || 0) - (b[1].zIndex || 0);
+    });
     for (const [key, cfg] of sortedEntries) {
       if (!cfg.visible) continue;
 
@@ -1383,8 +1476,6 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
             });
           } else if (shape === "full-bleed") {
             // Scale to cover entire canvas (object-fit: cover)
-            // No clipPath needed — canvas element clips to its own bounds naturally,
-            // and the ShadowContainer CSS (overflow:hidden + border-radius) handles rounding.
             const imgNaturalW = img.width || 1;
             const imgNaturalH = img.height || 1;
             const coverScale = Math.max(canvasWidth / imgNaturalW, canvasHeight / imgNaturalH);
@@ -1398,6 +1489,33 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
               lockMovementY: true,
               lockScalingX: true,
               lockScalingY: true,
+            });
+          } else if (shape === "banner") {
+            // Full canvas width, partial height — scales to cover the banner area, clips to it.
+            const bannerW = canvasWidth;
+            const bannerH = (cfg.height ?? cfg.size ?? 260) * (cfg.scaleY || 1);
+            const imgNaturalW = img.width || 1;
+            const imgNaturalH = img.height || 1;
+            const coverScale = Math.max(bannerW / imgNaturalW, bannerH / imgNaturalH);
+            fabricImg.set({
+              left: 0,
+              top: cfg.y ?? 0,
+              scaleX: coverScale,
+              scaleY: coverScale,
+              lockMovementX: true,
+              lockScalingX: true,
+              clipPath: new fabric.Rect({
+                left: 0,
+                top: cfg.y ?? 0,
+                width: bannerW,
+                height: bannerH,
+                absolutePositioned: true,
+              }),
+            });
+            fabricImg.setControlsVisibility({
+              ml: false, mr: false, mt: false,
+              tl: false, tr: false, bl: false, br: false,
+              mb: true, mtr: false,
             });
           }
 
@@ -1419,6 +1537,9 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
           } else if (shape === "full-bleed") {
             baseWidth = canvasWidth;
             baseHeight = canvasHeight;
+          } else if (shape === "banner") {
+            baseWidth = canvasWidth;
+            baseHeight = cfg.height ?? cfg.size; // height: from saved resize or initial size field
           }
 
           // Calculate actual dimensions (base × scale)
@@ -1471,7 +1592,7 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
             mb: false,
           });
 
-          // Full-bleed placeholder: lock position/size, snap to 0,0
+          // Full-bleed placeholder: lock everything
           if (shape === "full-bleed") {
             group.set({
               left: 0,
@@ -1481,6 +1602,22 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
               lockScalingX: true,
               lockScalingY: true,
               hasControls: false,
+            });
+          }
+
+          // Banner placeholder: lock x movement and width, allow height resize via bottom handle only
+          if (shape === "banner") {
+            group.set({
+              left: 0,
+              top: cfg.y ?? 0,
+              lockMovementX: true,
+              lockScalingX: true,
+              lockUniScaling: false, // allow non-uniform resize (height only)
+            });
+            group.setControlsVisibility({
+              ml: false, mr: false, mt: false,
+              tl: false, tr: false, bl: false, br: false,
+              mb: true, mtr: false,
             });
           }
 
@@ -1641,6 +1778,51 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
         });
         // Never apply scale to textboxes — scale compounds and distorts fontSize
         text.set({ scaleX: 1, scaleY: 1 });
+
+        // Auto-shrink name and title to prevent overflow.
+        // Name: max 1 line (unless nameFormat "two-line"). Title: max 2 lines (company moves down to match).
+        // Step 1: shrink on line count (handles normal wrapping cases).
+        // Step 2: DOM span width check — catches single long words (e.g. hyphenated) that
+        //         Fabric won't wrap. DOM is the only reliable measure of the loaded web font.
+        // Company y is set dynamically after title renders (see below) — not fixed.
+        if (key === "name" || key === "title") {
+          const maxLines = key === "name" && cfg.nameFormat !== "two-line" ? 1 : 2;
+          const minFontSize = key === "name" ? 20 : 14;
+          const boxWidth = cfg.width || 300;
+          let fs = cfg.fontSize;
+
+          // Fabric Textbox does not call initDimensions() on construction — textLines is empty
+          // until we call it explicitly. Without this, Step 1 loop never fires.
+          text.initDimensions();
+
+          // Step 1: line count
+          while ((text.textLines?.length ?? 0) > maxLines && fs > minFontSize) {
+            fs--;
+            text.set({ fontSize: fs });
+            text.initDimensions();
+          }
+
+          // Step 2: width check via DOM span
+          const measureEl = document.createElement("span");
+          measureEl.style.cssText = `position:absolute;top:-9999px;left:-9999px;white-space:nowrap;font-family:${cfg.fontFamily || "Inter"};font-weight:${cfg.fontWeight || 700};font-size:${fs}px;`;
+          document.body.appendChild(measureEl);
+          const lines: string[] = (text.textLines as string[]) ?? [];
+          let needsWidthShrink = lines.some(line => {
+            measureEl.textContent = line;
+            return measureEl.getBoundingClientRect().width > boxWidth - 2;
+          });
+          while (needsWidthShrink && fs > minFontSize) {
+            fs--;
+            text.set({ fontSize: fs });
+            text.initDimensions();
+            measureEl.style.fontSize = `${fs}px`;
+            needsWidthShrink = (text.textLines as string[]).some(line => {
+              measureEl.textContent = line;
+              return measureEl.getBoundingClientRect().width > boxWidth - 2;
+            });
+          }
+          document.body.removeChild(measureEl);
+        }
 
         canvas.add(text);
         elementRefs.current[key] = text;
@@ -2001,12 +2183,13 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
       const saved = localStorage.getItem(storageKey);
       if (!saved) return;
       try {
-        const { config: savedConfig, templateUrl: savedTemplateUrl, canvasWidth: savedWidth, canvasHeight: savedHeight, bgColor: savedBgColor } = JSON.parse(saved);
+        const { config: savedConfig, templateUrl: savedTemplateUrl, canvasWidth: savedWidth, canvasHeight: savedHeight, bgColor: savedBgColor, bgGradient: savedBgGradient, bgIsGenerated: savedBgIsGenerated } = JSON.parse(saved);
         if (savedConfig) {
           setConfig(savedConfig);
           setHasUnsavedChanges(false);
         }
         if (savedBgColor) setBgColor(savedBgColor);
+        if (savedBgGradient) setBgGradient(savedBgGradient);
 
         // Load canvas dimensions if saved (preferred method)
         if (savedWidth && savedHeight) {
@@ -2020,30 +2203,22 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
           }
         }
 
-        if (savedTemplateUrl) {
-          // Load background image to get its dimensions (fallback if dimensions not saved)
+        // Only restore templateUrl as frontend background for user-uploaded images.
+        // bgIsGenerated means the PNG was auto-created at save time for backend rendering only.
+        if (savedTemplateUrl && !savedBgIsGenerated) {
           const img = new Image();
-          img.onerror = (err) => {
+          img.onerror = () => {
             toast({ title: "Background load failed", description: "Could not load background image due to CORS or network error. Try re-uploading the image.", variant: "destructive" });
-            // clear template to avoid broken image state
             setTemplateUrl(null);
           };
           img.onload = () => {
-            // Update canvas dimensions to match background (only if not already set from saved data)
             if (!savedWidth || !savedHeight) {
               setCanvasWidth(img.width);
               setCanvasHeight(img.height);
-
-              // Resize Fabric canvas
               if (fabricCanvasRef.current) {
-                fabricCanvasRef.current.setDimensions({
-                  width: img.width,
-                  height: img.height,
-                });
+                fabricCanvasRef.current.setDimensions({ width: img.width, height: img.height });
               }
             }
-
-            // Set background URL (will trigger re-render)
             setTemplateUrl(savedTemplateUrl);
           };
           img.src = getAbsoluteUrl(savedTemplateUrl) || savedTemplateUrl;
@@ -2111,7 +2286,16 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
               }
             }
 
-            if (savedTemplateUrl) {
+            // Restore background colour and gradient (template-built cards use these, not templateUrl)
+            const savedBgColor = serverConfig.bgColor ?? serverConfig.bg_color;
+            if (savedBgColor) setBgColor(savedBgColor);
+            const savedBgGradient = serverConfig.bgGradient ?? serverConfig.bg_gradient;
+            if (savedBgGradient) setBgGradient(savedBgGradient);
+
+            // Only restore templateUrl as frontend background for user-uploaded images.
+            // bgIsGenerated means the PNG was auto-created at save time for backend rendering only.
+            const bgIsGenerated = serverConfig.bgIsGenerated ?? false;
+            if (savedTemplateUrl && !bgIsGenerated) {
               const img = new Image();
               img.onload = () => {
                 if (!savedWidth || !savedHeight) {
@@ -2751,8 +2935,24 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
   };
 
   const handleSave = async (silent = false) => {
+    // localStorage always gets template-default fontSizes (e.g. 55px) — never the shrunk value.
+    // This prevents one speaker's shrink from poisoning the config for all other speakers.
+    const effectiveConfig = { ...config };
+
     const storageKey = `${cardType}-card-config-${eventId || "default"}`;
-    localStorage.setItem(storageKey, JSON.stringify({ config, templateUrl, canvasWidth, canvasHeight, bgColor }));
+    localStorage.setItem(storageKey, JSON.stringify({ config: effectiveConfig, templateUrl, canvasWidth, canvasHeight, bgColor, bgGradient, bgIsGenerated: !templateUrl }));
+
+    // Backend payload uses shrunk fontSizes read from live Fabric objects.
+    // TEMPORARY: this is a "fake" — it bakes in the shrunk size for whichever test speaker
+    // was open at save time. Good enough for layout testing. Backend team should replace this
+    // with real per-speaker shrink logic (see API_GAPS.md) and we can remove this override.
+    const backendConfig = { ...effectiveConfig };
+    (["name", "title"] as const).forEach(k => {
+      const obj = elementRefs.current[k] as fabric.Textbox | undefined;
+      if (obj && obj.fontSize && backendConfig[k]) {
+        backendConfig[k] = { ...backendConfig[k], fontSize: obj.fontSize };
+      }
+    });
 
     // Also save to backend if eventId exists
     if (eventId) {
@@ -2765,10 +2965,38 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
         // and replace it with the returned public URL when saving to the server.
         let finalTemplateUrl = templateUrl;
 
-        if (templateUrl && (templateUrl.startsWith("data:") || templateUrl.startsWith("blob:"))) {
+        // Template-built cards have no templateUrl (they use bgColor/bgGradient as background).
+        // Generate a background PNG for the backend so it can render speaker cards.
+        // bgIsGenerated = true tells the load logic to skip restoring it as frontend background
+        // (bgColor/bgGradient handle frontend rendering; the PNG is backend-only).
+        const bgIsGenerated = !templateUrl;
+        if (bgIsGenerated) {
+          try {
+            const bgCanvas = document.createElement('canvas');
+            bgCanvas.width = canvasWidth;
+            bgCanvas.height = canvasHeight;
+            const ctx = bgCanvas.getContext('2d');
+            if (ctx) {
+              if (bgGradient) {
+                const grad = ctx.createLinearGradient(0, 0, canvasWidth, canvasHeight);
+                grad.addColorStop(0, bgGradient.from);
+                grad.addColorStop(1, bgGradient.to);
+                ctx.fillStyle = grad;
+              } else {
+                ctx.fillStyle = bgColor;
+              }
+              ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+              finalTemplateUrl = bgCanvas.toDataURL('image/png');
+            }
+          } catch (_bgErr) {
+            // Non-fatal — proceed without background image
+          }
+        }
+
+        if (finalTemplateUrl && (finalTemplateUrl.startsWith("data:") || finalTemplateUrl.startsWith("blob:"))) {
           try {
             // Convert data/blob URL to a Blob, then to a File for upload
-            const fetched = await fetch(templateUrl);
+            const fetched = await fetch(finalTemplateUrl);
             const blob = await fetched.blob();
             const fileName = `template-${Date.now()}`;
             const file = new File([blob], `${fileName}.${(blob.type || "image/png").split("/").pop()}`, { type: blob.type || "image/png" });
@@ -2778,8 +3006,9 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
 
             if (uploadedUrl) {
               finalTemplateUrl = uploadedUrl;
-              // update local state so UI reflects the server URL
-              setTemplateUrl(finalTemplateUrl);
+              // Only update frontend templateUrl state for user-uploaded backgrounds.
+              // Auto-generated PNGs are backend-only — bgColor/bgGradient drive the frontend canvas.
+              if (!bgIsGenerated) setTemplateUrl(finalTemplateUrl);
             }
           } catch (uploadErr) {
             
@@ -2793,18 +3022,23 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
           eventId,
           promoType: cardType,
           config: {
-            ...config,
-            templateUrl: finalTemplateUrl, // include uploaded URL when available; server may normalize/override
-            canvasWidth, // Save canvas dimensions for scaling
+            ...backendConfig,
+            templateUrl: finalTemplateUrl,
+            canvasWidth,
             canvasHeight,
             bgColor,
             bgGradient: bgGradient ?? undefined,
+            bgIsGenerated, // tells load logic not to restore templateUrl as frontend background
           },
         });
 
-        // Prefer the canonical templateUrl returned by the server's config endpoint
+        // Prefer the canonical templateUrl returned by the server's config endpoint.
+        // Only update frontend templateUrl for user-uploaded backgrounds — NOT for
+        // auto-generated PNGs (bgIsGenerated=true). Setting templateUrl for generated
+        // PNGs would cause the next renderAllElements to load the PNG as a background
+        // image, hiding any subsequent bgColor changes made by the user.
         const serverTemplateUrl = saved?.templateUrl ?? saved?.config?.templateUrl ?? saved?.config?.template_url ?? null;
-        if (serverTemplateUrl) {
+        if (serverTemplateUrl && !bgIsGenerated) {
           setTemplateUrl(serverTemplateUrl);
           // update localStorage entry so the canonical URL is persisted locally too
           try {
@@ -2879,6 +3113,8 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
     setCanvasWidth(600);
     setCanvasHeight(600);
     setBgColor("#ffffff");
+    setBgGradient(null);
+    setBgGradientStyle(null);
 
     // Clear localStorage
     const storageKey = `${cardType}-card-config-${eventId || "default"}`;
@@ -2958,7 +3194,7 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
   };
 
   const applyPresetAndDismiss = (preset: StarterPreset) => {
-    preset.apply();
+    preset.apply(preset.defaultBg, preset.defaultTextColor, "Montserrat", preset.canvasW, preset.canvasH);
     dismissOnboarding();
   };
 
@@ -3278,6 +3514,7 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
                             setQuickBg(preset.defaultBg);
                             setQuickTextColor(preset.defaultTextColor);
                             setQuickFont("Montserrat");
+                            setQuickHeadshotShape(preset.allowedHeadshotShapes[0] ?? "circle");
                             setOnboardingQuickSetup(true);
                           }}
                           className={`${aspectClass} w-full rounded-xl border-2 border-border hover:border-primary hover:shadow-lg transition-all overflow-hidden focus:outline-none focus:ring-2 focus:ring-primary`}
@@ -3371,13 +3608,37 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
                   </div>
                 </div>
 
+                {/* Headshot shape picker — shown when template supports multiple shapes */}
+                {pendingPreset.allowedHeadshotShapes.length > 1 && (
+                  <div className="mb-5">
+                    <label className="text-xs font-medium mb-2 block">Headshot Shape</label>
+                    <div className="flex gap-2 flex-wrap">
+                      {pendingPreset.allowedHeadshotShapes.map((shape) => {
+                        const isActive = quickHeadshotShape === shape;
+                        const label = shape === "full-bleed" ? "Full bleed" : shape.charAt(0).toUpperCase() + shape.slice(1);
+                        return (
+                          <button
+                            key={shape}
+                            type="button"
+                            onClick={() => setQuickHeadshotShape(shape)}
+                            className={`px-3 py-1.5 text-xs rounded-lg border-2 font-medium transition-all ${isActive ? 'border-primary bg-primary/5 text-primary' : 'border-border hover:border-primary/40'}`}
+                          >
+                            {label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 {/* Apply button */}
                 <button
                   type="button"
                   onClick={() => {
-                    const shapeDims: Record<string, [number, number]> = { square: [600, 600], landscape: [900, 600], portrait: [600, 900] };
-                    const [cw, ch] = shapeDims[quickShape] ?? [600, 600];
-                    pendingPreset.apply(quickBg, quickTextColor, quickFont, cw, ch);
+                    const cw = pendingPreset.canvasW;
+                    const ch = pendingPreset.canvasH;
+                    const hs = pendingPreset.allowedHeadshotShapes.length > 1 ? quickHeadshotShape : undefined;
+                    pendingPreset.apply(quickBg, quickTextColor, quickFont, cw, ch, hs);
                     localStorage.setItem('seamless-card-builder-onboarding-website-v1', '1');
                     setShowOnboarding(false);
                     setOnboardingShowShapePicker(false);
@@ -3495,7 +3756,6 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
               <button onClick={handleZoomIn} disabled={zoom >= 3} className="p-1.5 rounded hover:bg-accent disabled:opacity-30" title="Zoom In"><ZoomIn className="h-3.5 w-3.5" /></button>
               <button onClick={handleZoomFit} className="p-1.5 rounded hover:bg-accent" title="Fit to content"><Maximize2 className="h-3.5 w-3.5" /></button>
               <div className="h-5 w-px bg-border mx-0.5" />
-              <button onClick={handleExportHTML} className="px-2 py-1 text-xs rounded hover:bg-accent font-mono text-muted-foreground hover:text-foreground" title="Export HTML">&lt;/&gt;</button>
               <button onClick={handleReset} className={TOOLBAR_ICON_BTN} title="Reset canvas"><RotateCcw className="h-3.5 w-3.5" /></button>
               <div className="h-5 w-px bg-border mx-0.5" />
               <Button onClick={() => handleSave()} size="sm" variant="outline" className={`relative h-7 text-xs font-semibold ${hasUnsavedChanges ? 'border-primary text-primary hover:bg-primary/5' : ''}`}>
@@ -3656,8 +3916,8 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
                 <div className="h-6 w-px bg-border shrink-0" />
                 <div className="flex items-center gap-2 shrink-0">
                   <span className="text-xs text-muted-foreground">Shape</span>
-                  {(["circle","square","vertical","horizontal","rounded","full-bleed"] as const).map((shape) => (
-                    <button key={shape} onClick={() => updateElement("headshot", shape === "full-bleed" ? { shape, x: 0, y: 0 } : { shape })} className={`h-7 px-2 text-xs rounded border capitalize ${config.headshot?.shape === shape ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-accent"}`}>{shape}</button>
+                  {(["circle","square","rounded","vertical","horizontal","banner","full-bleed"] as const).map((shape) => (
+                    <button key={shape} onClick={() => updateElement("headshot", shape === "full-bleed" ? { shape, x: 0, y: 0 } : shape === "banner" ? { shape, x: 0 } : { shape })} className={`h-7 px-2 text-xs rounded border capitalize ${config.headshot?.shape === shape ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-accent"}`}>{shape}</button>
                   ))}
                   <div className="h-4 w-px bg-border" />
                   <input type="range" min={0} max={1} step={0.05} value={config.headshot?.opacity ?? 1} onChange={(e) => updateElement("headshot", { opacity: parseFloat(e.target.value) })} className="w-16 h-4 accent-primary" />
@@ -3728,20 +3988,27 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
             {/* First-run getting started tip */}
             {showSidebarTip && cardType === 'website' && (
               <div className="w-full px-2">
-                <div className="rounded-lg border border-primary/25 bg-primary/5 p-2 relative">
+                <div className="rounded-lg border border-primary/25 bg-primary/5 p-2.5 relative">
                   <button
                     onClick={() => { localStorage.setItem('seamless-card-builder-tip-v1', '1'); setShowSidebarTip(false); }}
-                    className="absolute top-1 right-1 p-0.5 rounded hover:bg-accent text-muted-foreground"
+                    className="absolute top-1.5 right-1.5 p-0.5 rounded hover:bg-accent text-muted-foreground"
                     title="Dismiss"
                   >
                     <X className="h-3 w-3" />
                   </button>
-                  <div className="text-[10px] font-semibold text-primary mb-1">Getting started</div>
-                  <ul className="text-[10px] text-muted-foreground space-y-1 pr-3 leading-tight">
-                    <li>Click any element on the canvas to select &amp; edit it</li>
-                    <li><span className="font-medium text-foreground">Background colour</span> is in Canvas below</li>
-                    <li>Upload test photos on the right panel</li>
-                  </ul>
+                  <p className="text-[10px] font-semibold text-primary mb-2 pr-4">Getting started</p>
+                  <div className="space-y-1.5 pr-3">
+                    {[
+                      "Click to select, drag to move",
+                      "Background colour — section below",
+                      "Test photos — right panel",
+                    ].map((tip, i) => (
+                      <div key={i} className="flex items-start gap-1.5">
+                        <span className="text-[9px] font-bold text-primary mt-px leading-none">{i + 1}</span>
+                        <p className="text-[10px] text-muted-foreground leading-tight">{tip}</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
@@ -3771,7 +4038,7 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
                   <ImageIcon className="h-5 w-5" />
                   <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-sm border border-border/80 shadow-sm" style={{ background: bgGradient ? `linear-gradient(135deg, ${bgGradient.from}, ${bgGradient.to})` : bgColor }} />
                 </div>
-                <span className="text-xs">Canvas</span>
+                <span className="text-xs">Background</span>
               </button>
 
               {bgPanelOpen && (
@@ -3805,7 +4072,7 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
                       {["#ffffff","#000000","#1e293b","#0f172a","#1d4ed8","#dc2626","#16a34a","#d97706","#7c3aed","#db2777","#0891b2","#374151"].map(c => (
                         <button
                           key={c}
-                          onClick={() => { setBgColor(c); setBgGradient(null); setHasUnsavedChanges(true); }}
+                          onClick={() => { setBgColor(c); setBgGradient(null); setBgGradientStyle(null); setHasUnsavedChanges(true); }}
                           className={`w-5 h-5 rounded border-2 transition-transform hover:scale-110 ${!bgGradient && bgColor === c ? 'border-primary' : 'border-border/60'}`}
                           style={{ backgroundColor: c }}
                           title={c}

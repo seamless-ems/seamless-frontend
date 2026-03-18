@@ -35,8 +35,8 @@ Current priority
 - **Promo Card Templates** — build a template/onboarding flow for the promo card builder, mirroring the website card builder pattern but with promo-appropriate layouts.
 
 Immediate next steps
-1. Design and implement `PROMO_PRESETS` (equivalent of `SQUARE_PRESETS` etc.) with layouts suited to promo cards (social media formats: square 1:1, landscape 16:9, story 9:16).
-2. Add a promo-specific onboarding flow gated behind `cardType === 'promo'` — separate state, separate localStorage key, separate modal steps.
+1. Design and implement `PROMO_PRESETS` with social media formats (square 1:1 1080×1080, landscape 16:9 1080×608, story 9:16 608×1080 or similar scaled).
+2. Add a promo-specific onboarding flow gated behind `cardType === 'promo'` — separate state, separate localStorage key (`seamless-card-builder-onboarding-promo-v1`), separate modal steps.
 3. Ensure no website template logic bleeds into promo and vice versa (see Card Builder — website vs promo split below).
 
 **Known Issues:**
@@ -64,12 +64,19 @@ The website card builder URL (`/organizer/event/:id/website-card-builder`) is ha
 The CardBuilder component (`src/components/CardBuilder.tsx`) serves both card types via the `cardType` prop (`"website" | "promo"`). They share the same canvas engine but have completely separate template/onboarding systems.
 
 **Website card builder — template system (DONE)**
-- 9 starter templates: 3 shapes (Square 600×600, Landscape 900×600, Portrait 600×900) × 3 layouts (Overlay, Split/Side-by-side, Spotlight/Brand-forward)
-- 4-step onboarding modal: (1) blank vs template, (2) shape picker, (3) template picker, (4) Quick Setup (colour, font, gradient)
+- 9 starter templates: 3 shapes × 3 layouts
+  - Square 600×600: Overlay, Headline, Spotlight
+  - Landscape 900×600: Overlay, Side by Side, Editorial (full-bleed, heavy gradient 0.95, type-forward)
+  - Portrait: Overlay 600×800, Spotlight 600×640, Brand Forward 600×660
+- All templates audited and tightened (2026-03-18): dead space eliminated, logos resized, text blocks repositioned. Do NOT revert positions without reason.
+- 4-step onboarding modal: (1) blank vs template, (2) shape picker, (3) template picker, (4) Quick Setup (colour, font, gradient, headshot shape)
+- Quick Setup shows a **headshot shape picker** only when `preset.allowedHeadshotShapes.length > 1` (Overlay and Editorial templates hide it — full-bleed is integral)
 - All gated behind `cardType === 'website'` — toolbar Templates button, sidebar Templates button, empty canvas copy, onboarding modal, post-template tip modal
 - localStorage key: `seamless-card-builder-onboarding-website-v1`
 - Post-template tip localStorage key: `seamless-card-builder-template-tip-v1`
 - Preset arrays: `SQUARE_PRESETS`, `LANDSCAPE_PRESETS`, `PORTRAIT_PRESETS` (inside component, above canvas useEffect)
+- Rule of 3: exactly 3 templates per shape — do NOT add a 4th
+- **One template applies to ALL speakers** — user picks one, saves it, backend renders it for every speaker in the embed. No per-speaker template variation.
 
 **Promo card builder — template system (TODO)**
 - No templates yet — promo card builder opens to a blank canvas
@@ -77,15 +84,25 @@ The CardBuilder component (`src/components/CardBuilder.tsx`) serves both card ty
 - Must use its own state variables, localStorage keys (`seamless-card-builder-onboarding-promo-v1`), and be gated behind `cardType === 'promo'`
 - Do NOT reuse or modify the website preset arrays
 
+**CardBuilder — text layout logic (website templates):**
+- **Font size defaults:** name 55px / title 28px / company 28px (equal importance). Side-by-Side right column (≤308px): 38/22/22. Brand Forward: 48/28/28. All other templates: 55/28/28.
+- **Auto-shrink:** name shrinks to 1 line (2 if `nameFormat === "two-line"`). Title wraps up to 2 lines. Min font size: name 20px, title 14px. Company has no shrink — backend handles dynamic company `top` when title wraps (see API_GAPS.md).
+- **Measurement:** Two-step. Step 1: Fabric `textLines` count vs maxLines. Step 2: DOM span `getBoundingClientRect()` for single long words — only reliable method for web fonts. Do NOT use `__lineWidths`, canvas 2D context, or `new fabric.Text()`.
+- **Positions fixed per-template.** Formula: `title_y = name_y + name_fontSize + 10`, `company_y = title_y + 28 + 10`. Hardcoded per template — one template cannot affect another.
+- **Save behaviour:** localStorage always stores template-default fontSize (55px) so switching speakers doesn't poison the config. Backend API call receives the shrunk fontSize from live Fabric objects (temporary — backend team to replace with per-speaker logic).
+- **Logo drop zone:** 148×74 standard. Spotlight/centred layouts: 192×74.
+
 **CardBuilder — key non-obvious behaviours:**
 - Canvas sidebar popovers (Templates, Canvas/Background) expand **inline** — do NOT change back to floating `absolute left-full` popovers, they get clipped by `overflow-y-auto` on the sidebar
 - `skipRerenderRef`: set to `true` before any `setConfig` call that is position/size-only (drag end, arrow nudge) to prevent full canvas rebuild. Missing this causes erratic element movement
 - Gradient overlay ramp starts at 20% opacity (not 0%) — matches Canva's heavier feel. Default opacity 0.90
-- Text elements get a hairline stroke (`strokeWidth: fontSize * 0.015`) to compensate for canvas grayscale antialiasing appearing lighter than CSS subpixel rendering
-- `nameFormat: "single" | "two-line"` on the name element config — backend must honour this when rendering (see API_GAPS.md)
 - Canvas size + background colour + background image all live in the "Canvas" section of the left sidebar (unified — do not split them back out to the toolbar)
 - Ctrl+Z undo: the keyboard handler must check undo/redo **before** the input-tag guard, because Fabric keeps a hidden `<textarea>` focused on the canvas
 - Alignment (multi-select): aligns to the **group's own bounding box**, not the canvas — same as PowerPoint/Canva
+- **`bgIsGenerated` flag**: template-built cards (no user-uploaded background) generate a background PNG at save time for the backend only. `bgIsGenerated=true` tells both load paths to skip restoring it as the frontend background — `bgColor`/`bgGradient` drive the canvas instead. Always guard server-response `setTemplateUrl` calls with `if (serverTemplateUrl && !bgIsGenerated)`.
+- **`StarterPreset` interface**: includes `canvasW`, `canvasH`, `allowedHeadshotShapes` fields. `makeApply` accepts optional 6th `headshotShape` param. Always pass `preset.canvasW/canvasH` when calling `preset.apply()` — do NOT use hardcoded shape dimension maps.
+- **Banner headshot shape**: full-width, partial-height rectangle crop. Uses `absolutePositioned: true` clipPath in canvas coordinates. Locks X movement/scaling; only `mb` resize handle shown. `cfg.height` stores the banner height (not `cfg.size`) after first resize.
+- **`handleReset`**: must call `setBgGradient(null)` and `setBgGradientStyle(null)` — gradient persists across reset otherwise.
 
 **Known outstanding (backend team):**
 - `company` and `companyLogo` elements not persisting after server save/reload

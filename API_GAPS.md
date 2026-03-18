@@ -4,34 +4,27 @@ Missing backend fields/endpoints needed by frontend.
 
 ---
 
-## Card embed HTML rendering — broken layout (`/embed/{eventId}/speaker/{speakerId}`)
+## Card embed HTML rendering (`/embed/{eventId}/speaker/{speakerId}`)
 
-The rendered HTML currently ignores the card config's positioning data. Required:
+The rendered HTML currently ignores config positioning data. Required:
 
 - Outer container: `position: relative; width: {canvasWidth}px; height: {canvasHeight}px; overflow: hidden; background-color: {bgColor}` (or background-image for template uploads)
 - Each element: `position: absolute; left: {cfg.x}px; top: {cfg.y}px`
-- Images (headshot, logo): explicit `width` and `height` from config, `object-fit: cover`, clipped to shape (circle → `border-radius: 50%`)
-- Text elements: `font-family`, `font-size`, `font-weight`, `color`, `width`, `line-height` from config
+- Images (headshot, logo): `width`/`height` from config, `object-fit: cover`, shape-clipped (circle → `border-radius: 50%`)
+- Text: `font-family`, `font-size`, `font-weight`, `color`, `width`, `line-height` from config
 - Gradient overlay: CSS `linear-gradient` matching direction and opacity from config
 
-The preview in SpeakerPortal embeds this same HTML — fixing the embed fixes the preview too.
+The SpeakerPortal preview embeds this same HTML — fixing the embed fixes the preview too.
 
 ---
 
-## Card rendering — shrink text on overflow
+## Card rendering — per-speaker text logic
 
-When rendering title/company elements, if text overflows `cfg.width` at `cfg.fontSize`, step the font size down (1pt at a time, floor 10px) until it fits. Treat `cfg.fontSize` as the maximum, not a fixed value.
+`cfg.fontSize` is the **maximum**. Apply per speaker at render time:
 
----
-
-## Card Builder — `name` element `nameFormat` field
-
-**What:** The `name` element config now includes `nameFormat: "single" | "two-line"`.
-
-**Why:** First and last name are stored separately. This flag lets the organiser choose how the name appears on the card without hard-coding font size as the only lever.
-
-**Backend must:** When rendering a card, read `config.name.nameFormat`:
-- `"single"` → `"Lisa Young"` (default, current behaviour)
-- `"two-line"` → `"Lisa\nYoung"` (first name on line 1, last name on line 2)
+- **Name:** shrink (1px at a time) until it fits on 1 line within `cfg.width`. Min 20px. Allow 2 lines if `nameFormat === "two-line"`.
+- **`nameFormat`:** `"single"` → `"Lisa Young"` (default). `"two-line"` → first name line 1, last name line 2.
+- **Title:** allow up to 2 lines within `cfg.width`. No shrink.
+- **Company `top`:** `title_top + (lineCount × fontSize × lineHeight) + 10`. Default `lineHeight` 1.2. Pushes company down when title wraps to 2 lines.
 
 ---
