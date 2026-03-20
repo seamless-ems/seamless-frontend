@@ -41,7 +41,7 @@ import {
 } from "@/components/ui/select";
 // import GoogleDriveFolderPicker from "@/components/organizer/GoogleDriveFolderPicker"; // TODO: Google Drive
 import EventMediaUploader from "@/components/organizer/EventMediaUploader";
-import { generateUuid, toEventSlugId } from "@/lib/utils";
+import { generateUuid } from "@/lib/utils";
 
 const availableModules = [
 	{
@@ -215,7 +215,7 @@ export default function CreateEvent() {
 			toast({ title: "Event created", description: `Created ${created.title ?? created.id ?? "event"}` });
 
 			if (created?.id) {
-				navigate(`/organizer/event/${toEventSlugId(created.title ?? formData.title, created.id)}/speakers`);
+				navigate(`/organizer/event/${created.id}/speakers`);
 			} else {
 				navigate("/organizer/events");
 			}

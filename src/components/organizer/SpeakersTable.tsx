@@ -6,7 +6,6 @@ import { updateSpeaker, deleteSpeaker } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 import { Download, ExternalLink, Copy, Check } from "lucide-react";
 import { API_BASE } from "@/lib/api";
-import { extractEventId } from "@/lib/utils";
 
 type Props = {
   speakers: any[];
@@ -153,8 +152,7 @@ function formatDate(dateStr: string | null | undefined) {
 
 export default function SpeakersTable({ speakers, isLoading, eventId, selectedTab }: Props) {
   const queryClient = useQueryClient();
-  // eventId may be a slugId — extract the bare UUID for API URLs
-  const eventUuid = extractEventId(eventId ?? "");
+  const eventUuid = eventId ?? "";
 
   if (isLoading) {
     return <div className="py-12 text-center text-sm text-muted-foreground">Loading speakers…</div>;

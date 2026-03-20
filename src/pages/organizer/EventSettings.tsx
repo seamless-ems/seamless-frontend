@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { extractEventId } from "@/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getJson, updateEvent, uploadFile, getGoogleDriveStatus, getIntegrationUrl, deleteIntegration, getTeam, getMe, createGoogleDriveFolder } from "@/lib/api";
 import { Input } from "@/components/ui/input";
@@ -62,8 +61,7 @@ const availableModules = [
 ];
 
 export default function EventSettings() {
-  const { eventSlugId } = useParams();
-  const id = extractEventId(eventSlugId ?? '');
+  const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: rawEvent, isLoading, error } = useQuery<any, Error>({
@@ -476,7 +474,7 @@ export default function EventSettings() {
           </Card>
 
           <div className="flex justify-end gap-4">
-            <Button variant="outline" type="button" onClick={() => navigate(`/organizer/event/${eventSlugId}`)}>Cancel</Button>
+            <Button variant="outline" type="button" onClick={() => navigate(`/organizer/event/${id}`)}>Cancel</Button>
             <Button variant="outline" type="submit" className="border-[1.5px]" disabled={isSubmitting}>{isSubmitting ? "Saving…" : "Save Changes"}</Button>
           </div>
         </form>

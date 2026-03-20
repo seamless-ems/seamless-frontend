@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
-import { extractEventId } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { getJson } from "@/lib/api";
@@ -14,8 +13,7 @@ import FormsTab from "@/components/organizer/FormsTab";
 import CardBuilder from "@/components/CardBuilder";
 
 export default function SpeakerModule() {
-  const { eventSlugId } = useParams();
-  const id = extractEventId(eventSlugId ?? '');
+  const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
@@ -162,22 +160,22 @@ export default function SpeakerModule() {
         )}
         <div className="flex items-center justify-between px-0">
           <div className="flex gap-6">
-            <button onClick={() => navigate(`/organizer/event/${eventSlugId}/speakers`)} className={tabClass("speakers")}>
+            <button onClick={() => navigate(`/organizer/event/${id}/speakers`)} className={tabClass("speakers")}>
               Speakers
             </button>
-            <button onClick={() => navigate(`/organizer/event/${eventSlugId}/speakers/applications`)} className={tabClass("applications")}>
+            <button onClick={() => navigate(`/organizer/event/${id}/speakers/applications`)} className={tabClass("applications")}>
               Applications
             </button>
-            <button onClick={() => navigate(`/organizer/event/${eventSlugId}/speakers/forms`)} className={tabClass("forms")}>
+            <button onClick={() => navigate(`/organizer/event/${id}/speakers/forms`)} className={tabClass("forms")}>
               Forms
             </button>
-            <button onClick={() => navigate(`/organizer/event/${eventSlugId}/speakers/embed`)} className={tabClass("embed")}>
+            <button onClick={() => navigate(`/organizer/event/${id}/speakers/embed`)} className={tabClass("embed")}>
               Embeds
             </button>
-            <button onClick={() => navigate(`/organizer/event/${eventSlugId}/website-card-builder`)} className={tabClass("website-card-builder")}>
+            <button onClick={() => navigate(`/organizer/event/${id}/website-card-builder`)} className={tabClass("website-card-builder")}>
               Website Cards
             </button>
-            <button onClick={() => navigate(`/organizer/event/${eventSlugId}/promo-card-builder`)} className={tabClass("promo-card-builder")}>
+            <button onClick={() => navigate(`/organizer/event/${id}/promo-card-builder`)} className={tabClass("promo-card-builder")}>
               Promo Cards
             </button>
           </div>
@@ -190,7 +188,7 @@ export default function SpeakerModule() {
               </Button>
               <ShareDialog open={shareOpen} onOpenChange={setShareOpen} />
               {/* @ts-ignore */}
-              <AddSpeakerDialog eventId={eventSlugId} />
+              <AddSpeakerDialog eventId={id} />
             </div>
           )}
         </div>
@@ -214,7 +212,7 @@ export default function SpeakerModule() {
 
             <div className="rounded-lg border border-border overflow-hidden">
               {/* @ts-ignore */}
-              <SpeakersTable speakers={filteredSpeakers} isLoading={isLoading} eventId={eventSlugId} selectedTab={activeTab} />
+              <SpeakersTable speakers={filteredSpeakers} isLoading={isLoading} eventId={id} selectedTab={activeTab} />
             </div>
           </div>
         </div>
@@ -258,7 +256,7 @@ export default function SpeakerModule() {
 
             <div className="rounded-lg border border-border overflow-hidden">
               {/* @ts-ignore */}
-              <SpeakersTable speakers={filteredSpeakers} isLoading={isLoading} eventId={eventSlugId} selectedTab={activeTab} />
+              <SpeakersTable speakers={filteredSpeakers} isLoading={isLoading} eventId={id} selectedTab={activeTab} />
             </div>
           </div>
         </div>
@@ -266,18 +264,18 @@ export default function SpeakerModule() {
 
       {/* Forms Tab */}
       {activeTab === "forms" && (
-        <FormsTab eventId={eventSlugId} />
+        <FormsTab eventId={id} />
       )}
 
       {/* Embed Builder Tab */}
       {activeTab === "embed" && (
-        <EmbedBuilder eventId={eventSlugId} />
+        <EmbedBuilder eventId={id} />
       )}
 
       {/* Card Builder Tabs */}
       {isCardBuilder && (
         <div style={{ height: '100vh' }}>
-          <CardBuilder key={activeTab} eventId={eventSlugId} fullscreen onBack={() => navigate(`/organizer/event/${eventSlugId}/speakers`)} />
+          <CardBuilder key={activeTab} eventId={id} fullscreen onBack={() => navigate(`/organizer/event/${id}/speakers`)} />
         </div>
       )}
     </div>
