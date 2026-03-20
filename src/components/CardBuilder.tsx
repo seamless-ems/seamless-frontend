@@ -311,7 +311,7 @@ const ELEMENT_TEMPLATES = {
   },
   title: {
     label: "Title",
-    text: "Vice President of Corporate Partnerships",
+    text: "Vice President Marketing",
     x: 150,
     y: 90,
     fontSize: 20,
@@ -789,30 +789,30 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
   // Font standard: name 55px / title 28px / company 28px. Logo standard: 128×64 (≈ name line height).
   const SQUARE_PRESETS: StarterPreset[] = [
     {
-      // Full-bleed headshot, heavy gradient lower third, text anchored to bottom.
-      // Logo 128×64 standard. Gradient extended to y:270 to fully cover 55px name at y:418.
+      // Full-bleed headshot, gradient lower ~47%, text anchored to bottom.
+      // Safe zone maths (800px): company_y(689) + wrap(33) + height(28) = 750 ✓
+      // Logo top-right in clear photo area. Gradient y:420 covers name at y:522.
       name: "Overlay",
       description: "Full-bleed photo, gradient reveals text at the bottom",
       thumbnail: "overlay",
       thumbnailShape: "square",
       defaultBg: "#000000",
       defaultTextColor: "#ffffff",
-      canvasW: 600, canvasH: 600,
+      canvasW: 800, canvasH: 800,
       allowedHeadshotShapes: [],
       apply: makeApply((bg, textColor, font) => ({
-        headshot:        { ...ELEMENT_TEMPLATES.headshot, shape: "full-bleed", x: 0, y: 0, size: 600, zIndex: 1 },
-        gradientOverlay: { ...ELEMENT_TEMPLATES.gradientOverlay, x: 0, y: 270, width: 600, height: 330, gradientDirection: "bottom", overlayOpacity: 0.90, zIndex: 3 },
-        companyLogo:     { ...ELEMENT_TEMPLATES.companyLogo, x: 432, y: 20, width: 148, height: 74, size: 70, zIndex: 6 },
-        name:            { ...ELEMENT_TEMPLATES.name, x: 30, y: 406, color: textColor, fontFamily: font, fontSize: 55, width: 540, fontWeight: 700, zIndex: 10 },
-        title:           { ...ELEMENT_TEMPLATES.title, x: 30, y: 471, color: textColor, fontFamily: font, fontSize: 28, width: 540, fontWeight: 500, zIndex: 8 },
-        company:         { ...ELEMENT_TEMPLATES.company, x: 30, y: 509, color: textColor, fontFamily: font, fontSize: 28, width: 350, fontWeight: 400, zIndex: 7 },
+        headshot:        { ...ELEMENT_TEMPLATES.headshot, shape: "full-bleed", x: 0, y: 0, size: 800, zIndex: 1 },
+        gradientOverlay: { ...ELEMENT_TEMPLATES.gradientOverlay, x: 0, y: 420, width: 800, height: 380, gradientDirection: "bottom", overlayOpacity: 0.90, zIndex: 3 },
+        companyLogo:     { ...ELEMENT_TEMPLATES.companyLogo, x: 632, y: 20, width: 148, height: 74, size: 70, zIndex: 6 },
+        name:            { ...ELEMENT_TEMPLATES.name, x: 36, y: 528, color: textColor, fontFamily: font, fontSize: 55, nameFormat: "two-line", width: 728, fontWeight: 700, zIndex: 10 },
+        title:           { ...ELEMENT_TEMPLATES.title, x: 36, y: 651, color: textColor, fontFamily: font, fontSize: 28, width: 728, fontWeight: 500, zIndex: 8 },
+        company:         { ...ELEMENT_TEMPLATES.company, x: 36, y: 689, color: textColor, fontFamily: font, fontSize: 28, width: 500, fontWeight: 400, zIndex: 7 },
       })),
     },
     {
-      // Text block spans full width at top — name/title/company all 552px wide, standard font sizes.
-      // title_y = name_y(22) + name_fontSize(55) + 10 = 87. company_y = 87 + 28 + 10 = 125.
-      // Circle headshot centred below text (x:160, size:280) — starts y:200, bottom:480.
-      // Logo bottom-left (x:20, y:510) — 30px gap below headshot, fits within 600px canvas.
+      // Text block full-width at top. Headshot below, clear of worst-case text expansion (company bottom ~250).
+      // Safe zone: headshot y:265 starts 15px below worst-case company bottom (250) ✓
+      // Logo bottom-left, 11px above canvas edge.
       name: "Headline",
       description: "Full-width name and details at top, circle photo below, logo bottom-left",
       thumbnail: "headline",
@@ -822,17 +822,17 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
       canvasW: 600, canvasH: 600,
       allowedHeadshotShapes: ["circle", "square", "rounded"],
       apply: makeApply((bg, textColor, font) => ({
-        name:        { ...ELEMENT_TEMPLATES.name, x: 24, y: 22, color: textColor, fontFamily: font, fontSize: 55, width: 552, fontWeight: 700, zIndex: 4 },
-        title:       { ...ELEMENT_TEMPLATES.title, x: 24, y: 87, color: textColor, fontFamily: font, fontSize: 28, width: 552, fontWeight: 500, zIndex: 3 },
-        company:     { ...ELEMENT_TEMPLATES.company, x: 24, y: 125, color: textColor, fontFamily: font, fontSize: 28, width: 552, fontWeight: 400, zIndex: 2 },
-        headshot:    { ...ELEMENT_TEMPLATES.headshot, shape: "circle", x: 160, y: 200, size: 280, zIndex: 1 },
-        companyLogo: { ...ELEMENT_TEMPLATES.companyLogo, x: 20, y: 510, width: 148, height: 74, size: 70, zIndex: 5 },
+        name:        { ...ELEMENT_TEMPLATES.name, x: 24, y: 22, color: textColor, fontFamily: font, fontSize: 55, nameFormat: "two-line", width: 552, fontWeight: 700, zIndex: 4 },
+        title:       { ...ELEMENT_TEMPLATES.title, x: 24, y: 151, color: textColor, fontFamily: font, fontSize: 28, width: 552, fontWeight: 500, zIndex: 3 },
+        company:     { ...ELEMENT_TEMPLATES.company, x: 24, y: 189, color: textColor, fontFamily: font, fontSize: 28, width: 552, fontWeight: 400, zIndex: 2 },
+        headshot:    { ...ELEMENT_TEMPLATES.headshot, shape: "circle", x: 180, y: 265, size: 240, zIndex: 1 },
+        companyLogo: { ...ELEMENT_TEMPLATES.companyLogo, x: 20, y: 515, width: 148, height: 74, size: 70, zIndex: 5 },
       })),
     },
     {
-      // Circle x:175, size:250 → centre x:300 ✓. Text + logo centred below.
-      // Reduced size (280→250) tightens the layout; all text positions recalculated with 1.2 lineHeight.
-      // name_y:298 (circle bottom 270 + 28 gap). title_y=298+66+14=378. company_y=378+68+14=460. logo_y=516.
+      // Logo centred above headshot — removes logo from the text expansion zone entirely.
+      // Safe zone maths (600px): company_y(488) + wrap(33) + height(28) = 549 ≤ 550 ✓
+      // Headshot 200px centred (x:200). 21px gap between headshot bottom (300) and name (321).
       name: "Spotlight",
       description: "Centered circle photo, centered text below, clean and minimal",
       thumbnail: "spotlight",
@@ -842,20 +842,22 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
       canvasW: 600, canvasH: 600,
       allowedHeadshotShapes: ["circle", "square", "rounded"],
       apply: makeApply((bg, textColor, font) => ({
-        headshot:    { ...ELEMENT_TEMPLATES.headshot, shape: "circle", x: 175, y: 20, size: 250, zIndex: 1 },
-        name:        { ...ELEMENT_TEMPLATES.name, x: 60, y: 298, color: textColor, fontFamily: font, fontSize: 55, width: 480, textAlign: "center", fontWeight: 700, zIndex: 4 },
-        title:       { ...ELEMENT_TEMPLATES.title, x: 60, y: 363, color: textColor, fontFamily: font, fontSize: 28, width: 480, textAlign: "center", fontWeight: 500, zIndex: 3 },
-        company:     { ...ELEMENT_TEMPLATES.company, x: 60, y: 401, color: textColor, fontFamily: font, fontSize: 28, width: 480, textAlign: "center", fontWeight: 400, zIndex: 2 },
-        companyLogo: { ...ELEMENT_TEMPLATES.companyLogo, x: 204, y: 506, width: 192, height: 74, size: 70, zIndex: 5 },
+        companyLogo: { ...ELEMENT_TEMPLATES.companyLogo, x: 204, y: 16, width: 192, height: 74, size: 70, zIndex: 6 },
+        headshot:    { ...ELEMENT_TEMPLATES.headshot, shape: "circle", x: 200, y: 100, size: 200, zIndex: 1 },
+        name:        { ...ELEMENT_TEMPLATES.name, x: 60, y: 321, color: textColor, fontFamily: font, fontSize: 55, nameFormat: "two-line", width: 480, textAlign: "center", fontWeight: 700, zIndex: 4 },
+        title:       { ...ELEMENT_TEMPLATES.title, x: 60, y: 450, color: textColor, fontFamily: font, fontSize: 28, width: 480, textAlign: "center", fontWeight: 500, zIndex: 3 },
+        company:     { ...ELEMENT_TEMPLATES.company, x: 60, y: 488, color: textColor, fontFamily: font, fontSize: 28, width: 480, textAlign: "center", fontWeight: 400, zIndex: 2 },
       })),
     },
   ];
 
   // ── LANDSCAPE 900×600 ──────────────────────────────────────────────────────────────────────
-  // Fonts sized per-template by text zone width. Logo standard: 128×64.
   const LANDSCAPE_PRESETS: StarterPreset[] = [
     {
-      // Full-bleed, heavy gradient lower third. Gradient extended to y:240 to cover 55px name at y:405.
+      // Full-bleed headshot, gradient lower third, text anchored to bottom.
+      // Safe zone maths (600px): company_y(488) + wrap(33) + height(28) = 549 ≤ 550 ✓
+      // Logo top-right in clear photo area above gradient and text zone.
+      // Gradient starts y:271 to cover name at y:321.
       name: "Overlay",
       description: "Full-bleed photo, gradient reveals text at the bottom",
       thumbnail: "overlay",
@@ -866,16 +868,17 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
       allowedHeadshotShapes: [],
       apply: makeApply((bg, textColor, font) => ({
         headshot:        { ...ELEMENT_TEMPLATES.headshot, shape: "full-bleed", x: 0, y: 0, size: 900, zIndex: 1 },
-        gradientOverlay: { ...ELEMENT_TEMPLATES.gradientOverlay, x: 0, y: 240, width: 900, height: 360, gradientDirection: "bottom", overlayOpacity: 0.90, zIndex: 3 },
+        gradientOverlay: { ...ELEMENT_TEMPLATES.gradientOverlay, x: 0, y: 271, width: 900, height: 329, gradientDirection: "bottom", overlayOpacity: 0.90, zIndex: 3 },
         companyLogo:     { ...ELEMENT_TEMPLATES.companyLogo, x: 732, y: 18, width: 148, height: 74, size: 70, zIndex: 6 },
-        name:            { ...ELEMENT_TEMPLATES.name, x: 40, y: 400, color: textColor, fontFamily: font, fontSize: 55, width: 560, fontWeight: 700, zIndex: 10 },
-        title:           { ...ELEMENT_TEMPLATES.title, x: 40, y: 465, color: textColor, fontFamily: font, fontSize: 28, width: 560, fontWeight: 500, zIndex: 8 },
-        company:         { ...ELEMENT_TEMPLATES.company, x: 40, y: 503, color: textColor, fontFamily: font, fontSize: 28, width: 380, fontWeight: 400, zIndex: 7 },
+        name:            { ...ELEMENT_TEMPLATES.name, x: 40, y: 321, color: textColor, fontFamily: font, fontSize: 55, nameFormat: "two-line", width: 560, fontWeight: 700, zIndex: 10 },
+        title:           { ...ELEMENT_TEMPLATES.title, x: 40, y: 450, color: textColor, fontFamily: font, fontSize: 28, width: 560, fontWeight: 500, zIndex: 8 },
+        company:         { ...ELEMENT_TEMPLATES.company, x: 40, y: 488, color: textColor, fontFamily: font, fontSize: 28, width: 380, fontWeight: 400, zIndex: 7 },
       })),
     },
     {
-      // Photo left (x:36, size:480). Right column x:556. Logo anchors top-right, speaker info below.
-      // Gaps between title/company are intentionally generous (20px+) to match backend HTML line-height rendering.
+      // Headshot left (x:36, size:480). Right column x:556, width:308. Logo top of column.
+      // Text well within safe zone — right column max content bottom ~320, far from 550 ✓
+      // 20px gap between logo bottom (110) and name (130).
       name: "Side by Side",
       description: "Large square photo left, event logo and speaker info right",
       thumbnail: "side-by-side",
@@ -887,14 +890,15 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
       apply: makeApply((bg, textColor, font) => ({
         headshot:    { ...ELEMENT_TEMPLATES.headshot, shape: "square", x: 36, y: 36, size: 480, zIndex: 1 },
         companyLogo: { ...ELEMENT_TEMPLATES.companyLogo, x: 556, y: 36, width: 148, height: 74, size: 70, zIndex: 5 },
-        name:        { ...ELEMENT_TEMPLATES.name, x: 556, y: 124, color: textColor, fontFamily: font, fontSize: 38, width: 308, fontWeight: 700, zIndex: 4 },
-        title:       { ...ELEMENT_TEMPLATES.title, x: 556, y: 172, color: textColor, fontFamily: font, fontSize: 22, width: 308, fontWeight: 500, zIndex: 3 },
-        company:     { ...ELEMENT_TEMPLATES.company, x: 556, y: 204, color: textColor, fontFamily: font, fontSize: 22, width: 308, fontWeight: 400, zIndex: 2 },
+        name:        { ...ELEMENT_TEMPLATES.name, x: 556, y: 130, color: textColor, fontFamily: font, fontSize: 55, nameFormat: "two-line", width: 308, fontWeight: 700, zIndex: 4 },
+        title:       { ...ELEMENT_TEMPLATES.title, x: 556, y: 259, color: textColor, fontFamily: font, fontSize: 22, width: 308, fontWeight: 500, zIndex: 3 },
+        company:     { ...ELEMENT_TEMPLATES.company, x: 556, y: 293, color: textColor, fontFamily: font, fontSize: 22, width: 308, fontWeight: 400, zIndex: 2 },
       })),
     },
     {
-      // Full-bleed photo, very heavy gradient (0.95), oversized bold name (55px, weight:800) dominates.
-      // Logo in clear photo area top-right. Distinct from Overlay: type-forward, announcement/keynote feel.
+      // Full-bleed photo, very heavy gradient (0.95), bold name (weight:800) dominates — announcement feel.
+      // Safe zone maths (600px): company_y(488) + wrap(33) + height(28) = 549 ≤ 550 ✓
+      // Logo top-right in clear photo area. Gradient starts y:271 to cover name at y:321.
       name: "Editorial",
       description: "Full-bleed photo, bold headline lower panel — speaker name leads the card",
       thumbnail: "editorial",
@@ -905,22 +909,22 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
       allowedHeadshotShapes: [],
       apply: makeApply((bg, textColor, font) => ({
         headshot:        { ...ELEMENT_TEMPLATES.headshot, shape: "full-bleed", x: 0, y: 0, size: 900, zIndex: 1 },
-        gradientOverlay: { ...ELEMENT_TEMPLATES.gradientOverlay, x: 0, y: 240, width: 900, height: 360, gradientDirection: "bottom", overlayOpacity: 0.95, zIndex: 3 },
+        gradientOverlay: { ...ELEMENT_TEMPLATES.gradientOverlay, x: 0, y: 271, width: 900, height: 329, gradientDirection: "bottom", overlayOpacity: 0.95, zIndex: 3 },
         companyLogo:     { ...ELEMENT_TEMPLATES.companyLogo, x: 728, y: 24, width: 148, height: 74, size: 70, zIndex: 6 },
-        name:            { ...ELEMENT_TEMPLATES.name, x: 40, y: 400, color: textColor, fontFamily: font, fontSize: 55, width: 680, fontWeight: 800, zIndex: 10 },
-        title:           { ...ELEMENT_TEMPLATES.title, x: 40, y: 465, color: textColor, fontFamily: font, fontSize: 28, width: 580, fontWeight: 500, zIndex: 8 },
-        company:         { ...ELEMENT_TEMPLATES.company, x: 40, y: 503, color: textColor, fontFamily: font, fontSize: 28, width: 400, fontWeight: 400, zIndex: 7 },
+        name:            { ...ELEMENT_TEMPLATES.name, x: 40, y: 321, color: textColor, fontFamily: font, fontSize: 55, nameFormat: "two-line", width: 680, fontWeight: 800, zIndex: 10 },
+        title:           { ...ELEMENT_TEMPLATES.title, x: 40, y: 450, color: textColor, fontFamily: font, fontSize: 28, width: 580, fontWeight: 500, zIndex: 8 },
+        company:         { ...ELEMENT_TEMPLATES.company, x: 40, y: 488, color: textColor, fontFamily: font, fontSize: 28, width: 400, fontWeight: 400, zIndex: 7 },
       })),
     },
   ];
 
   // ── PORTRAIT ───────────────────────────────────────────────────────────────────────────────
-  // Fonts sized per-template by text zone width. Logo standard: 128×64.
-  // Heights: Overlay 600×800 (cinematic), Spotlight 600×640 (reduced from 720), Brand Forward 600×660 (redesigned).
+  // Heights: Overlay 600×800 (cinematic), Spotlight 600×640, Brand Forward 600×660.
   const PORTRAIT_PRESETS: StarterPreset[] = [
     {
-      // Full-bleed headshot, gradient bottom half. Gradient covers bottom 50% of 800px canvas.
-      // Text anchored to bottom — name at y:619 with 55px font, 27px bottom margin on company.
+      // Full-bleed headshot, gradient covers bottom half (y:401 → 800).
+      // Safe zone maths (800px): company_y(688) + wrap(33) + height(28) = 749 ≤ 750 ✓
+      // Logo top-right in clear photo area above gradient and text zone.
       name: "Overlay",
       description: "Full-bleed photo, gradient reveals text at the bottom",
       thumbnail: "overlay",
@@ -931,16 +935,17 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
       allowedHeadshotShapes: [],
       apply: makeApply((bg, textColor, font) => ({
         headshot:        { ...ELEMENT_TEMPLATES.headshot, shape: "full-bleed", x: 0, y: 0, size: 600, zIndex: 1 },
-        gradientOverlay: { ...ELEMENT_TEMPLATES.gradientOverlay, x: 0, y: 400, width: 600, height: 400, gradientDirection: "bottom", overlayOpacity: 0.92, zIndex: 3 },
+        gradientOverlay: { ...ELEMENT_TEMPLATES.gradientOverlay, x: 0, y: 401, width: 600, height: 399, gradientDirection: "bottom", overlayOpacity: 0.92, zIndex: 3 },
         companyLogo:     { ...ELEMENT_TEMPLATES.companyLogo, x: 432, y: 20, width: 148, height: 74, size: 70, zIndex: 6 },
-        name:            { ...ELEMENT_TEMPLATES.name, x: 36, y: 602, color: textColor, fontFamily: font, fontSize: 55, width: 528, fontWeight: 700, zIndex: 10 },
-        title:           { ...ELEMENT_TEMPLATES.title, x: 36, y: 667, color: textColor, fontFamily: font, fontSize: 28, width: 528, fontWeight: 500, zIndex: 8 },
-        company:         { ...ELEMENT_TEMPLATES.company, x: 36, y: 705, color: textColor, fontFamily: font, fontSize: 28, width: 380, fontWeight: 400, zIndex: 7 },
+        name:            { ...ELEMENT_TEMPLATES.name, x: 36, y: 521, color: textColor, fontFamily: font, fontSize: 55, nameFormat: "two-line", width: 528, fontWeight: 700, zIndex: 10 },
+        title:           { ...ELEMENT_TEMPLATES.title, x: 36, y: 650, color: textColor, fontFamily: font, fontSize: 28, width: 528, fontWeight: 500, zIndex: 8 },
+        company:         { ...ELEMENT_TEMPLATES.company, x: 36, y: 688, color: textColor, fontFamily: font, fontSize: 28, width: 380, fontWeight: 400, zIndex: 7 },
       })),
     },
     {
-      // Canvas reduced 720→640 to eliminate dead space with 55px fonts.
-      // Circle x:170, size:260 → centre x:300 ✓. Text centred (x:60, width:480 = 60px each side ✓).
+      // Logo centred above headshot — removes logo from the text expansion zone entirely.
+      // Safe zone maths (640px): company_y(528) + wrap(33) + height(28) = 589 ≤ 590 ✓
+      // Headshot 240px centred (x:180). 21px gap between headshot bottom (340) and name (361).
       name: "Spotlight",
       description: "Centered circle photo, centered text below — clean poster feel",
       thumbnail: "spotlight",
@@ -950,17 +955,17 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
       canvasW: 600, canvasH: 640,
       allowedHeadshotShapes: ["circle", "square", "rounded"],
       apply: makeApply((bg, textColor, font) => ({
-        headshot:    { ...ELEMENT_TEMPLATES.headshot, shape: "circle", x: 175, y: 30, size: 250, zIndex: 1 },
-        name:        { ...ELEMENT_TEMPLATES.name, x: 60, y: 308, color: textColor, fontFamily: font, fontSize: 55, width: 480, textAlign: "center", fontWeight: 700, zIndex: 4 },
-        title:       { ...ELEMENT_TEMPLATES.title, x: 60, y: 373, color: textColor, fontFamily: font, fontSize: 28, width: 480, textAlign: "center", fontWeight: 500, zIndex: 3 },
-        company:     { ...ELEMENT_TEMPLATES.company, x: 60, y: 411, color: textColor, fontFamily: font, fontSize: 28, width: 480, textAlign: "center", fontWeight: 400, zIndex: 2 },
-        companyLogo: { ...ELEMENT_TEMPLATES.companyLogo, x: 204, y: 518, width: 192, height: 74, size: 70, zIndex: 5 },
+        companyLogo: { ...ELEMENT_TEMPLATES.companyLogo, x: 204, y: 16, width: 192, height: 74, size: 70, zIndex: 6 },
+        headshot:    { ...ELEMENT_TEMPLATES.headshot, shape: "circle", x: 180, y: 100, size: 240, zIndex: 1 },
+        name:        { ...ELEMENT_TEMPLATES.name, x: 60, y: 361, color: textColor, fontFamily: font, fontSize: 55, nameFormat: "two-line", width: 480, textAlign: "center", fontWeight: 700, zIndex: 4 },
+        title:       { ...ELEMENT_TEMPLATES.title, x: 60, y: 490, color: textColor, fontFamily: font, fontSize: 28, width: 480, textAlign: "center", fontWeight: 500, zIndex: 3 },
+        company:     { ...ELEMENT_TEMPLATES.company, x: 60, y: 528, color: textColor, fontFamily: font, fontSize: 28, width: 480, textAlign: "center", fontWeight: 400, zIndex: 2 },
       })),
     },
     {
-      // REDESIGNED: company logo now dominates the top half (480×180, hero placement).
-      // Small centred circle + speaker info fills the bottom half. Canvas 600×660.
-      // Logo hero: x:60, y:36, width:480, height:180 → bottom:216. Circle: centred at y:268, size:160.
+      // Event logo hero top (480×160). Headshot small-centred below logo.
+      // Safe zone maths (660px): company_y(548) + wrap(33) + height(28) = 609 ≤ 610 ✓
+      // Headshot moved to y:206 (18px gap from logo bottom 188) so it clears name at y:381 by 15px.
       name: "Brand Forward",
       description: "Event logo dominates the top half, speaker photo and info fill the bottom",
       thumbnail: "brand-forward",
@@ -971,10 +976,10 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
       allowedHeadshotShapes: ["circle", "square", "rounded"],
       apply: makeApply((bg, textColor, font) => ({
         companyLogo: { ...ELEMENT_TEMPLATES.companyLogo, x: 60, y: 28, width: 480, height: 160, size: 60, zIndex: 5 },
-        headshot:    { ...ELEMENT_TEMPLATES.headshot, shape: "circle", x: 220, y: 228, size: 160, zIndex: 1 },
-        name:        { ...ELEMENT_TEMPLATES.name, x: 60, y: 408, color: textColor, fontFamily: font, fontSize: 48, width: 480, textAlign: "center", fontWeight: 700, zIndex: 4 },
-        title:       { ...ELEMENT_TEMPLATES.title, x: 60, y: 466, color: textColor, fontFamily: font, fontSize: 28, width: 480, textAlign: "center", fontWeight: 500, zIndex: 3 },
-        company:     { ...ELEMENT_TEMPLATES.company, x: 60, y: 504, color: textColor, fontFamily: font, fontSize: 28, width: 480, textAlign: "center", fontWeight: 400, zIndex: 2 },
+        headshot:    { ...ELEMENT_TEMPLATES.headshot, shape: "circle", x: 220, y: 206, size: 160, zIndex: 1 },
+        name:        { ...ELEMENT_TEMPLATES.name, x: 60, y: 381, color: textColor, fontFamily: font, fontSize: 55, nameFormat: "two-line", width: 480, textAlign: "center", fontWeight: 700, zIndex: 4 },
+        title:       { ...ELEMENT_TEMPLATES.title, x: 60, y: 510, color: textColor, fontFamily: font, fontSize: 28, width: 480, textAlign: "center", fontWeight: 500, zIndex: 3 },
+        company:     { ...ELEMENT_TEMPLATES.company, x: 60, y: 548, color: textColor, fontFamily: font, fontSize: 28, width: 480, textAlign: "center", fontWeight: 400, zIndex: 2 },
       })),
     },
   ];
@@ -1211,6 +1216,31 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
 
         alignmentLines.forEach((l) => canvas.add(l));
         canvas.renderAll();
+      });
+
+      // ── Safe zone guide ─────────────────────────────────────────────────────
+      // Draws a dashed line 50px from the bottom of the canvas (editor-only — not exported).
+      // Marks the boundary below which title-wrap + company-shift may overflow.
+      canvas.on("after:render", () => {
+        const ctx = canvas.getContext() as CanvasRenderingContext2D | null;
+        if (!ctx) return;
+        const cH = canvas.getHeight();
+        const cW = canvas.getWidth();
+        const safeY = cH - 50;
+        ctx.save();
+        ctx.strokeStyle = "rgba(79, 156, 251, 0.55)";
+        ctx.lineWidth = 1;
+        ctx.setLineDash([5, 4]);
+        ctx.beginPath();
+        ctx.moveTo(0, safeY);
+        ctx.lineTo(cW, safeY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.font = "10px sans-serif";
+        ctx.fillStyle = "rgba(79, 156, 251, 0.7)";
+        ctx.textAlign = "right";
+        ctx.fillText("safe zone", cW - 6, safeY - 4);
+        ctx.restore();
       });
 
       // Clear snap lock on release; lines linger 600ms so you can see where you snapped
@@ -2175,6 +2205,13 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
     return () => clearTimeout(timer);
   }, [config, bgColor, templateUrl, canvasWidth, canvasHeight, hasUnsavedChanges]);
 
+  // Migrate loaded configs to current defaults.
+  // "two-line" is now the default nameFormat — upgrade any old "single" saves automatically.
+  const migrateLoadedConfig = (cfg: CardConfig): { migrated: CardConfig; changed: boolean } => {
+    if (!cfg?.name || cfg.name.nameFormat === "two-line") return { migrated: cfg, changed: false };
+    return { migrated: { ...cfg, name: { ...cfg.name, nameFormat: "two-line" } }, changed: true };
+  };
+
   // Load saved config on mount: prefer server config for eventId, fallback to localStorage
   useEffect(() => {
     const storageKey = `${cardType}-card-config-${eventId || "default"}`;
@@ -2185,8 +2222,9 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
       try {
         const { config: savedConfig, templateUrl: savedTemplateUrl, canvasWidth: savedWidth, canvasHeight: savedHeight, bgColor: savedBgColor, bgGradient: savedBgGradient, bgIsGenerated: savedBgIsGenerated } = JSON.parse(saved);
         if (savedConfig) {
-          setConfig(savedConfig);
-          setHasUnsavedChanges(false);
+          const { migrated, changed } = migrateLoadedConfig(savedConfig);
+          setConfig(migrated);
+          setHasUnsavedChanges(changed);
         }
         if (savedBgColor) setBgColor(savedBgColor);
         if (savedBgGradient) setBgGradient(savedBgGradient);
@@ -2274,8 +2312,9 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
                   }
                 }
               } catch (e) { /* ignore localStorage errors */ }
-              setConfig(configToSet);
-              setHasUnsavedChanges(false);
+              const { migrated, changed } = migrateLoadedConfig(configToSet);
+              setConfig(migrated);
+              setHasUnsavedChanges(changed);
             }
 
             if (savedWidth && savedHeight) {
