@@ -811,8 +811,7 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
     },
     {
       // Text block full-width at top. Headshot below, clear of worst-case text expansion (company bottom ~250).
-      // Safe zone: headshot y:265 starts 15px below worst-case company bottom (250) ✓
-      // Logo bottom-left, 11px above canvas edge.
+      // Safe zone (600px): headshot y:265 size:200 → bottom:465. Logo y:473 → bottom:547 ≤ 550 ✓
       name: "Headline",
       description: "Full-width name and details at top, circle photo below, logo bottom-left",
       thumbnail: "headline",
@@ -825,8 +824,8 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
         name:        { ...ELEMENT_TEMPLATES.name, x: 24, y: 22, color: textColor, fontFamily: font, fontSize: 55, nameFormat: "two-line", width: 552, fontWeight: 700, zIndex: 4 },
         title:       { ...ELEMENT_TEMPLATES.title, x: 24, y: 151, color: textColor, fontFamily: font, fontSize: 28, width: 552, fontWeight: 500, zIndex: 3 },
         company:     { ...ELEMENT_TEMPLATES.company, x: 24, y: 189, color: textColor, fontFamily: font, fontSize: 28, width: 552, fontWeight: 400, zIndex: 2 },
-        headshot:    { ...ELEMENT_TEMPLATES.headshot, shape: "circle", x: 180, y: 265, size: 240, zIndex: 1 },
-        companyLogo: { ...ELEMENT_TEMPLATES.companyLogo, x: 20, y: 515, width: 148, height: 74, size: 70, zIndex: 5 },
+        headshot:    { ...ELEMENT_TEMPLATES.headshot, shape: "circle", x: 200, y: 265, size: 200, zIndex: 1 },
+        companyLogo: { ...ELEMENT_TEMPLATES.companyLogo, x: 20, y: 473, width: 148, height: 74, size: 70, zIndex: 5 },
       })),
     },
     {
@@ -1868,6 +1867,13 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
             });
           }
           document.body.removeChild(measureEl);
+          // Fabric.Textbox.initDimensions() expands this.width to dynamicMinWidth when
+          // a long unhyphenable token (e.g. "Bartholomew-Richardson") exceeds cfg.width.
+          // Reset to the configured width now that font shrinking is complete, then
+          // call setCoords() so selection handles and hit area match the final bounds.
+          text.set({ width: boxWidth });
+          text.initDimensions();
+          text.setCoords();
         }
 
         canvas.add(text);
