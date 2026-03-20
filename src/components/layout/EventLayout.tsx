@@ -46,13 +46,6 @@ export default function EventLayout({ children }: { children: ReactNode }) {
         <div className="flex-1" />
 
         <div className="flex items-center gap-1 shrink-0">
-          <Button variant="ghost" size="sm" asChild>
-            <Link to={`/organizer/event/${id}/settings`}>
-              <Settings className="h-4 w-4 mr-1" />
-              Settings
-            </Link>
-          </Button>
-
           {/* Account dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
