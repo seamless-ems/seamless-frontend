@@ -44,6 +44,30 @@ export function flattenFolderTree(folders: any[] | undefined): Array<{ id: strin
 }
 
 
+// ── Pretty event URLs ─────────────────────────────────────────────────────────
+// URLs look like /organizer/event/tech-summit-2025-{uuid}/speakers
+// The slug is cosmetic; the UUID (always last 36 chars) drives all API calls.
+
+/** Convert an event title + UUID into a single URL segment, e.g. "tech-summit-2025-{uuid}" */
+export function toEventSlugId(title: string, id: string): string {
+  const slug = title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 50);
+  return `${slug}-${id}`;
+}
+
+/** Extract the UUID from a slugId segment (handles both "slug-uuid" and bare "uuid") */
+export function extractEventId(slugId: string): string {
+  return slugId.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)?.[0] ?? slugId;
+}
+
+/** Build a full organizer event URL. Components without a title pass the UUID as slugId directly. */
+export function eventPath(slugId: string, subpath = ''): string {
+  return `/organizer/event/${slugId}${subpath}`;
+}
+
 // Generate a deterministic event id for uploads so backend can associate assets with the event
 export const generateUuid = () => {
   try {

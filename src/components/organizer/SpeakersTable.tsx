@@ -1,19 +1,160 @@
-import React from "react";
+import React, { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useQueryClient } from "@tanstack/react-query";
 import { updateSpeaker, deleteSpeaker } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
+import { Download, ExternalLink, Copy, Check } from "lucide-react";
+import { API_BASE } from "@/lib/api";
+import { extractEventId } from "@/lib/utils";
 
 type Props = {
   speakers: any[];
   isLoading: boolean;
-  eventId?: string | undefined;
+  eventId?: string | undefined; // may be a slugId or bare UUID
   selectedTab?: string;
 };
 
+// Download a remote image by fetching it as a blob (handles CORS-proxied URLs).
+// Falls back to opening in a new tab if fetch fails.
+async function downloadAsset(url: string, filename: string) {
+  try {
+    const res = await fetch(url, { credentials: "include" });
+    if (!res.ok) throw new Error("fetch failed");
+    const blob = await res.blob();
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
+  } catch {
+    window.open(url, "_blank", "noopener");
+  }
+}
+
+function AssetButton({
+  label,
+  url,
+  filename,
+  disabled,
+  disabledReason,
+  external,
+}: {
+  label: string;
+  url: string | null | undefined;
+  filename?: string;
+  disabled?: boolean;
+  disabledReason?: string;
+  external?: boolean; // open in new tab instead of download
+}) {
+  const isDisabled = disabled || !url;
+  const title = isDisabled ? (disabledReason ?? "Not available") : `Download ${label}`;
+
+  return (
+    <div className="flex flex-col items-center gap-0.5 min-w-[52px]">
+      {label && <span className="text-[10px] text-muted-foreground leading-none">{label}</span>}
+      <button
+        title={title}
+        disabled={isDisabled}
+        onClick={() => {
+          if (!url) return;
+          if (external) {
+            window.open(url, "_blank", "noopener");
+          } else {
+            downloadAsset(url, filename ?? label.toLowerCase().replace(/\s+/g, "-"));
+          }
+        }}
+        className={`mt-0.5 rounded p-1.5 transition-colors ${
+          isDisabled
+            ? "text-muted-foreground/30 cursor-not-allowed"
+            : "text-muted-foreground hover:text-primary hover:bg-primary/8 cursor-pointer"
+        }`}
+      >
+        {external ? <ExternalLink className="h-3.5 w-3.5" /> : <Download className="h-3.5 w-3.5" />}
+      </button>
+    </div>
+  );
+}
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      title="Copy name, title & company"
+      onClick={(e) => {
+        e.stopPropagation();
+        navigator.clipboard.writeText(text).then(() => {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1500);
+        });
+      }}
+      className="ml-1.5 opacity-0 group-hover:opacity-100 transition-opacity rounded p-0.5 text-muted-foreground/50 hover:text-primary hover:bg-primary/8 cursor-pointer"
+    >
+      {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+    </button>
+  );
+}
+
+function resolveStatus(speaker: any, selectedTab?: string) {
+  const infoStatus =
+    speaker.speakerInformationStatus ??
+    speaker.speaker_information_status ??
+    speaker.intakeFormStatus ??
+    speaker.intake_form_status ??
+    "pending";
+
+  const websiteApproved =
+    speaker.websiteCardApproved ?? speaker.website_card_approved ?? false;
+
+  const promoApproved =
+    speaker.promoCardApproved ?? speaker.promo_card_approved ?? false;
+
+  if (selectedTab === "applications") {
+    const appStatus =
+      speaker.callForSpeakersStatus ??
+      speaker.call_for_speakers_status ??
+      "pending";
+    if (appStatus === "approved" || appStatus === "cards_approved")
+      return { label: "Approved", cls: "bg-success/10 text-success border-success/30" };
+    if (appStatus === "submitted")
+      return { label: "Submitted", cls: "bg-blue-500/10 text-blue-600 border-blue-500/30" };
+    return { label: "Pending Review", cls: "bg-warning/10 text-warning border-warning/30" };
+  }
+
+  if (infoStatus === "pending")
+    return { label: "Info Pending", cls: "bg-warning/10 text-warning border-warning/30" };
+
+  if (infoStatus === "submitted")
+    return { label: "Info Submitted", cls: "bg-blue-500/10 text-blue-600 border-blue-500/30" };
+
+  // infoStatus === "approved" — check card approvals
+  if (!websiteApproved && !promoApproved)
+    return { label: "Cards Pending", cls: "bg-orange-500/10 text-orange-600 border-orange-500/30" };
+
+  if (websiteApproved && promoApproved)
+    return { label: "Approved", cls: "bg-success/10 text-success border-success/30" };
+
+  // One card approved, one not
+  return { label: "Partially Approved", cls: "bg-blue-500/10 text-blue-600 border-blue-500/30" };
+}
+
+function formatDate(dateStr: string | null | undefined) {
+  if (!dateStr) return null;
+  try {
+    return new Date(dateStr).toLocaleDateString("en-GB", {
+      day: "numeric", month: "long", year: "numeric",
+    });
+  } catch {
+    return null;
+  }
+}
+
 export default function SpeakersTable({ speakers, isLoading, eventId, selectedTab }: Props) {
   const queryClient = useQueryClient();
+  // eventId may be a slugId — extract the bare UUID for API URLs
+  const eventUuid = extractEventId(eventId ?? "");
 
   if (isLoading) {
     return <div className="py-12 text-center text-sm text-muted-foreground">Loading speakers…</div>;
@@ -27,85 +168,138 @@ export default function SpeakersTable({ speakers, isLoading, eventId, selectedTa
     <table className="w-full">
       <thead className="border-b border-border bg-muted/30">
         <tr>
-          <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground w-[64px]">Headshot</th>
-          <th className="px-5 py-3 text-left text-xs font-medium text-muted-foreground">Speaker</th>
-          <th className="px-5 py-3 text-left text-xs font-medium text-muted-foreground">Title</th>
-          <th className="px-5 py-3 text-left text-xs font-medium text-muted-foreground">Company</th>
-          <th className="px-5 py-3 text-left text-xs font-medium text-muted-foreground">Last Updated</th>
-          <th className="px-5 py-3 text-left text-xs font-medium text-muted-foreground">Status</th>
+          <th className="px-5 py-4 text-left text-xs font-medium text-muted-foreground w-[68px]"></th>
+          <th className="px-5 py-4 text-left text-xs font-medium text-muted-foreground"></th>
+          <th className="px-5 py-4 text-left text-xs font-medium text-muted-foreground w-[140px]">Status</th>
+          {/* Asset download columns */}
+          <th className="px-3 py-4 text-center text-xs font-medium text-muted-foreground w-[80px]">Website<br/>Card</th>
+          <th className="px-3 py-4 text-center text-xs font-medium text-muted-foreground w-[80px]">Promo<br/>Card</th>
+          <th className="px-3 py-4 text-center text-xs font-medium text-muted-foreground w-[72px]">Company<br/>Logo</th>
+          <th className="px-5 py-4 text-left text-xs font-medium text-muted-foreground w-[130px]">Last<br/>Updated</th>
         </tr>
       </thead>
       <tbody>
-        {speakers.map((speaker) => (
-          <tr key={speaker.id} className="border-b border-border hover:bg-muted/40 transition-colors group">
-            <td className="px-4 py-4">
-              <div className="w-10 h-10">
-                <Avatar>
-                  <AvatarImage src={speaker.headshot || speaker.headshotUrl || speaker.headshot_url || undefined} alt={speaker.name || "headshot"} />
-                  <AvatarFallback>
-                    {((speaker.name || "") as string).split(" ").map((p: string) => p?.[0]).filter(Boolean).slice(0,2).join("")}
-                  </AvatarFallback>
-                </Avatar>
-              </div>
-            </td>
+        {speakers.map((speaker) => {
+          const headshotUrl = speaker.headshot || speaker.headshotUrl || speaker.headshot_url || null;
+          const logoUrl = speaker.companyLogo || speaker.company_logo || null;
+          const speakerName = speaker.name || `${speaker.firstName ?? ""} ${speaker.lastName ?? ""}`.trim() || speaker.email || "Speaker";
+          const initials = speakerName.split(" ").map((p: string) => p?.[0]).filter(Boolean).slice(0, 2).join("");
 
-            <td className="px-5 py-4">
-              <div
-                className="text-sm font-medium text-foreground cursor-pointer"
-                onClick={() => window.location.href = `/organizer/event/${eventId}/speakers/${speaker.id}`}
-              >
-                {speaker.name}
-              </div>
-            </td>
+          // Card embed URLs — backend renders these as HTML embeds.
+          // TODO: replace with direct PNG download URLs once backend exposes them (see API_GAPS.md)
+          const websiteCardUrl = `${API_BASE}/embed/${eventUuid}/speaker/${speaker.id}`;
+          const promoCardUrl = `${API_BASE}/promo-cards/${eventUuid}/speaker/${speaker.id}`;
 
-            <td className="px-5 py-4 text-sm text-foreground cursor-pointer" onClick={() => window.location.href = `/organizer/event/${eventId}/speakers/${speaker.id}`}>
-              {speaker.companyRole || "-"}
-            </td>
+          const websiteApproved = speaker.websiteCardApproved ?? speaker.website_card_approved ?? false;
+          const promoApproved = speaker.promoCardApproved ?? speaker.promo_card_approved ?? false;
 
-            <td className="px-5 py-4 text-sm text-foreground cursor-pointer" onClick={() => window.location.href = `/organizer/event/${eventId}/speakers/${speaker.id}`}>
-              {speaker.company || "-"}
-            </td>
+          const status = resolveStatus(speaker, selectedTab);
+          const updatedDate = formatDate(speaker.updatedAt ?? speaker.updated_at ?? speaker.createdAt);
 
-            <td className="px-5 py-4 text-sm text-muted-foreground cursor-pointer" onClick={() => window.location.href = `/organizer/event/${eventId}/speakers/${speaker.id}`}>
-              {speaker.createdAt ? new Date(speaker.createdAt).toLocaleDateString() : "-"}
-            </td>
+          return (
+            <tr
+              key={speaker.id}
+              className="border-b border-border hover:bg-muted/40 transition-colors group"
+            >
+              {/* Headshot — click to download */}
+              <td className="px-5 py-4">
+                <button
+                  title={headshotUrl ? "Download headshot" : "No headshot uploaded"}
+                  disabled={!headshotUrl}
+                  onClick={() => headshotUrl && downloadAsset(headshotUrl, `${speakerName.replace(/\s+/g, "-").toLowerCase()}-headshot.jpg`)}
+                  className={`relative rounded-full block ${headshotUrl ? "cursor-pointer hover:opacity-80 transition-opacity" : "cursor-default"}`}
+                >
+                  <Avatar className="h-10 w-10">
+                    <AvatarImage src={headshotUrl ?? undefined} alt={speakerName} />
+                    <AvatarFallback className="text-xs">{initials}</AvatarFallback>
+                  </Avatar>
+                  {headshotUrl && (
+                    <span className="absolute -bottom-0.5 -right-0.5 bg-background border border-border rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Download className="h-2.5 w-2.5 text-muted-foreground" />
+                    </span>
+                  )}
+                </button>
+              </td>
 
-            <td className="px-5 py-4">
-              {(() => {
-                // Choose status field based on selectedTab
-                const status = selectedTab === 'applications'
-                  ? (speaker.callForSpeakersStatus ?? speaker.call_for_speakers_status ?? speaker.call_for_speakers_status ?? speaker.callForSpeakersStatus ?? speaker.call_for_speakers_status)
-                  : (speaker.speakerInformationStatus ?? speaker.speaker_information_status ?? speaker.speakerInformationStatus ?? speaker.speaker_information_status);
-
-                // Fallback to intakeFormStatus if specific status not present
-                const finalStatus = status ?? speaker.intakeFormStatus ?? speaker.intake_form_status ?? 'pending';
-
-                const cls = finalStatus === 'approved' || finalStatus === 'cards_approved'
-                  ? 'bg-success/10 text-success border-success/30'
-                  : finalStatus === 'submitted'
-                  ? 'bg-blue-500/10 text-blue-600 border-blue-500/30'
-                  : finalStatus === 'pending'
-                  ? 'bg-warning/10 text-warning border-warning/30'
-                  : 'bg-muted/50 text-muted-foreground border-muted/50';
-
-                const label = finalStatus === 'pending' ? 'Info Pending'
-                  : finalStatus === 'submitted' ? 'Info Submitted'
-                  : (finalStatus === 'approved' || finalStatus === 'cards_approved') ? 'Cards Approved'
-                  : finalStatus;
-
-                return (
-                  <Badge
-                    variant="outline"
-                    className={`text-xs font-medium cursor-pointer ${cls}`}
+              {/* Speaker info — selectable text for copy-paste */}
+              <td className="px-5 py-4">
+                <div className="flex items-center">
+                  <div
+                    className="text-sm font-semibold text-foreground cursor-pointer hover:text-primary transition-colors leading-tight"
                     onClick={() => window.location.href = `/organizer/event/${eventId}/speakers/${speaker.id}`}
                   >
-                    {label}
-                  </Badge>
-                );
-              })()}
-            </td>
-          </tr>
-        ))}
+                    {speakerName}
+                  </div>
+                  <CopyButton text={[speakerName, speaker.companyRole, speaker.company, speaker.bio].filter(Boolean).join("\n")} />
+                </div>
+                {speaker.companyRole && (
+                  <div className="text-xs text-muted-foreground mt-1 leading-tight select-all cursor-text">
+                    {speaker.companyRole}
+                  </div>
+                )}
+                {speaker.company && (
+                  <div className="text-xs text-muted-foreground mt-0.5 leading-tight select-all cursor-text">
+                    {speaker.company}
+                  </div>
+                )}
+              </td>
+
+              {/* Status */}
+              <td className="px-5 py-4">
+                <Badge
+                  variant="outline"
+                  className={`text-xs font-medium cursor-pointer whitespace-nowrap ${status.cls}`}
+                  onClick={() => window.location.href = `/organizer/event/${eventId}/speakers/${speaker.id}`}
+                >
+                  {status.label}
+                </Badge>
+              </td>
+
+              {/* Website Card */}
+              <td className="px-3 py-4">
+                <div className="flex justify-center">
+                  <AssetButton
+                    label=""
+                    url={websiteApproved ? websiteCardUrl : null}
+                    external
+                    disabledReason={!websiteApproved ? "Website card not yet approved" : undefined}
+                  />
+                </div>
+              </td>
+
+              {/* Promo Card */}
+              <td className="px-3 py-4">
+                <div className="flex justify-center">
+                  <AssetButton
+                    label=""
+                    url={promoApproved ? promoCardUrl : null}
+                    external
+                    disabledReason={!promoApproved ? "Promo card not yet approved" : undefined}
+                  />
+                </div>
+              </td>
+
+              {/* Company Logo */}
+              <td className="px-3 py-4">
+                <div className="flex justify-center">
+                  <AssetButton
+                    label=""
+                    url={logoUrl}
+                    filename={`${(speaker.company ?? speakerName).replace(/\s+/g, "-").toLowerCase()}-logo.png`}
+                    disabledReason="No company logo uploaded"
+                  />
+                </div>
+              </td>
+
+              {/* Last updated — shown as plain text */}
+              <td className="px-5 py-4">
+                <span className="text-xs text-muted-foreground">
+                  {updatedDate ?? <span className="text-muted-foreground/30">—</span>}
+                </span>
+              </td>
+            </tr>
+          );
+        })}
       </tbody>
     </table>
   );

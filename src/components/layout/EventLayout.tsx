@@ -10,13 +10,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { ChevronRight, Settings, ChevronDown, Users, CreditCard } from 'lucide-react';
+import { Settings, ChevronDown, Users, CreditCard, ChevronRight } from 'lucide-react';
 import { getMe, getTeam, getJson } from '@/lib/api';
+import { extractEventId } from '@/lib/utils';
 import { clearTokenAndNotify } from '@/lib/session';
 import { signOut as firebaseSignOut } from '@/lib/firebase';
 
 export default function EventLayout({ children }: { children: ReactNode }) {
-  const { id } = useParams();
+  const { eventSlugId } = useParams();
+  const id = extractEventId(eventSlugId ?? '');
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -36,31 +38,18 @@ export default function EventLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       {/* Top bar — hidden when card builder is active (it has its own full toolbar) */}
-      <header className={`sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-card/95 px-4 ${isCardBuilder ? 'hidden' : ''}`}>
-        <nav className="flex items-center gap-1.5 text-sm">
-          <Link to="/organizer" className="text-muted-foreground hover:text-foreground transition-colors">
-            Events
-          </Link>
-          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/40 flex-shrink-0" />
-          {isOnSpeakerPortal ? (
-            <>
-              <Link
-                to={`/organizer/event/${id}/speakers`}
-                className="text-muted-foreground hover:text-foreground transition-colors truncate max-w-[220px]"
-              >
-                {eventName}
-              </Link>
-              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/40 flex-shrink-0" />
-              <span className="font-semibold text-foreground">Speakers</span>
-            </>
-          ) : (
-            <span className="font-semibold text-foreground truncate max-w-[300px]">{eventName}</span>
-          )}
-        </nav>
+      <header className={`sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-card/95 px-4 ${isCardBuilder ? 'hidden' : ''}`}>
+        {/* Brand */}
+        <Link to="/organizer" className="flex items-baseline gap-1 leading-none shrink-0">
+          <span className="text-[17px] font-semibold text-primary" style={{ letterSpacing: '-0.01em' }}>Seamless</span>
+          <span className="text-[13px] font-normal text-muted-foreground ml-0.5">Speakers</span>
+        </Link>
 
-        <div className="flex items-center gap-1">
+        <div className="flex-1" />
+
+        <div className="flex items-center gap-1 shrink-0">
           <Button variant="ghost" size="sm" asChild>
-            <Link to={`/organizer/event/${id}/settings`}>
+            <Link to={`/organizer/event/${eventSlugId}/settings`}>
               <Settings className="h-4 w-4 mr-1" />
               Settings
             </Link>

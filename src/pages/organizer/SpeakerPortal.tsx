@@ -1,4 +1,5 @@
 import { useParams } from "react-router-dom";
+import { extractEventId } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import SpeakerForm from "@/components/SpeakerForm";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -35,7 +36,8 @@ import SpeakerApproval from "@/components/organizer/SpeakerApproval";
 import SpeakerPreviews from "@/components/organizer/SpeakerPreviews";
 
 export default function SpeakerPortal() {
-  const { id, speakerId } = useParams();
+  const { eventSlugId, speakerId } = useParams();
+  const id = extractEventId(eventSlugId ?? '');
 
   const { data: speaker, isLoading, error } = useQuery<Speaker | null, Error>({
     queryKey: ["event", id, "speaker", speakerId],

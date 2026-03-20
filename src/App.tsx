@@ -95,7 +95,7 @@ const App = () => {
 
             {/* Event routes — flat, each wrapped in EventLayout */}
             <Route
-              path="/organizer/event/:id/speakers"
+              path="/organizer/event/:eventSlugId/speakers"
               element={
                 <ProtectedRoute>
                   <EventLayoutWrapper>
@@ -106,7 +106,7 @@ const App = () => {
             />
 
             <Route
-              path="/organizer/event/:id/speakers/applications"
+              path="/organizer/event/:eventSlugId/speakers/applications"
               element={
                 <ProtectedRoute>
                   <EventLayoutWrapper>
@@ -117,7 +117,7 @@ const App = () => {
             />
 
             <Route
-              path="/organizer/event/:id/speakers/forms"
+              path="/organizer/event/:eventSlugId/speakers/forms"
               element={
                 <ProtectedRoute>
                   <EventLayoutWrapper>
@@ -128,7 +128,7 @@ const App = () => {
             />
 
             <Route
-              path="/organizer/event/:id/speakers/embed"
+              path="/organizer/event/:eventSlugId/speakers/embed"
               element={
                 <ProtectedRoute>
                   <EventLayoutWrapper>
@@ -139,7 +139,7 @@ const App = () => {
             />
 
             <Route
-              path="/organizer/event/:id/speakers/:speakerId"
+              path="/organizer/event/:eventSlugId/speakers/:speakerId"
               element={
                 <ProtectedRoute>
                   <EventLayoutWrapper>
@@ -150,7 +150,7 @@ const App = () => {
             />
 
             <Route
-              path="/organizer/event/:id/settings"
+              path="/organizer/event/:eventSlugId/settings"
               element={
                 <ProtectedRoute>
                   <EventLayoutWrapper>
@@ -162,7 +162,7 @@ const App = () => {
 
             {/* Card builders — rendered inside SpeakerModule so the tab bar stays visible */}
             <Route
-              path="/organizer/event/:id/promo-card-builder"
+              path="/organizer/event/:eventSlugId/promo-card-builder"
               element={
                 <ProtectedRoute>
                   <EventLayoutWrapper>
@@ -173,7 +173,7 @@ const App = () => {
             />
 
             <Route
-              path="/organizer/event/:id/website-card-builder"
+              path="/organizer/event/:eventSlugId/website-card-builder"
               element={
                 <ProtectedRoute>
                   <EventLayoutWrapper>

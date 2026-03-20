@@ -3,9 +3,11 @@ import { useQuery } from "@tanstack/react-query";
 import { getJson } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { extractEventId } from "@/lib/utils";
 
 export default function EventDashboard() {
-	const { id } = useParams();
+	const { eventSlugId } = useParams();
+	const id = extractEventId(eventSlugId ?? '');
 
 	const { data: rawEvent, isLoading, error } = useQuery<any, Error>({
 		queryKey: ["event", id],
@@ -73,7 +75,7 @@ export default function EventDashboard() {
 
 	// All available modules for the button bar
 	const allModules = [
-		{ id: 'speaker', name: 'Speakers', url: `/organizer/event/${id}/speakers`, available: true },
+		{ id: 'speaker', name: 'Speakers', url: `/organizer/event/${eventSlugId}/speakers`, available: true },
 		{ id: 'schedule', name: 'Schedule', url: '#', available: true },
 		{ id: 'content', name: 'Content', url: '#', available: true },
 		{ id: 'partners', name: 'Partners', url: '#', available: true },
@@ -136,7 +138,7 @@ export default function EventDashboard() {
 						<div className="flex justify-between items-center mb-5 pb-4 border-b border-border">
 							<h3 style={{ fontSize: 'var(--font-h3)', fontWeight: 600 }}>Speakers</h3>
 							<Button variant="outline" size="sm" asChild>
-								<Link to={`/organizer/event/${id}/speakers`}>View Module</Link>
+								<Link to={`/organizer/event/${eventSlugId}/speakers`}>View Module</Link>
 							</Button>
 						</div>
 

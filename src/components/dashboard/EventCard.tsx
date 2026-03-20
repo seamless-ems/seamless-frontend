@@ -22,6 +22,7 @@ import { deleteEvent } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 import React from "react";
 import { Event } from "@/types/event";
+import { toEventSlugId } from "@/lib/utils";
 
 interface EventCardProps {
   event: Event;
@@ -58,7 +59,7 @@ export function EventCard({ event, index = 0, onDelete }: EventCardProps) {
   const [deleting, setDeleting] = React.useState(false);
   return (
     <Link
-      to={`/organizer/event/${event.id}/speakers`}
+      to={`/organizer/event/${toEventSlugId(event.title, event.id)}/speakers`}
       className="group block rounded-lg border border-border bg-card p-6 transition-all duration-200 hover:border-primary hover:shadow-sm"
       style={{ animationDelay: `${index * 100}ms` }}
     >
@@ -92,10 +93,10 @@ export function EventCard({ event, index = 0, onDelete }: EventCardProps) {
             }}
           >
             <DropdownMenuItem asChild>
-              <Link to={`/organizer/event/${event.id}/speakers`}>Open Event</Link>
+              <Link to={`/organizer/event/${toEventSlugId(event.title, event.id)}/speakers`}>Open Event</Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link to={`/organizer/event/${event.id}/settings`}>Edit Event</Link>
+              <Link to={`/organizer/event/${toEventSlugId(event.title, event.id)}/settings`}>Edit Event</Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem

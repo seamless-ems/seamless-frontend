@@ -1,9 +1,12 @@
 import { useState } from "react";
-import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
+import { extractEventId } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { getJson } from "@/lib/api";
+import { ChevronRight, Share2 } from "lucide-react";
 import AddSpeakerDialog from "@/components/organizer/AddSpeakerDialog";
+import ShareDialog from "@/components/organizer/ShareDialog";
 import SpeakersTable from "@/components/organizer/SpeakersTable";
 import SpeakersControls from "@/components/organizer/SpeakersControls";
 import EmbedBuilder from "@/components/organizer/EmbedBuilder";
@@ -11,12 +14,14 @@ import FormsTab from "@/components/organizer/FormsTab";
 import CardBuilder from "@/components/CardBuilder";
 
 export default function SpeakerModule() {
-  const { id } = useParams();
+  const { eventSlugId } = useParams();
+  const id = extractEventId(eventSlugId ?? '');
   const navigate = useNavigate();
   const location = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState("newest");
+  const [shareOpen, setShareOpen] = useState(false);
   // Derive active tab from URL path
   const pathname = location.pathname;
   const activeTab = pathname.endsWith('/applications') ? 'applications'
@@ -25,6 +30,13 @@ export default function SpeakerModule() {
     : pathname.endsWith('/promo-card-builder') ? 'promo-card-builder'
     : pathname.endsWith('/website-card-builder') ? 'website-card-builder'
     : 'speakers';
+
+  const { data: eventData } = useQuery<any>({
+    queryKey: ['event', id],
+    queryFn: () => getJson<any>(`/events/${id}`),
+    enabled: !!id,
+  });
+  const eventName = eventData?.title || eventData?.name || '';
 
   const { data: rawSpeakers, isLoading } = useQuery<any, Error>({
     queryKey: ["event", id, "speakers", activeTab],
@@ -127,10 +139,10 @@ export default function SpeakerModule() {
   const totalCount = speakerList.length;
 
   const tabClass = (tab: string) =>
-    `pb-3 border-b-2 transition-colors text-sm font-medium ${
+    `py-3 border-b-2 transition-colors text-sm font-medium whitespace-nowrap ${
       activeTab === tab
         ? "border-primary text-foreground"
-        : "border-transparent text-muted-foreground hover:text-foreground"
+        : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
     }`;
 
   const isCardBuilder = activeTab === "promo-card-builder" || activeTab === "website-card-builder";
@@ -139,26 +151,48 @@ export default function SpeakerModule() {
     <div className="space-y-0">
       {/* Tabs Navigation — hidden when card builder is active */}
       {!isCardBuilder && (
-      <div className="border-b border-border">
-        <div className="flex gap-6 px-0">
-          <button onClick={() => navigate(`/organizer/event/${id}/speakers`)} className={tabClass("speakers")}>
-            Confirmed Speakers
-          </button>
-          <button onClick={() => navigate(`/organizer/event/${id}/speakers/applications`)} className={tabClass("applications")}>
-            Applications
-          </button>
-          <button onClick={() => navigate(`/organizer/event/${id}/speakers/forms`)} className={tabClass("forms")}>
-            Forms
-          </button>
-          <button onClick={() => navigate(`/organizer/event/${id}/speakers/embed`)} className={tabClass("embed")}>
-            Embeds
-          </button>
-          <button onClick={() => navigate(`/organizer/event/${id}/website-card-builder`)} className={tabClass("website-card-builder")}>
-            Website Card Builder
-          </button>
-          <button onClick={() => navigate(`/organizer/event/${id}/promo-card-builder`)} className={tabClass("promo-card-builder")}>
-            Promo Card Builder
-          </button>
+      <div className="border-b border-border bg-card/50">
+        {/* Compact breadcrumb above tabs */}
+        {eventName && (
+          <div className="flex items-center gap-1 px-0 pt-2 pb-0">
+            <Link to="/organizer" className="text-[11px] text-muted-foreground/70 hover:text-muted-foreground transition-colors">Events</Link>
+            <ChevronRight className="h-3 w-3 text-muted-foreground/30" />
+            <span className="text-[11px] text-muted-foreground/70 truncate max-w-[300px]">{eventName}</span>
+          </div>
+        )}
+        <div className="flex items-center justify-between px-0">
+          <div className="flex gap-6">
+            <button onClick={() => navigate(`/organizer/event/${eventSlugId}/speakers`)} className={tabClass("speakers")}>
+              Speakers
+            </button>
+            <button onClick={() => navigate(`/organizer/event/${eventSlugId}/speakers/applications`)} className={tabClass("applications")}>
+              Applications
+            </button>
+            <button onClick={() => navigate(`/organizer/event/${eventSlugId}/speakers/forms`)} className={tabClass("forms")}>
+              Forms
+            </button>
+            <button onClick={() => navigate(`/organizer/event/${eventSlugId}/speakers/embed`)} className={tabClass("embed")}>
+              Embeds
+            </button>
+            <button onClick={() => navigate(`/organizer/event/${eventSlugId}/website-card-builder`)} className={tabClass("website-card-builder")}>
+              Website Cards
+            </button>
+            <button onClick={() => navigate(`/organizer/event/${eventSlugId}/promo-card-builder`)} className={tabClass("promo-card-builder")}>
+              Promo Cards
+            </button>
+          </div>
+          {/* Contextual action — only shown on the Speakers tab */}
+          {activeTab === "speakers" && (
+            <div className="flex items-center gap-2 pb-1">
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setShareOpen(true)}>
+                <Share2 className="h-3.5 w-3.5" />
+                Share
+              </Button>
+              <ShareDialog open={shareOpen} onOpenChange={setShareOpen} />
+              {/* @ts-ignore */}
+              <AddSpeakerDialog eventId={eventSlugId} />
+            </div>
+          )}
         </div>
       </div>
       )}
@@ -166,11 +200,6 @@ export default function SpeakerModule() {
       {/* Speakers Tab Content */}
       {activeTab === "speakers" && (
         <div className="space-y-6 pt-6">
-          <div className="flex justify-end">
-            {/* @ts-ignore: dynamic import component */}
-            <AddSpeakerDialog eventId={id} />
-          </div>
-
           <div className="space-y-4">
             <SpeakersControls
               searchQuery={searchQuery}
@@ -185,7 +214,7 @@ export default function SpeakerModule() {
 
             <div className="rounded-lg border border-border overflow-hidden">
               {/* @ts-ignore */}
-              <SpeakersTable speakers={filteredSpeakers} isLoading={isLoading} eventId={id} selectedTab={activeTab} />
+              <SpeakersTable speakers={filteredSpeakers} isLoading={isLoading} eventId={eventSlugId} selectedTab={activeTab} />
             </div>
           </div>
         </div>
@@ -229,7 +258,7 @@ export default function SpeakerModule() {
 
             <div className="rounded-lg border border-border overflow-hidden">
               {/* @ts-ignore */}
-              <SpeakersTable speakers={filteredSpeakers} isLoading={isLoading} eventId={id} selectedTab={activeTab} />
+              <SpeakersTable speakers={filteredSpeakers} isLoading={isLoading} eventId={eventSlugId} selectedTab={activeTab} />
             </div>
           </div>
         </div>
@@ -237,18 +266,18 @@ export default function SpeakerModule() {
 
       {/* Forms Tab */}
       {activeTab === "forms" && (
-        <FormsTab eventId={id} />
+        <FormsTab eventId={eventSlugId} />
       )}
 
       {/* Embed Builder Tab */}
       {activeTab === "embed" && (
-        <EmbedBuilder eventId={id} />
+        <EmbedBuilder eventId={eventSlugId} />
       )}
 
       {/* Card Builder Tabs */}
       {isCardBuilder && (
         <div style={{ height: '100vh' }}>
-          <CardBuilder key={activeTab} eventId={id} fullscreen onBack={() => navigate(`/organizer/event/${id}/speakers`)} />
+          <CardBuilder key={activeTab} eventId={eventSlugId} fullscreen onBack={() => navigate(`/organizer/event/${eventSlugId}/speakers`)} />
         </div>
       )}
     </div>
