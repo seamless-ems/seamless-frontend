@@ -1,29 +1,10 @@
 import { ReactNode, useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarProvider,
-  SidebarTrigger,
-  useSidebar,
-} from "@/components/ui/sidebar";
-import {
-  LayoutDashboard,
-  Calendar,
   Users,
-  Mic2,
-  FileText,
   Settings,
   CreditCard,
-  HelpCircle,
   ChevronDown,
-  Plus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -39,181 +20,11 @@ import { clearTokenAndNotify } from "@/lib/session";
 import { signOut as firebaseSignOut } from "@/lib/firebase";
 import { useQuery } from "@tanstack/react-query";
 import { getMe, getTeam, getJson } from "@/lib/api";
-import { cn } from "@/lib/utils";
-
-const accountNavItems: any[] = [];
-
-const eventNavItems = [
-  { title: "Overview", url: "/organizer/event/:id", icon: LayoutDashboard },
-  { title: "Speakers", url: "/organizer/event/:id/speakers", icon: Mic2 },
-  { title: "Event Settings", url: "/organizer/event/:id/settings", icon: Settings },
-];
-
-const speakerAccountNavItems = [
-  { title: "Overview", url: "/speaker", icon: LayoutDashboard },
-  { title: "Profile", url: "/speaker/profile", icon: Users },
-];
 
 interface DashboardLayoutProps {
   children: ReactNode;
   eventId?: string;
   mode?: "organizer" | "speaker";
-}
-
-function AppSidebar({ eventId, mode }: { eventId?: string; mode?: "organizer" | "speaker" }) {
-  const location = useLocation();
-  const { state } = useSidebar();
-  const collapsed = state === "collapsed";
-  const { data: me } = useQuery<any>({ queryKey: ["me"], queryFn: () => getMe() });
-  const { data: eventsData } = useQuery<any>({ queryKey: ["events"], queryFn: () => getJson<any>(`/events`) });
-
-  const navItems = eventId
-    ? eventNavItems.map((item) => ({
-        ...item,
-        url: item.url.replace(":id", eventId),
-      }))
-    : mode === "speaker"
-    ? speakerAccountNavItems
-    : accountNavItems;
-
-  const isActive = (url: string) => {
-    const candidates = [url];
-    if (mode === "organizer") {
-      if (url === "/") candidates.push("/organizer");
-      if (!url.startsWith("/organizer") && url !== "/") candidates.push(`/organizer${url}`);
-    }
-    return candidates.some((p) => location.pathname === p || location.pathname.startsWith(p));
-  };
-
-  const brandLink = mode === "speaker" ? "/speaker" : "/organizer";
-
-  // Get upcoming events
-  let events: any[] = [];
-  if (Array.isArray(eventsData)) events = eventsData;
-  else if (eventsData?.items) events = eventsData.items;
-  else if (eventsData?.results) events = eventsData.results;
-  else if (eventsData?.data) events = eventsData.data;
-
-  const now = new Date();
-  const upcomingEvents = events.filter(e => {
-    const endDate = e.endDate || e.end_date ? new Date(e.endDate || e.end_date) : (e.startDate || e.start_date ? new Date(e.startDate || e.start_date) : null);
-    return endDate ? endDate >= now : true;
-  }).slice(0, 5);
-
-  return (
-    <Sidebar className="border-r border-sidebar-border bg-sidebar">
-      <SidebarContent className="px-2 pt-6 pb-4">
-        {!eventId && (
-          <>
-            <SidebarGroup className="mb-6">
-              <SidebarGroupLabel className="px-2 text-xs font-medium text-muted-foreground mb-2">
-                Actions
-              </SidebarGroupLabel>
-              <SidebarGroupContent>
-                <div className="px-2">
-                  <Button variant="outline" className="w-full border-[1.5px]" asChild>
-                    <Link to="/organizer/events/new">
-                      <Plus className="mr-2 h-4 w-4" />
-                      Create New Event
-                    </Link>
-                  </Button>
-                </div>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          </>
-        )}
-
-        {eventId && window.location.pathname.includes("/speakers") && (
-          <>
-            <SidebarGroup className="mb-4">
-              <SidebarGroupLabel className="px-2 text-xs font-medium text-muted-foreground mb-2">
-                Quick Actions
-              </SidebarGroupLabel>
-              <SidebarGroupContent>
-                <div className="px-2 space-y-2">
-                  <button
-                    onClick={() => {
-                      // Trigger Add Speaker dialog - this is a simplified approach
-                      // In reality, you'd want a better state management solution
-                      alert("Add Speaker - This will open the Add Speaker dialog");
-                    }}
-                    className="w-full text-left px-3 py-2 text-sm text-primary hover:bg-primary/10 rounded transition-colors"
-                  >
-                    Add Speaker
-                  </button>
-                  <button
-                    onClick={() => {
-                      alert("Email All Speakers - This feature is coming soon");
-                    }}
-                    className="w-full text-left px-3 py-2 text-sm text-primary hover:bg-primary/10 rounded transition-colors"
-                  >
-                    Email All Speakers
-                  </button>
-                </div>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          </>
-        )}
-
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {navItems.map((item) => {
-                const linkTo = mode === "organizer" && item.url === "/" ? "/organizer" : item.url;
-                return (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      asChild
-                      className={cn("transition-colors", isActive(item.url) && "bg-primary/10 text-primary font-medium")}
-                    >
-                      <Link to={linkTo}>
-                        <span>{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        {!eventId && upcomingEvents.length > 0 && (
-          <SidebarGroup className="mt-4">
-            <SidebarGroupLabel className="px-2 text-xs font-medium text-muted-foreground">
-              Upcoming Events
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {upcomingEvents.map((event) => (
-                  <SidebarMenuItem key={event.id}>
-                    <SidebarMenuButton asChild>
-                      <Link to={`/organizer/event/${event.id}`}>
-                        <span className="text-sm">{event.title || event.name}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
-
-        <SidebarGroup className="mt-auto">
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild className="text-muted-foreground hover:text-foreground">
-                  <Link to="/support">
-                    <span>Help & Support</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
-    </Sidebar>
-  );
 }
 
 export function DashboardLayout({ children, eventId, mode: propMode }: DashboardLayoutProps) {
@@ -243,20 +54,16 @@ export function DashboardLayout({ children, eventId, mode: propMode }: Dashboard
     const orgName = me?.organization?.name || me?.organization_name || "Team Seamless";
     const showBreadcrumbs = eventId || location.pathname.includes("/settings") || location.pathname.includes("/team") || location.pathname.includes("/subscription") || location.pathname.includes("/events/new");
 
-    // Determine page names
     let eventName = "";
     let subPageName = "";
     let speakerName = "";
 
     if (eventId) {
-      // We're on an event page
       eventName = eventData?.title || eventData?.name || "Event";
 
-      // Check if we're on a sub-page of the event
       if (location.pathname.includes("/speakers")) {
         subPageName = "Speakers";
 
-        // Check if we're viewing a specific speaker
         if (speakerId && speakerData) {
           const firstName = speakerData.firstName || speakerData.first_name || "";
           const lastName = speakerData.lastName || speakerData.last_name || "";
@@ -265,7 +72,6 @@ export function DashboardLayout({ children, eventId, mode: propMode }: Dashboard
       } else if (location.pathname.includes("/settings")) {
         subPageName = "Event Settings";
       }
-      // If no sub-page, we're on event overview (no subPageName)
     } else if (location.pathname.includes("/events/new")) {
       eventName = "Create New Event";
     } else if (location.pathname.includes("/settings")) {
@@ -279,7 +85,6 @@ export function DashboardLayout({ children, eventId, mode: propMode }: Dashboard
     return (
       <header className="fixed top-0 left-0 right-0 z-30 flex h-16 items-center justify-between border-b border-border bg-card/95 px-6">
         <div className="flex items-center gap-4">
-          <SidebarTrigger className="-ml-2" />
           <Link to={mode === "speaker" ? "/speaker" : "/organizer"} className="flex items-baseline gap-1.5 leading-none">
             <span className="text-[20px] font-semibold text-primary" style={{ letterSpacing: '-0.01em' }}>
               Seamless
@@ -447,9 +252,9 @@ export function DashboardLayout({ children, eventId, mode: propMode }: Dashboard
                     try {
                       clearTokenAndNotify();
                     } catch (err) {
-                      
+
                     }
-                    
+
                   }
                   navigate("/login");
                 }}
@@ -462,8 +267,8 @@ export function DashboardLayout({ children, eventId, mode: propMode }: Dashboard
       </header>
     );
   }
+
   useEffect(() => {
-    // Priority: propMode > localStorage > infer from me
     if (propMode) {
       setMode(propMode);
       if (typeof window !== "undefined") window.localStorage.setItem("dashboardMode", propMode);
@@ -483,18 +288,11 @@ export function DashboardLayout({ children, eventId, mode: propMode }: Dashboard
   }, [propMode, me]);
 
   return (
-    <SidebarProvider defaultOpen={false}>
-      <div className="flex min-h-screen w-full">
-        <AppSidebar eventId={eventId} mode={mode} />
-        <div className="flex flex-1 flex-col overflow-auto pt-16">
-          {/* Top Header (fixed) */}
-          <Header />
-          {/* Main Content */}
-          <main className="flex-1 bg-background p-6">
-            {children}
-          </main>
-        </div>
-      </div>
-    </SidebarProvider>
+    <div className="flex min-h-screen w-full flex-col">
+      <Header />
+      <main className="flex-1 bg-background p-6 pt-[calc(64px+24px)]">
+        {children}
+      </main>
+    </div>
   );
 }
