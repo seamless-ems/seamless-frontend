@@ -45,7 +45,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import {
   Save,
   Upload,
@@ -298,7 +297,7 @@ const ELEMENT_TEMPLATES = {
   name: {
     label: "Name",
     text: "Victoria Bartholomew-Richardson",
-    nameFormat: "single" as "single" | "two-line", // "single" = "Lisa Young", "two-line" = "Lisa\nYoung"
+    nameFormat: "two-line" as "two-line", // always two-line: first name <break> last name
     x: 150,
     y: 50,
     fontSize: 32,
@@ -710,8 +709,6 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
   );
 
   const [missingFormDialogOpen, setMissingFormDialogOpen] = useState(false);
-  const [showSingleLineNudge, setShowSingleLineNudge] = useState(false);
-  const singleLineNudgeBypassRef = useRef(false);
 
   const { data: formConfig } = useQuery<{ config: FormFieldConfig[] }>({
     queryKey: ["formConfig", eventId, "speaker-info"],
@@ -1215,6 +1212,22 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
           } else {
             snapLockedY = null;
           }
+        }
+
+        // ── Hard boundary enforcement ────────────────────────────────────────
+        // Elements cannot leave the canvas or enter the safe zone (bottom 50px).
+        // Re-read bounding rect after snap adjustments so clamping is accurate.
+        {
+          const SAFE_ZONE_H = 50;
+          const cb = obj.getBoundingRect();
+          const maxLeft = Math.max(0, cW - cb.width);
+          const maxTop  = Math.max(0, cH - SAFE_ZONE_H - cb.height);
+          let clamped = false;
+          if (cb.left < 0)        { obj.set({ left: (obj.left || 0) - cb.left });            clamped = true; }
+          if (cb.left > maxLeft)  { obj.set({ left: (obj.left || 0) + (maxLeft - cb.left) }); clamped = true; }
+          if (cb.top  < 0)        { obj.set({ top:  (obj.top  || 0) - cb.top });             clamped = true; }
+          if (cb.top  > maxTop)   { obj.set({ top:  (obj.top  || 0) + (maxTop  - cb.top) });  clamped = true; }
+          if (clamped) obj.setCoords();
         }
 
         alignmentLines.forEach((l) => canvas.add(l));
@@ -1819,7 +1832,7 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
         //         Fabric won't wrap. DOM is the only reliable measure of the loaded web font.
         // Company y is set dynamically after title renders (see below) — not fixed.
         if (key === "name" || key === "title") {
-          const maxLines = key === "name" && cfg.nameFormat !== "two-line" ? 1 : 2;
+          const maxLines = 2; // name always two-line
           const minFontSize = key === "name" ? 20 : 14;
           const boxWidth = cfg.width || 300;
           let fs = cfg.fontSize;
@@ -2977,12 +2990,6 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
   };
 
   const handleSave = async (silent = false) => {
-    if (config.name?.nameFormat === "single" && !singleLineNudgeBypassRef.current) {
-      setShowSingleLineNudge(true);
-      return;
-    }
-    singleLineNudgeBypassRef.current = false;
-
     // localStorage always gets template-default fontSizes (e.g. 55px) — never the shrunk value.
     // This prevents one speaker's shrink from poisoning the config for all other speakers.
     const effectiveConfig = { ...config };
@@ -3428,37 +3435,6 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
     <>
       <MissingFormDialog open={missingFormDialogOpen} onOpenChange={setMissingFormDialogOpen} eventId={eventId || ""} />
 
-      {/* Single-line name nudge */}
-      <Dialog open={showSingleLineNudge} onOpenChange={setShowSingleLineNudge}>
-        <DialogContent className="sm:max-w-[360px]">
-          <div className="space-y-2 pt-1">
-            <p className="text-sm font-medium">Speaker name is set to single line</p>
-            <p className="text-sm text-muted-foreground">If a name doesn't fit the allocated width, it will shrink. Two lines keeps the text larger and more readable.</p>
-          </div>
-          <DialogFooter className="gap-2 sm:gap-2 pt-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                singleLineNudgeBypassRef.current = true;
-                setShowSingleLineNudge(false);
-                handleSave();
-              }}
-            >
-              Keep single line
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => {
-                updateElement("name", { nameFormat: "two-line" });
-                setShowSingleLineNudge(false);
-              }}
-            >
-              Switch to two lines
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
       <ImageCropDialog
         open={cropDialogOpen}
         onOpenChange={(open) => {
@@ -3741,7 +3717,7 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
 
       <div className="h-full w-full flex flex-col bg-background">
         {/* ── Two-row toolbar ── */}
-        <div className="flex flex-col bg-card border-b border-border shrink-0">
+        <div className="flex flex-col bg-card border-b border-border shrink-0 sticky top-0 z-20">
 
           {/* Row 1: Branding + navigation + global actions */}
           <div className="flex items-center gap-1 px-3 h-10 border-b border-border/40">
@@ -3969,22 +3945,6 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
                     {/* Opacity */}
                     <input type="range" min={0} max={1} step={0.05} value={config[activeKey]?.opacity ?? 1} onChange={(e) => applyUpdate({ opacity: parseFloat(e.target.value) })} className="w-16 h-4 accent-primary" title="Opacity" />
                     <span className="text-xs w-8 tabular-nums">{Math.round((config[activeKey]?.opacity ?? 1) * 100)}%</span>
-                    {/* Name format — only shown when the name element is selected */}
-                    {isSingleText && selectedElement === "name" && (
-                      <>
-                        <div className="h-4 w-px bg-border" />
-                        <span className="text-xs text-muted-foreground shrink-0">Name</span>
-                        <select
-                          value={config["name"]?.nameFormat || "single"}
-                          onChange={(e) => updateElement("name", { nameFormat: e.target.value })}
-                          className="h-7 px-2 text-xs border border-border rounded bg-background shrink-0"
-                          title="How the speaker's name is displayed on the card"
-                        >
-                          <option value="single">Single line — Lisa Young</option>
-                          <option value="two-line">Two lines — Lisa / Young</option>
-                        </select>
-                      </>
-                    )}
                   </div>
                 </>
               );

@@ -22,7 +22,7 @@ The SpeakerPortal preview embeds this same HTML — fixing the embed fixes the p
 
 `cfg.fontSize` is the **maximum**. Apply per speaker at render time:
 
-- **Name:** shrink (1px at a time) until it fits on 1 line within `cfg.width`. Min 20px. Allow 2 lines if `nameFormat === "two-line"`. **Bug:** `nameFormat: "two-line"` is not rendering as two lines in the embed despite being saved correctly in the config — single line works fine. Backend to investigate.
+- **Name:** `nameFormat` is now **always `"two-line"`** — single line has been removed as an option. Always render as two lines using this split: all words except the last on line 1, last word on line 2. E.g. `"Victoria Bartholomew-Richardson"` → `"Victoria Bartholomew<br>Richardson"`. If the name is a single word, render as-is. Shrink font (1px at a time, min 20px) until both lines fit within `cfg.width`.
 - **Title:** allow up to 2 lines within `cfg.width`. No shrink.
 - **Company `top`:** `title_top + (lineCount × fontSize × lineHeight) + 10`. Default `lineHeight` 1.2. Pushes company down when title wraps to 2 lines.
 
