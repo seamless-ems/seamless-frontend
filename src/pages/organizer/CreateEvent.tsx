@@ -330,8 +330,8 @@ export default function CreateEvent() {
 							<Label htmlFor="eventWebsite">Event Website</Label>
 							<Input
 								id="eventWebsite"
-								type="url"
-								placeholder="https://example.com/event"
+								type="text"
+								placeholder="www.example.com/event"
 								value={formData.eventWebsite}
 								onChange={(e) => setFormData((prev) => ({ ...prev, eventWebsite: e.target.value }))}
 								required

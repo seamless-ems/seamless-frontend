@@ -112,7 +112,9 @@
       "WebFetch(domain:www.stripes.io)",
       "WebFetch(domain:cssday.nl)",
       "WebFetch(domain:2024.stateofthebrowser.com)",
-      "Bash(echo \"Exit: $?\")"
+      "Bash(echo \"Exit: $?\")",
+      "Bash(sed -i 's/\\\\t\\\\t\\\\t\\\\t\\\\t\\\\t\\\\t\\\\ttype=\"\"url\"\"/\\\\t\\\\t\\\\t\\\\t\\\\t\\\\t\\\\t\\\\ttype=\"\"text\"\"/' \"/mnt/c/Users/james/OneDrive/Documents/Seamless/seamless-frontend/src/pages/organizer/CreateEvent.tsx\")",
+      "Bash(sed -i 's|placeholder=\"\"https://example.com/event\"\"|placeholder=\"\"www.example.com/event\"\"|' \"/mnt/c/Users/james/OneDrive/Documents/Seamless/seamless-frontend/src/pages/organizer/CreateEvent.tsx\")"
     ]
   }
 }
