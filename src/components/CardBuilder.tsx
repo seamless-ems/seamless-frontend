@@ -45,6 +45,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import {
   Save,
   Upload,
@@ -709,6 +710,8 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
   );
 
   const [missingFormDialogOpen, setMissingFormDialogOpen] = useState(false);
+  const [showSingleLineNudge, setShowSingleLineNudge] = useState(false);
+  const singleLineNudgeBypassRef = useRef(false);
 
   const { data: formConfig } = useQuery<{ config: FormFieldConfig[] }>({
     queryKey: ["formConfig", eventId, "speaker-info"],
@@ -2974,6 +2977,12 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
   };
 
   const handleSave = async (silent = false) => {
+    if (config.name?.nameFormat === "single" && !singleLineNudgeBypassRef.current) {
+      setShowSingleLineNudge(true);
+      return;
+    }
+    singleLineNudgeBypassRef.current = false;
+
     // localStorage always gets template-default fontSizes (e.g. 55px) — never the shrunk value.
     // This prevents one speaker's shrink from poisoning the config for all other speakers.
     const effectiveConfig = { ...config };
@@ -3418,6 +3427,38 @@ export default function CardBuilder({ eventId, fullscreen = false, onBack }: Car
   return (
     <>
       <MissingFormDialog open={missingFormDialogOpen} onOpenChange={setMissingFormDialogOpen} eventId={eventId || ""} />
+
+      {/* Single-line name nudge */}
+      <Dialog open={showSingleLineNudge} onOpenChange={setShowSingleLineNudge}>
+        <DialogContent className="sm:max-w-[360px]">
+          <div className="space-y-2 pt-1">
+            <p className="text-sm font-medium">Speaker name is set to single line</p>
+            <p className="text-sm text-muted-foreground">If a name doesn't fit the allocated width, it will shrink. Two lines keeps the text larger and more readable.</p>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-2 pt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                singleLineNudgeBypassRef.current = true;
+                setShowSingleLineNudge(false);
+                handleSave();
+              }}
+            >
+              Keep single line
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => {
+                updateElement("name", { nameFormat: "two-line" });
+                setShowSingleLineNudge(false);
+              }}
+            >
+              Switch to two lines
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <ImageCropDialog
         open={cropDialogOpen}
         onOpenChange={(open) => {
