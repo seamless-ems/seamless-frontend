@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getJson, updateEvent, uploadFile, getGoogleDriveStatus, getIntegrationUrl, deleteIntegration, getTeam, getMe, createGoogleDriveFolder } from "@/lib/api";
+import { getJson, updateEvent, uploadFile, getGoogleDriveStatus, getIntegrationUrl, deleteIntegration, getTeam, getMe, createGoogleDriveFolder, createCheckout } from "@/lib/api";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -336,6 +336,34 @@ export default function EventSettings() {
               )}
             </CardContent>
           </Card>
+
+            {/* Billing / Checkout */}
+            {id && selectedModules.includes("speaker") && (
+              <Card>
+                <CardHeader>
+                  <CardTitle style={{ fontSize: 'var(--font-h3)', fontWeight: 600 }}>Billing</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p className="text-sm text-muted-foreground">Purchase the Speakers module for this event.</p>
+                  <div className="flex items-center gap-2 justify-end">
+                    <Button variant="outline" type="button" onClick={async () => {
+                      if (!id) return;
+                      try {
+                        const res = await createCheckout("speaker", id);
+                        const url = res?.url || res?.checkout_url || res?.redirect_url || res?.checkoutUrl || (typeof res === "string" ? res : undefined) || res?.data?.url;
+                        if (url) {
+                          window.location.href = url;
+                          return;
+                        }
+                        toast({ title: "Checkout created", description: "No redirect URL returned; please check your billing dashboard." });
+                      } catch (err: any) {
+                        toast({ title: "Checkout failed", description: String(err?.message || err) });
+                      }
+                    }}>Pay for Speakers</Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
           {/* Basic Info */}
           <Card>
