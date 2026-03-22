@@ -15,7 +15,7 @@ import {
 import { Speaker } from "@/types/event";
 import { useState, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { updateSpeaker, uploadFile } from "@/lib/api";
+import { updateSpeaker, uploadFile, getSpeakerContent, createSpeakerContent, getContentHistory, createNewContentVersion } from "@/lib/api";
 import { useEffect } from "react";
 import {
   Dialog,
@@ -114,8 +114,123 @@ export default function SpeakerPortal() {
   const logoInputRef = useRef<HTMLInputElement | null>(null);
   const [uploadingHeadshot, setUploadingHeadshot] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingContent, setUploadingContent] = useState(false);
+  const contentInputRef = useRef<HTMLInputElement | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyDocumentId, setHistoryDocumentId] = useState<string | null>(null);
+  const historyUploadRef = useRef<HTMLInputElement | null>(null);
   // TODO: Replace with API data when available - speaker status and internal notes fields missing
   const [internalNotes, setInternalNotes] = useState("");
+
+  function ContentList({ speakerId }: { speakerId: string }) {
+    const { data: contentItems, isLoading: contentLoading } = useQuery<any[]>({
+      queryKey: ["content", speakerId],
+      queryFn: () => getSpeakerContent(speakerId),
+      enabled: Boolean(speakerId),
+    });
+
+    if (!speakerId) return <div className="text-sm text-muted-foreground">No speaker selected</div>;
+    if (contentLoading) return <div className="text-sm text-muted-foreground">Loading content…</div>;
+    if (!contentItems || contentItems.length === 0) return <div className="text-sm text-muted-foreground">No content uploaded</div>;
+
+    return (
+      <div className="space-y-2">
+        {contentItems.map((c: any) => {
+          const url = c.content ?? c.url ?? c.publicUrl ?? c.public_url ?? "";
+          const label = (() => {
+            try {
+              const u = new URL(url, window.location.href);
+              return decodeURIComponent(u.pathname.split("/").pop() || url);
+            } catch (e) {
+              return url;
+            }
+          })();
+          const docId = c.documentId ?? c.document_id ?? c.id;
+          return (
+            <div key={c.id ?? url} className="flex items-center justify-between gap-4 p-2 border rounded">
+              <div className="flex items-center gap-3">
+                <div className="text-sm font-medium">{label}</div>
+                <div className="text-xs text-muted-foreground">{c.contentType ?? c.content_type ?? ''}</div>
+                <div className="text-xs text-muted-foreground">Version {c.version}</div>
+                <div className="text-xs text-muted-foreground">{c.createdAt ? new Date(c.createdAt).toLocaleString() : ''}</div>
+              </div>
+              <div className="flex items-center gap-3">
+                <a href={url} target="_blank" rel="noreferrer" className="text-sm text-primary underline">Open</a>
+                <Button size="sm" variant="ghost" onClick={() => {
+                  setHistoryDocumentId(docId ?? null);
+                  setHistoryOpen(true);
+                }}>History</Button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  function HistoryDialog() {
+    const docId = historyDocumentId;
+    const { data: versions, isLoading: versionsLoading } = useQuery<any[]>({
+      queryKey: ["content", speakerId, docId, "history"],
+      queryFn: () => getContentHistory(String(speakerId), String(docId)),
+      enabled: Boolean(historyOpen && speakerId && docId),
+    });
+
+    return (
+      <Dialog open={Boolean(historyOpen)} onOpenChange={(v) => setHistoryOpen(Boolean(v))}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Document History</DialogTitle>
+            <DialogDescription>View previous versions and upload a new version</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-muted-foreground">{docId}</div>
+              <div>
+                <input ref={historyUploadRef} type="file" className="hidden" onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file || !speakerId || !docId) return;
+                  try {
+                    setUploadingContent(true);
+                    const res = await uploadFile(file, speakerId, id);
+                    const url = res?.public_url ?? res?.publicUrl ?? res?.url ?? null;
+                    if (!url) throw new Error('Upload did not return a file URL');
+                    await createNewContentVersion(String(speakerId), String(docId), { content: url, contentType: file.type || 'application/octet-stream' });
+                    queryClient.invalidateQueries({ queryKey: ["content", speakerId] });
+                    queryClient.invalidateQueries({ queryKey: ["content", speakerId, docId, "history"] });
+                    toast({ title: 'New version uploaded' });
+                  } catch (err: any) {
+                    toast({ title: 'Failed to upload new version', description: String(err?.message || err) });
+                  } finally {
+                    setUploadingContent(false);
+                    if (e.target) e.target.value = "";
+                  }
+                }} />
+                <Button size="sm" onClick={() => historyUploadRef.current?.click()}>Upload new version</Button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              {versionsLoading && <div className="text-sm text-muted-foreground">Loading versions…</div>}
+              {!versionsLoading && (!versions || versions.length === 0) && <div className="text-sm text-muted-foreground">No versions found</div>}
+              {!versionsLoading && versions && versions.map((v: any) => (
+                <div key={v.id ?? v.version} className="flex items-center justify-between p-2 border rounded">
+                  <div>
+                    <div className="text-sm font-medium">Version {v.version}</div>
+                    <div className="text-xs text-muted-foreground">{v.createdAt ? new Date(v.createdAt).toLocaleString() : ''}</div>
+                  </div>
+                  <div>
+                    <a href={v.content ?? v.publicUrl ?? v.public_url ?? ''} target="_blank" rel="noreferrer" className="text-sm text-primary underline">Open</a>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   // Approval state - both cards approved together
   const isApproved = s?.websiteCardApproved && s?.promoCardApproved;
@@ -277,16 +392,47 @@ export default function SpeakerPortal() {
         <CardHeader>
           <CardTitle style={{ fontSize: 'var(--font-h3)', fontWeight: 600 }}>Content</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="py-8 px-8 bg-muted rounded-lg text-center">
-            <div style={{ fontSize: 'var(--font-body)', color: 'var(--text-secondary)' }}>
-              No active sessions
-            </div>
-            <div style={{ fontSize: 'var(--font-small)', color: 'var(--text-secondary)', marginTop: '4px' }}>
-              Sessions will appear here when synced from Schedule module
-            </div>
-          </div>
-        </CardContent>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm text-muted-foreground">Upload content files (PDF, image, video)</div>
+                  <div>
+                    <input
+                      ref={contentInputRef}
+                      type="file"
+                      id="content-upload"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file || !speakerId || !id) return;
+                        try {
+                          setUploadingContent(true);
+                          const res = await uploadFile(file, speakerId, id);
+                          const url = res?.public_url ?? res?.publicUrl ?? res?.url ?? null;
+                          if (!url) throw new Error('Upload did not return a file URL');
+                          // Post metadata to content endpoint
+                          await createSpeakerContent(speakerId, { content: url, contentType: file.type || undefined });
+                          queryClient.invalidateQueries({ queryKey: ["event", id, "speaker", speakerId] });
+                          queryClient.invalidateQueries({ queryKey: ["content", speakerId] });
+                          toast({ title: 'Content uploaded' });
+                        } catch (err: any) {
+                          toast({ title: 'Failed to upload content', description: String(err?.message || err) });
+                        } finally {
+                          setUploadingContent(false);
+                          if (e.target) e.target.value = "";
+                        }
+                      }}
+                    />
+                    <Button size="sm" onClick={() => contentInputRef.current?.click()}>Choose file</Button>
+                  </div>
+                </div>
+
+                {/* Content list */}
+                <div>
+                  <ContentList speakerId={speakerId ?? ""} />
+                </div>
+              </div>
+            </CardContent>
       </Card>
 
       {/* Dialogs */}
@@ -478,6 +624,8 @@ export default function SpeakerPortal() {
           }
         />
       )}
+        {/* Content history dialog */}
+        <HistoryDialog />
     </div>
   );
 }

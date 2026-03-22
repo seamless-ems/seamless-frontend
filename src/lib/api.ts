@@ -413,3 +413,22 @@ export async function deleteEvent(eventId: string): Promise<void> {
 export function sendSupportMessage(body: { name?: string; email: string; subject?: string; message: string; }): Promise<any> {
   return postJson<typeof body, any>(`/support/contact`, body);
 }
+
+// --- Content endpoints (speaker-specific) ---
+export function getSpeakerContent(speakerId: string): Promise<any[]> {
+  return getJson<any[]>(`/content/${encodeURIComponent(speakerId)}`);
+}
+
+export function createSpeakerContent(speakerId: string, body: { content: string; contentType?: string; documentId?: string | null; }): Promise<any> {
+  return postJson<typeof body, any>(`/content/${encodeURIComponent(speakerId)}`, body);
+}
+
+// Get version history for a specific content item
+export function getContentHistory(speakerId: string, contentId: string): Promise<any[]> {
+  return getJson<any[]>(`/content/${encodeURIComponent(speakerId)}/${encodeURIComponent(contentId)}/history`);
+}
+
+// Create a new version for an existing content document
+export function createNewContentVersion(speakerId: string, documentId: string, body: { content: string; contentType: string }): Promise<any> {
+  return postJson<typeof body, any>(`/content/${encodeURIComponent(speakerId)}/${encodeURIComponent(documentId)}/new-version`, body);
+}
