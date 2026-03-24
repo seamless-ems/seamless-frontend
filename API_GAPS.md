@@ -4,17 +4,6 @@ Missing backend fields/endpoints needed by frontend.
 
 ---
 
-## Per-speaker embed toggle (`embedEnabled`)
-
-Frontend reads `speaker.embedEnabled ?? speaker.embed_enabled` to determine "Published" status (4th stage after Cards Approved). Field does not yet exist on the speaker API response — all speakers currently default to `false`, meaning no speaker will reach "Published" status until this is implemented.
-
-Required:
-- `GET /events/:id/speakers` → include `embed_enabled: boolean` on each speaker object
-- `PATCH /events/:id/speakers/:speakerId` → accept `embed_enabled: boolean` to toggle embed inclusion
-- `GET /embed/:eventId` → filter by `embed_enabled === true` rather than showing all approved speakers
-
----
-
 ## Asset downloads — CORS on company logo CDN
 
 Company logo URLs are served from a CDN that does not return `Access-Control-Allow-Origin` headers. Client-side `fetch()` fails with a CORS error, causing the download to fall back to opening in a new tab instead of saving the file. Fix options:
@@ -31,20 +20,6 @@ Headshot downloads work because their CDN origin allows CORS.
 The frontend iframe snippet sets `allowtransparency="true"` and `background: transparent` so the embed sits over the customer's page background. For this to work, the embed page served by the backend must not set a hard background colour on `<html>` or `<body>`. Required:
 
 - `GET /embed/:eventId` → no `background-color` on `<html>`/`<body>` (or set `background: transparent`)
-
----
-
-## Content management — missing fields and endpoints
-
-The Content tab UI is fully built. The following backend features are required to complete it:
-
-- `GET /speakers/:id/content` → include `name: string` on each item (user-defined label, set on upload, immutable on replace)
-- `GET /speakers/:id/content` → include `archived: boolean`, `archivedAt`, `archivedBy` on each item
-- `POST /speakers/:id/content` → accept `name: string`
-- `POST /speakers/:id/content` → accept `createdBy: string` and store it against the initial version
-- `POST /speakers/:id/content/:docId/versions` → accept `createdBy: string` in request body and store it; return `createdBy: string` on each version in history — **not currently working**: frontend sends `createdBy` on every upload/replace/restore but history rows show no attribution
-- `PATCH /speakers/:id/content/:docId/archive` → new endpoint to soft-archive a file
-- Share URL access control: view-only vs can-upload permission token (deferred — no auth system yet)
 
 ---
 

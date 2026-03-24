@@ -38,7 +38,7 @@ export default function MissingFormDialog({
             <Button
               variant="destructive"
               onClick={() => {
-                window.location.href = `/organizer/event/${eventId}/speakers?tab=forms`;
+                window.location.href = `/organizer/event/${eventId}/speakers/forms`;
               }}
             >
               Go to Forms

@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Archive, Check, ChevronDown, ChevronRight, Copy, Download, MoreVertical, Plus, RotateCcw, Share2, Upload } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { archiveContent } from '@/lib/api';
 
 function getFileTypeLabel(contentType: string, url: string): string {
   if (contentType?.includes('pdf') || url?.endsWith('.pdf')) return 'PDF';
@@ -77,7 +78,7 @@ function HistorySection({ speakerId, documentId, currentVersion, itemName, onRes
         const isCurrent = v.version === currentVersion;
         const url = v.content ?? v.publicUrl ?? v.public_url ?? '';
         const action = v.version === 1 ? 'Uploaded' : 'Replaced';
-        const who = v.createdBy ?? v.created_by ?? null;
+        const who = v.createdByName ?? null;
         return (
           <div key={v.id ?? v.version} className="flex items-center gap-4 px-5 py-3 border-b border-border/50 last:border-0">
             <span className="text-xs font-medium w-8 text-muted-foreground shrink-0">v{v.version}</span>
@@ -178,7 +179,7 @@ export default function SpeakerContentTab({ eventId, speakerId }: { eventId: str
       const res = await uploadFile(uploadFileObj, speakerId, eventId);
       const url = res?.public_url ?? res?.publicUrl ?? res?.url ?? null;
       if (!url) throw new Error('Upload did not return a file URL');
-      await createSpeakerContent(speakerId, { content: url, contentType: uploadFileObj.type || undefined, name: uploadName.trim(), createdBy: currentUserName });
+      await createSpeakerContent(speakerId, { content: url, contentType: uploadFileObj.type || undefined, name: uploadName.trim() });
       queryClient.invalidateQueries({ queryKey: ['content', speakerId] });
       toast({ title: 'File uploaded' });
       setUploadOpen(false);
@@ -199,7 +200,7 @@ export default function SpeakerContentTab({ eventId, speakerId }: { eventId: str
       const url = res?.public_url ?? res?.publicUrl ?? res?.url ?? null;
       if (!url) throw new Error('Upload did not return a file URL');
       const docId = replacing.documentId ?? replacing.document_id ?? replacing.id;
-      await createNewContentVersion(speakerId, docId, { content: url, contentType: replaceFile.type || 'application/octet-stream', createdBy: currentUserName });
+      await createNewContentVersion(speakerId, docId, { content: url, contentType: replaceFile.type || 'application/octet-stream' });
       queryClient.invalidateQueries({ queryKey: ['content', speakerId] });
       queryClient.invalidateQueries({ queryKey: ['content', speakerId, docId, 'history'] });
       toast({ title: 'File replaced' });
@@ -214,9 +215,19 @@ export default function SpeakerContentTab({ eventId, speakerId }: { eventId: str
   };
 
   const handleArchiveConfirm = async () => {
-    // Archive endpoint not yet available — documented in API_GAPS.md
-    toast({ title: 'Archive coming soon', description: 'Backend support required' });
-    setArchiving(null);
+    if (!archiving) return;
+    setUploading(true);
+    try {
+      const docId = archiving.documentId ?? archiving.document_id ?? archiving.id;
+      await archiveContent(speakerId, docId);
+      queryClient.invalidateQueries({ queryKey: ['content', speakerId] });
+      toast({ title: 'File archived' });
+      setArchiving(null);
+    } catch (err: any) {
+      toast({ title: 'Archive failed', description: String(err?.message || err), variant: 'destructive' });
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleRestoreConfirm = async () => {
@@ -225,7 +236,7 @@ export default function SpeakerContentTab({ eventId, speakerId }: { eventId: str
     try {
       const url = restoring.version.content ?? restoring.version.publicUrl ?? restoring.version.public_url ?? '';
       const contentType = restoring.version.contentType ?? restoring.version.content_type ?? 'application/octet-stream';
-      await createNewContentVersion(speakerId, restoring.documentId, { content: url, contentType, createdBy: currentUserName });
+      await createNewContentVersion(speakerId, restoring.documentId, { content: url, contentType });
       queryClient.invalidateQueries({ queryKey: ['content', speakerId] });
       queryClient.invalidateQueries({ queryKey: ['content', speakerId, restoring.documentId, 'history'] });
       toast({ title: `Restored to v${restoring.version.version}` });

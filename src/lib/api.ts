@@ -419,7 +419,7 @@ export function getSpeakerContent(speakerId: string): Promise<any[]> {
   return getJson<any[]>(`/content/${encodeURIComponent(speakerId)}`);
 }
 
-export function createSpeakerContent(speakerId: string, body: { content: string; contentType?: string; documentId?: string | null; name?: string; createdBy?: string; }): Promise<any> {
+export function createSpeakerContent(speakerId: string, body: { content: string; contentType?: string; documentId?: string | null; name?: string; }): Promise<any> {
   return postJson<typeof body, any>(`/content/${encodeURIComponent(speakerId)}`, body);
 }
 
@@ -429,6 +429,11 @@ export function getContentHistory(speakerId: string, contentId: string): Promise
 }
 
 // Create a new version for an existing content document
-export function createNewContentVersion(speakerId: string, documentId: string, body: { content: string; contentType: string; createdBy?: string }): Promise<any> {
+export function createNewContentVersion(speakerId: string, documentId: string, body: { content: string; contentType: string }): Promise<any> {
   return postJson<typeof body, any>(`/content/${encodeURIComponent(speakerId)}/${encodeURIComponent(documentId)}/new-version`, body);
+}
+
+// Archive a content document
+export function archiveContent(speakerId: string, documentId: string): Promise<any> {
+  return patchJson<{}, any>(`/content/${encodeURIComponent(speakerId)}/${encodeURIComponent(documentId)}/archive`, {});
 }

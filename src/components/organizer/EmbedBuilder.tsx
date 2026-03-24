@@ -55,7 +55,15 @@ export default function EmbedBuilder({ eventId }: { eventId: string | undefined 
   const handleToggle = async (speaker: any, value: boolean) => {
     setToggling(speaker.id);
     try {
-      await updateSpeaker(eventId!, speaker.id, { embed_enabled: value });
+      const payload: any = {
+        id: speaker.id,
+        firstName: speaker.first_name ?? speaker.firstName ?? '',
+        lastName: speaker.last_name ?? speaker.lastName ?? '',
+        email: speaker.email ?? speaker.email_address ?? '',
+        formType: speaker.formType ?? speaker.form_type ?? 'speaker-info',
+        embedEnabled: value,
+      };
+      await updateSpeaker(eventId!, speaker.id, payload);
       queryClient.invalidateQueries({ queryKey: ["event", eventId, "speakers"] });
     } catch {
       toast({ title: "Failed to update embed status", variant: "destructive" });

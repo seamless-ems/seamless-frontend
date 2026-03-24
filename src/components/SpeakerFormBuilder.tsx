@@ -110,6 +110,20 @@ const DEFAULT_FIELDS: FormFieldConfig[] = [
     required: false,
     enabled: false,
   },
+  {
+    id: "talk_topic",
+    label: "Proposed Talk Topic",
+    type: "text",
+    required: false,
+    enabled: false,
+  },
+  {
+    id: "sample_content",
+    label: "Sample Content (e.g., Slide Deck, Video, etc.)",
+    type: "file",
+    required: false,
+    enabled: false,
+  }
 ];
 
 export default function SpeakerFormBuilder({

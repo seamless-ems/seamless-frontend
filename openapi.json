@@ -2873,14 +2873,14 @@
         }
       }
     },
-    "/content/{speaker_id}/{content_id}/history": {
+    "/content/{speaker_id}/{document_id}/history": {
       "get": {
         "tags": [
           "Content"
         ],
         "summary": "Get Content Versions History",
         "description": "Fetch version history for a specific content item.",
-        "operationId": "get_content_versions_history_content__speaker_id___content_id__history_get",
+        "operationId": "get_content_versions_history_content__speaker_id___document_id__history_get",
         "parameters": [
           {
             "name": "speaker_id",
@@ -2893,13 +2893,13 @@
             }
           },
           {
-            "name": "content_id",
+            "name": "document_id",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
-              "title": "Content Id"
+              "title": "Document Id"
             }
           }
         ],
@@ -2913,7 +2913,7 @@
                   "items": {
                     "$ref": "#/components/schemas/ContentSchema"
                   },
-                  "title": "Response Get Content Versions History Content  Speaker Id   Content Id  History Get"
+                  "title": "Response Get Content Versions History Content  Speaker Id   Document Id  History Get"
                 }
               }
             }
@@ -2966,11 +2966,65 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateContentSchema"
+                "$ref": "#/components/schemas/ReplaceContentSchema"
               }
             }
           }
         },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContentSchema"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/content/{speaker_id}/{document_id}/archive": {
+      "patch": {
+        "tags": [
+          "Content"
+        ],
+        "summary": "Archive Content",
+        "description": "Archive a content item.",
+        "operationId": "archive_content_content__speaker_id___document_id__archive_patch",
+        "parameters": [
+          {
+            "name": "speaker_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Speaker Id"
+            }
+          },
+          {
+            "name": "document_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Document Id"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -4005,6 +4059,18 @@
       },
       "ContentSchema": {
         "properties": {
+          "content": {
+            "type": "string",
+            "title": "Content"
+          },
+          "contentType": {
+            "type": "string",
+            "title": "Contenttype"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
           "id": {
             "anyOf": [
               {
@@ -4060,7 +4126,7 @@
             ],
             "title": "Iscurrent"
           },
-          "content": {
+          "createdBy": {
             "anyOf": [
               {
                 "type": "string"
@@ -4069,18 +4135,7 @@
                 "type": "null"
               }
             ],
-            "title": "Content"
-          },
-          "contentType": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Contenttype"
+            "title": "Createdby"
           },
           "createdAt": {
             "anyOf": [
@@ -4105,9 +4160,62 @@
               }
             ],
             "title": "Updatedat"
+          },
+          "archived": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archived"
+          },
+          "archivedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archivedat"
+          },
+          "archivedBy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archivedby"
+          },
+          "createdByName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Createdbyname",
+            "description": "Computed friendly name of the creator when available from ORM/token schema.",
+            "readOnly": true
           }
         },
         "type": "object",
+        "required": [
+          "content",
+          "contentType",
+          "name",
+          "createdByName"
+        ],
         "title": "ContentSchema"
       },
       "CreateContentSchema": {
@@ -4119,12 +4227,17 @@
           "contentType": {
             "type": "string",
             "title": "Contenttype"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
           }
         },
         "type": "object",
         "required": [
           "content",
-          "contentType"
+          "contentType",
+          "name"
         ],
         "title": "CreateContentSchema"
       },
@@ -4877,6 +4990,24 @@
         ],
         "title": "PromoConfigSchema"
       },
+      "ReplaceContentSchema": {
+        "properties": {
+          "content": {
+            "type": "string",
+            "title": "Content"
+          },
+          "contentType": {
+            "type": "string",
+            "title": "Contenttype"
+          }
+        },
+        "type": "object",
+        "required": [
+          "content",
+          "contentType"
+        ],
+        "title": "ReplaceContentSchema"
+      },
       "SpeakerBase": {
         "properties": {
           "id": {
@@ -4967,6 +5098,28 @@
             ],
             "title": "Companylogo"
           },
+          "talkTopic": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Talktopic"
+          },
+          "sampleContent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Samplecontent"
+          },
           "formType": {
             "type": "string",
             "title": "Formtype"
@@ -5028,6 +5181,17 @@
               }
             ],
             "title": "Promocardapproved"
+          },
+          "embedEnabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Embedenabled"
           },
           "internalNotes": {
             "anyOf": [
@@ -5164,6 +5328,28 @@
               }
             ],
             "title": "Companylogo"
+          },
+          "talkTopic": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Talktopic"
+          },
+          "sampleContent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Samplecontent"
           },
           "formType": {
             "type": "string",
@@ -5306,6 +5492,28 @@
             ],
             "title": "Companylogo"
           },
+          "talkTopic": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Talktopic"
+          },
+          "sampleContent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Samplecontent"
+          },
           "formType": {
             "type": "string",
             "title": "Formtype"
@@ -5367,6 +5575,17 @@
               }
             ],
             "title": "Promocardapproved"
+          },
+          "embedEnabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Embedenabled"
           },
           "internalNotes": {
             "anyOf": [
