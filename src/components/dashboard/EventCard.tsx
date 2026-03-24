@@ -56,6 +56,14 @@ export function EventCard({ event, index = 0, onDelete }: EventCardProps) {
   const navigate = useNavigate();
   const [confirmOpen, setConfirmOpen] = React.useState(false);
   const [deleting, setDeleting] = React.useState(false);
+  const isEventPaid = (ev: any) => {
+    if (!ev) return false;
+    if (ev.paid === true || ev.is_paid === true || ev.paid === 'true') return true;
+    if (ev.paid_until || ev.paidUntil || ev.purchase_id || ev.purchaseId) return true;
+    if (ev.subscription || ev.billing || (ev.purchase && typeof ev.purchase === 'object')) return true;
+    return false;
+  };
+  const paid = isEventPaid(event);
   return (
     <Link
       to={`/organizer/event/${event.id}/speakers`}
@@ -63,8 +71,13 @@ export function EventCard({ event, index = 0, onDelete }: EventCardProps) {
       style={{ animationDelay: `${index * 100}ms` }}
     >
       <div className="flex items-start justify-between mb-3">
-        <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors" style={{ fontSize: 'var(--font-h2)' }}>
-          {event.title}
+        <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors flex items-center gap-2" style={{ fontSize: 'var(--font-h2)' }}>
+          <span>{event.title}</span>
+          {paid ? (
+            <Badge variant="outline" className="text-success">Paid</Badge>
+          ) : (
+            <Badge variant="outline" className="text-muted-foreground">Free</Badge>
+          )}
         </h3>
 
         <DropdownMenu>

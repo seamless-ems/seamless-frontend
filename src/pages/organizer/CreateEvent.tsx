@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 // TODO: Google Drive — restore getIntegrationUrl, getGoogleDriveStatus, deleteIntegration, createGoogleDriveFolder when re-enabling
-import { createEvent, getTeam, uploadFile, getMe } from "@/lib/api";
+import { createEvent, getTeam, uploadFile, getMe, createCheckout } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
@@ -128,6 +128,13 @@ export default function CreateEvent() {
 	const { data: me } = useQuery<any>({ queryKey: ["me"], queryFn: () => getMe() });
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
+	// Post-create checkout modal state for Schedule module
+	const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
+	// Post-create checkout modal state for Speaker module
+	const [speakerModalOpen, setSpeakerModalOpen] = useState(false);
+	const [createdEventId, setCreatedEventId] = useState<string | null>(null);
+	const [creatingCheckout, setCreatingCheckout] = useState(false);
+
 	// when teams load, ensure selectedTeamId is set
 	useEffect(() => {
 		if (!selectedTeamId && teams && teams.length) {
@@ -215,6 +222,19 @@ export default function CreateEvent() {
 			toast({ title: "Event created", description: `Created ${created.title ?? created.id ?? "event"}` });
 
 			if (created?.id) {
+				// Always create the event first. If schedule module selected, prompt to purchase or start trial.
+				setCreatedEventId(created.id);
+				// If speaker module selected, prompt to purchase or start trial.
+				if (selectedModules.includes("speaker")) {
+					setSpeakerModalOpen(true);
+					return;
+				}
+				// If schedule module selected, prompt to purchase or start trial.
+				if (selectedModules.includes("schedule")) {
+					setScheduleModalOpen(true);
+					return;
+				}
+				// Default navigation to newly-created event speakers
 				navigate(`/organizer/event/${created.id}/speakers`);
 			} else {
 				navigate("/organizer/events");
@@ -228,6 +248,89 @@ export default function CreateEvent() {
 
 	return (
 		<div className="max-w-4xl mx-auto space-y-6">
+		{/* Speaker purchase modal */}
+		<AlertDialog open={speakerModalOpen} onOpenChange={setSpeakerModalOpen}>
+			<AlertDialogContent>
+				<AlertDialogTitle>Enable Speakers Module</AlertDialogTitle>
+				<AlertDialogDescription>
+					The Speakers module adds speaker intake forms, management, and promo cards. Start a 14-day free trial, or pay now to enable immediately for this event.
+				</AlertDialogDescription>
+				<div className="mt-4 flex gap-2 justify-end">
+					<AlertDialogCancel onClick={() => {
+						setSpeakerModalOpen(false);
+						if (createdEventId) navigate(`/organizer/event/${createdEventId}/speakers`);
+					}}>Ignore / Use Trial</AlertDialogCancel>
+					<AlertDialogAction asChild>
+						<Button
+							variant="primary"
+							onClick={async () => {
+								if (!createdEventId) return;
+								try {
+									setCreatingCheckout(true);
+									const res = await createCheckout("speaker", createdEventId);
+									const url = res?.url || res?.checkout_url || res?.redirect_url || res?.checkoutUrl || (typeof res === "string" ? res : undefined) || res?.data?.url;
+									if (url) {
+										window.location.href = url;
+										return;
+									}
+									toast({ title: "Checkout created", description: "No redirect URL returned; please check your billing dashboard." });
+								} catch (err: any) {
+									toast({ title: "Checkout failed", description: String(err?.message || err) });
+								} finally {
+									setCreatingCheckout(false);
+									setSpeakerModalOpen(false);
+									if (createdEventId) navigate(`/organizer/event/${createdEventId}/speakers`);
+								}
+							}}
+						>
+							Pay Now
+						</Button>
+					</AlertDialogAction>
+				</div>
+			</AlertDialogContent>
+		</AlertDialog>
+
+		{/* Schedule purchase modal */}
+		<AlertDialog open={scheduleModalOpen} onOpenChange={setScheduleModalOpen}>
+			<AlertDialogContent>
+				<AlertDialogTitle>Enable Schedule Module</AlertDialogTitle>
+				<AlertDialogDescription>
+					The Schedule module adds session management and publishing. Start a 14-day free trial, or pay now to enable immediately for this event.
+				</AlertDialogDescription>
+				<div className="mt-4 flex gap-2 justify-end">
+					<AlertDialogCancel onClick={() => {
+						setScheduleModalOpen(false);
+						if (createdEventId) navigate(`/organizer/event/${createdEventId}/speakers`);
+					}}>Ignore / Use Trial</AlertDialogCancel>
+					<AlertDialogAction asChild>
+						<Button
+							variant="primary"
+							onClick={async () => {
+								if (!createdEventId) return;
+								try {
+									setCreatingCheckout(true);
+									const res = await createCheckout("schedule", createdEventId);
+									const url = res?.url || res?.checkout_url || res?.redirect_url || res?.checkoutUrl || (typeof res === "string" ? res : undefined) || res?.data?.url;
+									if (url) {
+										window.location.href = url;
+										return;
+									}
+									toast({ title: "Checkout created", description: "No redirect URL returned; please check your billing dashboard." });
+								} catch (err: any) {
+									toast({ title: "Checkout failed", description: String(err?.message || err) });
+								} finally {
+									setCreatingCheckout(false);
+									setScheduleModalOpen(false);
+									if (createdEventId) navigate(`/organizer/event/${createdEventId}/speakers`);
+								}
+							}}
+						>
+							Pay Now
+						</Button>
+					</AlertDialogAction>
+				</div>
+			</AlertDialogContent>
+		</AlertDialog>
 			{/* No-teams danger modal */}
 			<AlertDialog open={noTeamsModalOpen} onOpenChange={setNoTeamsModalOpen}>
 				<AlertDialogContent>

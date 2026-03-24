@@ -1,17 +1,20 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getJson, updateEvent, getTeam } from "@/lib/api";
+import { getJson, updateEvent, uploadFile, getGoogleDriveStatus, getIntegrationUrl, deleteIntegration, getTeam, getMe, createGoogleDriveFolder, createCheckout } from "@/lib/api";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Calendar, Mic2, FileText, Users } from "lucide-react";
+import { FolderOpen, Calendar, MapPin, Mail, FileText, Mic2, Users, Link as LinkIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import GoogleDriveFolderPicker from "@/components/organizer/GoogleDriveFolderPicker";
+import EventMediaUploader from "@/components/organizer/EventMediaUploader";
 
 const availableModules = [
   {
@@ -28,8 +31,7 @@ const availableModules = [
     description: "Create and publish event schedules",
     icon: Calendar,
     color: "schedule",
-    available: false,
-    comingSoon: true,
+    available: true,
   },
   {
     id: "content",
@@ -37,8 +39,7 @@ const availableModules = [
     description: "Centralized hub for presentations and files",
     icon: FileText,
     color: "content",
-    available: false,
-    comingSoon: true,
+    available: true,
   },
   {
     id: "partners",
@@ -46,8 +47,7 @@ const availableModules = [
     description: "Manage sponsors and partners",
     icon: Users,
     color: "primary",
-    available: false,
-    comingSoon: true,
+    available: true,
   },
   {
     id: "attendee",
@@ -71,54 +71,126 @@ export default function EventSettings() {
   });
 
   const [formData, setFormData] = useState({
+    id: "",
     title: "",
     startDate: "",
     endDate: "",
     location: "",
     eventWebsite: "",
+    fromName: "",
+    fromEmail: "",
+    replyToEmail: "",
+    emailSignature: "",
+    googleDriveConnected: false,
+    rootFolder: "",
   });
 
   const [selectedModules, setSelectedModules] = useState<string[]>(["speaker"]);
+  const [driveFolders, setDriveFolders] = useState<any[]>([]);
+  const [selectedFolderPath, setSelectedFolderPath] = useState<string[]>([]);
   const { data: teams } = useQuery<any[]>({ queryKey: ["teams"], queryFn: () => getTeam() });
   const [selectedTeamId, setSelectedTeamId] = useState<string | undefined>(undefined);
+  const [eventImageFile, setEventImageFile] = useState<File | null>(null);
+  const [eventImagePreview, setEventImagePreview] = useState<string | null>(null);
+  const { data: me } = useQuery<any>({ queryKey: ["me"], queryFn: () => getMe() });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (!rawEvent) return;
-
+    // helper to coerce various date formats (ISO or timestamps) into YYYY-MM-DD for <input type="date" />
     const toDateInput = (v: any) => {
       if (v == null) return "";
+      // If already in YYYY-MM-DD, return as-is
       if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+      // If ISO datetime, extract date portion
       if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}T/.test(v)) return v.slice(0, 10);
+      // If numeric timestamp (seconds or ms)
       if (typeof v === "number") {
+        // assume seconds if 10 digits
         const asMs = v > 1e12 ? v : v * 1000;
         const d = new Date(asMs);
         if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
       }
+      // last resort: try Date parse
       const d = new Date(v);
       if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
       return "";
     };
 
-    setFormData({
+    setFormData((prev) => ({
+      ...prev,
+      id: rawEvent.id ?? rawEvent.event_id ?? "",
       title: rawEvent.title ?? "",
       startDate: toDateInput(rawEvent.start_date ?? rawEvent.startDate ?? ""),
       endDate: toDateInput(rawEvent.end_date ?? rawEvent.endDate ?? ""),
       location: rawEvent.location ?? "",
       eventWebsite: rawEvent.event_website ?? rawEvent.eventWebsite ?? "",
-    });
+      fromName: rawEvent.from_name ?? rawEvent.fromName ?? "",
+      fromEmail: rawEvent.from_email ?? rawEvent.fromEmail ?? "",
+      replyToEmail: rawEvent.reply_to_email ?? rawEvent.replyToEmail ?? "",
+      emailSignature: rawEvent.email_signature ?? rawEvent.emailSignature ?? "",
+      googleDriveConnected: rawEvent.google_drive_connected ?? false,
+      rootFolder: rawEvent.root_folder ?? rawEvent.rootFolder ?? "",
+    }));
 
+    // modules - support new object shape { speaker: true } or older array/string formats
     const rawModules = rawEvent.modules;
     let modulesArray: any[] = [];
     if (Array.isArray(rawModules)) modulesArray = rawModules;
     else if (!rawModules) modulesArray = [];
-    else if (typeof rawModules === "string") modulesArray = rawModules.split(",").map((name: string) => ({ id: name.trim(), name: name.trim() }));
+    else if (typeof rawModules === "string") modulesArray = (rawModules as any).split(",").map((name: string) => ({ id: name.trim(), name: name.trim(), enabled: true }));
     else if (typeof rawModules === "object") {
       modulesArray = Object.entries(rawModules).map(([key, val]) => (typeof val === "object" ? { id: key, name: key, ...val } : { id: key, name: key, enabled: !!val }));
     }
+
     setSelectedModules(modulesArray.map((m: any) => m.name || m.id));
-    setSelectedTeamId(rawEvent.teamId ?? rawEvent.team_id ?? undefined);
+
+  setEventImagePreview(rawEvent.eventImage ?? rawEvent.event_image ?? null);
+  setSelectedTeamId(rawEvent.teamId ?? rawEvent.team_id ?? undefined);
   }, [rawEvent]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const status = await getGoogleDriveStatus();
+        if (status?.connected) {
+          const folders = (status as any).folders ?? [];
+          setDriveFolders(folders);
+          // if a root folder already exists on the event, compute selectedFolderPath to pre-select cascading selects
+          const rootId = (status as any).root_folder ?? (folders.length ? folders[0].id : undefined) ?? undefined;
+          setFormData((prev) => ({
+            ...prev,
+            googleDriveConnected: true,
+            rootFolder: rootId ?? prev.rootFolder ?? "",
+          }));
+          // if formData.rootFolder already populated (from rawEvent), compute full path
+          const initialRoot = (status as any).root_folder ?? undefined;
+          if (formData.rootFolder) {
+            // find path to the existing rootFolder within the fetched folders
+            const findPathToFolder = (foldersList: any[], targetId: string): string[] => {
+              if (!foldersList || !targetId) return [];
+              for (const f of foldersList) {
+                if (f.id === targetId) return [f.id];
+                if (f.children && f.children.length) {
+                  const childPath = findPathToFolder(f.children, targetId);
+                  if (childPath.length) return [f.id, ...childPath];
+                }
+              }
+              return [];
+            };
+            const path = findPathToFolder(folders, formData.rootFolder);
+            if (path && path.length) {
+              setSelectedFolderPath(path);
+            }
+          }
+        }
+      } catch (err) {
+        
+      }
+    })();
+  }, []);
+
+  // Google Drive folder picker logic extracted to shared component
 
   const toggleModule = (moduleId: string) => {
     setSelectedModules((prev) => (prev.includes(moduleId) ? prev.filter((id) => id !== moduleId) : [...prev, moduleId]));
@@ -129,184 +201,311 @@ export default function EventSettings() {
     if (!id) return;
     setIsSubmitting(true);
     try {
+      // Generate an event id if none present so uploads can be associated (keep existing id if server provided one)
+      const eventId = rawEvent?.id ?? rawEvent?.event_id ?? id;
+
+      // convert selectedModules (array) -> modules object expected by API
       const modulesObj: Record<string, boolean> = {};
       selectedModules.forEach((m) => (modulesObj[m] = true));
 
       const payload: any = {
-        id: rawEvent?.id ?? rawEvent?.event_id ?? id,
+        id: eventId,
         title: formData.title,
         start_date: formData.startDate || undefined,
         end_date: formData.endDate || undefined,
         location: formData.location || undefined,
         event_website: formData.eventWebsite || undefined,
+        from_name: formData.fromName || undefined,
+        from_email: formData.fromEmail || undefined,
+        reply_to_email: formData.replyToEmail || undefined,
+        email_signature: formData.emailSignature || undefined,
         modules: modulesObj,
       };
 
-      if (selectedTeamId) payload.team_id = selectedTeamId;
+      // Only include team_id if it's actually set
+      if (selectedTeamId) {
+        payload.team_id = selectedTeamId;
+      }
 
-      Object.keys(payload).forEach((key) => { if (payload[key] === undefined) delete payload[key]; });
+      try {
+        if (eventImageFile) {
+          const res = await uploadFile(eventImageFile, undefined, eventId);
+          const imageValue = res?.public_url ?? res?.publicUrl ?? res?.url ?? res?.id ?? null;
+          if (imageValue) payload.event_image = imageValue;
+        }
+      } catch (err: any) {
+        
+        toast({ title: "Event image upload failed", description: String(err?.message || err) });
+      }
+
+      // Remove undefined values from payload
+      Object.keys(payload).forEach(key => {
+        if (payload[key] === undefined) {
+          delete payload[key];
+        }
+      });
 
       await updateEvent(id, payload);
       queryClient.invalidateQueries({ queryKey: ["event", id] });
       toast({ title: "Event updated" });
     } catch (err: any) {
-      toast({ title: "Failed to update event", description: String(err?.message || err), variant: "destructive" });
+      
+      const errorMsg = err?.message || String(err);
+      toast({
+        title: "Failed to update event",
+        description: errorMsg.includes('fetch') ? 'Network error - check console for details' : errorMsg,
+        variant: "destructive"
+      });
     } finally {
       setIsSubmitting(false);
     }
   };
 
   if (!rawEvent && isLoading) return <div className="py-16 text-center">Loading…</div>;
+
   if (!rawEvent && error) return <div className="py-16 text-center text-destructive">Error loading event: {String(error.message)}</div>;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <form onSubmit={handleSubmit} className="space-y-6">
-
-        {/* Event Details */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-primary" />
-              Event Details
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="team">Team</Label>
-              <Select value={selectedTeamId ?? ""} onValueChange={(val) => setSelectedTeamId(val)}>
-                <SelectTrigger className="w-full sm:w-[300px]">
-                  <SelectValue placeholder={teams && teams.length ? "Select team" : "No teams"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {teams && teams.length ? (
-                    teams.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)
-                  ) : (
-                    <SelectItem value="no-teams" disabled>No teams available</SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="title">Event Title</Label>
-              <Input
-                id="title"
-                placeholder="e.g., Tech Summit 2025"
-                value={formData.title}
-                onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
-                required
-              />
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="startDate">Start Date</Label>
-                <Input
-                  id="startDate"
-                  type="date"
-                  value={formData.startDate}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, startDate: e.target.value }))}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="endDate">End Date</Label>
-                <Input
-                  id="endDate"
-                  type="date"
-                  value={formData.endDate}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, endDate: e.target.value }))}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="location">Location</Label>
-              <Input
-                id="location"
-                placeholder="e.g., San Francisco, CA"
-                value={formData.location}
-                onChange={(e) => setFormData((prev) => ({ ...prev, location: e.target.value }))}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="eventWebsite">Event Website</Label>
-              <Input
-                id="eventWebsite"
-                type="text"
-                placeholder="www.example.com/event"
-                value={formData.eventWebsite}
-                onChange={(e) => setFormData((prev) => ({ ...prev, eventWebsite: e.target.value }))}
-                required
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Active Modules */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Active Modules</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {availableModules.map((module) => {
-                const Icon = module.icon;
-                const isSelected = selectedModules.includes(module.id);
-
-                return (
-                  <div
-                    key={module.id}
-                    className={cn(
-                      "rounded-lg border p-3 transition-all duration-200 cursor-pointer",
-                      isSelected ? "border-primary bg-primary/5" : "border-border hover:border-primary/30",
-                      !module.available && "opacity-50 cursor-not-allowed"
-                    )}
-                    onClick={() => module.available && toggleModule(module.id)}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <div
-                        className={cn(
-                          "flex h-8 w-8 items-center justify-center rounded",
-                          isSelected ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-                        )}
-                      >
-                        <Icon className="h-4 w-4" />
-                      </div>
-                      {module.comingSoon ? (
-                        <Badge variant="secondary" className="text-xs">Coming Soon</Badge>
-                      ) : (
-                        <Switch checked={isSelected} disabled={!module.available} />
-                      )}
-                    </div>
-                    <h4 className="font-medium text-foreground text-sm mb-1">{module.name}</h4>
-                    <p className="text-xs text-muted-foreground">{module.description}</p>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="flex justify-end gap-4">
-          <Button variant="outline" type="button" className="border-[1.5px]" onClick={() => navigate(`/organizer/event/${id}/speakers`)}>Cancel</Button>
-          <Button variant="outline" type="submit" className="border-[1.5px]" disabled={isSubmitting}>
-            {isSubmitting ? (
-              <>
-                <svg className="h-4 w-4 animate-spin mr-2" viewBox="0 0 24 24" fill="none">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
-                </svg>
-                Saving…
-              </>
-            ) : (
-              "Save Changes"
-            )}
-          </Button>
+      <div className="max-w-4xl mx-auto space-y-6">
+        <div>
+          <h1 style={{ fontSize: 'var(--font-h1)', fontWeight: 600 }}>Edit Event</h1>
+          <p className="text-muted-foreground mt-1" style={{ fontSize: 'var(--font-body)' }}>Update your event details and assets</p>
         </div>
-      </form>
-    </div>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+
+          {/* Google Drive */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2" style={{ fontSize: 'var(--font-h3)', fontWeight: 600 }}>
+                <FolderOpen className="h-5 w-5 text-primary" />
+                Google Drive Integration
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-foreground">Connect Google Drive</p>
+                  <p className="text-sm text-muted-foreground">Sync speaker assets and content automatically</p>
+                </div>
+                {formData.googleDriveConnected ? (
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" type="button" disabled>
+                      <svg className="h-4 w-4 text-success" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 13l4 4L19 7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                      Connected
+                    </Button>
+                    <Button variant="destructive" type="button" onClick={async () => {
+                      try {
+                        await deleteIntegration("google");
+                        setDriveFolders([]);
+                        setFormData((prev) => ({ ...prev, googleDriveConnected: false, rootFolder: "" }));
+                        setSelectedFolderPath([]);
+                        toast({ title: "Disconnected", description: "Google Drive integration removed" });
+                      } catch (err: any) {
+                        
+                        toast({ title: "Failed to disconnect", description: String(err?.message || err) });
+                      }
+                    }}>Disconnect</Button>
+                  </div>
+                ) : (
+                  <Button variant="outline" type="button" onClick={async () => {
+                    try {
+                      const res = await getIntegrationUrl("google");
+                      if (res?.url) window.location.href = res.url;
+                      else toast({ title: "Failed to start integration", description: "No URL returned from server" });
+                    } catch (err: any) {
+                      
+                      toast({ title: "Failed to start integration", description: String(err?.message || err) });
+                    }
+                  }}>
+                    <LinkIcon className="h-4 w-4" />
+                    Connect Drive
+                  </Button>
+                )}
+              </div>
+
+              {formData.googleDriveConnected && (
+                <GoogleDriveFolderPicker
+                  driveFolders={driveFolders}
+                  setDriveFolders={setDriveFolders}
+                  selectedFolderPath={selectedFolderPath}
+                  setSelectedFolderPath={setSelectedFolderPath}
+                  formData={formData}
+                  setFormData={setFormData}
+                />
+              )}
+            </CardContent>
+          </Card>
+
+            {/* Billing / Checkout */}
+            {id && selectedModules.includes("speaker") && (
+              <Card>
+                <CardHeader>
+                  <CardTitle style={{ fontSize: 'var(--font-h3)', fontWeight: 600 }}>Billing</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p className="text-sm text-muted-foreground">Purchase the Speakers module for this event.</p>
+                  <div className="flex items-center gap-2 justify-end">
+                    <Button variant="outline" type="button" onClick={async () => {
+                      if (!id) return;
+                      try {
+                        const res = await createCheckout("speaker", id);
+                        const url = res?.url || res?.checkout_url || res?.redirect_url || res?.checkoutUrl || (typeof res === "string" ? res : undefined) || res?.data?.url;
+                        if (url) {
+                          window.location.href = url;
+                          return;
+                        }
+                        toast({ title: "Checkout created", description: "No redirect URL returned; please check your billing dashboard." });
+                      } catch (err: any) {
+                        toast({ title: "Checkout failed", description: String(err?.message || err) });
+                      }
+                    }}>Pay for Speakers</Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+          {/* Basic Info */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2" style={{ fontSize: 'var(--font-h3)', fontWeight: 600 }}>
+                <Calendar className="h-5 w-5 text-primary" />
+                Event Details
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>Event Title</Label>
+                <Input placeholder="e.g., Tech Summit 2025" value={formData.title} onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))} required />
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Start Date</Label>
+                  <Input type="date" value={formData.startDate} onChange={(e) => setFormData((prev) => ({ ...prev, startDate: e.target.value }))} required />
+                </div>
+                <div className="space-y-2">
+                  <Label>End Date</Label>
+                  <Input type="date" value={formData.endDate} onChange={(e) => setFormData((prev) => ({ ...prev, endDate: e.target.value }))} />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Location</Label>
+                <Input placeholder="e.g., San Francisco, CA" value={formData.location} onChange={(e) => setFormData((prev) => ({ ...prev, location: e.target.value }))} />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Event Website</Label>
+                <Input type="text" placeholder="https://example.com/event (optional)" value={formData.eventWebsite} onChange={(e) => setFormData((prev) => ({ ...prev, eventWebsite: e.target.value }))} />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Module Selection */}
+          <Card>
+            <CardHeader>
+              <CardTitle style={{ fontSize: 'var(--font-h3)', fontWeight: 600 }}>Event Modules</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {availableModules.map((module) => {
+                  const Icon = module.icon;
+                  const isSelected = selectedModules.includes(module.id);
+
+                  return (
+                    <div
+                      key={module.id}
+                      className={cn(
+                        "rounded-lg border p-3 transition-all duration-200 cursor-pointer",
+                        isSelected ? "border-primary bg-primary/5" : "border-border hover:border-primary/30",
+                        !module.available && "opacity-50 cursor-not-allowed"
+                      )}
+                      onClick={() => module.available && toggleModule(module.id)}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div
+                          className={cn(
+                            "flex h-8 w-8 items-center justify-center rounded",
+                            isSelected ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                          )}
+                        >
+                          <Icon className="h-4 w-4" />
+                        </div>
+                        {module.comingSoon ? (
+                          <Badge variant="secondary" className="text-xs">Soon</Badge>
+                        ) : (
+                          <div onClick={(e) => e.stopPropagation()}>
+                            <Switch
+                              checked={isSelected}
+                              disabled={!module.available}
+                              onCheckedChange={() => module.available && toggleModule(module.id)}
+                            />
+                          </div>
+                        )}
+                      </div>
+                      <h4 className="font-medium text-foreground text-sm mb-1">{module.name}</h4>
+                      <p className="text-xs text-muted-foreground">{module.description}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Email Settings */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2" style={{ fontSize: 'var(--font-h3)', fontWeight: 600 }}>
+                <Mail className="h-5 w-5 text-primary" />
+                Email Settings
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>'From' Name</Label>
+                <Input placeholder="Your Company Name" value={formData.fromName} onChange={(e) => setFormData((prev) => ({ ...prev, fromName: e.target.value }))} />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>'From' Email</Label>
+                  <Input type="email" placeholder="events@yourcompany.com" value={formData.fromEmail} onChange={(e) => setFormData((prev) => ({ ...prev, fromEmail: e.target.value }))} />
+                </div>
+                <div className="space-y-2">
+                  <Label>'Reply To' Email</Label>
+                  <Input type="email" placeholder="hello@yourcompany.com" value={formData.replyToEmail} onChange={(e) => setFormData((prev) => ({ ...prev, replyToEmail: e.target.value }))} />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Email Signature</Label>
+                <Textarea placeholder="Your default email signature..." value={formData.emailSignature} onChange={(e) => setFormData((prev) => ({ ...prev, emailSignature: e.target.value }))} rows={3} />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Images & Templates */}
+          <Card>
+            <CardHeader>
+              <CardTitle style={{ fontSize: 'var(--font-h3)', fontWeight: 600 }}>Images & Templates</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <EventMediaUploader
+                eventImageFile={eventImageFile}
+                setEventImageFile={setEventImageFile}
+                eventImagePreview={eventImagePreview}
+                setEventImagePreview={setEventImagePreview}
+                enableCrop={true}
+                eventCropAspect={NaN}
+              />
+            </CardContent>
+          </Card>
+
+          <div className="flex justify-end gap-4">
+            <Button variant="outline" type="button" onClick={() => navigate(`/organizer/event/${id}`)}>Cancel</Button>
+            <Button variant="outline" type="submit" className="border-[1.5px]" disabled={isSubmitting}>{isSubmitting ? "Saving…" : "Save Changes"}</Button>
+          </div>
+        </form>
+      </div>
   );
 }

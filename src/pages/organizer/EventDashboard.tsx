@@ -24,6 +24,8 @@ export default function EventDashboard() {
 
 		return {
 			...rawEvent,
+			// prefer explicit paid flag if backend provides it
+			paid: rawEvent.paid ?? rawEvent.is_paid ?? rawEvent.paid_until ? true : rawEvent.paid ?? false,
 			title: rawEvent.title,
 			status: rawEvent.status,
 			speakerCount: (Array.isArray(rawEvent.speakers) ? rawEvent.speakers.length : undefined) ?? rawEvent.speaker_count ?? rawEvent.speakers_count ?? 0,
@@ -58,6 +60,19 @@ export default function EventDashboard() {
 			app: map.app ?? { enabled: false },
 		};
 	})();
+
+	// Determine whether a module is paid using a few common backend shapes
+	const isModulePaid = (m: any) => {
+		if (!m) return false;
+		if (m.paid === true || m.purchased === true || m.is_paid === true || m.isPaid === true) return true;
+		if (m.paid === 'true') return true;
+		if (m.paid_until || m.paidUntil || m.purchase_id || m.purchaseId || m.purchase) return true;
+		// sometimes module may include billing/subscription object
+	if (m.subscription || m.billing || (m.purchase && typeof m.purchase === 'object')) return true;
+		return false;
+	};
+
+	const speakerPaid = isModulePaid(modules.speaker);
 
 	if (isLoading) {
 		return <div className="py-16 text-center">Loading event…</div>;
@@ -127,13 +142,21 @@ export default function EventDashboard() {
 				Event Dashboard
 			</h2>
 
+			<div className="mb-6">
+				{speakerPaid ? (
+					<Badge variant="outline" className="text-success">Paid</Badge>
+				) : (
+					<Badge variant="outline" className="text-muted-foreground">Free</Badge>
+				)}
+			</div>
+
 			{/* Module Summary Cards */}
 			<div className="space-y-6">
 				{/* Speaker Module */}
 				{enabledModules.includes('speaker') && (
 					<div className="rounded-lg border border-border bg-card p-6">
 						<div className="flex justify-between items-center mb-5 pb-4 border-b border-border">
-							<h3 style={{ fontSize: 'var(--font-h3)', fontWeight: 600 }}>Speakers</h3>
+							<h3 style={{ fontSize: 'var(--font-h3)', fontWeight: 600 }}>Speakers {speakerPaid && <Badge className="ml-2 text-success">Paid</Badge>}</h3>
 							<Button variant="outline" size="sm" asChild>
 								<Link to={`/organizer/event/${id}/speakers`}>View Module</Link>
 							</Button>

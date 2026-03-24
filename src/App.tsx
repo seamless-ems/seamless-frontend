@@ -76,7 +76,9 @@ const App = () => {
               element={
                 <ProtectedRoute>
                   <DashboardLayout mode="organizer">
-                    <Events />
+                    {/* <Events /> */}
+                    {/* Redirect to Index which shows EventDashboard */}
+                    <Navigate to="/organizer" replace />
                   </DashboardLayout>
                 </ProtectedRoute>
               }

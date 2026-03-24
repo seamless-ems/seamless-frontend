@@ -249,6 +249,12 @@ export function addPaymentMethod(body: any): Promise<any> {
   return postJson<any, any>(`/account/billing/payment-method`, body);
 }
 
+// Create a checkout for a product tied to an event. Backend expects product_id and event_id as query params.
+export function createCheckout(productId: string, eventId: string): Promise<any> {
+  const qs = `?product_id=${encodeURIComponent(productId)}&event_id=${encodeURIComponent(eventId)}`;
+  return postJson<{}, any>(`/payments/checkout${qs}`, {});
+}
+
 export function cancelSubscription(): Promise<any> {
   return postJson<{}, any>(`/account/subscription/cancel`, {});
 }
@@ -406,4 +412,23 @@ export async function deleteEvent(eventId: string): Promise<void> {
 // Support / Help
 export function sendSupportMessage(body: { name?: string; email: string; subject?: string; message: string; }): Promise<any> {
   return postJson<typeof body, any>(`/support/contact`, body);
+}
+
+// --- Content endpoints (speaker-specific) ---
+export function getSpeakerContent(speakerId: string): Promise<any[]> {
+  return getJson<any[]>(`/content/${encodeURIComponent(speakerId)}`);
+}
+
+export function createSpeakerContent(speakerId: string, body: { content: string; contentType?: string; documentId?: string | null; }): Promise<any> {
+  return postJson<typeof body, any>(`/content/${encodeURIComponent(speakerId)}`, body);
+}
+
+// Get version history for a specific content item
+export function getContentHistory(speakerId: string, contentId: string): Promise<any[]> {
+  return getJson<any[]>(`/content/${encodeURIComponent(speakerId)}/${encodeURIComponent(contentId)}/history`);
+}
+
+// Create a new version for an existing content document
+export function createNewContentVersion(speakerId: string, documentId: string, body: { content: string; contentType: string }): Promise<any> {
+  return postJson<typeof body, any>(`/content/${encodeURIComponent(speakerId)}/${encodeURIComponent(documentId)}/new-version`, body);
 }
