@@ -115,7 +115,20 @@
       "Bash(echo \"Exit: $?\")",
       "Bash(sed -i 's/\\\\t\\\\t\\\\t\\\\t\\\\t\\\\t\\\\t\\\\ttype=\"\"url\"\"/\\\\t\\\\t\\\\t\\\\t\\\\t\\\\t\\\\t\\\\ttype=\"\"text\"\"/' \"/mnt/c/Users/james/OneDrive/Documents/Seamless/seamless-frontend/src/pages/organizer/CreateEvent.tsx\")",
       "Bash(sed -i 's|placeholder=\"\"https://example.com/event\"\"|placeholder=\"\"www.example.com/event\"\"|' \"/mnt/c/Users/james/OneDrive/Documents/Seamless/seamless-frontend/src/pages/organizer/CreateEvent.tsx\")",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "WebFetch(domain:placid.app)",
+      "WebFetch(domain:whova.com)",
+      "WebFetch(domain:www.datasmart.ie)",
+      "WebFetch(domain:www.usestencil.com)",
+      "WebFetch(domain:2026.acrpnet.org)",
+      "WebFetch(domain:www.gleanin.com)",
+      "WebFetch(domain:designers.hubspot.com)",
+      "WebFetch(domain:www.socialtables.com)",
+      "WebFetch(domain:www.contentstadium.com)",
+      "WebFetch(domain:summit.codeforamerica.org)",
+      "WebFetch(domain:sxsw.com)",
+      "WebFetch(domain:learn.sessionboard.com)",
+      "WebFetch(domain:www.accelevents.com)"
     ]
   }
 }

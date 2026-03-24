@@ -26,6 +26,14 @@ Headshot downloads work because their CDN origin allows CORS.
 
 ---
 
+## Embed page — transparent background
+
+The frontend iframe snippet sets `allowtransparency="true"` and `background: transparent` so the embed sits over the customer's page background. For this to work, the embed page served by the backend must not set a hard background colour on `<html>` or `<body>`. Required:
+
+- `GET /embed/:eventId` → no `background-color` on `<html>`/`<body>` (or set `background: transparent`)
+
+---
+
 ## Card embed HTML rendering (`/embed/{eventId}/speaker/{speakerId}`)
 
 The rendered HTML currently ignores config positioning data. Required:

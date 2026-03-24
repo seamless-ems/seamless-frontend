@@ -210,13 +210,13 @@ export default function SpeakerModule() {
               Forms
             </button>
             <button onClick={() => navigate(`/organizer/event/${id}/speakers/embed`)} className={tabClass("embed")}>
-              Embeds
+              Speaker Card Embed
             </button>
             <button onClick={() => navigate(`/organizer/event/${id}/website-card-builder`)} className={tabClass("website-card-builder")}>
-              Website Cards
+              Speaker Cards
             </button>
             <button onClick={() => navigate(`/organizer/event/${id}/promo-card-builder`)} className={tabClass("promo-card-builder")}>
-              Promo Cards
+              Social Cards
             </button>
           </div>
           {/* Contextual action — only shown on the Speakers tab */}
