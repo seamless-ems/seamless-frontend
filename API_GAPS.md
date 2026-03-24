@@ -34,6 +34,20 @@ The frontend iframe snippet sets `allowtransparency="true"` and `background: tra
 
 ---
 
+## Content management — missing fields and endpoints
+
+The Content tab UI is fully built. The following backend features are required to complete it:
+
+- `GET /speakers/:id/content` → include `name: string` on each item (user-defined label, set on upload, immutable on replace)
+- `GET /speakers/:id/content` → include `archived: boolean`, `archivedAt`, `archivedBy` on each item
+- `POST /speakers/:id/content` → accept `name: string`
+- `POST /speakers/:id/content` → accept `createdBy: string` and store it against the initial version
+- `POST /speakers/:id/content/:docId/versions` → accept `createdBy: string` in request body and store it; return `createdBy: string` on each version in history — **not currently working**: frontend sends `createdBy` on every upload/replace/restore but history rows show no attribution
+- `PATCH /speakers/:id/content/:docId/archive` → new endpoint to soft-archive a file
+- Share URL access control: view-only vs can-upload permission token (deferred — no auth system yet)
+
+---
+
 ## Card embed HTML rendering (`/embed/{eventId}/speaker/{speakerId}`)
 
 The rendered HTML currently ignores config positioning data. Required:

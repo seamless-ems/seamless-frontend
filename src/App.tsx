@@ -140,16 +140,23 @@ const App = () => {
               }
             />
 
-            <Route
-              path="/organizer/event/:id/speakers/:speakerId"
-              element={
-                <ProtectedRoute>
-                  <EventLayoutWrapper>
+            {/* SpeakerPortal — fullscreen, own layout, no EventLayoutWrapper */}
+            {[
+              "/organizer/event/:id/speakers/:speakerId",
+              "/organizer/event/:id/speakers/:speakerId/speaker-card",
+              "/organizer/event/:id/speakers/:speakerId/social-card",
+              "/organizer/event/:id/speakers/:speakerId/content",
+            ].map(path => (
+              <Route
+                key={path}
+                path={path}
+                element={
+                  <ProtectedRoute>
                     <SpeakerPortal />
-                  </EventLayoutWrapper>
-                </ProtectedRoute>
-              }
-            />
+                  </ProtectedRoute>
+                }
+              />
+            ))}
 
             <Route
               path="/organizer/event/:id/settings"
