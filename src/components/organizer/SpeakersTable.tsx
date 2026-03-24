@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { useQueryClient } from "@tanstack/react-query";
 import { updateSpeaker, deleteSpeaker } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
-import { Download, ExternalLink, Copy, Check } from "lucide-react";
+import { Download, ExternalLink, Copy, Check, ChevronRight } from "lucide-react";
 import { API_BASE } from "@/lib/api";
 
 type Props = {
@@ -12,13 +12,16 @@ type Props = {
   isLoading: boolean;
   eventId?: string | undefined; // may be a slugId or bare UUID
   selectedTab?: string;
+  formConfig?: any[] | null;
+  websiteCardConfigured?: boolean;
+  promoCardConfigured?: boolean;
 };
 
 // Download a remote image by fetching it as a blob (handles CORS-proxied URLs).
 // Falls back to opening in a new tab if fetch fails.
 async function downloadAsset(url: string, filename: string) {
   try {
-    const res = await fetch(url, { credentials: "include" });
+    const res = await fetch(url);
     if (!res.ok) throw new Error("fetch failed");
     const blob = await res.blob();
     const a = document.createElement("a");
@@ -54,25 +57,25 @@ function AssetButton({
   return (
     <div className="flex flex-col items-center gap-0.5 min-w-[52px]">
       {label && <span className="text-[10px] text-muted-foreground leading-none">{label}</span>}
-      <button
-        title={title}
-        disabled={isDisabled}
-        onClick={() => {
-          if (!url) return;
-          if (external) {
-            window.open(url, "_blank", "noopener");
-          } else {
-            downloadAsset(url, filename ?? label.toLowerCase().replace(/\s+/g, "-"));
-          }
-        }}
-        className={`mt-0.5 rounded p-1.5 transition-colors ${
-          isDisabled
-            ? "text-muted-foreground/30 cursor-not-allowed"
-            : "text-muted-foreground hover:text-primary hover:bg-primary/8 cursor-pointer"
-        }`}
-      >
-        {external ? <ExternalLink className="h-3.5 w-3.5" /> : <Download className="h-3.5 w-3.5" />}
-      </button>
+      <div title={title} className="mt-0.5">
+        <button
+          onClick={() => {
+            if (!url) return;
+            if (external) {
+              window.open(url, "_blank", "noopener");
+            } else {
+              downloadAsset(url, filename ?? label.toLowerCase().replace(/\s+/g, "-"));
+            }
+          }}
+          className={`rounded p-1.5 transition-colors ${
+            isDisabled
+              ? "text-muted-foreground/30 cursor-not-allowed pointer-events-none"
+              : "text-muted-foreground hover:text-primary hover:bg-primary/8 cursor-pointer"
+          }`}
+        >
+          {external ? <ExternalLink className="h-3.5 w-3.5" /> : <Download className="h-3.5 w-3.5" />}
+        </button>
+      </div>
     </div>
   );
 }
@@ -92,6 +95,30 @@ function CopyButton({ text }: { text: string }) {
       className="ml-1.5 opacity-0 group-hover:opacity-100 transition-opacity rounded p-0.5 text-muted-foreground/50 hover:text-primary hover:bg-primary/8 cursor-pointer"
     >
       {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+    </button>
+  );
+}
+
+function BioCopyButton({ bio }: { bio: string | null | undefined }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      title={bio ? "Copy bio" : "No bio submitted"}
+      disabled={!bio}
+      onClick={() => {
+        if (!bio) return;
+        navigator.clipboard.writeText(bio).then(() => {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1500);
+        });
+      }}
+      className={`rounded p-1.5 transition-colors ${
+        bio
+          ? "text-muted-foreground hover:text-primary hover:bg-primary/8 cursor-pointer"
+          : "text-muted-foreground/30 cursor-not-allowed"
+      }`}
+    >
+      {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
     </button>
   );
 }
@@ -116,27 +143,25 @@ function resolveStatus(speaker: any, selectedTab?: string) {
       speaker.call_for_speakers_status ??
       "pending";
     if (appStatus === "approved" || appStatus === "cards_approved")
-      return { label: "Approved", cls: "bg-success/10 text-success border-success/30" };
+      return { label: "Approved", cls: "bg-success/10 text-success border-success/30", tooltip: "Application approved" };
     if (appStatus === "submitted")
-      return { label: "Submitted", cls: "bg-blue-500/10 text-blue-600 border-blue-500/30" };
-    return { label: "Pending Review", cls: "bg-warning/10 text-warning border-warning/30" };
+      return { label: "Submitted", cls: "bg-blue-500/10 text-blue-600 border-blue-500/30", tooltip: "Review this application and approve or decline" };
+    return { label: "Pending Review", cls: "bg-warning/10 text-warning border-warning/30", tooltip: "Awaiting application submission" };
   }
 
-  if (infoStatus === "pending")
-    return { label: "Info Pending", cls: "bg-warning/10 text-warning border-warning/30" };
+  const headshotUrl = speaker.headshot || speaker.headshotUrl || speaker.headshot_url || null;
+  const embedEnabled = speaker.embedEnabled ?? speaker.embed_enabled ?? false;
 
-  if (infoStatus === "submitted")
-    return { label: "Card Approval Pending", cls: "bg-blue-500/10 text-blue-600 border-blue-500/30" };
+  if (infoStatus === "pending" || !headshotUrl)
+    return { label: "Info Pending", cls: "bg-warning/10 text-warning border-warning/30", tooltip: "Waiting for the speaker to submit their information" };
 
-  // infoStatus === "approved" — check card approvals
-  if (!websiteApproved && !promoApproved)
-    return { label: "Cards Pending", cls: "bg-orange-500/10 text-orange-600 border-orange-500/30" };
+  if (!websiteApproved || !promoApproved)
+    return { label: "Card Approval Pending", cls: "bg-blue-500/10 text-blue-600 border-blue-500/30", tooltip: "Review and approve this speaker's cards" };
 
-  if (websiteApproved && promoApproved)
-    return { label: "Approved", cls: "bg-success/10 text-success border-success/30" };
+  if (!embedEnabled)
+    return { label: "Cards Approved", cls: "bg-success/10 text-success border-success/30", tooltip: "Cards approved — add to your embed to publish" };
 
-  // One card approved, one not
-  return { label: "Partially Approved", cls: "bg-blue-500/10 text-blue-600 border-blue-500/30" };
+  return { label: "Published", cls: "bg-success/10 text-success border-success/30", tooltip: "Live on your website embed" };
 }
 
 function formatDate(dateStr: string | null | undefined) {
@@ -150,9 +175,16 @@ function formatDate(dateStr: string | null | undefined) {
   }
 }
 
-export default function SpeakersTable({ speakers, isLoading, eventId, selectedTab }: Props) {
+export default function SpeakersTable({ speakers, isLoading, eventId, selectedTab, formConfig, websiteCardConfigured = false, promoCardConfigured = false }: Props) {
   const queryClient = useQueryClient();
   const eventUuid = eventId ?? "";
+
+  // Determine which optional columns to show based on form config.
+  // If config not yet loaded, default to showing all.
+  const fieldEnabled = (fieldId: string) =>
+    !formConfig || formConfig.some((f) => f.id === fieldId && f.enabled);
+  const showBio = fieldEnabled("bio");
+  const showLogo = fieldEnabled("company_logo");
 
   if (isLoading) {
     return <div className="py-12 text-center text-sm text-muted-foreground">Loading speakers…</div>;
@@ -170,9 +202,10 @@ export default function SpeakersTable({ speakers, isLoading, eventId, selectedTa
           <th className="px-5 py-4 text-left text-xs font-medium text-muted-foreground"></th>
           <th className="px-5 py-4 text-left text-xs font-medium text-muted-foreground w-[140px]">Status</th>
           {/* Asset download columns */}
+          {showBio && <th className="px-3 py-4 text-center text-xs font-medium text-muted-foreground w-[52px]">Bio</th>}
           <th className="px-3 py-4 text-center text-xs font-medium text-muted-foreground w-[80px]">Website<br/>Card</th>
           <th className="px-3 py-4 text-center text-xs font-medium text-muted-foreground w-[80px]">Promo<br/>Card</th>
-          <th className="px-3 py-4 text-center text-xs font-medium text-muted-foreground w-[72px]">Company<br/>Logo</th>
+          {showLogo && <th className="px-3 py-4 text-center text-xs font-medium text-muted-foreground w-[72px]">Company<br/>Logo</th>}
           <th className="px-5 py-4 text-left text-xs font-medium text-muted-foreground w-[130px]">Last<br/>Updated</th>
         </tr>
       </thead>
@@ -205,14 +238,14 @@ export default function SpeakersTable({ speakers, isLoading, eventId, selectedTa
                   title={headshotUrl ? "Download headshot" : "No headshot uploaded"}
                   disabled={!headshotUrl}
                   onClick={() => headshotUrl && downloadAsset(headshotUrl, `${speakerName.replace(/\s+/g, "-").toLowerCase()}-headshot.jpg`)}
-                  className={`relative rounded-full block ${headshotUrl ? "cursor-pointer hover:opacity-80 transition-opacity" : "cursor-default"}`}
+                  className={`relative rounded-full block group/avatar ${headshotUrl ? "cursor-pointer" : "cursor-default"}`}
                 >
                   <Avatar className="h-10 w-10">
                     <AvatarImage src={headshotUrl ?? undefined} alt={speakerName} />
                     <AvatarFallback className="text-xs">{initials}</AvatarFallback>
                   </Avatar>
                   {headshotUrl && (
-                    <span className="absolute -bottom-0.5 -right-0.5 bg-background border border-border rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span className="absolute -bottom-0.5 -right-0.5 bg-background border border-border rounded-full p-0.5 opacity-0 group-hover/avatar:opacity-100 transition-opacity">
                       <Download className="h-2.5 w-2.5 text-muted-foreground" />
                     </span>
                   )}
@@ -228,7 +261,8 @@ export default function SpeakersTable({ speakers, isLoading, eventId, selectedTa
                   >
                     {speakerName}
                   </div>
-                  <CopyButton text={[speakerName, speaker.companyRole, speaker.company, speaker.bio].filter(Boolean).join("\n")} />
+                  <ChevronRight className="h-4 w-4 text-muted-foreground/20 group-hover:text-muted-foreground/70 transition-colors ml-1 flex-shrink-0" />
+                  <CopyButton text={[speakerName, speaker.companyRole, speaker.company].filter(Boolean).join("\n")} />
                 </div>
                 {speaker.companyRole && (
                   <div className="text-xs text-muted-foreground mt-1 leading-tight select-all cursor-text">
@@ -244,23 +278,40 @@ export default function SpeakersTable({ speakers, isLoading, eventId, selectedTa
 
               {/* Status */}
               <td className="px-5 py-4">
-                <Badge
-                  variant="outline"
-                  className={`text-xs font-medium cursor-pointer whitespace-nowrap ${status.cls}`}
-                  onClick={() => window.location.href = `/organizer/event/${eventId}/speakers/${speaker.id}`}
-                >
-                  {status.label}
-                </Badge>
+                <div title={status.tooltip}>
+                  <Badge
+                    variant="outline"
+                    className={`text-xs font-medium cursor-pointer whitespace-nowrap ${status.cls}`}
+                    onClick={() => window.location.href = `/organizer/event/${eventId}/speakers/${speaker.id}`}
+                  >
+                    {status.label}
+                  </Badge>
+                </div>
               </td>
+
+              {/* Bio */}
+              {showBio && (
+                <td className="px-3 py-4">
+                  <div className="flex justify-center">
+                    <BioCopyButton bio={speaker.bio} />
+                  </div>
+                </td>
+              )}
 
               {/* Website Card */}
               <td className="px-3 py-4">
                 <div className="flex justify-center">
                   <AssetButton
                     label=""
-                    url={websiteApproved ? websiteCardUrl : null}
-                    external
-                    disabledReason={!websiteApproved ? "Website card not yet approved" : undefined}
+                    url={websiteCardConfigured && websiteApproved ? websiteCardUrl : null}
+                    filename={`${speakerName.replace(/\s+/g, "-").toLowerCase()}-website-card.html`}
+                    disabledReason={
+                      !websiteCardConfigured
+                        ? "Configure your website card first"
+                        : !websiteApproved
+                        ? "Website card not yet approved"
+                        : undefined
+                    }
                   />
                 </div>
               </td>
@@ -270,24 +321,32 @@ export default function SpeakersTable({ speakers, isLoading, eventId, selectedTa
                 <div className="flex justify-center">
                   <AssetButton
                     label=""
-                    url={promoApproved ? promoCardUrl : null}
-                    external
-                    disabledReason={!promoApproved ? "Promo card not yet approved" : undefined}
+                    url={promoCardConfigured && promoApproved ? promoCardUrl : null}
+                    filename={`${speakerName.replace(/\s+/g, "-").toLowerCase()}-promo-card.html`}
+                    disabledReason={
+                      !promoCardConfigured
+                        ? "Configure your promo card first"
+                        : !promoApproved
+                        ? "Promo card not yet approved"
+                        : undefined
+                    }
                   />
                 </div>
               </td>
 
               {/* Company Logo */}
-              <td className="px-3 py-4">
-                <div className="flex justify-center">
-                  <AssetButton
-                    label=""
-                    url={logoUrl}
-                    filename={`${(speaker.company ?? speakerName).replace(/\s+/g, "-").toLowerCase()}-logo.png`}
-                    disabledReason="No company logo uploaded"
-                  />
-                </div>
-              </td>
+              {showLogo && (
+                <td className="px-3 py-4">
+                  <div className="flex justify-center">
+                    <AssetButton
+                      label=""
+                      url={logoUrl}
+                      filename={`${(speaker.company ?? speakerName).replace(/\s+/g, "-").toLowerCase()}-logo.png`}
+                      disabledReason="No company logo uploaded"
+                    />
+                  </div>
+                </td>
+              )}
 
               {/* Last updated — shown as plain text */}
               <td className="px-5 py-4">

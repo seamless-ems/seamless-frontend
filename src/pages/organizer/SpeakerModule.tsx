@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
-import { getJson } from "@/lib/api";
+import { getJson, getFormConfigForEvent, getPromoConfigForEvent } from "@/lib/api";
 import { ChevronRight, Share2 } from "lucide-react";
 import AddSpeakerDialog from "@/components/organizer/AddSpeakerDialog";
 import ShareDialog from "@/components/organizer/ShareDialog";
@@ -35,6 +35,37 @@ export default function SpeakerModule() {
     enabled: !!id,
   });
   const eventName = eventData?.title || eventData?.name || '';
+
+  const { data: formConfig } = useQuery<any[], Error>({
+    queryKey: ["event", id, "form-config", "speaker-info"],
+    queryFn: async () => {
+      try {
+        const res = await getFormConfigForEvent(id!, "speaker-info");
+        if (!res?.config) return null;
+        if (Array.isArray(res.config)) return res.config;
+        if (Array.isArray(res.config.fields)) return res.config.fields;
+        return null;
+      } catch {
+        return null;
+      }
+    },
+    enabled: Boolean(id),
+  });
+
+  const { data: websiteCardConfig } = useQuery<any>({
+    queryKey: ["event", id, "card-config", "website"],
+    queryFn: async () => {
+      try { return await getPromoConfigForEvent(id!, "website"); } catch { return null; }
+    },
+    enabled: Boolean(id),
+  });
+  const { data: promoCardConfig } = useQuery<any>({
+    queryKey: ["event", id, "card-config", "promo"],
+    queryFn: async () => {
+      try { return await getPromoConfigForEvent(id!, "promo"); } catch { return null; }
+    },
+    enabled: Boolean(id),
+  });
 
   const { data: rawSpeakers, isLoading } = useQuery<any, Error>({
     queryKey: ["event", id, "speakers", activeTab],
@@ -104,8 +135,17 @@ export default function SpeakerModule() {
           ? (speaker.callForSpeakersStatus ?? speaker.call_for_speakers_status)
           : (speaker.speakerInformationStatus ?? speaker.speaker_information_status ?? speaker.intakeFormStatus ?? speaker.intake_form_status);
 
-        if (statusFilter === 'approved' || statusFilter === 'cards_approved') {
-          matchesStatus = ['approved', 'cards_approved'].includes(effectiveStatus);
+        if (statusFilter === 'published') {
+          matchesStatus = speaker.embedEnabled ?? speaker.embed_enabled ?? false;
+        } else if (statusFilter === 'cards_approved') {
+          const ws = speaker.websiteCardApproved ?? speaker.website_card_approved ?? false;
+          const promo = speaker.promoCardApproved ?? speaker.promo_card_approved ?? false;
+          const embedded = speaker.embedEnabled ?? speaker.embed_enabled ?? false;
+          matchesStatus = ws && promo && !embedded;
+        } else if (statusFilter === 'submitted') {
+          const ws = speaker.websiteCardApproved ?? speaker.website_card_approved ?? false;
+          const promo = speaker.promoCardApproved ?? speaker.promo_card_approved ?? false;
+          matchesStatus = ['submitted', 'approved'].includes(effectiveStatus) && !(ws && promo);
         } else {
           matchesStatus = effectiveStatus === statusFilter;
         }
@@ -212,7 +252,7 @@ export default function SpeakerModule() {
 
             <div className="rounded-lg border border-border overflow-hidden">
               {/* @ts-ignore */}
-              <SpeakersTable speakers={filteredSpeakers} isLoading={isLoading} eventId={id} selectedTab={activeTab} />
+              <SpeakersTable speakers={filteredSpeakers} isLoading={isLoading} eventId={id} selectedTab={activeTab} formConfig={formConfig} websiteCardConfigured={!!websiteCardConfig} promoCardConfigured={!!promoCardConfig} />
             </div>
           </div>
         </div>
@@ -256,7 +296,7 @@ export default function SpeakerModule() {
 
             <div className="rounded-lg border border-border overflow-hidden">
               {/* @ts-ignore */}
-              <SpeakersTable speakers={filteredSpeakers} isLoading={isLoading} eventId={id} selectedTab={activeTab} />
+              <SpeakersTable speakers={filteredSpeakers} isLoading={isLoading} eventId={id} selectedTab={activeTab} formConfig={formConfig} websiteCardConfigured={!!websiteCardConfig} promoCardConfigured={!!promoCardConfig} />
             </div>
           </div>
         </div>

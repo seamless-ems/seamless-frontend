@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -117,6 +118,7 @@ export default function SpeakerFormBuilder({
   formType = "speaker-info",
   onSave,
 }: SpeakerFormBuilderProps) {
+  const queryClient = useQueryClient();
   const [fields, setFields] = useState<FormFieldConfig[]>(
     initialConfig ?? DEFAULT_FIELDS,
   );
@@ -335,6 +337,7 @@ export default function SpeakerFormBuilder({
         config: payloadConfig,
       });
       toast({ title: "Form configuration saved" });
+      queryClient.invalidateQueries({ queryKey: ["event", eventId, "form-config", formType ?? "speaker-info"] });
       if (onSave) onSave(fields);
     } catch (err) {
       toast({

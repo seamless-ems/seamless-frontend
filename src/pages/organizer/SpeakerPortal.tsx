@@ -240,12 +240,13 @@ export default function SpeakerPortal() {
   const infoStatus = s?.intakeFormStatus || "pending";
   const websiteApproved = s?.websiteCardApproved || false;
   const promoApproved = s?.promoCardApproved || false;
+  const headshotUrl = s?.headshot || s?.headshotUrl || s?.headshot_url || null;
+  const embedEnabled = s?.embedEnabled ?? s?.embed_enabled ?? false;
   const speakerStatus = (() => {
-    if (infoStatus === "pending") return { label: "Info Pending", cls: "bg-warning/10 text-warning border-warning/30" };
-    if (infoStatus === "submitted") return { label: "Card Approval Pending", cls: "bg-blue-500/10 text-blue-600 border-blue-500/30" };
-    if (!websiteApproved && !promoApproved) return { label: "Cards Pending", cls: "bg-orange-500/10 text-orange-600 border-orange-500/30" };
-    if (websiteApproved && promoApproved) return { label: "Approved", cls: "bg-success/10 text-success border-success/30" };
-    return { label: "Partially Approved", cls: "bg-blue-500/10 text-blue-600 border-blue-500/30" };
+    if (infoStatus === "pending" || !headshotUrl) return { label: "Info Pending", cls: "bg-warning/10 text-warning border-warning/30", tooltip: "Waiting for the speaker to submit their information" };
+    if (!websiteApproved || !promoApproved) return { label: "Card Approval Pending", cls: "bg-blue-500/10 text-blue-600 border-blue-500/30", tooltip: "Review and approve this speaker's cards" };
+    if (!embedEnabled) return { label: "Cards Approved", cls: "bg-success/10 text-success border-success/30", tooltip: "Cards approved — add to your embed to publish" };
+    return { label: "Published", cls: "bg-success/10 text-success border-success/30", tooltip: "Live on your website embed" };
   })();
 
   const handleCropComplete = async (croppedBlob: Blob) => {
@@ -346,9 +347,11 @@ export default function SpeakerPortal() {
                 <Edit className="h-4 w-4 text-muted-foreground hover:text-primary" />
               </Button>
             </div>
-            <Badge variant="outline" className={`text-xs font-medium ${speakerStatus.cls}`}>
-              {speakerStatus.label}
-            </Badge>
+            <div title={speakerStatus.tooltip}>
+              <Badge variant="outline" className={`text-xs font-medium ${speakerStatus.cls}`}>
+                {speakerStatus.label}
+              </Badge>
+            </div>
           </div>
 
           {/* Three-column grid: Info | Headshot | Logo (extracted) */}

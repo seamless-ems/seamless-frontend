@@ -4,6 +4,28 @@ Missing backend fields/endpoints needed by frontend.
 
 ---
 
+## Per-speaker embed toggle (`embedEnabled`)
+
+Frontend reads `speaker.embedEnabled ?? speaker.embed_enabled` to determine "Published" status (4th stage after Cards Approved). Field does not yet exist on the speaker API response — all speakers currently default to `false`, meaning no speaker will reach "Published" status until this is implemented.
+
+Required:
+- `GET /events/:id/speakers` → include `embed_enabled: boolean` on each speaker object
+- `PATCH /events/:id/speakers/:speakerId` → accept `embed_enabled: boolean` to toggle embed inclusion
+- `GET /embed/:eventId` → filter by `embed_enabled === true` rather than showing all approved speakers
+
+---
+
+## Asset downloads — CORS on company logo CDN
+
+Company logo URLs are served from a CDN that does not return `Access-Control-Allow-Origin` headers. Client-side `fetch()` fails with a CORS error, causing the download to fall back to opening in a new tab instead of saving the file. Fix options:
+
+- Enable CORS on the logo CDN bucket, **or**
+- Add a backend proxy endpoint (e.g. `GET /uploads/proxy?url=...`) that fetches and streams the asset with `Content-Disposition: attachment`
+
+Headshot downloads work because their CDN origin allows CORS.
+
+---
+
 ## Card embed HTML rendering (`/embed/{eventId}/speaker/{speakerId}`)
 
 The rendered HTML currently ignores config positioning data. Required:
