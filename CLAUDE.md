@@ -46,11 +46,14 @@ Rules for every agent that touches this file:
 ---
 
 ## Known issues
-- **`nameFormat: "two-line"`** — saves correctly from frontend but embed renders single line. Backend bug (see API_GAPS.md).
+- **`nameFormat: "two-line"`** — saves correctly but embed renders single line. Backend bug (see API_GAPS.md).
 - **`company` / `companyLogo`** — not persisting after server save/reload. Backend bug.
 - **Custom field keys** — backend strips underscores (`custom_123` → `custom123`). Frontend has fallback logic.
-- **ShareDialog** — UI complete (`src/components/organizer/ShareDialog.tsx`), not yet wired to backend.
-- **Card downloads** — website/promo cards open in new tab (HTML embed only). PNG export endpoints not yet available (see API_GAPS.md).
+- **ShareDialog** — UI complete, not yet wired to backend.
+- **Card downloads** — open in new tab only; PNG export not yet available (see API_GAPS.md).
+- **Content history attribution** — frontend sends `createdBy` but backend not storing/returning it (see API_GAPS.md).
+- **Content archive** — stub only; backend endpoint not yet available (see API_GAPS.md).
+- **`embed_enabled` toggle** — optimistic UI only; backend field not yet implemented (see API_GAPS.md).
 
 ---
 
@@ -58,8 +61,10 @@ Rules for every agent that touches this file:
 - `src/components/CardBuilder.tsx` — Fabric.js card builder (all card types)
 - `src/components/organizer/SpeakersTable.tsx` — asset hub table (downloads, copy, status)
 - `src/components/organizer/ShareDialog.tsx` — share modal (UI only)
-- `src/components/organizer/SpeakerPreviews.tsx` — fetches and embeds card HTML from API
-- `src/pages/organizer/SpeakerPortal.tsx` — individual speaker details
+- `src/components/organizer/SpeakerPreviews.tsx` — fetches and embeds card HTML from API (white bg, no scroll, expands to card size)
+- `src/components/organizer/SpeakerCardTab.tsx` — Speaker Card / Social Card tab (approval, share, preview)
+- `src/components/organizer/SpeakerContentTab.tsx` — Content tab (upload, replace, archive, restore, version history)
+- `src/pages/organizer/SpeakerPortal.tsx` — individual speaker, 4 URL-driven tabs: Info / Speaker Card / Social Card / Content
 - `src/pages/organizer/SpeakerModule.tsx` — speaker module main page ⚠️ see routing note
 - `src/lib/api.ts` — API functions
 - `openapi.json` — API spec (source of truth)
