@@ -126,7 +126,7 @@ function resolveStatus(speaker: any, selectedTab?: string) {
     return { label: "Info Pending", cls: "bg-warning/10 text-warning border-warning/30" };
 
   if (infoStatus === "submitted")
-    return { label: "Info Submitted", cls: "bg-blue-500/10 text-blue-600 border-blue-500/30" };
+    return { label: "Card Approval Pending", cls: "bg-blue-500/10 text-blue-600 border-blue-500/30" };
 
   // infoStatus === "approved" — check card approvals
   if (!websiteApproved && !promoApproved)

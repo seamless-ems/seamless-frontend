@@ -29,6 +29,7 @@ import MissingFormDialog from "@/components/MissingFormDialog";
 import { toast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { getJson } from "@/lib/api";
+import { Badge } from "@/components/ui/badge";
 import SpeakerInfoCard from "@/components/organizer/SpeakerInfoCard";
 import SpeakerAssets from "@/components/organizer/SpeakerAssets";
 import SpeakerApproval from "@/components/organizer/SpeakerApproval";
@@ -236,6 +237,17 @@ export default function SpeakerPortal() {
   const isApproved = s?.websiteCardApproved && s?.promoCardApproved;
   const canApprove = Boolean(s?.headshot); // Can only approve if headshot exists
 
+  const infoStatus = s?.intakeFormStatus || "pending";
+  const websiteApproved = s?.websiteCardApproved || false;
+  const promoApproved = s?.promoCardApproved || false;
+  const speakerStatus = (() => {
+    if (infoStatus === "pending") return { label: "Info Pending", cls: "bg-warning/10 text-warning border-warning/30" };
+    if (infoStatus === "submitted") return { label: "Card Approval Pending", cls: "bg-blue-500/10 text-blue-600 border-blue-500/30" };
+    if (!websiteApproved && !promoApproved) return { label: "Cards Pending", cls: "bg-orange-500/10 text-orange-600 border-orange-500/30" };
+    if (websiteApproved && promoApproved) return { label: "Approved", cls: "bg-success/10 text-success border-success/30" };
+    return { label: "Partially Approved", cls: "bg-blue-500/10 text-blue-600 border-blue-500/30" };
+  })();
+
   const handleCropComplete = async (croppedBlob: Blob) => {
     if (!id || !speakerId) return;
 
@@ -334,15 +346,9 @@ export default function SpeakerPortal() {
                 <Edit className="h-4 w-4 text-muted-foreground hover:text-primary" />
               </Button>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="bg-success text-white border-success hover:bg-success/90 hover:text-white"
-              onClick={() => setStatusOpen(true)}
-            >
-              <CheckCircle className="h-4 w-4 mr-1" />
-              Ready
-            </Button>
+            <Badge variant="outline" className={`text-xs font-medium ${speakerStatus.cls}`}>
+              {speakerStatus.label}
+            </Badge>
           </div>
 
           {/* Three-column grid: Info | Headshot | Logo (extracted) */}

@@ -1,20 +1,17 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getJson, updateEvent, uploadFile, getGoogleDriveStatus, getIntegrationUrl, deleteIntegration, getTeam, getMe, createGoogleDriveFolder, createCheckout } from "@/lib/api";
+import { getJson, updateEvent, getTeam, createCheckout } from "@/lib/api";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { FolderOpen, Calendar, MapPin, Mail, FileText, Mic2, Users, Link as LinkIcon } from "lucide-react";
+import { Calendar, FileText, Mic2, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import GoogleDriveFolderPicker from "@/components/organizer/GoogleDriveFolderPicker";
-import EventMediaUploader from "@/components/organizer/EventMediaUploader";
 
 const availableModules = [
   {
@@ -31,7 +28,8 @@ const availableModules = [
     description: "Create and publish event schedules",
     icon: Calendar,
     color: "schedule",
-    available: true,
+    available: false,
+    comingSoon: true,
   },
   {
     id: "content",
@@ -39,7 +37,8 @@ const availableModules = [
     description: "Centralized hub for presentations and files",
     icon: FileText,
     color: "content",
-    available: true,
+    available: false,
+    comingSoon: true,
   },
   {
     id: "partners",
@@ -47,7 +46,8 @@ const availableModules = [
     description: "Manage sponsors and partners",
     icon: Users,
     color: "primary",
-    available: true,
+    available: false,
+    comingSoon: true,
   },
   {
     id: "attendee",
@@ -77,22 +77,11 @@ export default function EventSettings() {
     endDate: "",
     location: "",
     eventWebsite: "",
-    fromName: "",
-    fromEmail: "",
-    replyToEmail: "",
-    emailSignature: "",
-    googleDriveConnected: false,
-    rootFolder: "",
   });
 
   const [selectedModules, setSelectedModules] = useState<string[]>(["speaker"]);
-  const [driveFolders, setDriveFolders] = useState<any[]>([]);
-  const [selectedFolderPath, setSelectedFolderPath] = useState<string[]>([]);
   const { data: teams } = useQuery<any[]>({ queryKey: ["teams"], queryFn: () => getTeam() });
   const [selectedTeamId, setSelectedTeamId] = useState<string | undefined>(undefined);
-  const [eventImageFile, setEventImageFile] = useState<File | null>(null);
-  const [eventImagePreview, setEventImagePreview] = useState<string | null>(null);
-  const { data: me } = useQuery<any>({ queryKey: ["me"], queryFn: () => getMe() });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -125,12 +114,6 @@ export default function EventSettings() {
       endDate: toDateInput(rawEvent.end_date ?? rawEvent.endDate ?? ""),
       location: rawEvent.location ?? "",
       eventWebsite: rawEvent.event_website ?? rawEvent.eventWebsite ?? "",
-      fromName: rawEvent.from_name ?? rawEvent.fromName ?? "",
-      fromEmail: rawEvent.from_email ?? rawEvent.fromEmail ?? "",
-      replyToEmail: rawEvent.reply_to_email ?? rawEvent.replyToEmail ?? "",
-      emailSignature: rawEvent.email_signature ?? rawEvent.emailSignature ?? "",
-      googleDriveConnected: rawEvent.google_drive_connected ?? false,
-      rootFolder: rawEvent.root_folder ?? rawEvent.rootFolder ?? "",
     }));
 
     // modules - support new object shape { speaker: true } or older array/string formats
@@ -144,53 +127,8 @@ export default function EventSettings() {
     }
 
     setSelectedModules(modulesArray.map((m: any) => m.name || m.id));
-
-  setEventImagePreview(rawEvent.eventImage ?? rawEvent.event_image ?? null);
-  setSelectedTeamId(rawEvent.teamId ?? rawEvent.team_id ?? undefined);
+    setSelectedTeamId(rawEvent.teamId ?? rawEvent.team_id ?? undefined);
   }, [rawEvent]);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const status = await getGoogleDriveStatus();
-        if (status?.connected) {
-          const folders = (status as any).folders ?? [];
-          setDriveFolders(folders);
-          // if a root folder already exists on the event, compute selectedFolderPath to pre-select cascading selects
-          const rootId = (status as any).root_folder ?? (folders.length ? folders[0].id : undefined) ?? undefined;
-          setFormData((prev) => ({
-            ...prev,
-            googleDriveConnected: true,
-            rootFolder: rootId ?? prev.rootFolder ?? "",
-          }));
-          // if formData.rootFolder already populated (from rawEvent), compute full path
-          const initialRoot = (status as any).root_folder ?? undefined;
-          if (formData.rootFolder) {
-            // find path to the existing rootFolder within the fetched folders
-            const findPathToFolder = (foldersList: any[], targetId: string): string[] => {
-              if (!foldersList || !targetId) return [];
-              for (const f of foldersList) {
-                if (f.id === targetId) return [f.id];
-                if (f.children && f.children.length) {
-                  const childPath = findPathToFolder(f.children, targetId);
-                  if (childPath.length) return [f.id, ...childPath];
-                }
-              }
-              return [];
-            };
-            const path = findPathToFolder(folders, formData.rootFolder);
-            if (path && path.length) {
-              setSelectedFolderPath(path);
-            }
-          }
-        }
-      } catch (err) {
-        
-      }
-    })();
-  }, []);
-
-  // Google Drive folder picker logic extracted to shared component
 
   const toggleModule = (moduleId: string) => {
     setSelectedModules((prev) => (prev.includes(moduleId) ? prev.filter((id) => id !== moduleId) : [...prev, moduleId]));
@@ -215,27 +153,12 @@ export default function EventSettings() {
         end_date: formData.endDate || undefined,
         location: formData.location || undefined,
         event_website: formData.eventWebsite || undefined,
-        from_name: formData.fromName || undefined,
-        from_email: formData.fromEmail || undefined,
-        reply_to_email: formData.replyToEmail || undefined,
-        email_signature: formData.emailSignature || undefined,
         modules: modulesObj,
       };
 
       // Only include team_id if it's actually set
       if (selectedTeamId) {
         payload.team_id = selectedTeamId;
-      }
-
-      try {
-        if (eventImageFile) {
-          const res = await uploadFile(eventImageFile, undefined, eventId);
-          const imageValue = res?.public_url ?? res?.publicUrl ?? res?.url ?? res?.id ?? null;
-          if (imageValue) payload.event_image = imageValue;
-        }
-      } catch (err: any) {
-        
-        toast({ title: "Event image upload failed", description: String(err?.message || err) });
       }
 
       // Remove undefined values from payload
@@ -273,69 +196,6 @@ export default function EventSettings() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-
-          {/* Google Drive */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2" style={{ fontSize: 'var(--font-h3)', fontWeight: 600 }}>
-                <FolderOpen className="h-5 w-5 text-primary" />
-                Google Drive Integration
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-foreground">Connect Google Drive</p>
-                  <p className="text-sm text-muted-foreground">Sync speaker assets and content automatically</p>
-                </div>
-                {formData.googleDriveConnected ? (
-                  <div className="flex items-center gap-2">
-                    <Button variant="outline" type="button" disabled>
-                      <svg className="h-4 w-4 text-success" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 13l4 4L19 7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                      Connected
-                    </Button>
-                    <Button variant="destructive" type="button" onClick={async () => {
-                      try {
-                        await deleteIntegration("google");
-                        setDriveFolders([]);
-                        setFormData((prev) => ({ ...prev, googleDriveConnected: false, rootFolder: "" }));
-                        setSelectedFolderPath([]);
-                        toast({ title: "Disconnected", description: "Google Drive integration removed" });
-                      } catch (err: any) {
-                        
-                        toast({ title: "Failed to disconnect", description: String(err?.message || err) });
-                      }
-                    }}>Disconnect</Button>
-                  </div>
-                ) : (
-                  <Button variant="outline" type="button" onClick={async () => {
-                    try {
-                      const res = await getIntegrationUrl("google");
-                      if (res?.url) window.location.href = res.url;
-                      else toast({ title: "Failed to start integration", description: "No URL returned from server" });
-                    } catch (err: any) {
-                      
-                      toast({ title: "Failed to start integration", description: String(err?.message || err) });
-                    }
-                  }}>
-                    <LinkIcon className="h-4 w-4" />
-                    Connect Drive
-                  </Button>
-                )}
-              </div>
-
-              {formData.googleDriveConnected && (
-                <GoogleDriveFolderPicker
-                  driveFolders={driveFolders}
-                  setDriveFolders={setDriveFolders}
-                  selectedFolderPath={selectedFolderPath}
-                  setSelectedFolderPath={setSelectedFolderPath}
-                  formData={formData}
-                  setFormData={setFormData}
-                />
-              )}
-            </CardContent>
-          </Card>
 
             {/* Billing / Checkout */}
             {id && selectedModules.includes("speaker") && (
@@ -397,7 +257,7 @@ export default function EventSettings() {
 
               <div className="space-y-2">
                 <Label>Event Website</Label>
-                <Input type="text" placeholder="https://example.com/event (optional)" value={formData.eventWebsite} onChange={(e) => setFormData((prev) => ({ ...prev, eventWebsite: e.target.value }))} />
+                <Input type="text" placeholder="www.example.com/event" value={formData.eventWebsite} onChange={(e) => setFormData((prev) => ({ ...prev, eventWebsite: e.target.value }))} required />
               </div>
             </CardContent>
           </Card>
@@ -433,7 +293,7 @@ export default function EventSettings() {
                           <Icon className="h-4 w-4" />
                         </div>
                         {module.comingSoon ? (
-                          <Badge variant="secondary" className="text-xs">Soon</Badge>
+                          <Badge variant="secondary" className="text-xs">Coming Soon</Badge>
                         ) : (
                           <div onClick={(e) => e.stopPropagation()}>
                             <Switch
@@ -450,54 +310,6 @@ export default function EventSettings() {
                   );
                 })}
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Email Settings */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2" style={{ fontSize: 'var(--font-h3)', fontWeight: 600 }}>
-                <Mail className="h-5 w-5 text-primary" />
-                Email Settings
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>'From' Name</Label>
-                <Input placeholder="Your Company Name" value={formData.fromName} onChange={(e) => setFormData((prev) => ({ ...prev, fromName: e.target.value }))} />
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>'From' Email</Label>
-                  <Input type="email" placeholder="events@yourcompany.com" value={formData.fromEmail} onChange={(e) => setFormData((prev) => ({ ...prev, fromEmail: e.target.value }))} />
-                </div>
-                <div className="space-y-2">
-                  <Label>'Reply To' Email</Label>
-                  <Input type="email" placeholder="hello@yourcompany.com" value={formData.replyToEmail} onChange={(e) => setFormData((prev) => ({ ...prev, replyToEmail: e.target.value }))} />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Email Signature</Label>
-                <Textarea placeholder="Your default email signature..." value={formData.emailSignature} onChange={(e) => setFormData((prev) => ({ ...prev, emailSignature: e.target.value }))} rows={3} />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Images & Templates */}
-          <Card>
-            <CardHeader>
-              <CardTitle style={{ fontSize: 'var(--font-h3)', fontWeight: 600 }}>Images & Templates</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <EventMediaUploader
-                eventImageFile={eventImageFile}
-                setEventImageFile={setEventImageFile}
-                eventImagePreview={eventImagePreview}
-                setEventImagePreview={setEventImagePreview}
-                enableCrop={true}
-                eventCropAspect={NaN}
-              />
             </CardContent>
           </Card>
 

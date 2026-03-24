@@ -41,7 +41,7 @@ export default function SpeakersControls({
           <SelectContent>
             <SelectItem value="all">All Statuses</SelectItem>
             <SelectItem value="pending">Info Pending</SelectItem>
-            <SelectItem value="submitted">Info Submitted</SelectItem>
+            <SelectItem value="submitted">Card Approval Pending</SelectItem>
             <SelectItem value="cards_approved">Cards Approved</SelectItem>
             <SelectItem value="archived">Archived</SelectItem>
           </SelectContent>
