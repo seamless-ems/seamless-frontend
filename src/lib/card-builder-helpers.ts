@@ -700,6 +700,160 @@ export const handleCropComplete = async (
   params.setCropMode(null);
 };
 
+// Ensure `first_name` and `last_name` are present on a config object when possible.
+export const withNameParts = (cfg: any, opts?: { elementRefs?: React.MutableRefObject<{ [key: string]: any }> }) => {
+  const out = { ...cfg };
+  try {
+    const nameField = cfg?.name;
+    // If name is present as an object/element, prefer that; otherwise accept a plain string.
+    let nameText = "";
+    const nameObj = nameField && typeof nameField === "object" ? nameField : undefined;
+    if (typeof nameField === "string") nameText = nameField;
+    else if (nameObj && typeof nameObj.text === "string") nameText = nameObj.text;
+    else if (nameObj && typeof nameObj.content === "string") nameText = nameObj.content;
+    nameText = (nameText || "").trim();
+    if (nameText) {
+      const lines = nameText.split(/\r?\n/).map((s: string) => s.trim()).filter(Boolean);
+      let firstText = "";
+      let lastText = "";
+      if (lines.length >= 2) {
+        firstText = lines[0];
+        lastText = lines.slice(1).join(" ");
+      } else {
+        const parts = nameText.split(/\s+/).filter(Boolean);
+        if (parts.length === 1) {
+          firstText = parts[0];
+          lastText = "";
+        } else if (parts.length > 1) {
+          firstText = parts[0];
+          lastText = parts.slice(1).join(" ");
+        }
+      }
+
+      // Expose simple snake_case string fields for backwards compatibility
+      out.first_name = firstText;
+      out.last_name = lastText;
+
+      // If we have a name element object, create two separate elements for positioning
+      if (nameObj) {
+        const base = { ...(nameObj || {}) } as any;
+        // Determine vertical offset using rendered height when available
+        let fontSize = typeof base.fontSize === "number" ? base.fontSize : parseInt(base.fontSize as any, 10) || 32;
+        const elementRef = opts?.elementRefs?.current?.name ?? opts?.elementRefs?.current?.firstName ?? undefined;
+        let lineHeightMul = typeof base.lineHeight === "number" ? base.lineHeight : parseFloat(base.lineHeight as any) || 1.15;
+        // If we have a fabric object reference, prefer its measured height
+        let lineHeightPx: number;
+        try {
+          if (elementRef && typeof elementRef.getScaledHeight === "function") {
+            const totalH = Math.round(elementRef.getScaledHeight());
+            const numLines = Math.max(lines.length, 1);
+            lineHeightPx = Math.round(totalH / numLines);
+            // If fontSize is available on the fabric object, use it
+            if (typeof elementRef.fontSize === "number") fontSize = elementRef.fontSize;
+          } else {
+            lineHeightPx = Math.round(fontSize * lineHeightMul);
+          }
+        } catch (e) {
+          lineHeightPx = Math.round(fontSize * lineHeightMul);
+        }
+
+        const firstNameEl = {
+          ...base,
+          text: firstText,
+          label: base.label || "First Name",
+        } as any;
+
+        const lastNameEl = {
+          ...base,
+          text: lastText,
+          label: base.label ? base.label.replace(/Name/i, "Last Name") : "Last Name",
+        } as any;
+
+        // Position first above last: keep original y for first, nudge last down by approx fontSize + gap
+        const baseY = typeof base.y === "number" ? base.y : parseInt(base.y as any, 10) || 0;
+        firstNameEl.y = baseY;
+        // Place last name below first using a font-size based offset to better match builder visuals
+        // Increase multiplier slightly to match builder spacing more closely
+        lastNameEl.y = baseY + Math.round(fontSize * 1.12);
+
+        // Keep zIndex the same as original; ensure lastName is directly after first in stacking
+        firstNameEl.zIndex = base.zIndex ?? base.z_index ?? 0;
+        lastNameEl.zIndex = (base.zIndex ?? base.z_index ?? 0) - 1;
+
+        // Add both camelCase element entries and snake_case for compatibility
+        out.firstName = firstNameEl;
+        out.lastName = lastNameEl;
+
+        // remove original name element from payload (backend expects separate fields)
+        delete out.name;
+        delete out.first_name;
+        delete out.last_name;
+
+        // If callers previously had `firstName`/`lastName` as simple strings or objects, merge/convert them
+        if (typeof cfg.firstName === "string") {
+          out.firstName = { ...firstNameEl, text: cfg.firstName };
+        } else if (cfg.firstName && typeof cfg.firstName === "object") {
+          out.firstName = { ...firstNameEl, ...cfg.firstName };
+        }
+        if (typeof cfg.lastName === "string") {
+          out.lastName = { ...lastNameEl, text: cfg.lastName };
+        } else if (cfg.lastName && typeof cfg.lastName === "object") {
+          out.lastName = { ...lastNameEl, ...cfg.lastName };
+        }
+
+        // Ensure lastName is positioned below firstName (avoid overlap)
+        try {
+          const firstY = typeof (out.firstName as any).y === "number" ? (out.firstName as any).y : baseY;
+          const lastY = typeof (out.lastName as any).y === "number" ? (out.lastName as any).y : lastNameEl.y;
+          if (lastY <= firstY) {
+            (out.lastName as any).y = firstY + lineHeightPx;
+          }
+        } catch (e) {
+          // noop
+        }
+      } else {
+        // No name element object present — if caller provided `firstName`/`lastName` as strings or objects, create element entries
+        const defaults: any = { label: "Name", color: "#000000", fontFamily: "Montserrat", fontSize: 32, fontWeight: 700, textAlign: "left", visible: true, width: 300, x: 150, y: 50, zIndex: 2 };
+        if (cfg.firstName) {
+          if (typeof cfg.firstName === "string") {
+            out.firstName = { ...defaults, text: cfg.firstName };
+          } else if (typeof cfg.firstName === "object") {
+            out.firstName = { ...defaults, ...cfg.firstName };
+          }
+        } else if (firstText) {
+          out.firstName = { ...defaults, text: firstText };
+        }
+
+        if (cfg.lastName) {
+          if (typeof cfg.lastName === "string") {
+            out.lastName = { ...defaults, text: cfg.lastName };
+          } else if (typeof cfg.lastName === "object") {
+            out.lastName = { ...defaults, ...cfg.lastName };
+          }
+        } else if (lastText) {
+          out.lastName = { ...defaults, text: lastText };
+        }
+
+        // Ensure lastName sits below firstName
+        try {
+          const f = out.firstName as any;
+          const l = out.lastName as any;
+          if (f && l) {
+            const baseY = typeof f.y === "number" ? f.y : defaults.y;
+            const fSize = (f.fontSize || defaults.fontSize);
+            if (typeof l.y !== "number" || l.y <= baseY) l.y = baseY + Math.round(fSize * 1.5);
+          }
+        } catch (e) {
+          // noop
+        }
+      }
+    }
+  } catch (e) {
+    // noop
+  }
+  return out;
+};
+
 export const handleSave = async (
   silent: boolean,
   params: {
@@ -773,7 +927,8 @@ export const handleSave = async (
       }
     }
 
-    const saved = await createPromoConfig({ eventId: params.eventId, promoType: params.cardType, config: { ...backendConfig, templateUrl: finalTemplateUrl, canvasWidth: params.canvasWidth, canvasHeight: params.canvasHeight, bgColor: params.bgColor, bgGradient: params.bgGradient ?? undefined, bgIsGenerated } });
+    const payloadConfig = withNameParts({ ...backendConfig, templateUrl: finalTemplateUrl, canvasWidth: params.canvasWidth, canvasHeight: params.canvasHeight, bgColor: params.bgColor, bgGradient: params.bgGradient ?? undefined, bgIsGenerated }, { elementRefs: params.elementRefs });
+    const saved = await createPromoConfig({ eventId: params.eventId, promoType: params.cardType, config: payloadConfig });
     const serverTemplateUrl = saved?.templateUrl ?? saved?.config?.templateUrl ?? saved?.config?.template_url ?? null;
     if (serverTemplateUrl && !bgIsGenerated) {
       params.setTemplateUrl(serverTemplateUrl);

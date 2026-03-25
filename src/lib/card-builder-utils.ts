@@ -76,12 +76,46 @@ export const getGradientCoords = (
 export const migrateLoadedConfig = (
   cfg: CardConfig,
 ): { migrated: CardConfig; changed: boolean } => {
-  if (!cfg?.name || cfg.name.nameFormat === "two-line")
-    return { migrated: cfg, changed: false };
-  return {
-    migrated: { ...cfg, name: { ...cfg.name, nameFormat: "two-line" } },
-    changed: true,
-  };
+  // If name already present and formatted, nothing to do
+  if (cfg?.name && cfg.name.nameFormat === "two-line") return { migrated: cfg, changed: false };
+
+  const out: CardConfig = { ...cfg };
+
+  // If name missing but firstName/lastName exist, synthesize a `name` element for rendering
+  if (!out.name && (out.firstName || out.first_name || out.lastName || out.last_name)) {
+    const firstStr = (typeof out.first_name === "string" && out.first_name) || (out.firstName && typeof out.firstName.text === "string" && out.firstName.text) || "";
+    const lastStr = (typeof out.last_name === "string" && out.last_name) || (out.lastName && typeof out.lastName.text === "string" && out.lastName.text) || "";
+    const combined = `${firstStr} ${lastStr}`.trim();
+
+    // Use styling/positioning from `firstName` element if available, otherwise from `lastName`, otherwise defaults
+    const src = out.firstName || out.lastName || {} as any;
+    const nameEl: any = {
+      label: src.label || "Name",
+      text: combined || src.text || "",
+      color: src.color || "#000000",
+      fontFamily: src.fontFamily || "Montserrat",
+      fontSize: typeof src.fontSize === "number" ? src.fontSize : parseInt(src.fontSize || 32, 10),
+      fontWeight: src.fontWeight ?? 700,
+      textAlign: src.textAlign || "left",
+      visible: src.visible !== undefined ? src.visible : true,
+      width: src.width || 300,
+      x: typeof src.x === "number" ? src.x : 150,
+      y: typeof src.y === "number" ? src.y : 50,
+      zIndex: src.zIndex ?? src.z_index ?? 2,
+      nameFormat: "two-line",
+    };
+
+    out.name = nameEl;
+    return { migrated: out, changed: true };
+  }
+
+  // If name exists but not marked two-line, ensure it is
+  if (out.name && out.name.nameFormat !== "two-line") {
+    const migrated = { ...out, name: { ...out.name, nameFormat: "two-line" } };
+    return { migrated, changed: true };
+  }
+
+  return { migrated: out, changed: false };
 };
 
 export const getGoogleFontsHref = (fonts: string[]) => {

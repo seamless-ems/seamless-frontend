@@ -83,6 +83,7 @@ import {
   clearGradient as hb_clearGradient,
   dismissOnboarding as hb_dismissOnboarding,
   applyPresetAndDismiss as hb_applyPresetAndDismiss,
+  withNameParts as hb_withNameParts,
 } from "@/lib/card-builder-helpers";
 import {
   SQUARE_PRESETS_DATA,
@@ -100,7 +101,13 @@ import ShadowContainer from "@/components/ShadowContainer";
 import { toast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import MissingFormDialog from "@/components/MissingFormDialog";
-import { API_BASE, getFormConfigForEvent, getPromoConfigForEvent, createPromoConfig, uploadFile } from "@/lib/api";
+import {
+  API_BASE,
+  getFormConfigForEvent,
+  getPromoConfigForEvent,
+  createPromoConfig,
+  uploadFile,
+} from "@/lib/api";
 import type { FormFieldConfig } from "@/components/SpeakerFormBuilder";
 import {
   HexColorInput,
@@ -142,8 +149,7 @@ import {
   getCanvasRelativePos,
   FIXED_KEYS,
   AlignDirection,
-}
-  from "@/lib/card-builder-utils";
+} from "@/lib/card-builder-utils";
 import { renderAllElements as renderAllElementsHelper } from "@/lib/card-builder-renderer";
 import { createFabricCanvas } from "@/lib/card-builder-canvas";
 import { ELEMENT_TEMPLATES } from "@/lib/card-builder-templates";
@@ -251,11 +257,11 @@ export default function CardBuilder({
   // Precompute fonts and injectStyles for ShadowContainer to avoid large inline strings
   const _fonts = FONT_FAMILIES || [];
   const googleFamilies = _fonts
-    .map((f) => `family=${f.replace(/\s+/g, '+')}:wght@300;400;500;600;700;800`)
-    .join('&');
+    .map((f) => `family=${f.replace(/\s+/g, "+")}:wght@300;400;500;600;700;800`)
+    .join("&");
   const fontFamilyList = _fonts
-    .map((f) => (f.includes(' ') ? `'${f}'` : f))
-    .join(', ');
+    .map((f) => (f.includes(" ") ? `'${f}'` : f))
+    .join(", ");
   const injectStylesString = `@import url('https://fonts.googleapis.com/css2?${googleFamilies}&display=swap'); :host{all:initial;display:block;font-family:${fontFamilyList}, sans-serif;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;} *{box-sizing:border-box;} canvas{display:block;} .card-root{background-color:#f5f5f5;}`;
   const [showCanvasTip, setShowCanvasTip] = useState(false);
   const [canvasTipDontShow, setCanvasTipDontShow] = useState(false);
@@ -269,12 +275,12 @@ export default function CardBuilder({
       try {
         return await getFormConfigForEvent(eventId || "", "speaker-info");
       } catch (err: unknown) {
-          // 404 = no form configured for this event yet — show setup dialog
-          if ((err as { status?: number })?.status === 404) {
-            setMissingFormDialogOpen(true);
-          }
-          throw err;
+        // 404 = no form configured for this event yet — show setup dialog
+        if ((err as { status?: number })?.status === 404) {
+          setMissingFormDialogOpen(true);
         }
+        throw err;
+      }
     },
     enabled: Boolean(eventId),
   });
@@ -339,7 +345,11 @@ export default function CardBuilder({
       setBgGradientStyle(null);
       setTemplateUrl(null);
       setConfig(newConfig);
-      hb_addToHistory(newConfig, { historyIndexRef, setHistory, setHistoryIndex });
+      hb_addToHistory(newConfig, {
+        historyIndexRef,
+        setHistory,
+        setHistoryIndex,
+      });
       setCanvasWidth(canvasW);
       setCanvasHeight(canvasH);
       if (fabricCanvasRef.current)
@@ -353,9 +363,9 @@ export default function CardBuilder({
   // ── WEBSITE CARD TEMPLATES (cardType === 'website' only) ──────────────────────────────────
   // Templates are defined in `src/constants/websiteCardTemplates.ts` as build functions.
 
-  const SQUARE_PRESETS: StarterPreset[] = (presetMetasFromData(
-    SQUARE_PRESETS_DATA,
-  ) as StarterPreset[]).map((m, i) => ({
+  const SQUARE_PRESETS: StarterPreset[] = (
+    presetMetasFromData(SQUARE_PRESETS_DATA) as StarterPreset[]
+  ).map((m, i) => ({
     ...m,
     apply: makeApply(
       (
@@ -376,9 +386,9 @@ export default function CardBuilder({
     ),
   }));
 
-  const LANDSCAPE_PRESETS: StarterPreset[] = (presetMetasFromData(
-    LANDSCAPE_PRESETS_DATA,
-  ) as StarterPreset[]).map((m, i) => ({
+  const LANDSCAPE_PRESETS: StarterPreset[] = (
+    presetMetasFromData(LANDSCAPE_PRESETS_DATA) as StarterPreset[]
+  ).map((m, i) => ({
     ...m,
     apply: makeApply(
       (
@@ -399,9 +409,9 @@ export default function CardBuilder({
     ),
   }));
 
-  const PORTRAIT_PRESETS: StarterPreset[] = (presetMetasFromData(
-    PORTRAIT_PRESETS_DATA,
-  ) as StarterPreset[]).map((m, i) => ({
+  const PORTRAIT_PRESETS: StarterPreset[] = (
+    presetMetasFromData(PORTRAIT_PRESETS_DATA) as StarterPreset[]
+  ).map((m, i) => ({
     ...m,
     apply: makeApply(
       (
@@ -433,9 +443,9 @@ export default function CardBuilder({
   // PROMO_PRESETS (separate from website templates). These map the promo preset
   // data (in src/constants/promoCardTemplates.ts) into the same StarterPreset shape
   // used by the onboarding UI so promo onboarding can reuse the existing flows.
-  const PROMO_SQUARE_PRESETS: StarterPreset[] = (presetMetasFromData(
-    PROMO_SOCIAL_SQUARE,
-  ) as StarterPreset[]).map((m, i) => ({
+  const PROMO_SQUARE_PRESETS: StarterPreset[] = (
+    presetMetasFromData(PROMO_SOCIAL_SQUARE) as StarterPreset[]
+  ).map((m, i) => ({
     ...m,
     thumbnailShape: PROMO_SOCIAL_SQUARE[i].thumbnailShape,
     apply: makeApply(
@@ -445,19 +455,13 @@ export default function CardBuilder({
         font = "Montserrat",
         canvasW = m.canvasW,
         canvasH = m.canvasH,
-      ) =>
-        PROMO_SOCIAL_SQUARE[i].build(
-          ELEMENT_TEMPLATES,
-          bg,
-          textColor,
-          font,
-        ),
+      ) => PROMO_SOCIAL_SQUARE[i].build(ELEMENT_TEMPLATES, bg, textColor, font),
     ),
   }));
 
-  const PROMO_PORTRAIT_PRESETS: StarterPreset[] = (presetMetasFromData(
-    PROMO_SOCIAL_STORY,
-  ) as StarterPreset[]).map((m, i) => ({
+  const PROMO_PORTRAIT_PRESETS: StarterPreset[] = (
+    presetMetasFromData(PROMO_SOCIAL_STORY) as StarterPreset[]
+  ).map((m, i) => ({
     ...m,
     thumbnailShape: PROMO_SOCIAL_STORY[i].thumbnailShape,
     apply: makeApply(
@@ -467,19 +471,13 @@ export default function CardBuilder({
         font = "Montserrat",
         canvasW = m.canvasW,
         canvasH = m.canvasH,
-      ) =>
-        PROMO_SOCIAL_STORY[i].build(
-          ELEMENT_TEMPLATES,
-          bg,
-          textColor,
-          font,
-        ),
+      ) => PROMO_SOCIAL_STORY[i].build(ELEMENT_TEMPLATES, bg, textColor, font),
     ),
   }));
 
-  const PROMO_LANDSCAPE_PRESETS: StarterPreset[] = (presetMetasFromData(
-    PROMO_NEWSLETTER_PRESETS,
-  ) as StarterPreset[]).map((m, i) => ({
+  const PROMO_LANDSCAPE_PRESETS: StarterPreset[] = (
+    presetMetasFromData(PROMO_NEWSLETTER_PRESETS) as StarterPreset[]
+  ).map((m, i) => ({
     ...m,
     thumbnailShape: PROMO_NEWSLETTER_PRESETS[i].thumbnailShape,
     apply: makeApply(
@@ -542,7 +540,12 @@ export default function CardBuilder({
         clampRectToCanvas,
         setConfig,
         setHasUnsavedChanges,
-        addToHistory: (cfg: CardConfig) => hb_addToHistory(cfg, { historyIndexRef, setHistory, setHistoryIndex }),
+        addToHistory: (cfg: CardConfig) =>
+          hb_addToHistory(cfg, {
+            historyIndexRef,
+            setHistory,
+            setHistoryIndex,
+          }),
         elementRefs,
       });
 
@@ -572,8 +575,23 @@ export default function CardBuilder({
   }, [canvasWidth, canvasHeight]);
 
   // Delegate heavy rendering to helper to keep component small
-  const renderAllElements = useCallback(async () =>
-    renderAllElementsHelper({
+  const renderAllElements = useCallback(
+    async () =>
+      renderAllElementsHelper({
+        fabricCanvasRef,
+        renderGenRef,
+        elementRefs,
+        config,
+        templateUrl,
+        testHeadshot,
+        testLogo,
+        bgGradient,
+        bgColor,
+        canvasWidth,
+        canvasHeight,
+        toast,
+      }),
+    [
       fabricCanvasRef,
       renderGenRef,
       elementRefs,
@@ -585,34 +603,42 @@ export default function CardBuilder({
       bgColor,
       canvasWidth,
       canvasHeight,
-      toast,
-    }), [
-      fabricCanvasRef,
-      renderGenRef,
-      elementRefs,
-      config,
-      templateUrl,
-      testHeadshot,
-      testLogo,
-      bgGradient,
-      bgColor,
-      canvasWidth,
-      canvasHeight,
-    ]);
+    ],
+  );
 
   // History helper — stable callback used across effects and helpers
-  const addToHistory = useCallback((newConfig: CardConfig) =>
-    hb_addToHistory(newConfig, { historyIndexRef, setHistory, setHistoryIndex }),
-    [historyIndexRef, setHistory, setHistoryIndex]
+  const addToHistory = useCallback(
+    (newConfig: CardConfig) =>
+      hb_addToHistory(newConfig, {
+        historyIndexRef,
+        setHistory,
+        setHistoryIndex,
+      }),
+    [historyIndexRef, setHistory, setHistoryIndex],
   );
 
   // Undo/redo and duplicate helpers — declared here so keyboard handlers can reference them
-  const undo = useCallback(() => hb_undo({ historyIndexRef, history, setHistoryIndex, setConfig }), [history, historyIndexRef, setHistoryIndex, setConfig]);
-  const redo = useCallback(() => hb_redo({ historyIndexRef, history, setHistoryIndex, setConfig }), [history, historyIndexRef, setHistoryIndex, setConfig]);
+  const undo = useCallback(
+    () => hb_undo({ historyIndexRef, history, setHistoryIndex, setConfig }),
+    [history, historyIndexRef, setHistoryIndex, setConfig],
+  );
+  const redo = useCallback(
+    () => hb_redo({ historyIndexRef, history, setHistoryIndex, setConfig }),
+    [history, historyIndexRef, setHistoryIndex, setConfig],
+  );
 
-  const duplicateElement = useCallback((key: string) => {
-    hb_duplicateElement(key, { config, setConfig, addToHistory, setSelectedElement, setHasUnsavedChanges });
-  }, [config, addToHistory, setSelectedElement, setHasUnsavedChanges]);
+  const duplicateElement = useCallback(
+    (key: string) => {
+      hb_duplicateElement(key, {
+        config,
+        setConfig,
+        addToHistory,
+        setSelectedElement,
+        setHasUnsavedChanges,
+      });
+    },
+    [config, addToHistory, setSelectedElement, setHasUnsavedChanges],
+  );
 
   // Image/url helpers are provided by card-builder-utils
 
@@ -640,7 +666,12 @@ export default function CardBuilder({
             // Fallback: lowerCanvasEl context check
             try {
               const lower = c.lowerCanvasEl;
-              if (lower && typeof lower.getContext === "function" && lower.getContext("2d")) return true;
+              if (
+                lower &&
+                typeof lower.getContext === "function" &&
+                lower.getContext("2d")
+              )
+                return true;
             } catch (_) {}
           }
           // eslint-disable-next-line no-await-in-loop
@@ -653,13 +684,22 @@ export default function CardBuilder({
       if (ready) {
         renderAllElements();
       } else {
-        console.warn("renderAllElements: canvas not ready before render trigger");
+        console.warn(
+          "renderAllElements: canvas not ready before render trigger",
+        );
       }
     })();
-  }, [config, templateUrl, testHeadshot, testLogo, bgColor, bgGradient, renderAllElements]);
+  }, [
+    config,
+    templateUrl,
+    testHeadshot,
+    testLogo,
+    bgColor,
+    bgGradient,
+    renderAllElements,
+  ]);
 
   // Undo/redo and duplicate helpers — declared here so keyboard handlers can reference them
-  
 
   // Keyboard shortcuts for undo/redo and arrow key nudging
   useEffect(() => {
@@ -794,7 +834,15 @@ export default function CardBuilder({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [historyIndex, history, selectedElement, undo, redo, duplicateElement, addToHistory]);
+  }, [
+    historyIndex,
+    history,
+    selectedElement,
+    undo,
+    redo,
+    duplicateElement,
+    addToHistory,
+  ]);
 
   // Close shape popup when clicking outside (Templates/BG are inline, no close-outside needed)
   useEffect(() => {
@@ -811,78 +859,92 @@ export default function CardBuilder({
   }, [shapePopupOpen]);
 
   // Save handler - declared before autosave effect to avoid TDZ
-  const handleSave = useCallback(async (silent = false) => {
-    // Compute effective config to send to backend (use live fabric font sizes below)
-    const effectiveConfig = { ...config };
+  const handleSave = useCallback(
+    async (silent = false) => {
+      // Compute effective config to send to backend (use live fabric font sizes below)
+      const effectiveConfig = { ...config };
 
-    // Backend payload uses shrunk fontSizes read from live Fabric objects.
-    const backendConfig = { ...effectiveConfig };
-    NAME_TITLE_FIELDS.forEach((k) => {
-      const obj = elementRefs.current[k] as fabric.Textbox | undefined;
-      if (obj && obj.fontSize && backendConfig[k]) {
-        backendConfig[k] = { ...backendConfig[k], fontSize: obj.fontSize };
-      }
-    });
-
-    if (eventId) {
-      let finalTemplateUrl = templateUrl;
-      const bgIsGenerated = !templateUrl;
-      if (bgIsGenerated) {
-        try {
-          const bgCanvas = document.createElement('canvas');
-          bgCanvas.width = canvasWidth;
-          bgCanvas.height = canvasHeight;
-          const ctx = bgCanvas.getContext('2d');
-          if (ctx) {
-            if (bgGradient) {
-              const grad = ctx.createLinearGradient(0, 0, canvasWidth, canvasHeight);
-              grad.addColorStop(0, bgGradient.from);
-              grad.addColorStop(1, bgGradient.to);
-              ctx.fillStyle = grad;
-            } else {
-              ctx.fillStyle = bgColor;
-            }
-            ctx.fillRect(0, 0, canvasWidth, canvasHeight);
-            finalTemplateUrl = bgCanvas.toDataURL('image/png');
-          }
-        } catch (_bgErr) {
-          // Non-fatal — proceed without background image
+      // Backend payload uses shrunk fontSizes read from live Fabric objects.
+      const backendConfig = { ...effectiveConfig };
+      NAME_TITLE_FIELDS.forEach((k) => {
+        const obj = elementRefs.current[k] as fabric.Textbox | undefined;
+        if (obj && obj.fontSize && backendConfig[k]) {
+          backendConfig[k] = { ...backendConfig[k], fontSize: obj.fontSize };
         }
-      }
+      });
 
-      if (
-        finalTemplateUrl &&
-        (finalTemplateUrl.startsWith('data:') || finalTemplateUrl.startsWith('blob:'))
-      ) {
-        try {
-          const fetched = await fetch(finalTemplateUrl);
-          const blob = await fetched.blob();
-          const fileName = `template-${Date.now()}`;
-          const file = new File([blob], `${fileName}.${(blob.type || 'image/png').split('/').pop()}`, { type: blob.type || 'image/png' });
-
-          const uploadRes = await uploadFile(file, undefined, eventId);
-          const uploadedUrl = uploadRes?.public_url ?? uploadRes?.publicUrl ?? uploadRes?.url ?? uploadRes?.id ?? null;
-
-          if (uploadedUrl) {
-            finalTemplateUrl = uploadedUrl;
-            if (!bgIsGenerated) {
-              setTemplateUrl(finalTemplateUrl);
-              setBgIsGenerated(false);
+      if (eventId) {
+        let finalTemplateUrl = templateUrl;
+        const bgIsGenerated = !templateUrl;
+        if (bgIsGenerated) {
+          try {
+            const bgCanvas = document.createElement("canvas");
+            bgCanvas.width = canvasWidth;
+            bgCanvas.height = canvasHeight;
+            const ctx = bgCanvas.getContext("2d");
+            if (ctx) {
+              if (bgGradient) {
+                const grad = ctx.createLinearGradient(
+                  0,
+                  0,
+                  canvasWidth,
+                  canvasHeight,
+                );
+                grad.addColorStop(0, bgGradient.from);
+                grad.addColorStop(1, bgGradient.to);
+                ctx.fillStyle = grad;
+              } else {
+                ctx.fillStyle = bgColor;
+              }
+              ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+              finalTemplateUrl = bgCanvas.toDataURL("image/png");
             }
+          } catch (_bgErr) {
+            // Non-fatal — proceed without background image
           }
-        } catch (uploadErr) {
-          toast({
-            title: 'Upload failed',
-            description: 'Could not upload background image to server. Saved locally instead.',
-            variant: 'destructive',
-          });
         }
-      }
 
-      const saved = await createPromoConfig({
-        eventId,
-        promoType: cardType,
-        config: {
+        if (
+          finalTemplateUrl &&
+          (finalTemplateUrl.startsWith("data:") ||
+            finalTemplateUrl.startsWith("blob:"))
+        ) {
+          try {
+            const fetched = await fetch(finalTemplateUrl);
+            const blob = await fetched.blob();
+            const fileName = `template-${Date.now()}`;
+            const file = new File(
+              [blob],
+              `${fileName}.${(blob.type || "image/png").split("/").pop()}`,
+              { type: blob.type || "image/png" },
+            );
+
+            const uploadRes = await uploadFile(file, undefined, eventId);
+            const uploadedUrl =
+              uploadRes?.public_url ??
+              uploadRes?.publicUrl ??
+              uploadRes?.url ??
+              uploadRes?.id ??
+              null;
+
+            if (uploadedUrl) {
+              finalTemplateUrl = uploadedUrl;
+              if (!bgIsGenerated) {
+                setTemplateUrl(finalTemplateUrl);
+                setBgIsGenerated(false);
+              }
+            }
+          } catch (uploadErr) {
+            toast({
+              title: "Upload failed",
+              description:
+                "Could not upload background image to server. Saved locally instead.",
+              variant: "destructive",
+            });
+          }
+        }
+
+        const payloadConfig = hb_withNameParts({
           ...backendConfig,
           templateUrl: finalTemplateUrl,
           canvasWidth,
@@ -890,22 +952,42 @@ export default function CardBuilder({
           bgColor,
           bgGradient: bgGradient ?? undefined,
           bgIsGenerated,
-        },
-      });
+        }, { elementRefs });
+        const saved = await createPromoConfig({ eventId, promoType: cardType, config: payloadConfig });
 
-      const serverTemplateUrl = saved?.templateUrl ?? saved?.config?.templateUrl ?? saved?.config?.template_url ?? null;
-      if (serverTemplateUrl && !bgIsGenerated) {
-        setTemplateUrl(serverTemplateUrl);
-        setBgIsGenerated(false);
+        const serverTemplateUrl =
+          saved?.templateUrl ??
+          saved?.config?.templateUrl ??
+          saved?.config?.template_url ??
+          null;
+        if (serverTemplateUrl && !bgIsGenerated) {
+          setTemplateUrl(serverTemplateUrl);
+          setBgIsGenerated(false);
+        }
+
+        if (!silent)
+          toast({
+            title: "Saved",
+            description: `${isPromo ? "Promo" : "Website"} card template saved`,
+          });
+      } else {
+        throw new Error("eventId required to save card configuration");
       }
 
-      if (!silent) toast({ title: 'Saved', description: `${isPromo ? 'Promo' : 'Website'} card template saved` });
-    } else {
-      throw new Error('eventId required to save card configuration');
-    }
-
-    setHasUnsavedChanges(false);
-    }, [config, templateUrl, canvasWidth, canvasHeight, bgColor, bgGradient, eventId, cardType, isPromo]);
+      setHasUnsavedChanges(false);
+    },
+    [
+      config,
+      templateUrl,
+      canvasWidth,
+      canvasHeight,
+      bgColor,
+      bgGradient,
+      eventId,
+      cardType,
+      isPromo,
+    ],
+  );
 
   // Auto-save: 3 seconds after any change, persist to server only.
   // The orange dot on Save still shows until explicitly dismissed; auto-save just prevents data loss.
@@ -915,10 +997,7 @@ export default function CardBuilder({
       handleSave(true); // silent=true — no toast
     }, 3000);
     return () => clearTimeout(timer);
-  }, [
-    handleSave,
-    hasUnsavedChanges,
-  ]);
+  }, [handleSave, hasUnsavedChanges]);
 
   // Load saved config on mount: server-only (no localStorage fallback)
   useEffect(() => {
@@ -937,8 +1016,10 @@ export default function CardBuilder({
 
       const savedConfig = serverConfig;
       const savedTemplateUrl = serverConfig.templateUrl ?? null;
-      const savedWidth = serverConfig.canvasWidth ?? serverConfig.canvas_width ?? null;
-      const savedHeight = serverConfig.canvasHeight ?? serverConfig.canvas_height ?? null;
+      const savedWidth =
+        serverConfig.canvasWidth ?? serverConfig.canvas_width ?? null;
+      const savedHeight =
+        serverConfig.canvasHeight ?? serverConfig.canvas_height ?? null;
 
       if (savedConfig) {
         const { migrated, changed } = migrateLoadedConfig(savedConfig);
@@ -950,13 +1031,17 @@ export default function CardBuilder({
         setCanvasWidth(savedWidth);
         setCanvasHeight(savedHeight);
         if (fabricCanvasRef.current) {
-          fabricCanvasRef.current.setDimensions({ width: savedWidth, height: savedHeight });
+          fabricCanvasRef.current.setDimensions({
+            width: savedWidth,
+            height: savedHeight,
+          });
         }
       }
 
       const savedBgColor = serverConfig.bgColor ?? serverConfig.bg_color;
       if (savedBgColor) setBgColor(savedBgColor);
-      const savedBgGradient = serverConfig.bgGradient ?? serverConfig.bg_gradient;
+      const savedBgGradient =
+        serverConfig.bgGradient ?? serverConfig.bg_gradient;
       if (savedBgGradient) setBgGradient(savedBgGradient);
 
       const bgIsGenerated = serverConfig.bgIsGenerated ?? false;
@@ -976,19 +1061,28 @@ export default function CardBuilder({
             setCanvasWidth(img.width);
             setCanvasHeight(img.height);
             if (fabricCanvasRef.current) {
-              fabricCanvasRef.current.setDimensions({ width: img.width, height: img.height });
+              fabricCanvasRef.current.setDimensions({
+                width: img.width,
+                height: img.height,
+              });
             }
           }
           setTemplateUrl(savedTemplateUrl);
         };
-        img.src = getAbsoluteUrl(savedTemplateUrl, API_BASE) || savedTemplateUrl;
+        img.src =
+          getAbsoluteUrl(savedTemplateUrl, API_BASE) || savedTemplateUrl;
       }
 
-      toast({ title: "Loaded", description: "Loaded template from event", duration: 2000 });
+      toast({
+        title: "Loaded",
+        description: "Loaded template from event",
+        duration: 2000,
+      });
     })();
   }, [eventId, cardType]); // Load when eventId or cardType changes
 
-  const handleDragStart = (e: React.DragEvent, elementKey: string) => hb_handleDragStart(e, elementKey);
+  const handleDragStart = (e: React.DragEvent, elementKey: string) =>
+    hb_handleDragStart(e, elementKey);
   const handleDragOver = (e: React.DragEvent) => hb_handleDragOver(e);
   const handleDrop = (e: React.DragEvent) =>
     hb_handleDrop(e, {
@@ -1003,11 +1097,16 @@ export default function CardBuilder({
       setShapePopupOpen,
       setHasUnsavedChanges,
       setConfig,
-      addToHistory: (cfg: CardConfig) => hb_addToHistory(cfg, { historyIndexRef, setHistory, setHistoryIndex }),
+      addToHistory: (cfg: CardConfig) =>
+        hb_addToHistory(cfg, { historyIndexRef, setHistory, setHistoryIndex }),
       toast,
     });
 
-  const addElementToCanvas = (elementKey: string, customPos?: { x: number; y: number }, customProps?: Record<string, unknown>) =>
+  const addElementToCanvas = (
+    elementKey: string,
+    customPos?: { x: number; y: number },
+    customProps?: Record<string, unknown>,
+  ) =>
     hb_addElementToCanvas(elementKey, {
       ELEMENT_TEMPLATES,
       customPos,
@@ -1020,7 +1119,8 @@ export default function CardBuilder({
       canvasHeight,
       setHasUnsavedChanges,
       setConfig,
-      addToHistory: (cfg: CardConfig) => hb_addToHistory(cfg, { historyIndexRef, setHistory, setHistoryIndex }),
+      addToHistory: (cfg: CardConfig) =>
+        hb_addToHistory(cfg, { historyIndexRef, setHistory, setHistoryIndex }),
       toast,
     });
 
@@ -1039,14 +1139,22 @@ export default function CardBuilder({
       setConfig,
       elementRefs,
       fabricCanvasRef,
-      addToHistory: (cfg: CardConfig) => hb_addToHistory(cfg, { historyIndexRef, setHistory, setHistoryIndex }),
+      addToHistory: (cfg: CardConfig) =>
+        hb_addToHistory(cfg, { historyIndexRef, setHistory, setHistoryIndex }),
     });
 
-  const applyZoom = (newZoom: number) => hb_applyZoom(newZoom, { fabricCanvasRef, canvasWidth, canvasHeight, setZoom });
+  const applyZoom = (newZoom: number) =>
+    hb_applyZoom(newZoom, {
+      fabricCanvasRef,
+      canvasWidth,
+      canvasHeight,
+      setZoom,
+    });
   const handleZoomIn = () => applyZoom(Math.min(zoom + 0.1, 3));
   const handleZoomOut = () => applyZoom(Math.max(zoom - 0.1, 0.1));
 
-  const handleZoomFit = () => hb_handleZoomFit({ fabricCanvasRef, canvasWidth, canvasHeight, setZoom });
+  const handleZoomFit = () =>
+    hb_handleZoomFit({ fabricCanvasRef, canvasWidth, canvasHeight, setZoom });
 
   // Alignment — PowerPoint/Canva standard:
   //   Single element  → aligns to canvas edges/centre
@@ -1063,11 +1171,10 @@ export default function CardBuilder({
       canvasWidth,
       canvasHeight,
       setConfig,
-      addToHistory: (cfg: CardConfig) => hb_addToHistory(cfg, { historyIndexRef, setHistory, setHistoryIndex }),
+      addToHistory: (cfg: CardConfig) =>
+        hb_addToHistory(cfg, { historyIndexRef, setHistory, setHistoryIndex }),
       setHasUnsavedChanges,
     });
-
-  
 
   // Z-order helpers
   const bringToFront = (key: string) => {
@@ -1077,10 +1184,20 @@ export default function CardBuilder({
     hb_sendToBack(key, { config, updateElement });
   };
   const bringForward = (key: string) => {
-    hb_bringForward(key, { config, setConfig, addToHistory, setHasUnsavedChanges });
+    hb_bringForward(key, {
+      config,
+      setConfig,
+      addToHistory,
+      setHasUnsavedChanges,
+    });
   };
   const sendBackward = (key: string) => {
-    hb_sendBackward(key, { config, setConfig, addToHistory, setHasUnsavedChanges });
+    hb_sendBackward(key, {
+      config,
+      setConfig,
+      addToHistory,
+      setHasUnsavedChanges,
+    });
   };
 
   // Lock / unlock — locked elements show selection handles but can't be moved or resized
@@ -1098,7 +1215,11 @@ export default function CardBuilder({
 
   // Layers panel helpers
   const selectLayerItem = (key: string) => {
-    hb_selectLayerItem(key, { fabricCanvasRef, elementRefs, setSelectedElement });
+    hb_selectLayerItem(key, {
+      fabricCanvasRef,
+      elementRefs,
+      setSelectedElement,
+    });
   };
   const layerMoveUp = (key: string) => {
     hb_layerMoveUp(key, { config, setConfig });
@@ -1107,7 +1228,9 @@ export default function CardBuilder({
     hb_layerMoveDown(key, { config, setConfig });
   };
 
-  const handleBackgroundUpload = async (e: React.ChangeEvent<HTMLInputElement>) =>
+  const handleBackgroundUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) =>
     hb_handleBackgroundUpload(e, {
       loadImagePromise,
       fabricCanvasRef,
@@ -1119,10 +1242,20 @@ export default function CardBuilder({
     });
 
   const handleHeadshotUpload = (e: React.ChangeEvent<HTMLInputElement>) =>
-    hb_handleHeadshotUpload(e, { setCropImageUrl, setCropMode, setCropDialogOpen, toast });
+    hb_handleHeadshotUpload(e, {
+      setCropImageUrl,
+      setCropMode,
+      setCropDialogOpen,
+      toast,
+    });
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) =>
-    hb_handleLogoUpload(e, { setCropImageUrl, setCropMode, setCropDialogOpen, toast });
+    hb_handleLogoUpload(e, {
+      setCropImageUrl,
+      setCropMode,
+      setCropDialogOpen,
+      toast,
+    });
 
   const handleCropComplete = async (blob: Blob) =>
     hb_handleCropComplete(blob, {
@@ -1139,11 +1272,15 @@ export default function CardBuilder({
       toast,
     });
 
-
-
   // Export PNG at 1:1 scale (resets zoom transform temporarily)
   const handleExport = () =>
-    hb_handleExport({ fabricCanvasRef, canvasWidth, canvasHeight, cardType, toast });
+    hb_handleExport({
+      fabricCanvasRef,
+      canvasWidth,
+      canvasHeight,
+      cardType,
+      toast,
+    });
 
   const handleReset = () =>
     hb_handleReset({
@@ -1180,13 +1317,35 @@ export default function CardBuilder({
   };
 
   const applyGradientStyle = (style: "dark" | "tonal" | "soft") =>
-    hb_applyGradientStyle(style, { deriveGradient, bgColor, setBgGradient, setBgGradientStyle, setHasUnsavedChanges });
+    hb_applyGradientStyle(style, {
+      deriveGradient,
+      bgColor,
+      setBgGradient,
+      setBgGradientStyle,
+      setHasUnsavedChanges,
+    });
 
-  const clearGradient = () => hb_clearGradient({ setBgGradient, setBgGradientStyle, setHasUnsavedChanges });
+  const clearGradient = () =>
+    hb_clearGradient({
+      setBgGradient,
+      setBgGradientStyle,
+      setHasUnsavedChanges,
+    });
 
-  const dismissOnboarding = () => hb_dismissOnboarding({ setShowOnboarding, setOnboardingShowShapePicker, setOnboardingShowTemplates, setOnboardingQuickSetup, setPendingPreset });
+  const dismissOnboarding = () =>
+    hb_dismissOnboarding({
+      setShowOnboarding,
+      setOnboardingShowShapePicker,
+      setOnboardingShowTemplates,
+      setOnboardingQuickSetup,
+      setPendingPreset,
+    });
 
-  const applyPresetAndDismiss = (preset: StarterPreset) => hb_applyPresetAndDismiss(preset, { presetApply: preset.apply, dismissOnboarding: (p: unknown) => dismissOnboarding() });
+  const applyPresetAndDismiss = (preset: StarterPreset) =>
+    hb_applyPresetAndDismiss(preset, {
+      presetApply: preset.apply,
+      dismissOnboarding: (p: unknown) => dismissOnboarding(),
+    });
 
   return (
     <>
@@ -1559,8 +1718,7 @@ export default function CardBuilder({
                   </div>
                 </div>
 
-                                    {/* Build font import string dynamically from FONT_FAMILIES to keep JSX clean */}
-                
+                {/* Build font import string dynamically from FONT_FAMILIES to keep JSX clean */}
 
                 {/* Gradient */}
                 <div className="mb-6">
@@ -2050,14 +2208,16 @@ export default function CardBuilder({
             {(() => {
               const isSingleText = !!(
                 selectedElement &&
-                (CORE_TEXT_FIELDS.includes(selectedElement as any) || config[selectedElement]?.type === "dynamic-text")
+                (CORE_TEXT_FIELDS.includes(selectedElement as any) ||
+                  config[selectedElement]?.type === "dynamic-text")
               );
               const isMultiText =
                 multiSelectActive &&
                 multiSelectedKeys.length > 0 &&
                 multiSelectedKeys.every(
                   (k) =>
-                    CORE_TEXT_FIELDS.includes(k as any) || config[k]?.type === "dynamic-text",
+                    CORE_TEXT_FIELDS.includes(k as any) ||
+                    config[k]?.type === "dynamic-text",
                 );
               if (!isSingleText && !isMultiText) return null;
               const activeKey = isSingleText
@@ -2464,21 +2624,19 @@ export default function CardBuilder({
                     <span className="text-xs text-muted-foreground">
                       Direction
                     </span>
-                    {GRADIENT_DIRECTIONS.map(
-                      (dir) => (
-                        <button
-                          key={dir}
-                          onClick={() =>
-                            updateElement(selectedElement, {
-                              gradientDirection: dir,
-                            })
-                          }
-                          className={`h-7 px-2 text-xs rounded border ${(config[selectedElement]?.gradientDirection || "bottom") === dir ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-accent"}`}
-                        >
-                          {dir.charAt(0).toUpperCase() + dir.slice(1)}
-                        </button>
-                      ),
-                    )}
+                    {GRADIENT_DIRECTIONS.map((dir) => (
+                      <button
+                        key={dir}
+                        onClick={() =>
+                          updateElement(selectedElement, {
+                            gradientDirection: dir,
+                          })
+                        }
+                        className={`h-7 px-2 text-xs rounded border ${(config[selectedElement]?.gradientDirection || "bottom") === dir ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-accent"}`}
+                      >
+                        {dir.charAt(0).toUpperCase() + dir.slice(1)}
+                      </button>
+                    ))}
                   </div>
                 </>
               )}
@@ -3090,13 +3248,21 @@ export default function CardBuilder({
               const canvasEl = canvasRef.current;
               if (!canvas || !canvasEl) return;
               const clickedNode = e.target as Node | null;
-              if (!(clickedNode && (clickedNode === canvasEl || canvasEl.contains(clickedNode)))) {
+              if (
+                !(
+                  clickedNode &&
+                  (clickedNode === canvasEl || canvasEl.contains(clickedNode))
+                )
+              ) {
                 // Click happened on some overlay/child that isn't the canvas — clear context
                 setContextMenu(null);
                 return;
               }
 
-              const target = canvas.findTarget(e.nativeEvent as unknown as Event, false);
+              const target = canvas.findTarget(
+                e.nativeEvent as unknown as Event,
+                false,
+              );
               if (target?.data?.elementKey) {
                 canvas.setActiveObject(target);
                 canvas.renderAll();
@@ -3175,9 +3341,9 @@ export default function CardBuilder({
                     </label>
                     <button
                       onClick={() => {
-                          // Persisting "don't show" preference handled by server-side APIs
-                          setShowCanvasTip(false);
-                        }}
+                        // Persisting "don't show" preference handled by server-side APIs
+                        setShowCanvasTip(false);
+                      }}
                       className="px-4 py-1.5 text-xs font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
                     >
                       Got it
