@@ -32,6 +32,15 @@ Rules for every agent that touches this file:
   - Tables: `rounded-lg border border-border overflow-hidden`, header `bg-muted/30`, rows `hover:bg-muted/40`
   - Badges: `bg-success/10 text-success border-success/30` (approved), `bg-warning/10 text-warning border-warning/30` (pending)
   - Spacing: tab content `pt-6`, forms `space-y-6`
+- **Sub-page navigation:** any view launched from a tab (e.g. Edit Form, Speaker detail) must go full-page with a standard `h-14` sticky header:
+  - Container: `fixed inset-0 z-50 bg-background flex flex-col`
+  - Header: `sticky top-0 z-30 h-14 flex items-center gap-3 border-b border-border bg-card/95 px-4 shrink-0`
+  - Back button: `ArrowLeft` (from lucide-react), `h-8 w-8` rounded button
+  - Wordmark: `"Seamless"` (primary, semibold) + module name (muted, xs)
+  - Entity name after a `|` separator, truncated
+  - Actions (Copy Link, Save, etc.) pushed right with `ml-auto`
+  - Body: `<div className="flex-1 overflow-y-auto">` wrapping content
+  - **Never** use `ChevronLeft` for back-navigation; always `ArrowLeft`
 - **Commits:** only when explicitly instructed.
 
 ---

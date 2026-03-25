@@ -22,7 +22,7 @@ import {
   EyeOff,
   ChevronUp,
   ChevronDown,
-  ChevronLeft,
+  ArrowLeft,
   RotateCcw,
   AlignLeft,
   AlignRight,
@@ -305,6 +305,11 @@ export default function CardBuilder({
     if (typeof maybe === "object" && maybe !== null) {
       const m = maybe as { config?: unknown; fields?: unknown };
       if (Array.isArray(m.config)) return m.config as FormFieldConfig[];
+      // Nested shape: { config: { fields: [...], metadata: {...} } }
+      if (m.config && typeof m.config === "object" && !Array.isArray(m.config)) {
+        const nested = m.config as { fields?: unknown };
+        if (Array.isArray(nested.fields)) return nested.fields as FormFieldConfig[];
+      }
       if (Array.isArray(m.fields)) return m.fields as FormFieldConfig[];
     }
     return [];
@@ -1926,7 +1931,7 @@ export default function CardBuilder({
                     className={TOOLBAR_ICON_BTN}
                     title="Back to Speakers"
                   >
-                    <ChevronLeft className="h-4 w-4" />
+                    <ArrowLeft className="h-4 w-4" />
                   </button>
                   <div className="h-5 w-px bg-border mx-0.5" />
                 </>

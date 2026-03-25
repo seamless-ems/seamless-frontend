@@ -1,17 +1,19 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getJson } from "@/lib/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import SpeakerFormBuilder from "@/components/SpeakerFormBuilder";
+import SpeakerFormBuilder, { type SpeakerFormBuilderHandle } from "@/components/SpeakerFormBuilder";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { Copy, MoreVertical } from "lucide-react";
+import { ArrowLeft, Copy, MoreVertical } from "lucide-react";
 import { Check } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 export default function FormsTab({ eventId }: { eventId: string | undefined }) {
   const [editingForm, setEditingForm] = useState<string | null>(null);
   const [copiedForm, setCopiedForm] = useState<string | null>(null);
+  const [copiedHeader, setCopiedHeader] = useState(false);
+  const formBuilderRef = useRef<SpeakerFormBuilderHandle>(null);
 
   const { data: eventData } = useQuery<any>({
     queryKey: ["event", eventId],
@@ -54,7 +56,7 @@ export default function FormsTab({ eventId }: { eventId: string | undefined }) {
   const forms = [
     {
       id: "speaker-info",
-      name: `Speaker Information | ${eventName}`,
+      name: `Speaker Intake | ${eventName}`,
       type: "Speaker Information Form",
       description: "",
       submissions: overviewTotalSpeakers,
@@ -78,29 +80,67 @@ export default function FormsTab({ eventId }: { eventId: string | undefined }) {
     setTimeout(() => setCopiedForm(null), 2000);
   };
 
+  const handleCopyFormLink = () => {
+    const form = forms.find(f => f.id === editingForm);
+    if (!form) return;
+    const formType = form.type === "Speaker Information Form" ? "speaker-intake" : "call-for-speakers";
+    const url = `${window.location.origin}/${formType}/${eventId}`;
+    navigator.clipboard.writeText(url);
+    setCopiedHeader(true);
+    toast({ title: "Link copied to clipboard!" });
+    setTimeout(() => setCopiedHeader(false), 2000);
+  };
+
   if (editingForm) {
+    const editingFormData = forms.find(f => f.id === editingForm);
     return (
-      <div className="space-y-6 pt-6">
-        <div className="flex items-center gap-2 mb-6">
+      <div className="fixed inset-0 z-50 bg-background flex flex-col">
+        {/* Standard sub-page header */}
+        <header className="sticky top-0 z-30 h-14 flex items-center gap-3 border-b border-border bg-card/95 px-4 shrink-0">
           <button
             onClick={() => setEditingForm(null)}
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            className="flex items-center justify-center h-8 w-8 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
           >
-            Forms
+            <ArrowLeft className="h-4 w-4" />
           </button>
-          <span className="text-muted-foreground">/</span>
-          <span className="text-sm font-medium text-foreground">
-            {forms.find(f => f.id === editingForm)?.name}
-          </span>
+          <div className="flex items-baseline gap-1.5 leading-none select-none">
+            <span className="text-sm font-semibold text-primary" style={{ letterSpacing: "-0.01em" }}>
+              Seamless
+            </span>
+            <span className="text-xs font-normal text-muted-foreground">Forms</span>
+          </div>
+          {editingFormData && (
+            <>
+              <span className="text-border">|</span>
+              <span className="text-sm font-medium text-foreground truncate">{editingFormData.name}</span>
+            </>
+          )}
+          <div className="ml-auto flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handleCopyFormLink}>
+              {copiedHeader ? (
+                <><Check className="h-3.5 w-3.5 mr-1.5" />Copied</>
+              ) : (
+                <><Copy className="h-3.5 w-3.5 mr-1.5" />Copy Link</>
+              )}
+            </Button>
+            <Button size="sm" onClick={() => formBuilderRef.current?.save()}>
+              Save Changes
+            </Button>
+          </div>
+        </header>
+        <div className="flex-1 overflow-y-auto">
+          <div className="max-w-6xl mx-auto px-6 py-6">
+            <SpeakerFormBuilder
+              ref={formBuilderRef}
+              eventId={eventId}
+              formType={editingForm ?? undefined}
+              formName={editingFormData?.name}
+              eventName={eventName}
+              onBack={() => setEditingForm(null)}
+              onSave={() => setEditingForm(null)}
+            />
+          </div>
         </div>
-        <SpeakerFormBuilder
-          eventId={eventId}
-          formType={editingForm ?? undefined}
-          onSave={(config) => {
-            toast({ title: "Form saved successfully" });
-            setEditingForm(null);
-          }}
-        />
       </div>
     );
   }

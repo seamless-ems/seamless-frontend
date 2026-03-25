@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useImperativeHandle, forwardRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,7 +49,14 @@ interface SpeakerFormBuilderProps {
   eventId: string;
   initialConfig?: FormFieldConfig[];
   formType?: string;
+  formName?: string;
+  eventName?: string;
+  onBack?: () => void;
   onSave?: (config: FormFieldConfig[]) => void;
+}
+
+export interface SpeakerFormBuilderHandle {
+  save: () => void;
 }
 
 const DEFAULT_FIELDS: FormFieldConfig[] = [
@@ -126,20 +133,29 @@ const DEFAULT_FIELDS: FormFieldConfig[] = [
   }
 ];
 
-export default function SpeakerFormBuilder({
+const SpeakerFormBuilder = forwardRef<SpeakerFormBuilderHandle, SpeakerFormBuilderProps>(function SpeakerFormBuilder({
   eventId,
   initialConfig,
   formType = "speaker-info",
+  formName,
+  eventName,
+  onBack,
   onSave,
-}: SpeakerFormBuilderProps) {
+}, ref) {
   const queryClient = useQueryClient();
+  const STALE_TITLES = ["Speaker Information", "Speaker Applications"];
+  const defaultTitle = formType === "call-for-speakers"
+    ? `Speaker Applications${eventName ? ` | ${eventName}` : ""}`
+    : `Speaker Intake${eventName ? ` | ${eventName}` : ""}`;
+  const resolveTitle = (saved: string | undefined) =>
+    saved && !STALE_TITLES.includes(saved) ? saved : defaultTitle;
   const [fields, setFields] = useState<FormFieldConfig[]>(
     initialConfig ?? DEFAULT_FIELDS,
   );
   const [customFieldDialog, setCustomFieldDialog] = useState(false);
   const [missingFormDialogOpen, setMissingFormDialogOpen] = useState(false);
   const [saveWarningOpen, setSaveWarningOpen] = useState(false);
-  const [formTitle, setFormTitle] = useState<string>("Speaker Information");
+  const [formTitle, setFormTitle] = useState<string>(defaultTitle);
   const [formSubtitle, setFormSubtitle] = useState<string>("");
   const [showFormTitle, setShowFormTitle] = useState<boolean>(true);
   const [newCustomField, setNewCustomField] = useState({
@@ -174,9 +190,7 @@ export default function SpeakerFormBuilder({
               setFields(res.config as FormFieldConfig[]);
               // backward-compatible metadata may live at top-level or in res.metadata
               setFormTitle(
-                (res.title as string) ||
-                  (res.metadata?.title as string) ||
-                  "Speaker Information",
+                resolveTitle((res.title as string) || (res.metadata?.title as string)),
               );
               setFormSubtitle(
                 (res.subtitle as string) ||
@@ -191,9 +205,7 @@ export default function SpeakerFormBuilder({
                 ? cfg.fields
                 : DEFAULT_FIELDS;
               setFields(fieldsFromCfg as FormFieldConfig[]);
-              setFormTitle(
-                (cfg.metadata?.title as string) || "Speaker Information",
-              );
+              setFormTitle(resolveTitle(cfg.metadata?.title as string));
               setFormSubtitle((cfg.metadata?.subtitle as string) || "");
               setShowFormTitle(
                 typeof cfg.metadata?.showTitle === "boolean"
@@ -316,17 +328,14 @@ export default function SpeakerFormBuilder({
   };
 
   const handleSave = () => {
-    const headshotEnabled = fields.some(
-      (f) => f.id === "headshot" && f.enabled,
-    );
-    const logoEnabled = fields.some(
-      (f) => f.id === "company_logo" && f.enabled,
-    );
-
-    // Show warning if either headshot or company logo is missing
-    if (!headshotEnabled || !logoEnabled) {
-      setSaveWarningOpen(true);
-      return;
+    // Card warnings only apply to the speaker intake form, not applications
+    if (formType !== "call-for-speakers") {
+      const headshotEnabled = fields.some((f) => f.id === "headshot" && f.enabled);
+      const logoEnabled = fields.some((f) => f.id === "company_logo" && f.enabled);
+      if (!headshotEnabled || !logoEnabled) {
+        setSaveWarningOpen(true);
+        return;
+      }
     }
 
     proceedWithSave();
@@ -363,79 +372,44 @@ export default function SpeakerFormBuilder({
     }
   };
 
+  useImperativeHandle(ref, () => ({ save: handleSave }));
+
   const enabledFields = fields.filter((f) => f.enabled);
 
   return (
     <div className="space-y-6">
-      {/* <MissingFormDialog
-        open={missingFormDialogOpen}
-        onOpenChange={setMissingFormDialogOpen}
-        eventId={eventId}
-      /> */}
-      {/* Form header settings + Actions in two columns */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
-        <Card className="p-4">
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="text-sm text-muted-foreground">
-                Configure form header
-              </div>
-            </div>
-            <div>
-              <Label>Form Title</Label>
-              <Input
-                value={formTitle}
-                onChange={(e) => setFormTitle(e.target.value)}
-              />
-            </div>
-            <div>
-              <Label>Form Subtitle</Label>
-              <Input
-                value={formSubtitle}
-                onChange={(e) => setFormSubtitle(e.target.value)}
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="text-sm text-muted-foreground">
-                Show form title and subtitle
-              </div>
-              <Switch
-                checked={showFormTitle}
-                onCheckedChange={(v) => setShowFormTitle(Boolean(v))}
-              />
-            </div>
-          </div>
-        </Card>
-
-        {/* Actions */}
-        <div className="flex items-center gap-3 justify-end">
-          <Button onClick={handleCopyLink} variant="outline" className="flex-1 lg:flex-none">
-            {copied ? (
-              <>
-                <Check className="h-4 w-4 mr-2" />
-                Copied!
-              </>
-            ) : (
-              <>
-                <Copy className="h-4 w-4 mr-2" />
-                Copy Form Link
-              </>
-            )}
-          </Button>
-          <Button
-            onClick={handleSave}
-            variant="outline"
-            className="border-[1.5px]"
-          >
-            Save Changes
-          </Button>
+      {/* Compact form header config */}
+      <div className="flex flex-wrap items-end gap-4 rounded-lg border border-border bg-muted/20 p-4">
+        <div className="flex-1 min-w-[180px]">
+          <Label className="text-xs mb-1.5 block">Form Title</Label>
+          <Input
+            value={formTitle}
+            onChange={(e) => setFormTitle(e.target.value)}
+          />
+        </div>
+        <div className="flex-1 min-w-[180px]">
+          <Label className="text-xs mb-1.5 block">Subtitle <span className="text-muted-foreground font-normal">(optional)</span></Label>
+          <Input
+            value={formSubtitle}
+            onChange={(e) => setFormSubtitle(e.target.value)}
+            placeholder="e.g. Please complete all fields"
+          />
+        </div>
+        <div className="flex items-center gap-2 pb-0.5">
+          <Switch
+            checked={showFormTitle}
+            onCheckedChange={(v) => setShowFormTitle(Boolean(v))}
+          />
+          <Label className="text-xs whitespace-nowrap">Show title</Label>
         </div>
       </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Panel: Form Builder (titles removed - parent shows main heading) */}
         <div className="lg:col-span-1 space-y-4">
           {/* Default Fields */}
           <Card className="p-4">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">Default Fields</h3>
             <div className="space-y-2">
               {fields
                 .filter((f) => !f.custom)
@@ -449,71 +423,68 @@ export default function SpeakerFormBuilder({
                   return (
                     <div
                       key={field.id}
-                      className="flex items-center gap-3 p-2 rounded hover:bg-muted/50 transition-colors"
+                      className="flex items-start gap-2 p-2 rounded hover:bg-muted/50 transition-colors"
                     >
-                      <div className="flex-1 flex items-center gap-3">
-                        <Switch
-                          checked={field.enabled}
-                          disabled={cannotDisable}
-                          onCheckedChange={() => toggleField(field.id)}
+                      <Switch
+                        checked={field.enabled}
+                        disabled={cannotDisable}
+                        onCheckedChange={() => toggleField(field.id)}
+                        className="mt-0.5 shrink-0"
+                      />
+                      <div className="flex-1 min-w-0 space-y-1.5">
+                        <Input
+                          value={field.label}
+                          onChange={(e) =>
+                            setFields((prev) =>
+                              prev.map((f) =>
+                                f.id === field.id
+                                  ? { ...f, label: e.target.value }
+                                  : f,
+                              ),
+                            )
+                          }
+                          className="w-full"
                         />
-                        <div style={{ minWidth: 220 }}>
-                          <Input
-                            value={field.label}
-                            onChange={(e) =>
-                              setFields((prev) =>
-                                prev.map((f) =>
-                                  f.id === field.id
-                                    ? { ...f, label: e.target.value }
-                                    : f,
-                                ),
-                              )
-                            }
-                            className="w-full"
-                          />
-                        </div>
-                        {cannotDisable && (
-                          <span
-                            className="text-muted-foreground"
-                            style={{ fontSize: "var(--font-tiny)" }}
-                          >
-                            (Required)
-                          </span>
+                        {field.enabled && (
+                          <div className="flex items-center gap-3 flex-wrap">
+                            {cannotDisable ? (
+                              <span
+                                className="text-muted-foreground"
+                                style={{ fontSize: "var(--font-tiny)" }}
+                              >
+                                Always required
+                              </span>
+                            ) : (
+                              <label
+                                className="text-muted-foreground flex items-center gap-1 cursor-pointer"
+                                style={{ fontSize: "var(--font-tiny)" }}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={field.required}
+                                  onChange={() => toggleRequired(field.id)}
+                                  className="rounded"
+                                />
+                                Required
+                              </label>
+                            )}
+                            {field.id !== "email" && formType !== "call-for-speakers" && (
+                              <label
+                                className="text-muted-foreground flex items-center gap-1 cursor-pointer"
+                                style={{ fontSize: "var(--font-tiny)" }}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={field.showInCardBuilder || false}
+                                  onChange={() => toggleCardBuilder(field.id)}
+                                  className="rounded"
+                                />
+                                Card Builder
+                              </label>
+                            )}
+                          </div>
                         )}
                       </div>
-                      {field.enabled && (
-                        <div className="flex items-center gap-3">
-                          {!cannotDisable && (
-                            <label
-                              className="text-muted-foreground flex items-center gap-1"
-                              style={{ fontSize: "var(--font-tiny)" }}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={field.required}
-                                onChange={() => toggleRequired(field.id)}
-                                className="rounded"
-                              />
-                              Required
-                            </label>
-                          )}
-                          {/* Show Card Builder for all fields except email */}
-                          {field.id !== "email" && (
-                            <label
-                              className="text-muted-foreground flex items-center gap-1"
-                              style={{ fontSize: "var(--font-tiny)" }}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={field.showInCardBuilder || false}
-                                onChange={() => toggleCardBuilder(field.id)}
-                                className="rounded"
-                              />
-                              Card Builder
-                            </label>
-                          )}
-                        </div>
-                      )}
                     </div>
                   );
                 })}
@@ -523,7 +494,7 @@ export default function SpeakerFormBuilder({
           {/* Custom Fields */}
           <Card className="p-4">
             <div className="flex items-center justify-between mb-3">
-              <div />
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Custom Fields</h3>
               <Dialog
                 open={customFieldDialog}
                 onOpenChange={setCustomFieldDialog}
@@ -669,9 +640,9 @@ export default function SpeakerFormBuilder({
                     return (
                       <div
                         key={field.id}
-                        className="flex items-center gap-2 p-2 rounded bg-muted/30"
+                        className="flex items-start gap-2 p-2 rounded bg-muted/30"
                       >
-                        <div className="flex flex-col">
+                        <div className="flex flex-col mt-1">
                           <Button
                             size="sm"
                             variant="ghost"
@@ -691,44 +662,63 @@ export default function SpeakerFormBuilder({
                             <ChevronDown className="h-3 w-3" />
                           </Button>
                         </div>
-                        <GripVertical className="h-4 w-4 text-muted-foreground" />
-                        <div className="flex-1">
-                          <div>
-                            <Input
-                              value={field.label}
-                              onChange={(e) =>
-                                setFields((prev) =>
-                                  prev.map((f) =>
-                                    f.id === field.id
-                                      ? { ...f, label: e.target.value }
-                                      : f,
-                                  ),
-                                )
-                              }
-                              className="w-56"
-                            />
+                        <GripVertical className="h-4 w-4 text-muted-foreground mt-1.5 shrink-0" />
+                        <div className="flex-1 min-w-0 space-y-1.5">
+                          <Input
+                            value={field.label}
+                            onChange={(e) =>
+                              setFields((prev) =>
+                                prev.map((f) =>
+                                  f.id === field.id
+                                    ? { ...f, label: e.target.value }
+                                    : f,
+                                ),
+                              )
+                            }
+                            className="w-full"
+                          />
+                          <div className="flex items-center gap-3 flex-wrap">
+                            <span
+                              className="text-muted-foreground"
+                              style={{ fontSize: "var(--font-tiny)" }}
+                            >
+                              {field.type === "file" ? "file" : field.type}
+                            </span>
+                            {field.options && field.options.length > 0 && (
+                              <span className="text-muted-foreground" style={{ fontSize: "var(--font-tiny)" }}>{field.options.join(", ")}</span>
+                            )}
+                            <label
+                              className="text-muted-foreground flex items-center gap-1 cursor-pointer"
+                              style={{ fontSize: "var(--font-tiny)" }}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={field.required}
+                                onChange={() => toggleRequired(field.id)}
+                                className="rounded"
+                              />
+                              Required
+                            </label>
+                            {formType !== "call-for-speakers" && (
+                              <label
+                                className="text-muted-foreground flex items-center gap-1 cursor-pointer"
+                                style={{ fontSize: "var(--font-tiny)" }}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={field.showInCardBuilder || false}
+                                  onChange={() => toggleCardBuilder(field.id)}
+                                  className="rounded"
+                                />
+                                Card Builder
+                              </label>
+                            )}
                           </div>
-                          <span
-                            className="text-muted-foreground ml-2"
-                            style={{ fontSize: "var(--font-tiny)" }}
-                          >
-                            ({field.type === "file" ? "file" : field.type})
-                          </span>
-                          {field.options && field.options.length > 0 && (
-                            <div className="text-xs text-muted-foreground ml-2">{field.options.join(", ")}</div>
-                          )}
                         </div>
-                        {field.required && (
-                          <span
-                            className="text-muted-foreground"
-                            style={{ fontSize: "var(--font-tiny)" }}
-                          >
-                            Required
-                          </span>
-                        )}
                         <Button
                           size="sm"
                           variant="ghost"
+                          className="shrink-0"
                           onClick={() => removeCustomField(field.id)}
                         >
                           <X className="h-4 w-4" />
@@ -897,4 +887,6 @@ export default function SpeakerFormBuilder({
       </Dialog>
     </div>
   );
-}
+});
+
+export default SpeakerFormBuilder;
