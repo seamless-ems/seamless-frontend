@@ -102,7 +102,7 @@ export const ALIGN_MODES = [
 
 export type AlignDirection = (typeof ALIGN_MODES)[number]["id"];
 
-export const FIXED_KEYS = ["headshot", "firstName", "lastName", "title", "company", "companyLogo"];
+export const FIXED_KEYS = ["headshot", "firstName", "lastName", "title", "company", "companyLogo", "eventLogo"];
 
 export const ICON_COLORS: Record<string, string> = {
   linkedin: "#0A66C2",

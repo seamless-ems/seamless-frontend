@@ -560,7 +560,7 @@ export const duplicateElement = (
   },
 ) => {
   const cfg = params.config[key];
-  if (!cfg || (Array.isArray(FIXED_KEYS) && FIXED_KEYS.includes(key))) return;
+  if (!cfg || FIXED_KEYS.includes(key)) return;
   const newKey =
     cfg.type === "gradient-overlay"
       ? `gradientOverlay_${Date.now()}`
@@ -844,6 +844,33 @@ export const handleLogoUpload = (
   params.setCropDialogOpen(true);
 };
 
+export const handleEventLogoUpload = (
+  e: React.ChangeEvent<HTMLInputElement>,
+  params: {
+    setCropImageUrl: (u: string) => void;
+    setCropMode: (m: any) => void;
+    setCropDialogOpen: (v: boolean) => void;
+    toast: (o: any) => void;
+  },
+) => {
+  const file = e.target.files?.[0];
+  const allowed = ["image/png", "image/jpeg"];
+  if (!file) return;
+  if (!allowed.includes(file.type)) {
+    params.toast({
+      title: "Invalid file type",
+      description: "Logo must be PNG or JPEG",
+      variant: "destructive",
+    });
+    e.target.value = "";
+    return;
+  }
+  const url = URL.createObjectURL(file);
+  params.setCropImageUrl(url);
+  params.setCropMode("event-logo");
+  params.setCropDialogOpen(true);
+};
+
 export const handleCropComplete = async (
   blob: Blob,
   params: {
@@ -852,6 +879,7 @@ export const handleCropComplete = async (
     setBgIsGenerated: (v: boolean) => void;
     setTestHeadshot: (u: string | null) => void;
     setTestLogo: (u: string | null) => void;
+    setTestEventLogo: (u: string | null) => void;
     config: any;
     addElementToCanvas: (k: string, p?: any, pr?: any) => void;
     setCropDialogOpen: (v: boolean) => void;
@@ -879,6 +907,10 @@ export const handleCropComplete = async (
     params.setTestLogo(dataUrl);
     if (!params.config.companyLogo) params.addElementToCanvas("companyLogo");
     params.toast({ title: "Test logo uploaded" });
+  } else if (params.cropMode === "event-logo") {
+    params.setTestEventLogo(dataUrl);
+    if (!params.config.eventLogo) params.addElementToCanvas("eventLogo");
+    params.toast({ title: "Event logo uploaded" });
   }
 
   params.setCropDialogOpen(false);
@@ -906,12 +938,6 @@ export const handleSave = async (
 ) => {
   const effectiveConfig = { ...params.config };
   const backendConfig = { ...effectiveConfig };
-  // ["firstName", "lastName", "title"].forEach((k) => {
-  //   const obj = params.elementRefs.current[k] as any | undefined;
-  //   if (obj && obj.fontSize && backendConfig[k]) {
-  //     backendConfig[k] = { ...backendConfig[k], fontSize: obj.fontSize };
-  //   }
-  // });
 
   if (params.eventId) {
     let finalTemplateUrl = params.templateUrl;

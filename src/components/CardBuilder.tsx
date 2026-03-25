@@ -74,6 +74,7 @@ import {
   handleBackgroundUpload as hb_handleBackgroundUpload,
   handleHeadshotUpload as hb_handleHeadshotUpload,
   handleLogoUpload as hb_handleLogoUpload,
+  handleEventLogoUpload as hb_handleEventLogoUpload,
   handleCropComplete as hb_handleCropComplete,
   handleSave as hb_handleSave,
   handleExport as hb_handleExport,
@@ -92,9 +93,10 @@ import {
   STARTER_PRESETS_DATA,
 } from "@/constants/websiteCardTemplates";
 import {
-  SOCIAL_SQUARE_PRESETS as PROMO_SOCIAL_SQUARE,
-  SOCIAL_STORY_PRESETS as PROMO_SOCIAL_STORY,
-  NEWSLETTER_PRESETS as PROMO_NEWSLETTER_PRESETS,
+  INSTAGRAM_FEED_PRESETS,
+  INSTAGRAM_STORY_PRESETS,
+  LINKEDIN_PRESETS,
+  X_PRESETS,
 } from "@/constants/promoCardTemplates";
 import { ImageCropDialog } from "@/components/ImageCropDialog";
 import ShadowContainer from "@/components/ShadowContainer";
@@ -187,7 +189,7 @@ export default function CardBuilder({
 
   const [cropDialogOpen, setCropDialogOpen] = useState(false);
   const [cropMode, setCropMode] = useState<
-    "headshot" | "logo" | "template" | null
+    "headshot" | "logo" | "event-logo" | "template" | null
   >(null);
   const [cropImageUrl, setCropImageUrl] = useState("");
 
@@ -201,6 +203,7 @@ export default function CardBuilder({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const headshotInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
+  const eventLogoInputRef = useRef<HTMLInputElement>(null);
   const elementRefs = useRef<{ [key: string]: fabric.Object }>({});
   // Skip full canvas rebuild when only position/size changed via Fabric drag (avoids flicker)
   const skipRerenderRef = useRef(false);
@@ -215,6 +218,7 @@ export default function CardBuilder({
   // Test images — preview only, never saved to server
   const [testHeadshot, setTestHeadshot] = useState<string | null>(null);
   const [testLogo, setTestLogo] = useState<string | null>(null);
+  const [testEventLogo, setTestEventLogo] = useState<string | null>(null);
 
   const [layersPanelOpen, setLayersPanelOpen] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -236,6 +240,10 @@ export default function CardBuilder({
     useState(false);
   const [onboardingShowTemplates, setOnboardingShowTemplates] = useState(false);
   const [onboardingQuickSetup, setOnboardingQuickSetup] = useState(false);
+
+  // Promo-specific onboarding steps (separate from website shape/template flow)
+  const [onboardingBrandSetup, setOnboardingBrandSetup] = useState(false);
+  const [onboardingPlatformPicker, setOnboardingPlatformPicker] = useState(false);
   const [pendingPreset, setPendingPreset] = useState<StarterPreset | null>(
     null,
   );
@@ -266,6 +274,10 @@ export default function CardBuilder({
   const [showCanvasTip, setShowCanvasTip] = useState(false);
   const [canvasTipDontShow, setCanvasTipDontShow] = useState(false);
   const [showSidebarTip, setShowSidebarTip] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(144);
+  const sidebarDragging = useRef(false);
+  const sidebarDragStartX = useRef(0);
+  const sidebarDragStartW = useRef(144);
 
   const [missingFormDialogOpen, setMissingFormDialogOpen] = useState(false);
 
@@ -440,81 +452,64 @@ export default function CardBuilder({
   ];
   // ── END WEBSITE CARD TEMPLATES ─────────────────────────────────────────────────────────────
 
-  // PROMO_PRESETS (separate from website templates). These map the promo preset
-  // data (in src/constants/promoCardTemplates.ts) into the same StarterPreset shape
-  // used by the onboarding UI so promo onboarding can reuse the existing flows.
-  const PROMO_SQUARE_PRESETS: StarterPreset[] = (
-    presetMetasFromData(PROMO_SOCIAL_SQUARE) as StarterPreset[]
+  // ── PROMO CARD TEMPLATES (cardType === 'promo' only) ──────────────────────────────────────
+  // Platform-based "I'M SPEAKING AT" announcement cards. One template per platform.
+
+  const PROMO_INSTAGRAM_FEED_PRESETS: StarterPreset[] = (
+    presetMetasFromData(INSTAGRAM_FEED_PRESETS) as StarterPreset[]
   ).map((m, i) => ({
     ...m,
-    thumbnailShape: PROMO_SOCIAL_SQUARE[i].thumbnailShape,
+    thumbnailShape: INSTAGRAM_FEED_PRESETS[i].thumbnailShape,
     apply: makeApply(
-      (
-        bg = m.defaultBg,
-        textColor = m.defaultTextColor,
-        font = "Montserrat",
-        canvasW = m.canvasW,
-        canvasH = m.canvasH,
-      ) => PROMO_SOCIAL_SQUARE[i].build(ELEMENT_TEMPLATES, bg, textColor, font),
+      (bg = m.defaultBg, textColor = m.defaultTextColor, font = "Montserrat") =>
+        INSTAGRAM_FEED_PRESETS[i].build(ELEMENT_TEMPLATES, bg, textColor, font),
     ),
   }));
 
-  const PROMO_PORTRAIT_PRESETS: StarterPreset[] = (
-    presetMetasFromData(PROMO_SOCIAL_STORY) as StarterPreset[]
+  const PROMO_INSTAGRAM_STORY_PRESETS: StarterPreset[] = (
+    presetMetasFromData(INSTAGRAM_STORY_PRESETS) as StarterPreset[]
   ).map((m, i) => ({
     ...m,
-    thumbnailShape: PROMO_SOCIAL_STORY[i].thumbnailShape,
+    thumbnailShape: INSTAGRAM_STORY_PRESETS[i].thumbnailShape,
     apply: makeApply(
-      (
-        bg = m.defaultBg,
-        textColor = m.defaultTextColor,
-        font = "Montserrat",
-        canvasW = m.canvasW,
-        canvasH = m.canvasH,
-      ) => PROMO_SOCIAL_STORY[i].build(ELEMENT_TEMPLATES, bg, textColor, font),
+      (bg = m.defaultBg, textColor = m.defaultTextColor, font = "Montserrat") =>
+        INSTAGRAM_STORY_PRESETS[i].build(ELEMENT_TEMPLATES, bg, textColor, font),
     ),
   }));
 
-  const PROMO_LANDSCAPE_PRESETS: StarterPreset[] = (
-    presetMetasFromData(PROMO_NEWSLETTER_PRESETS) as StarterPreset[]
+  const PROMO_LINKEDIN_PRESETS: StarterPreset[] = (
+    presetMetasFromData(LINKEDIN_PRESETS) as StarterPreset[]
   ).map((m, i) => ({
     ...m,
-    thumbnailShape: PROMO_NEWSLETTER_PRESETS[i].thumbnailShape,
+    thumbnailShape: LINKEDIN_PRESETS[i].thumbnailShape,
     apply: makeApply(
-      (
-        bg = m.defaultBg,
-        textColor = m.defaultTextColor,
-        font = "Montserrat",
-        canvasW = m.canvasW,
-        canvasH = m.canvasH,
-      ) =>
-        PROMO_NEWSLETTER_PRESETS[i].build(
-          ELEMENT_TEMPLATES,
-          bg,
-          textColor,
-          font,
-        ),
+      (bg = m.defaultBg, textColor = m.defaultTextColor, font = "Montserrat") =>
+        LINKEDIN_PRESETS[i].build(ELEMENT_TEMPLATES, bg, textColor, font),
     ),
   }));
 
-  // Flat list for promo templates if needed elsewhere
-  const PROMO_STARTER_PRESETS: StarterPreset[] = [
-    ...PROMO_SQUARE_PRESETS,
-    ...PROMO_LANDSCAPE_PRESETS,
-    ...PROMO_PORTRAIT_PRESETS,
-  ];
+  const PROMO_X_PRESETS: StarterPreset[] = (
+    presetMetasFromData(X_PRESETS) as StarterPreset[]
+  ).map((m, i) => ({
+    ...m,
+    thumbnailShape: X_PRESETS[i].thumbnailShape,
+    apply: makeApply(
+      (bg = m.defaultBg, textColor = m.defaultTextColor, font = "Montserrat") =>
+        X_PRESETS[i].build(ELEMENT_TEMPLATES, bg, textColor, font),
+    ),
+  }));
 
-  // Returns the right preset list for the currently-selected onboarding shape
+  // Returns the website preset list for the currently-selected onboarding shape (website only)
   const presetsForShape = (shape: "square" | "landscape" | "portrait") => {
     return getPresetsForShape(
-      isPromo,
+      false, // website only — promo uses presetsForPlatform
       shape,
       SQUARE_PRESETS,
       LANDSCAPE_PRESETS,
       PORTRAIT_PRESETS,
-      PROMO_SQUARE_PRESETS,
-      PROMO_LANDSCAPE_PRESETS,
-      PROMO_PORTRAIT_PRESETS,
+      [],
+      [],
+      [],
     );
   };
 
@@ -534,6 +529,7 @@ export default function CardBuilder({
         setContextMenu,
         headshotInputRef,
         logoInputRef,
+        eventLogoInputRef,
         createSnapLineUtil,
         clearLines,
         computeSnapMatches,
@@ -585,6 +581,7 @@ export default function CardBuilder({
         templateUrl,
         testHeadshot,
         testLogo,
+        testEventLogo,
         bgGradient,
         bgColor,
         canvasWidth,
@@ -599,6 +596,7 @@ export default function CardBuilder({
       templateUrl,
       testHeadshot,
       testLogo,
+      testEventLogo,
       bgGradient,
       bgColor,
       canvasWidth,
@@ -903,6 +901,22 @@ export default function CardBuilder({
     return () => clearTimeout(timer);
   }, [handleSave, hasUnsavedChanges]);
 
+  // Sidebar resize drag handlers
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      if (!sidebarDragging.current) return;
+      const delta = e.clientX - sidebarDragStartX.current;
+      setSidebarWidth(Math.max(144, Math.min(320, sidebarDragStartW.current + delta)));
+    };
+    const onUp = () => { sidebarDragging.current = false; };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, []);
+
   // Load saved config on mount: server-only (no localStorage fallback)
   useEffect(() => {
     // Require an eventId — this component must load config from the server only.
@@ -1161,6 +1175,14 @@ export default function CardBuilder({
       toast,
     });
 
+  const handleEventLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) =>
+    hb_handleEventLogoUpload(e, {
+      setCropImageUrl,
+      setCropMode,
+      setCropDialogOpen,
+      toast,
+    });
+
   const handleCropComplete = async (blob: Blob) =>
     hb_handleCropComplete(blob, {
       cropMode,
@@ -1168,6 +1190,7 @@ export default function CardBuilder({
       setBgIsGenerated,
       setTestHeadshot,
       setTestLogo,
+      setTestEventLogo,
       config,
       addElementToCanvas,
       setCropDialogOpen,
@@ -1236,7 +1259,7 @@ export default function CardBuilder({
       setHasUnsavedChanges,
     });
 
-  const dismissOnboarding = () =>
+  const dismissOnboarding = () => {
     hb_dismissOnboarding({
       setShowOnboarding,
       setOnboardingShowShapePicker,
@@ -1244,6 +1267,9 @@ export default function CardBuilder({
       setOnboardingQuickSetup,
       setPendingPreset,
     });
+    setOnboardingBrandSetup(false);
+    setOnboardingPlatformPicker(false);
+  };
 
   const applyPresetAndDismiss = (preset: StarterPreset) =>
     hb_applyPresetAndDismiss(preset, {
@@ -1271,7 +1297,7 @@ export default function CardBuilder({
         imageUrl={cropImageUrl}
         onCropComplete={handleCropComplete}
         aspectRatio={
-          cropMode === "logo"
+          cropMode === "logo" || cropMode === "event-logo"
             ? NaN // Free-form: logos come in all shapes
             : cropMode === "headshot"
               ? config.headshot?.shape === "vertical"
@@ -1291,25 +1317,27 @@ export default function CardBuilder({
               : config.headshot?.shape || "circle"
             : "square"
         }
-        title={cropMode === "logo" ? "Crop Logo" : "Crop Image"}
+        title={cropMode === "logo" || cropMode === "event-logo" ? "Crop Logo" : "Crop Image"}
         instructions={
-          cropMode === "logo"
+          cropMode === "logo" || cropMode === "event-logo"
             ? "Drag to reposition, scroll to zoom. Crop to the logo boundary — any shape is fine."
             : "Drag to reposition, scroll to zoom, adjust to fit perfectly."
         }
-        imageFormat={cropMode === "logo" ? "png" : "jpeg"}
+        imageFormat={cropMode === "logo" || cropMode === "event-logo" ? "png" : "jpeg"}
       />
 
       {/* ── Onboarding modal (website + promo card builders, shows once) ── */}
       {showOnboarding && (cardType === "website" || cardType === "promo") && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div
-            className={`bg-card border border-border rounded-2xl shadow-2xl w-full mx-4 overflow-hidden transition-all ${onboardingShowTemplates && !onboardingQuickSetup ? "max-w-3xl" : "max-w-lg"}`}
+            className={`bg-card border border-border rounded-2xl shadow-2xl w-full mx-4 overflow-hidden transition-all ${onboardingShowTemplates && !onboardingQuickSetup ? "max-w-2xl" : "max-w-lg"}`}
           >
             {/* Step 1: Welcome / choice */}
             {!onboardingShowShapePicker &&
               !onboardingShowTemplates &&
-              !onboardingQuickSetup && (
+              !onboardingQuickSetup &&
+              !onboardingBrandSetup &&
+              !onboardingPlatformPicker && (
                 <div className="relative p-8">
                   <button
                     onClick={dismissOnboarding}
@@ -1322,7 +1350,7 @@ export default function CardBuilder({
                   </p>
                   <div className="grid grid-cols-2 gap-3">
                     <button
-                      onClick={() => setOnboardingShowShapePicker(true)}
+                      onClick={() => isPromo ? setOnboardingBrandSetup(true) : setOnboardingShowShapePicker(true)}
                       className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-border hover:border-primary hover:bg-primary/5 transition-all group"
                     >
                       <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
@@ -1749,6 +1777,137 @@ export default function CardBuilder({
                 </button>
               </div>
             )}
+
+            {/* ── PROMO Step 2: Brand setup — event logo + colours ── */}
+            {isPromo && onboardingBrandSetup && !onboardingPlatformPicker && (
+              <div className="p-8">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setOnboardingBrandSetup(false)}
+                      className="p-1.5 rounded hover:bg-accent text-muted-foreground"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+                    <span className="font-semibold text-sm">Brand setup</span>
+                  </div>
+                  <button onClick={dismissOnboarding} className="p-1.5 rounded hover:bg-accent text-muted-foreground">
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                {/* Event logo upload */}
+                <div className="mb-5">
+                  <label className="text-xs font-medium mb-2 block">Event Logo</label>
+                  <div className="flex items-center gap-3">
+                    {testEventLogo ? (
+                      <div className="relative w-32 h-12 rounded-lg border border-border overflow-hidden bg-muted/30 flex items-center justify-center">
+                        <img src={testEventLogo} alt="Event logo" className="max-w-full max-h-full object-contain p-1" />
+                        <button
+                          type="button"
+                          onClick={() => setTestEventLogo(null)}
+                          className="absolute top-0.5 right-0.5 p-0.5 rounded bg-background/80 hover:bg-background text-muted-foreground"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => eventLogoInputRef.current?.click()}
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-lg border-2 border-dashed border-border hover:border-primary hover:bg-primary/5 text-sm text-muted-foreground hover:text-primary transition-all"
+                      >
+                        <Upload className="h-4 w-4" />
+                        Upload event logo
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1.5">PNG or JPEG — will appear on every promo card</p>
+                </div>
+
+                {/* Brand colour + text colour */}
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                  <div>
+                    <label className="text-xs font-medium mb-2 block">Brand colour</label>
+                    <div className="flex items-center gap-1.5">
+                      <QuickColorPicker value={quickBg} onChange={setQuickBg} label="Brand colour" />
+                      <HexColorInput value={quickBg} onChange={setQuickBg} className="flex-1 h-7 text-xs font-mono px-1.5 rounded border border-border bg-background min-w-0" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium mb-2 block">Text colour</label>
+                    <div className="flex items-center gap-1.5">
+                      <QuickColorPicker value={quickTextColor} onChange={setQuickTextColor} label="Text colour" />
+                      <HexColorInput value={quickTextColor} onChange={setQuickTextColor} className="flex-1 h-7 text-xs font-mono px-1.5 rounded border border-border bg-background min-w-0" />
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setOnboardingPlatformPicker(true)}
+                  className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 transition-colors"
+                >
+                  Choose platform
+                </button>
+              </div>
+            )}
+
+            {/* ── PROMO Step 3: Platform picker ── */}
+            {isPromo && onboardingPlatformPicker && (
+              <div className="p-8">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setOnboardingPlatformPicker(false)}
+                      className="p-1.5 rounded hover:bg-accent text-muted-foreground"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+                    <span className="font-semibold text-sm">Choose platform</span>
+                  </div>
+                  <button onClick={dismissOnboarding} className="p-1.5 rounded hover:bg-accent text-muted-foreground">
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  {[
+                    { label: "Instagram Feed", sub: "1080 × 1080 px", preset: PROMO_INSTAGRAM_FEED_PRESETS[0], shapeW: 28, shapeH: 28 },
+                    { label: "Instagram Story", sub: "1080 × 1920 px", preset: PROMO_INSTAGRAM_STORY_PRESETS[0], shapeW: 18, shapeH: 32 },
+                    { label: "LinkedIn Post",   sub: "1200 × 627 px",  preset: PROMO_LINKEDIN_PRESETS[0],        shapeW: 36, shapeH: 19 },
+                    { label: "X / Twitter",     sub: "1200 × 675 px",  preset: PROMO_X_PRESETS[0],              shapeW: 36, shapeH: 20 },
+                  ].map(({ label, sub, preset, shapeW, shapeH }) => (
+                    <button
+                      key={label}
+                      type="button"
+                      onClick={() => {
+                        preset.apply(quickBg, quickTextColor, "Montserrat", preset.canvasW, preset.canvasH);
+                        setBgColor(quickBg);
+                        dismissOnboarding();
+                        setShowCanvasTip(true);
+                      }}
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-xl border-2 border-border hover:border-primary hover:bg-primary/5 transition-all text-left group"
+                    >
+                      <div
+                        className="shrink-0 rounded border-2 border-muted-foreground/30 group-hover:border-primary/60 bg-muted/30 transition-colors"
+                        style={{ width: shapeW, height: shapeH }}
+                      />
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold leading-tight">{label}</div>
+                        <div className="text-xs text-muted-foreground">{sub}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="text-center mt-4">
+                  <button type="button" onClick={dismissOnboarding} className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2">
+                    Blank canvas
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1813,7 +1972,11 @@ export default function CardBuilder({
                 <>
                   <button
                     onClick={() => {
-                      setOnboardingShowShapePicker(true);
+                      if (isPromo) {
+                        setOnboardingBrandSetup(true);
+                      } else {
+                        setOnboardingShowShapePicker(true);
+                      }
                       setShowOnboarding(true);
                     }}
                     className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-xs font-semibold transition-colors"
@@ -2578,7 +2741,20 @@ export default function CardBuilder({
         {/* Main Area */}
         <div className="flex-1 flex overflow-hidden">
           {/* Left Sidebar - Elements */}
-          <div className="w-36 border-r border-border/60 bg-muted/20 flex flex-col items-center pt-3 pb-4 gap-3 overflow-y-auto">
+          <div
+            className="relative border-r border-border/60 bg-muted/20 flex flex-col items-center pt-3 pb-4 gap-3 overflow-y-auto shrink-0"
+            style={{ width: sidebarWidth }}
+          >
+            {/* Drag-to-resize handle */}
+            <div
+              className="absolute top-0 right-0 w-1.5 h-full cursor-col-resize z-10 hover:bg-primary/20 transition-colors"
+              onMouseDown={(e) => {
+                sidebarDragging.current = true;
+                sidebarDragStartX.current = e.clientX;
+                sidebarDragStartW.current = sidebarWidth;
+                e.preventDefault();
+              }}
+            />
             <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50 w-full px-3">
               Elements
             </span>
@@ -2620,21 +2796,23 @@ export default function CardBuilder({
             )}
 
             {/* Starter Templates */}
-            {cardType === "website" && (
-              <div className="w-full px-2">
-                <button
-                  onClick={() => {
+            <div className="w-full px-2">
+              <button
+                onClick={() => {
+                  if (isPromo) {
+                    setOnboardingBrandSetup(true);
+                  } else {
                     setOnboardingShowShapePicker(true);
-                    setShowOnboarding(true);
-                  }}
-                  className="w-full flex flex-col items-center gap-1 p-2 rounded-lg transition-colors hover:bg-accent"
-                  title="Starter Templates"
-                >
-                  <Layers className="h-5 w-5" />
-                  <span className="text-xs">Templates</span>
-                </button>
-              </div>
-            )}
+                  }
+                  setShowOnboarding(true);
+                }}
+                className="w-full flex flex-col items-center gap-1 p-2 rounded-lg transition-colors hover:bg-accent"
+                title="Starter Templates"
+              >
+                <Layers className="h-5 w-5" />
+                <span className="text-xs">Templates</span>
+              </button>
+            </div>
 
             {/* Background — colour + image, unified inline panel */}
             <div className="w-full px-2">
@@ -2699,6 +2877,33 @@ export default function CardBuilder({
                         Custom: {canvasWidth}×{canvasHeight}
                       </option>
                     </select>
+                  </div>
+
+                  {/* Image upload */}
+                  <div>
+                    <div className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">
+                      Background image
+                    </div>
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className={`w-full flex items-center gap-1.5 px-2 py-1.5 rounded border text-xs transition-colors ${templateUrl ? "border-primary/40 bg-primary/5 text-primary" : "border-border hover:bg-accent"}`}
+                    >
+                      <Upload className="h-3 w-3 shrink-0" />
+                      <span className="truncate">
+                        {templateUrl ? "Replace image" : "Upload image"}
+                      </span>
+                    </button>
+                    {templateUrl && (
+                      <button
+                        onClick={() => {
+                          setTemplateUrl(null);
+                          setHasUnsavedChanges(true);
+                        }}
+                        className="w-full text-[10px] text-muted-foreground hover:text-destructive text-left mt-1"
+                      >
+                        ✕ Remove image
+                      </button>
+                    )}
                   </div>
 
                   {/* Colour swatches */}
@@ -2802,33 +3007,6 @@ export default function CardBuilder({
                         );
                       })}
                     </div>
-                  </div>
-
-                  {/* Image upload */}
-                  <div>
-                    <div className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">
-                      Background
-                    </div>
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      className={`w-full flex items-center gap-1.5 px-2 py-1.5 rounded border text-xs transition-colors ${templateUrl ? "border-primary/40 bg-primary/5 text-primary" : "border-border hover:bg-accent"}`}
-                    >
-                      <Upload className="h-3 w-3 shrink-0" />
-                      <span className="truncate">
-                        {templateUrl ? "Replace" : "Upload"}
-                      </span>
-                    </button>
-                    {templateUrl && (
-                      <button
-                        onClick={() => {
-                          setTemplateUrl(null);
-                          setHasUnsavedChanges(true);
-                        }}
-                        className="w-full text-[10px] text-muted-foreground hover:text-destructive text-left mt-1"
-                      >
-                        ✕ Remove image
-                      </button>
-                    )}
                   </div>
                 </div>
               )}
@@ -3267,21 +3445,21 @@ export default function CardBuilder({
                   <ImageIcon className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
                   <p className="text-sm font-medium mb-1">Ready when you are</p>
                   <p className="text-xs text-muted-foreground mb-4">
-                    {cardType === "website"
-                      ? "Load a template to get started, or add elements from the left panel."
-                      : "Add elements from the left panel."}
+                    Add elements from the left panel, or start from a template.
                   </p>
-                  {cardType === "website" && (
-                    <button
-                      onClick={() => {
+                  <button
+                    onClick={() => {
+                      if (isPromo) {
+                        setOnboardingBrandSetup(true);
+                      } else {
                         setOnboardingShowShapePicker(true);
-                        setShowOnboarding(true);
-                      }}
-                      className="px-3 py-1.5 text-xs font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-                    >
-                      Browse templates
-                    </button>
-                  )}
+                      }
+                      setShowOnboarding(true);
+                    }}
+                    className="px-3 py-1.5 text-xs font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                  >
+                    Browse templates
+                  </button>
                 </div>
               </div>
             )}
@@ -3304,12 +3482,52 @@ export default function CardBuilder({
 
           {/* Right Sidebar - Preview */}
           <div className="w-56 border-l bg-card/30 p-4 overflow-y-auto space-y-5">
+            {/* Event Logo — promo only, sits above the preview section */}
+            {isPromo && (
+              <div>
+                <h3 className="text-sm font-semibold mb-0.5">Event Logo</h3>
+                <p className="text-xs text-muted-foreground mb-2 leading-snug">
+                  Appears on every promo card.
+                </p>
+                <input
+                  ref={eventLogoInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg"
+                  onChange={handleEventLogoUpload}
+                  className="hidden"
+                />
+                {testEventLogo ? (
+                  <div className="relative rounded-lg overflow-hidden border border-border bg-muted/30">
+                    <img
+                      src={testEventLogo}
+                      alt="Event logo"
+                      className="w-full h-16 object-contain p-2"
+                    />
+                    <button
+                      onClick={() => setTestEventLogo(null)}
+                      className="absolute top-1.5 right-1.5 p-1 bg-background/90 rounded-full shadow text-muted-foreground hover:text-foreground"
+                      title="Remove"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => eventLogoInputRef.current?.click()}
+                    className="w-full h-16 flex flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-border hover:border-primary/50 hover:bg-primary/5 transition-colors text-muted-foreground hover:text-primary"
+                  >
+                    <Upload className="h-4 w-4" />
+                    <span className="text-xs">Upload event logo</span>
+                  </button>
+                )}
+              </div>
+            )}
+
             {/* Header */}
             <div>
               <h3 className="text-sm font-semibold">Preview</h3>
               <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
-                Upload sample images to see your design with real content. These
-                are never saved.
+                Upload sample images to see your design. These are never saved.
               </p>
             </div>
 

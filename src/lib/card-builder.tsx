@@ -1,7 +1,4 @@
 // Icon helper and dynamic field template creation used by CardBuilder
-import { FaLinkedin, FaTwitter, FaFacebook, FaInstagram, FaGithub } from 'react-icons/fa';
-import { Globe, Type } from 'lucide-react';
-import type { FormFieldConfig } from '@/components/SpeakerFormBuilder';
 import { useState, useEffect } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { QUICK_SWATCHES } from '@/lib/card-builder-utils';
@@ -305,6 +302,64 @@ export function TemplateThumbnail({ type }: { type: string }) {
               className="mt-4 rounded"
               style={{ width: "30%", height: "12%", background: "#E5E7EB" }}
             />
+          </div>
+        </div>
+      );
+    case "instagram-feed":
+      return (
+        <div className="relative w-full h-full bg-slate-900 overflow-hidden flex flex-col items-center">
+          <div className="absolute top-3 left-3 rounded" style={{ width: "28%", height: "10%", background: "rgba(255,255,255,0.2)" }} />
+          <div className="rounded-full mt-5" style={{ width: "46%", paddingTop: "46%", background: TN_PHOTO, opacity: 0.7 }} />
+          <div className="mt-auto pb-4 w-full px-4 space-y-1.5">
+            <div className="rounded text-center mx-auto" style={{ height: 5, width: "55%", background: "rgba(255,255,255,0.5)" }} />
+            <div className="rounded" style={{ height: 9, width: "85%", background: "#ffffff" }} />
+            <div className="rounded" style={{ height: 6, width: "60%", background: "rgba(255,255,255,0.65)" }} />
+            <div className="rounded" style={{ height: 4, width: "45%", background: "rgba(255,255,255,0.4)" }} />
+          </div>
+          <div className="absolute bottom-0 left-0 right-0" style={{ height: "50%", background: "linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 100%)" }} />
+        </div>
+      );
+    case "instagram-story":
+      return (
+        <div className="relative w-full h-full bg-slate-900 overflow-hidden flex flex-col items-center">
+          <div className="rounded mx-auto mt-3" style={{ width: "40%", height: "7%", background: "rgba(255,255,255,0.2)" }} />
+          <div className="rounded-full mt-3" style={{ width: "48%", paddingTop: "48%", background: TN_PHOTO, opacity: 0.7 }} />
+          <div className="mt-auto pb-3 w-full px-3 space-y-1.5">
+            <div className="rounded mx-auto" style={{ height: 4, width: "50%", background: "rgba(255,255,255,0.5)" }} />
+            <div className="rounded mx-auto" style={{ height: 8, width: "80%", background: "#ffffff" }} />
+            <div className="rounded mx-auto" style={{ height: 5, width: "55%", background: "rgba(255,255,255,0.65)" }} />
+            <div className="rounded mx-auto" style={{ height: 4, width: "40%", background: "rgba(255,255,255,0.4)" }} />
+          </div>
+          <div className="absolute bottom-0 left-0 right-0" style={{ height: "45%", background: "linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 100%)" }} />
+        </div>
+      );
+    case "linkedin-post":
+      return (
+        <div className="relative w-full h-full bg-slate-900 overflow-hidden flex">
+          <div className="h-full flex items-center justify-center" style={{ width: "42%", background: TN_PHOTO, opacity: 0.6 }}>
+            <PersonSilhouette size={40} className="opacity-30" />
+          </div>
+          <div className="flex-1 p-3 flex flex-col justify-center gap-1.5">
+            <div className="rounded mb-1" style={{ height: "10%", width: "55%", background: "rgba(255,255,255,0.2)" }} />
+            <div className="rounded" style={{ height: 5, width: "70%", background: "rgba(255,255,255,0.5)" }} />
+            <div className="rounded" style={{ height: 9, width: "95%", background: "#ffffff" }} />
+            <div className="rounded mt-1" style={{ height: 5, width: "65%", background: "rgba(255,255,255,0.65)" }} />
+            <div className="rounded" style={{ height: 4, width: "50%", background: "rgba(255,255,255,0.4)" }} />
+          </div>
+        </div>
+      );
+    case "x-post":
+      return (
+        <div className="relative w-full h-full bg-slate-900 overflow-hidden flex">
+          <div className="h-full flex items-center justify-center" style={{ width: "44%", background: TN_PHOTO, opacity: 0.6 }}>
+            <PersonSilhouette size={40} className="opacity-30" />
+          </div>
+          <div className="flex-1 p-3 flex flex-col justify-center gap-1.5">
+            <div className="rounded mb-1" style={{ height: "10%", width: "55%", background: "rgba(255,255,255,0.2)" }} />
+            <div className="rounded" style={{ height: 5, width: "70%", background: "rgba(255,255,255,0.5)" }} />
+            <div className="rounded" style={{ height: 9, width: "90%", background: "#ffffff" }} />
+            <div className="rounded mt-1" style={{ height: 5, width: "60%", background: "rgba(255,255,255,0.65)" }} />
+            <div className="rounded" style={{ height: 4, width: "45%", background: "rgba(255,255,255,0.4)" }} />
           </div>
         </div>
       );

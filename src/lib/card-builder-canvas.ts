@@ -13,6 +13,7 @@ type CreateCanvasParams = {
   setContextMenu: (c: { x: number; y: number; elementKey: string } | null) => void;
   headshotInputRef: React.RefObject<HTMLInputElement | null>;
   logoInputRef: React.RefObject<HTMLInputElement | null>;
+  eventLogoInputRef: React.RefObject<HTMLInputElement | null>;
   createSnapLineUtil: (x1: number, y1: number, x2: number, y2: number) => any;
   clearLines: (canvas: fabric.Canvas, lines: any[]) => void;
   computeSnapMatches: (...args: any[]) => any;
@@ -35,6 +36,7 @@ export const createFabricCanvas = (params: CreateCanvasParams) => {
     setContextMenu,
     headshotInputRef,
     logoInputRef,
+    eventLogoInputRef,
     createSnapLineUtil,
     clearLines,
     computeSnapMatches,
@@ -203,6 +205,8 @@ export const createFabricCanvas = (params: CreateCanvasParams) => {
       headshotInputRef.current?.click();
     } else if (e.target?.data?.elementKey === "companyLogo") {
       logoInputRef.current?.click();
+    } else if (e.target?.data?.elementKey === "eventLogo") {
+      eventLogoInputRef.current?.click();
     }
   });
 

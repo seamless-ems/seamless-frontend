@@ -18,6 +18,7 @@ type RenderParams = {
   templateUrl: string | null;
   testHeadshot: string | null;
   testLogo: string | null;
+  testEventLogo: string | null;
   bgGradient: { from: string; to: string } | null;
   bgColor: string;
   canvasWidth: number;
@@ -34,6 +35,7 @@ export async function renderAllElements(params: RenderParams) {
     templateUrl,
     testHeadshot,
     testLogo,
+    testEventLogo,
     bgGradient,
     bgColor,
     canvasWidth,
@@ -326,6 +328,44 @@ export async function renderAllElements(params: RenderParams) {
         canvas.add(group);
         elementRefs.current.companyLogo = group;
       }
+    } else if (key === "eventLogo") {
+      if (testEventLogo) {
+        const img = await loadImagePromise(testEventLogo);
+        const fabricImg = new fabric.Image(img, { left: cfg.x, top: cfg.y, opacity: cfg.opacity ?? 1, selectable: true, hasControls: true, lockRotation: true, lockUniScaling: false, data: { elementKey: "eventLogo" } });
+
+        const LOGO_PAD = 10;
+        const dropW = cfg.width || cfg.size;
+        const dropH = cfg.height || cfg.size;
+
+        if (cfg.actualWidth) {
+          fabricImg.scaleToWidth(cfg.actualWidth);
+        } else {
+          const naturalW = (fabricImg.width as number) || 1;
+          const naturalH = (fabricImg.height as number) || 1;
+          const maxW = dropW - LOGO_PAD * 2;
+          const maxH = dropH - LOGO_PAD * 2;
+          const scale = Math.min(maxW / naturalW, maxH / naturalH);
+          fabricImg.set({ scaleX: scale, scaleY: scale });
+          const scaledW = naturalW * scale;
+          const scaledH = naturalH * scale;
+          fabricImg.set({ left: cfg.x + (dropW - scaledW) / 2, top: cfg.y + (dropH - scaledH) / 2 });
+        }
+
+        canvas.add(fabricImg);
+        elementRefs.current.eventLogo = fabricImg;
+      } else {
+        const width = cfg.width || cfg.size || 60;
+        const height = cfg.height || cfg.size || 60;
+
+        const fillRect = new fabric.Rect({ left: 0, top: 0, width: width, height: height, fill: "#e5e7eb", strokeWidth: 0, rx: 4, ry: 4, selectable: false, evented: false });
+        const borderRect = new fabric.Rect({ left: 2, top: 2, width: width - 4, height: height - 4, fill: "transparent", stroke: "#9ca3af", strokeWidth: 1.5, strokeDashArray: [5, 5], strokeUniform: true, rx: 3, ry: 3, selectable: false, evented: false });
+        const text = new fabric.Text("Event Logo", { left: width / 2, top: height / 2, fontSize: Math.min(Math.max(11, width / 8), 18), fill: "#6b7280", fontFamily: "Inter", originX: "center", originY: "center", selectable: false, evented: false });
+
+        const group = new fabric.Group([fillRect, borderRect, text], { left: cfg.x, top: cfg.y, selectable: true, hasControls: true, lockRotation: true, subTargetCheck: false, data: { elementKey: "eventLogo" } });
+
+        canvas.add(group);
+        elementRefs.current.eventLogo = group;
+      }
     } else if (["name", "title", "company", "firstName", "lastName"].includes(key)) {
       let displayText = cfg.text || cfg.label;
       // Backwards compat: single `name` element using two-line format
@@ -398,7 +438,7 @@ export async function renderAllElements(params: RenderParams) {
         canvas.add(group);
         elementRefs.current[key] = group;
       } else if (cfg.type === "dynamic-text") {
-        const text = new fabric.Textbox(cfg.text || cfg.label, { left: cfg.x, top: cfg.y, fontSize: cfg.fontSize, fontFamily: cfg.fontFamily, fill: cfg.color, paintFirst: "fill" as any, fontWeight: cfg.fontWeight, textAlign: cfg.textAlign, width: cfg.width, opacity: cfg.opacity ?? 1, selectable: true, editable: true, hasControls: true, lockRotation: true, lockUniScaling: false, data: { elementKey: key, type: "dynamic-text" } });
+        const text = new fabric.Textbox(cfg.text || cfg.label, { left: cfg.x, top: cfg.y, fontSize: cfg.fontSize, fontFamily: cfg.fontFamily, fill: cfg.color, paintFirst: "fill" as any, fontWeight: cfg.fontWeight, textAlign: cfg.textAlign, width: cfg.width, opacity: cfg.opacity ?? 1, charSpacing: cfg.charSpacing ?? 0, selectable: true, editable: true, hasControls: true, lockRotation: true, lockUniScaling: false, data: { elementKey: key, type: "dynamic-text" } });
 
         text.setControlsVisibility({ ml: false, mt: false, mr: true, mb: false, mtr: false });
 
