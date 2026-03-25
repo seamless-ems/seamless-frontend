@@ -218,7 +218,7 @@ export function DashboardLayout({ children, eventId, mode: propMode }: Dashboard
               )}
 
               {/* Switch Mode (Organizer/Speaker) */}
-              {mode !== "organizer" ? (
+              {/* {mode !== "organizer" ? (
                 <DropdownMenuItem
                   onSelect={() => {
                     setMode("organizer");
@@ -238,7 +238,7 @@ export function DashboardLayout({ children, eventId, mode: propMode }: Dashboard
                 >
                   Switch to Speaker
                 </DropdownMenuItem>
-              )}
+              )} */}
 
               <DropdownMenuSeparator />
 

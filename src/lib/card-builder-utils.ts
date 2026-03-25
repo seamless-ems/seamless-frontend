@@ -76,46 +76,10 @@ export const getGradientCoords = (
 export const migrateLoadedConfig = (
   cfg: CardConfig,
 ): { migrated: CardConfig; changed: boolean } => {
-  // If name already present and formatted, nothing to do
-  if (cfg?.name && cfg.name.nameFormat === "two-line") return { migrated: cfg, changed: false };
-
-  const out: CardConfig = { ...cfg };
-
-  // If name missing but firstName/lastName exist, synthesize a `name` element for rendering
-  if (!out.name && (out.firstName || out.first_name || out.lastName || out.last_name)) {
-    const firstStr = (typeof out.first_name === "string" && out.first_name) || (out.firstName && typeof out.firstName.text === "string" && out.firstName.text) || "";
-    const lastStr = (typeof out.last_name === "string" && out.last_name) || (out.lastName && typeof out.lastName.text === "string" && out.lastName.text) || "";
-    const combined = `${firstStr} ${lastStr}`.trim();
-
-    // Use styling/positioning from `firstName` element if available, otherwise from `lastName`, otherwise defaults
-    const src = out.firstName || out.lastName || {} as any;
-    const nameEl: any = {
-      label: src.label || "Name",
-      text: combined || src.text || "",
-      color: src.color || "#000000",
-      fontFamily: src.fontFamily || "Montserrat",
-      fontSize: typeof src.fontSize === "number" ? src.fontSize : parseInt(src.fontSize || 32, 10),
-      fontWeight: src.fontWeight ?? 700,
-      textAlign: src.textAlign || "left",
-      visible: src.visible !== undefined ? src.visible : true,
-      width: src.width || 300,
-      x: typeof src.x === "number" ? src.x : 150,
-      y: typeof src.y === "number" ? src.y : 50,
-      zIndex: src.zIndex ?? src.z_index ?? 2,
-      nameFormat: "two-line",
-    };
-
-    out.name = nameEl;
-    return { migrated: out, changed: true };
-  }
-
-  // If name exists but not marked two-line, ensure it is
-  if (out.name && out.name.nameFormat !== "two-line") {
-    const migrated = { ...out, name: { ...out.name, nameFormat: "two-line" } };
-    return { migrated, changed: true };
-  }
-
-  return { migrated: out, changed: false };
+  // Migration no-op: app now uses `firstName` and `lastName` elements everywhere.
+  // Any legacy conversion (if needed) should be handled elsewhere to avoid
+  // reintroducing a single combined element in the runtime config.
+  return { migrated: cfg, changed: false };
 };
 
 export const getGoogleFontsHref = (fonts: string[]) => {
@@ -138,7 +102,7 @@ export const ALIGN_MODES = [
 
 export type AlignDirection = (typeof ALIGN_MODES)[number]["id"];
 
-export const FIXED_KEYS = ["headshot", "name", "title", "company", "companyLogo"];
+export const FIXED_KEYS = ["headshot", "firstName", "lastName", "title", "company", "companyLogo"];
 
 export const ICON_COLORS: Record<string, string> = {
   linkedin: "#0A66C2",
@@ -295,7 +259,8 @@ export const shouldShowElementFromFields = (fieldsArray: any[], elementKey: stri
   if (!fieldsArray || fieldsArray.length === 0) return true;
   const fieldMapping: { [key: string]: string[] } = {
     headshot: ['headshot'],
-    name: ['first_name', 'last_name'],
+    firstName: ['first_name'],
+    lastName: ['last_name'],
     title: ['company_role'],
     company: ['company_name'],
     companyLogo: ['company_logo'],
@@ -324,17 +289,16 @@ export const presetMetasFromData = (presetsData: any[]) => {
 // Common arrays and small constants moved here to keep components tidy.
 export const DEFAULT_FIELD_IDS = [
   "headshot",
-  "name",
-  "title",
   "first_name",
   "last_name",
+  "title",
   "company_name",
   "company_role",
   "company_logo",
 ];
 
-export const NAME_TITLE_FIELDS = ['name', 'title'] as const;
-export const CORE_TEXT_FIELDS = ['name', 'title', 'company'] as const;
+export const NAME_TITLE_FIELDS = ['firstName', 'lastName', 'title'] as const;
+export const CORE_TEXT_FIELDS = ['firstName', 'lastName', 'title', 'company'] as const;
 
 export const GRADIENT_DIRECTIONS = ['bottom', 'top', 'left', 'right'] as const;
 export const GRADIENT_STYLES = ['dark', 'tonal', 'soft'] as const;

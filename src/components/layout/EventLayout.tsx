@@ -118,14 +118,14 @@ export default function EventLayout({ children }: { children: ReactNode }) {
                 </>
               )}
 
-              <DropdownMenuItem
+              {/* <DropdownMenuItem
                 onSelect={() => {
                   if (typeof window !== 'undefined') window.localStorage.setItem('dashboardMode', 'speaker');
                   navigate('/speaker');
                 }}
               >
                 Switch to Speaker
-              </DropdownMenuItem>
+              </DropdownMenuItem> */}
 
               <DropdownMenuSeparator />
 

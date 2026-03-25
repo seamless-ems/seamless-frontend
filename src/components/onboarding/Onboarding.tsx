@@ -482,7 +482,7 @@ const Onboarding: React.FC = () => {
             >
               <div className="space-y-6">
                 {/* Google Drive Card */}
-                <Card>
+                {/* <Card>
                   <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
                       <FolderOpen className="h-5 w-5 text-primary" />
@@ -595,7 +595,7 @@ const Onboarding: React.FC = () => {
                       </div>
                     )}
                   </CardContent>
-                </Card>
+                </Card> */}
 
                 {/* Event Details Card */}
                 <Card>
@@ -686,7 +686,7 @@ const Onboarding: React.FC = () => {
                 </Card>
 
                 {/* Email Settings Card */}
-                <Card>
+                {/* <Card>
                   <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
                       <Mail className="h-5 w-5 text-primary" />
@@ -742,7 +742,7 @@ const Onboarding: React.FC = () => {
                       />
                     </div>
                   </CardContent>
-                </Card>
+                </Card> */}
 
                 {/* Modules Card */}
                 <Card>

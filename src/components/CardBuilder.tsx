@@ -83,7 +83,7 @@ import {
   clearGradient as hb_clearGradient,
   dismissOnboarding as hb_dismissOnboarding,
   applyPresetAndDismiss as hb_applyPresetAndDismiss,
-  withNameParts as hb_withNameParts,
+  
 } from "@/lib/card-builder-helpers";
 import {
   SQUARE_PRESETS_DATA,
@@ -858,134 +858,38 @@ export default function CardBuilder({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [shapePopupOpen]);
 
-  // Save handler - declared before autosave effect to avoid TDZ
+  // Save handler — use shared helper to avoid duplication
   const handleSave = useCallback(
     async (silent = false) => {
-      // Compute effective config to send to backend (use live fabric font sizes below)
-      const effectiveConfig = { ...config };
-
-      // Backend payload uses shrunk fontSizes read from live Fabric objects.
-      const backendConfig = { ...effectiveConfig };
-      NAME_TITLE_FIELDS.forEach((k) => {
-        const obj = elementRefs.current[k] as fabric.Textbox | undefined;
-        if (obj && obj.fontSize && backendConfig[k]) {
-          backendConfig[k] = { ...backendConfig[k], fontSize: obj.fontSize };
-        }
+      await hb_handleSave(silent, {
+        config,
+        elementRefs,
+        canvasWidth,
+        canvasHeight,
+        templateUrl,
+        bgColor,
+        bgGradient,
+        cardType,
+        eventId,
+        setTemplateUrl,
+        setBgIsGenerated,
+        setHasUnsavedChanges,
+        toast,
       });
-
-      if (eventId) {
-        let finalTemplateUrl = templateUrl;
-        const bgIsGenerated = !templateUrl;
-        if (bgIsGenerated) {
-          try {
-            const bgCanvas = document.createElement("canvas");
-            bgCanvas.width = canvasWidth;
-            bgCanvas.height = canvasHeight;
-            const ctx = bgCanvas.getContext("2d");
-            if (ctx) {
-              if (bgGradient) {
-                const grad = ctx.createLinearGradient(
-                  0,
-                  0,
-                  canvasWidth,
-                  canvasHeight,
-                );
-                grad.addColorStop(0, bgGradient.from);
-                grad.addColorStop(1, bgGradient.to);
-                ctx.fillStyle = grad;
-              } else {
-                ctx.fillStyle = bgColor;
-              }
-              ctx.fillRect(0, 0, canvasWidth, canvasHeight);
-              finalTemplateUrl = bgCanvas.toDataURL("image/png");
-            }
-          } catch (_bgErr) {
-            // Non-fatal — proceed without background image
-          }
-        }
-
-        if (
-          finalTemplateUrl &&
-          (finalTemplateUrl.startsWith("data:") ||
-            finalTemplateUrl.startsWith("blob:"))
-        ) {
-          try {
-            const fetched = await fetch(finalTemplateUrl);
-            const blob = await fetched.blob();
-            const fileName = `template-${Date.now()}`;
-            const file = new File(
-              [blob],
-              `${fileName}.${(blob.type || "image/png").split("/").pop()}`,
-              { type: blob.type || "image/png" },
-            );
-
-            const uploadRes = await uploadFile(file, undefined, eventId);
-            const uploadedUrl =
-              uploadRes?.public_url ??
-              uploadRes?.publicUrl ??
-              uploadRes?.url ??
-              uploadRes?.id ??
-              null;
-
-            if (uploadedUrl) {
-              finalTemplateUrl = uploadedUrl;
-              if (!bgIsGenerated) {
-                setTemplateUrl(finalTemplateUrl);
-                setBgIsGenerated(false);
-              }
-            }
-          } catch (uploadErr) {
-            toast({
-              title: "Upload failed",
-              description:
-                "Could not upload background image to server. Saved locally instead.",
-              variant: "destructive",
-            });
-          }
-        }
-
-        const payloadConfig = hb_withNameParts({
-          ...backendConfig,
-          templateUrl: finalTemplateUrl,
-          canvasWidth,
-          canvasHeight,
-          bgColor,
-          bgGradient: bgGradient ?? undefined,
-          bgIsGenerated,
-        }, { elementRefs });
-        const saved = await createPromoConfig({ eventId, promoType: cardType, config: payloadConfig });
-
-        const serverTemplateUrl =
-          saved?.templateUrl ??
-          saved?.config?.templateUrl ??
-          saved?.config?.template_url ??
-          null;
-        if (serverTemplateUrl && !bgIsGenerated) {
-          setTemplateUrl(serverTemplateUrl);
-          setBgIsGenerated(false);
-        }
-
-        if (!silent)
-          toast({
-            title: "Saved",
-            description: `${isPromo ? "Promo" : "Website"} card template saved`,
-          });
-      } else {
-        throw new Error("eventId required to save card configuration");
-      }
-
-      setHasUnsavedChanges(false);
     },
     [
       config,
-      templateUrl,
+      elementRefs,
       canvasWidth,
       canvasHeight,
+      templateUrl,
       bgColor,
       bgGradient,
-      eventId,
       cardType,
-      isPromo,
+      eventId,
+      setTemplateUrl,
+      setBgIsGenerated,
+      setHasUnsavedChanges,
     ],
   );
 
@@ -1396,8 +1300,8 @@ export default function CardBuilder({
         imageFormat={cropMode === "logo" ? "png" : "jpeg"}
       />
 
-      {/* ── Onboarding modal (website card builder only, shows once) ── */}
-      {showOnboarding && cardType === "website" && (
+      {/* ── Onboarding modal (website + promo card builders, shows once) ── */}
+      {showOnboarding && (cardType === "website" || cardType === "promo") && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div
             className={`bg-card border border-border rounded-2xl shadow-2xl w-full mx-4 overflow-hidden transition-all ${onboardingShowTemplates && !onboardingQuickSetup ? "max-w-3xl" : "max-w-lg"}`}
@@ -1904,8 +1808,8 @@ export default function CardBuilder({
 
             {/* Right: Layers, undo/redo, zoom, export, save */}
             <div className="flex items-center gap-1 shrink-0">
-              {/* Templates button — website card builder only */}
-              {cardType === "website" && (
+              {/* Templates button — website and promo card builders */}
+              {(cardType === "website" || cardType === "promo") && (
                 <>
                   <button
                     onClick={() => {
@@ -3034,26 +2938,29 @@ export default function CardBuilder({
               </div>
             )}
 
-            {shouldShowElement("name") && (
+            {shouldShowElement("firstName") && (
               <button
                 draggable
-                onDragStart={(e) => handleDragStart(e, "name")}
-                onClick={() => toggleElement("name")}
-                className={`${SIDEBAR_ELEM_BTN} ${config.name ? "bg-primary/10 border-2 border-primary/30" : "hover:bg-accent"}`}
-                title={
-                  config.name
-                    ? "Click to remove"
-                    : "Drag to canvas or click to add"
-                }
+                onDragStart={(e) => handleDragStart(e, "firstName")}
+                onClick={() => toggleElement("firstName")}
+                className={`${SIDEBAR_ELEM_BTN} ${config.firstName ? "bg-primary/10 border-2 border-primary/30" : "hover:bg-accent"}`}
+                title={config.firstName ? "Click to remove" : "Drag to canvas or click to add"}
               >
-                <Type
-                  className={`h-5 w-5 ${config.name ? "text-primary" : ""}`}
-                />
-                <span
-                  className={`text-xs ${config.name ? "text-primary font-semibold" : ""}`}
-                >
-                  Name
-                </span>
+                <Type className={`h-5 w-5 ${config.firstName ? "text-primary" : ""}`} />
+                <span className={`text-xs ${config.firstName ? "text-primary font-semibold" : ""}`}>First Name</span>
+              </button>
+            )}
+
+            {shouldShowElement("lastName") && (
+              <button
+                draggable
+                onDragStart={(e) => handleDragStart(e, "lastName")}
+                onClick={() => toggleElement("lastName")}
+                className={`${SIDEBAR_ELEM_BTN} ${config.lastName ? "bg-primary/10 border-2 border-primary/30" : "hover:bg-accent"}`}
+                title={config.lastName ? "Click to remove" : "Drag to canvas or click to add"}
+              >
+                <Type className={`h-5 w-5 ${config.lastName ? "text-primary" : ""}`} />
+                <span className={`text-xs ${config.lastName ? "text-primary font-semibold" : ""}`}>Last Name</span>
               </button>
             )}
 

@@ -87,7 +87,7 @@ export default function SpeakerPreviews({ s, type }: Props) {
   }, [eventId, s?.id, type]);
 
   return (
-    <div className="rounded-lg border border-border overflow-hidden">
+    <div className="w-full rounded-lg border border-border overflow-auto">
       {loading && (
         <div className="p-8 flex items-center justify-center min-h-[200px]">
           <p className="text-sm text-muted-foreground">Loading preview…</p>
@@ -101,8 +101,8 @@ export default function SpeakerPreviews({ s, type }: Props) {
       {/* Always in DOM so ref is never null when the effect runs */}
       <div
         ref={containerRef}
-        className={loading || error ? 'hidden' : ''}
-        style={{ background: '#fff', padding: '16px' }}
+        className={loading || error ? 'hidden' : 'w-full flex justify-center'}
+        style={{ background: '#fff', padding: '16px', width: '100%', display: 'flex', justifyContent: 'center' }}
       />
     </div>
   );

@@ -326,8 +326,9 @@ export async function renderAllElements(params: RenderParams) {
         canvas.add(group);
         elementRefs.current.companyLogo = group;
       }
-    } else if (["name", "title", "company"].includes(key)) {
+    } else if (["name", "title", "company", "firstName", "lastName"].includes(key)) {
       let displayText = cfg.text || cfg.label;
+      // Backwards compat: single `name` element using two-line format
       if (key === "name" && cfg.nameFormat === "two-line") {
         const parts = displayText.trim().split(/\s+/);
         displayText = parts.length >= 2 ? parts.slice(0, -1).join(" ") + "\n" + parts[parts.length - 1] : displayText;
@@ -337,9 +338,10 @@ export async function renderAllElements(params: RenderParams) {
       text.setControlsVisibility({ tl: false, tr: false, bl: false, br: false, ml: false, mt: false, mr: true, mb: false, mtr: false });
       text.set({ scaleX: 1, scaleY: 1 });
 
-      if (key === "name" || key === "title") {
-        const maxLines = 2;
-        const minFontSize = key === "name" ? 20 : 14;
+      // When using separate `firstName`/`lastName`, allow only 1 line each; keep title at up to 2 lines
+      if (key === "name" || key === "title" || key === "firstName" || key === "lastName") {
+        const maxLines = key === "title" ? 2 : 1;
+        const minFontSize = key === "title" ? 14 : 20;
         const boxWidth = cfg.width || 300;
         let fs = cfg.fontSize;
 

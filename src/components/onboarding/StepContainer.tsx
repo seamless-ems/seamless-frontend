@@ -21,7 +21,7 @@ const StepContainer: React.FC<StepContainerProps> = ({
   isNextDisabled = false,
 }) => {
   return (
-    <div className="max-w-xl mx-auto bg-white rounded-3xl shadow-xl overflow-hidden animate-in fade-in zoom-in duration-300">
+    <div className="max-w-5xl mx-auto bg-white rounded-3xl shadow-xl overflow-hidden animate-in fade-in zoom-in duration-300">
       <div className="p-8 md:p-12">
         <header className="mb-10 text-center">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">{title}</h1>
