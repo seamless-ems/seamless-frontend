@@ -28,7 +28,7 @@ function buildRejectionEmail(firstName: string, eventName: string) {
 function buildApprovalEmail(firstName: string, eventName: string) {
   return {
     subject: `You're in! Complete your speaker profile for ${eventName}`,
-    body: `Congratulations! We're thrilled to let you know that your application to speak at ${eventName} has been accepted.\n\nTo get started, please complete your speaker profile using the link below. You'll need to log in or create a free Seamless account — this is where you'll manage your profile, view your speaker cards, and update your details going forward.\n\nPlease try to complete this as soon as possible so we can promote your session.\n\nIf you have any questions, don't hesitate to get in touch.`,
+    body: `Congratulations! We're thrilled to let you know that your application to speak at ${eventName} has been accepted.\n\nTo get started, please complete your speaker profile using the link below. You'll need to log in or create a free Seamless account — this is where you'll manage your profile, view your speaker cards, and update your details.\n\nPlease try to complete this as soon as possible so we can promote your session.\n\nIf you have any questions, don't hesitate to get in touch.`,
     signOff: `Best regards,\nTeam ${eventName}`,
     ctaLabel: "Complete your speaker profile",
   };
@@ -313,9 +313,7 @@ export default function ApplicationsTab({ eventId, eventName = "", emailDefaults
             <Share2 className="h-3.5 w-3.5" />Share
           </Button>
           <HelpTip title="Call for Speakers" side="bottom" align="end">
-            <p>Share your application form link so speakers can apply directly. Use <span className="font-medium text-foreground">Edit Application Form</span> to customise what you ask for.</p>
-            <p>When you <span className="font-medium text-foreground">approve</span> an application, the speaker is moved to your Speakers tab and sent a link to complete their full profile — headshot, bio, logo, and card details.</p>
-            <p><span className="font-medium text-foreground">Rejected</span> applicants are not notified unless you choose to send the rejection email shown after clicking Reject.</p>
+            <p>Share the form link so speakers can apply. Approve to move them to your <span className="font-medium text-foreground">Speakers</span> tab; reject to dismiss (optional rejection email included).</p>
           </HelpTip>
         </div>
       </div>

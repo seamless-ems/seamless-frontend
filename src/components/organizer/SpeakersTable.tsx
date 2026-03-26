@@ -256,11 +256,11 @@ export default function SpeakersTable({ speakers, isLoading, eventId, selectedTa
           <th className="px-5 py-2.5 text-left text-xs font-medium text-muted-foreground w-[140px]">
             <div className="flex items-center gap-1.5">
               Status
-              <HelpTip title="Speaker status" side="bottom" align="start" compact>
-                <p><span className="font-medium text-foreground">Info Pending</span> — waiting for the speaker to submit their details via the intake form.</p>
-                <p><span className="font-medium text-foreground">Card Approval Pending</span> — details received, review and approve their speaker and social cards.</p>
-                <p><span className="font-medium text-foreground">Cards Approved</span> — cards approved, toggle them on in the Embed tab to publish to your website.</p>
-                <p><span className="font-medium text-foreground">Published</span> — live on your website embed.</p>
+              <HelpTip title="Status" side="bottom" align="start" compact>
+                <p><span className="font-medium text-foreground">Info Pending</span> — awaiting intake form.</p>
+                <p><span className="font-medium text-foreground">Approval Pending</span> — approve their cards.</p>
+                <p><span className="font-medium text-foreground">Cards Approved</span> — toggle live in Embed.</p>
+                <p><span className="font-medium text-foreground">Published</span> — live on your site.</p>
               </HelpTip>
             </div>
           </th>

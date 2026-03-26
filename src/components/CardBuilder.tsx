@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useLocation } from "react-router-dom";
+import { useWarnOnLeave } from "@/hooks/useWarnOnLeave";
+import { UnsavedChangesDialog } from "@/components/ui/UnsavedChangesDialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -224,6 +226,8 @@ export default function CardBuilder({
 
   const [layersPanelOpen, setLayersPanelOpen] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  useWarnOnLeave(hasUnsavedChanges);
+  const [showLeaveDialog, setShowLeaveDialog] = useState(false);
   // Multi-selection tracking — for applying formatting to all selected text elements at once
   const [multiSelectedKeys, setMultiSelectedKeys] = useState<string[]>([]);
   const [contextMenu, setContextMenu] = useState<{
@@ -1286,6 +1290,13 @@ export default function CardBuilder({
 
   return (
     <>
+      <UnsavedChangesDialog
+        open={showLeaveDialog}
+        onSave={() => { setShowLeaveDialog(false); handleSave(); onBack?.(); }}
+        onDiscard={() => { setShowLeaveDialog(false); onBack?.(); }}
+        onCancel={() => setShowLeaveDialog(false)}
+      />
+
       <MissingFormDialog
         open={missingFormDialogOpen}
         onOpenChange={setMissingFormDialogOpen}
@@ -1929,7 +1940,10 @@ export default function CardBuilder({
               {onBack && (
                 <>
                   <button
-                    onClick={onBack}
+                    onClick={() => {
+                      if (hasUnsavedChanges) { setShowLeaveDialog(true); return; }
+                      onBack?.();
+                    }}
                     className={TOOLBAR_ICON_BTN}
                     title="Back to Speakers"
                   >
@@ -2170,15 +2184,11 @@ export default function CardBuilder({
               <div className="h-5 w-px bg-border mx-0.5" />
               {cardType === "website" ? (
                 <HelpTip title="Speaker Card Template" side="bottom" align="end">
-                  <p>This template applies to <span className="font-medium text-foreground">all speakers</span> for this event — one design, every speaker. Change it here and all cards update.</p>
-                  <p>Use <span className="font-medium text-foreground">Templates</span> to start from a preset, or build from scratch. The headshot, name, title and company are filled in automatically per speaker.</p>
-                  <p>Once saved, go to each speaker's profile to preview and <span className="font-medium text-foreground">approve their card</span>. Approved cards then appear in the Embed tab.</p>
+                  <p>One design, every speaker — headshot, name, title, and logo are filled in automatically. Save here, then approve each speaker's card from their profile.</p>
                 </HelpTip>
               ) : (
                 <HelpTip title="Social Card Template" side="bottom" align="end">
-                  <p>Social cards are for sharing on <span className="font-medium text-foreground">LinkedIn, Twitter, Instagram</span>, and similar. One template, every speaker gets their own version.</p>
-                  <p>Choose a format — <span className="font-medium text-foreground">square</span> (1:1), <span className="font-medium text-foreground">landscape</span> (16:9), or <span className="font-medium text-foreground">story</span> (9:16) — then design the layout using the sidebar tools.</p>
-                  <p>Speakers download their individual card from their profile page once you've approved it.</p>
+                  <p>One template, every speaker gets their own version for LinkedIn, Instagram, and similar. Choose square, landscape, or story format.</p>
                 </HelpTip>
               )}
             </div>

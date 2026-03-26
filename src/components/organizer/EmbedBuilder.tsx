@@ -91,7 +91,7 @@ export default function EmbedBuilder({ eventId }: { eventId: string | undefined 
               <Button variant="outline" size="sm" className="gap-1.5 h-8">
                 {copiedEmbed
                   ? <><Check className="h-3.5 w-3.5" />Copied</>
-                  : <><Copy className="h-3.5 w-3.5" />Copy code</>}
+                  : <><Copy className="h-3.5 w-3.5" />Copy Embed Code</>}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -113,10 +113,8 @@ export default function EmbedBuilder({ eventId }: { eventId: string | undefined 
           >
             <ExternalLink className="h-3.5 w-3.5" />Preview
           </Button>
-          <HelpTip title="How the embed works" side="bottom" align="end">
-            <p>Copy the code once and paste it into your website. From then on, you control what shows — toggle a speaker on here and they appear on your site instantly, no code changes needed.</p>
-            <p>Only speakers with approved cards in the <span className="font-medium text-foreground">Speakers</span> tab are available to toggle on.</p>
-            <p>Use <span className="font-medium text-foreground">iFrame snippet</span> for a transparent background (blends with your page) or <span className="font-medium text-foreground">Direct URL</span> if your site builder needs a plain link rather than embed code.</p>
+          <HelpTip title="Speaker wall embed" side="bottom" align="end">
+            <p>Paste the code once — then toggle speakers on or off here and your site updates instantly. Only speakers with approved cards appear in this list.</p>
           </HelpTip>
         </div>
       </div>

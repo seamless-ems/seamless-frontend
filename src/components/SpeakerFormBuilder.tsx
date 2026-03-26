@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useImperativeHandle, forwardRef } from "react";
+import React, { useState, useEffect, useRef, useImperativeHandle, forwardRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -57,6 +57,7 @@ interface SpeakerFormBuilderProps {
 
 export interface SpeakerFormBuilderHandle {
   save: () => void;
+  isDirty: boolean;
 }
 
 const DEFAULT_FIELDS: FormFieldConfig[] = [
@@ -152,6 +153,8 @@ const SpeakerFormBuilder = forwardRef<SpeakerFormBuilderHandle, SpeakerFormBuild
   const [fields, setFields] = useState<FormFieldConfig[]>(
     initialConfig ?? DEFAULT_FIELDS,
   );
+  const [isDirty, setIsDirty] = useState(false);
+  const initializedRef = useRef(false);
   const [customFieldDialog, setCustomFieldDialog] = useState(false);
   const [missingFormDialogOpen, setMissingFormDialogOpen] = useState(false);
   const [saveWarningOpen, setSaveWarningOpen] = useState(false);
@@ -225,6 +228,9 @@ const SpeakerFormBuilder = forwardRef<SpeakerFormBuilderHandle, SpeakerFormBuild
             setMissingFormDialogOpen(true);
           }
           setFields(DEFAULT_FIELDS);
+        })
+        .finally(() => {
+          if (mounted) setTimeout(() => { initializedRef.current = true; }, 0);
         });
     });
 
@@ -232,6 +238,8 @@ const SpeakerFormBuilder = forwardRef<SpeakerFormBuilderHandle, SpeakerFormBuild
       mounted = false;
     };
   }, [eventId, formType]);
+
+  const markDirty = () => { if (initializedRef.current) setIsDirty(true); };
 
   const toggleField = (fieldId: string) => {
     setFields((prev) =>
@@ -248,12 +256,14 @@ const SpeakerFormBuilder = forwardRef<SpeakerFormBuilderHandle, SpeakerFormBuild
         return f;
       }),
     );
+    markDirty();
   };
 
   const toggleRequired = (fieldId: string) => {
     setFields((prev) =>
       prev.map((f) => (f.id === fieldId ? { ...f, required: !f.required } : f)),
     );
+    markDirty();
   };
 
   const toggleCardBuilder = (fieldId: string) => {
@@ -264,6 +274,7 @@ const SpeakerFormBuilder = forwardRef<SpeakerFormBuilderHandle, SpeakerFormBuild
           : f,
       ),
     );
+    markDirty();
   };
 
   const addCustomField = () => {
@@ -295,11 +306,13 @@ const SpeakerFormBuilder = forwardRef<SpeakerFormBuilderHandle, SpeakerFormBuild
     });
     setCustomFieldDialog(false);
     toast({ title: "Custom field added" });
+    markDirty();
   };
 
   const removeCustomField = (fieldId: string) => {
     setFields((prev) => prev.filter((f) => f.id !== fieldId));
     toast({ title: "Field removed" });
+    markDirty();
   };
 
   const moveField = (index: number, direction: "up" | "down") => {
@@ -317,6 +330,7 @@ const SpeakerFormBuilder = forwardRef<SpeakerFormBuilderHandle, SpeakerFormBuild
       newFields[index],
     ];
     setFields(newFields);
+    markDirty();
   };
 
   const handleCopyLink = () => {
@@ -360,6 +374,7 @@ const SpeakerFormBuilder = forwardRef<SpeakerFormBuilderHandle, SpeakerFormBuild
         config: payloadConfig,
       });
       toast({ title: "Form configuration saved" });
+      setIsDirty(false);
       queryClient.invalidateQueries({ queryKey: ["event", eventId, "form-config", formType ?? "speaker-info"] });
       if (onSave) onSave(fields);
     } catch (err) {
@@ -372,7 +387,7 @@ const SpeakerFormBuilder = forwardRef<SpeakerFormBuilderHandle, SpeakerFormBuild
     }
   };
 
-  useImperativeHandle(ref, () => ({ save: handleSave }));
+  useImperativeHandle(ref, () => ({ save: handleSave, isDirty }));
 
   const enabledFields = fields.filter((f) => f.enabled);
 
@@ -384,21 +399,21 @@ const SpeakerFormBuilder = forwardRef<SpeakerFormBuilderHandle, SpeakerFormBuild
           <Label className="text-xs mb-1.5 block">Form Title</Label>
           <Input
             value={formTitle}
-            onChange={(e) => setFormTitle(e.target.value)}
+            onChange={(e) => { setFormTitle(e.target.value); markDirty(); }}
           />
         </div>
         <div className="flex-1 min-w-[180px]">
           <Label className="text-xs mb-1.5 block">Subtitle <span className="text-muted-foreground font-normal">(optional)</span></Label>
           <Input
             value={formSubtitle}
-            onChange={(e) => setFormSubtitle(e.target.value)}
+            onChange={(e) => { setFormSubtitle(e.target.value); markDirty(); }}
             placeholder="e.g. Please complete all fields"
           />
         </div>
         <div className="flex items-center gap-2 pb-0.5">
           <Switch
             checked={showFormTitle}
-            onCheckedChange={(v) => setShowFormTitle(Boolean(v))}
+            onCheckedChange={(v) => { setShowFormTitle(Boolean(v)); markDirty(); }}
           />
           <Label className="text-xs whitespace-nowrap">Show title</Label>
         </div>

@@ -68,7 +68,7 @@ On approval the backend must:
 1. Set `call_for_speakers_status: "approved"` on the speaker record
 2. Carry over all submitted application data (name, email, bio, company, role) into the standard speaker record — these fields should not be blank when the speaker appears in the Speakers tab
 3. Make the speaker appear in the standard speakers list (`GET /events/{eventId}/speakers` without `?form_type=call-for-speakers`) so they show in the Speakers tab
-4. **Send a notification email** to the speaker confirming their application was accepted and including the Speaker Intake link (`{origin}/speaker-intake/{eventId}`) so they can log in / create a Seamless account and complete their profile (headshot, logo, any missing fields). This is required — not optional — because speakers must have a Seamless account to manage their own profile and view their cards.
+4. **Send a notification email** to the speaker confirming their application was accepted and including the Speaker Intake link (`{origin}/speaker-intake/{eventId}`) so they can log in or create a free Seamless account and complete their profile (headshot, logo, bio, and any missing fields).
 
 On rejection:
 - Set `call_for_speakers_status: "rejected"` only — speaker does not appear in the standard speakers list

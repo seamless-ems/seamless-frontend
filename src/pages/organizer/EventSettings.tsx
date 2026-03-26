@@ -1,5 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useWarnOnLeave } from "@/hooks/useWarnOnLeave";
+import { UnsavedChangesDialog } from "@/components/ui/UnsavedChangesDialog";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getJson, updateEvent, getTeam, createCheckout } from "@/lib/api";
 import { Input } from "@/components/ui/input";
@@ -88,6 +90,10 @@ export default function EventSettings() {
   const { data: teams } = useQuery<any[]>({ queryKey: ["teams"], queryFn: () => getTeam() });
   const [selectedTeamId, setSelectedTeamId] = useState<string | undefined>(undefined);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+  const [showLeaveDialog, setShowLeaveDialog] = useState(false);
+  const initializedRef = useRef(false);
+  useWarnOnLeave(isDirty);
 
   useEffect(() => {
     if (!rawEvent) return;
@@ -137,24 +143,22 @@ export default function EventSettings() {
 
     setSelectedModules(modulesArray.map((m: any) => m.name || m.id));
     setSelectedTeamId(rawEvent.teamId ?? rawEvent.team_id ?? undefined);
+    // Mark clean after initial server data loads; any user change after this = dirty
+    setTimeout(() => { initializedRef.current = true; }, 0);
   }, [rawEvent]);
 
   const toggleModule = (moduleId: string) => {
     setSelectedModules((prev) => (prev.includes(moduleId) ? prev.filter((id) => id !== moduleId) : [...prev, moduleId]));
+    if (initializedRef.current) setIsDirty(true);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const doSave = async () => {
     if (!id) return;
     setIsSubmitting(true);
     try {
-      // Generate an event id if none present so uploads can be associated (keep existing id if server provided one)
       const eventId = rawEvent?.id ?? rawEvent?.event_id ?? id;
-
-      // convert selectedModules (array) -> modules object expected by API
       const modulesObj: Record<string, boolean> = {};
       selectedModules.forEach((m) => (modulesObj[m] = true));
-
       const payload: any = {
         id: eventId,
         title: formData.title,
@@ -168,24 +172,13 @@ export default function EventSettings() {
         reply_to_email: formData.replyToEmail || undefined,
         email_signature: formData.emailSignature || undefined,
       };
-
-      // Only include team_id if it's actually set
-      if (selectedTeamId) {
-        payload.team_id = selectedTeamId;
-      }
-
-      // Remove undefined values from payload
-      Object.keys(payload).forEach(key => {
-        if (payload[key] === undefined) {
-          delete payload[key];
-        }
-      });
-
+      if (selectedTeamId) payload.team_id = selectedTeamId;
+      Object.keys(payload).forEach(key => { if (payload[key] === undefined) delete payload[key]; });
       await updateEvent(id, payload);
       queryClient.invalidateQueries({ queryKey: ["event", id] });
+      setIsDirty(false);
       toast({ title: "Event updated" });
     } catch (err: any) {
-      
       const errorMsg = err?.message || String(err);
       toast({
         title: "Failed to update event",
@@ -197,12 +190,23 @@ export default function EventSettings() {
     }
   };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await doSave();
+  };
+
   if (!rawEvent && isLoading) return <div className="py-16 text-center">Loading…</div>;
 
   if (!rawEvent && error) return <div className="py-16 text-center text-destructive">Error loading event: {String(error.message)}</div>;
 
   return (
       <div className="max-w-4xl mx-auto space-y-6">
+      <UnsavedChangesDialog
+        open={showLeaveDialog}
+        onSave={async () => { setShowLeaveDialog(false); await doSave(); navigate(`/organizer/event/${id}`); }}
+        onDiscard={() => { setShowLeaveDialog(false); navigate(`/organizer/event/${id}`); }}
+        onCancel={() => setShowLeaveDialog(false)}
+      />
         <div>
           <h1 style={{ fontSize: 'var(--font-h1)', fontWeight: 600 }}>Edit Event</h1>
           <p className="text-muted-foreground mt-1" style={{ fontSize: 'var(--font-body)' }}>Update your event details and assets</p>
@@ -249,28 +253,28 @@ export default function EventSettings() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label>Event Title</Label>
-                <Input placeholder="e.g., Tech Summit 2025" value={formData.title} onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))} required />
+                <Input placeholder="e.g., Tech Summit 2025" value={formData.title} onChange={(e) => { setFormData((prev) => ({ ...prev, title: e.target.value })); setIsDirty(true); }} required />
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Start Date</Label>
-                  <Input type="date" value={formData.startDate} onChange={(e) => setFormData((prev) => ({ ...prev, startDate: e.target.value }))} required />
+                  <Input type="date" value={formData.startDate} onChange={(e) => { setFormData((prev) => ({ ...prev, startDate: e.target.value })); setIsDirty(true); }} required />
                 </div>
                 <div className="space-y-2">
                   <Label>End Date</Label>
-                  <Input type="date" value={formData.endDate} onChange={(e) => setFormData((prev) => ({ ...prev, endDate: e.target.value }))} />
+                  <Input type="date" value={formData.endDate} onChange={(e) => { setFormData((prev) => ({ ...prev, endDate: e.target.value })); setIsDirty(true); }} />
                 </div>
               </div>
 
               <div className="space-y-2">
                 <Label>Location</Label>
-                <Input placeholder="e.g., San Francisco, CA" value={formData.location} onChange={(e) => setFormData((prev) => ({ ...prev, location: e.target.value }))} />
+                <Input placeholder="e.g., San Francisco, CA" value={formData.location} onChange={(e) => { setFormData((prev) => ({ ...prev, location: e.target.value })); setIsDirty(true); }} />
               </div>
 
               <div className="space-y-2">
                 <Label>Event Website</Label>
-                <Input type="text" placeholder="www.example.com/event" value={formData.eventWebsite} onChange={(e) => setFormData((prev) => ({ ...prev, eventWebsite: e.target.value }))} required />
+                <Input type="text" placeholder="www.example.com/event" value={formData.eventWebsite} onChange={(e) => { setFormData((prev) => ({ ...prev, eventWebsite: e.target.value })); setIsDirty(true); }} required />
               </div>
             </CardContent>
           </Card>
@@ -338,30 +342,33 @@ export default function EventSettings() {
               <div className="space-y-2">
                 <Label>'From' Name</Label>
                 <Input placeholder="e.g., Your Company Events" value={formData.fromName}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, fromName: e.target.value }))} />
+                  onChange={(e) => { setFormData((prev) => ({ ...prev, fromName: e.target.value })); setIsDirty(true); }} />
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label>'From' Email</Label>
                   <Input type="email" placeholder="events@yourcompany.com" value={formData.fromEmail}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, fromEmail: e.target.value }))} />
+                    onChange={(e) => { setFormData((prev) => ({ ...prev, fromEmail: e.target.value })); setIsDirty(true); }} />
                 </div>
                 <div className="space-y-2">
                   <Label>'Reply To' Email</Label>
                   <Input type="email" placeholder="hello@yourcompany.com" value={formData.replyToEmail}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, replyToEmail: e.target.value }))} />
+                    onChange={(e) => { setFormData((prev) => ({ ...prev, replyToEmail: e.target.value })); setIsDirty(true); }} />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label>Email Signature</Label>
                 <Textarea placeholder="Your default email signature…" value={formData.emailSignature}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, emailSignature: e.target.value }))} rows={3} />
+                  onChange={(e) => { setFormData((prev) => ({ ...prev, emailSignature: e.target.value })); setIsDirty(true); }} rows={3} />
               </div>
             </CardContent>
           </Card>
 
           <div className="flex justify-end gap-4">
-            <Button variant="outline" type="button" onClick={() => navigate(`/organizer/event/${id}`)}>Cancel</Button>
+            <Button variant="outline" type="button" onClick={() => {
+              if (isDirty) { setShowLeaveDialog(true); return; }
+              navigate(`/organizer/event/${id}`);
+            }}>Cancel</Button>
             <Button variant="outline" type="submit" className="border-[1.5px]" disabled={isSubmitting}>{isSubmitting ? "Saving…" : "Save Changes"}</Button>
           </div>
         </form>

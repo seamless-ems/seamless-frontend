@@ -13,6 +13,7 @@ import CardBuilder from "@/components/CardBuilder";
 import SpeakerFormBuilder, { type SpeakerFormBuilderHandle } from "@/components/SpeakerFormBuilder";
 import { toast } from "@/hooks/use-toast";
 import { HelpTip } from "@/components/ui/HelpTip";
+import { UnsavedChangesDialog } from "@/components/ui/UnsavedChangesDialog";
 
 export default function SpeakerModule() {
   const { id } = useParams();
@@ -24,6 +25,7 @@ export default function SpeakerModule() {
   const [shareOpen, setShareOpen] = useState(false);
   const [editingForm, setEditingForm] = useState<"speaker-info" | "call-for-speakers" | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [confirmFormLeave, setConfirmFormLeave] = useState(false);
   const formBuilderRef = useRef<SpeakerFormBuilderHandle>(null);
 
   // Derive active tab from URL path
@@ -245,10 +247,9 @@ export default function SpeakerModule() {
                 <Share2 className="h-3.5 w-3.5" />Share Speaker List
               </Button>
               <ShareDialog open={shareOpen} onOpenChange={setShareOpen} />
-              <HelpTip title="How the Speakers tab works" side="bottom" align="end">
-                <p>Add speakers manually or approve them from the <span className="font-medium text-foreground">Applications</span> tab. Either way, they'll need to submit their details before their cards can be built.</p>
-                <p>Send each speaker the <span className="font-medium text-foreground">intake form link</span> so they can complete their profile — headshot, bio, company logo — from their own Seamless account.</p>
-                <p>Once their info is in, go to their profile to review and approve their <span className="font-medium text-foreground">speaker card</span> and <span className="font-medium text-foreground">social card</span>. Approved cards can then be toggled live in the <span className="font-medium text-foreground">Embed</span> tab.</p>
+              <HelpTip title="How speakers work" side="bottom" align="end">
+                <p>Add speakers manually or move them in from <span className="font-medium text-foreground">Applications</span>. Send each one the intake form link so they can submit their headshot, bio, and logo.</p>
+                <p>Once submitted, open their profile to approve their <span className="font-medium text-foreground">speaker card</span> and <span className="font-medium text-foreground">social card</span>, then toggle them live in <span className="font-medium text-foreground">Embed</span>.</p>
               </HelpTip>
             </div>
           </div>
@@ -300,10 +301,23 @@ export default function SpeakerModule() {
       )}
       {/* Full-page form editor overlay */}
       {editingForm && (
+        <>
+        <UnsavedChangesDialog
+          open={confirmFormLeave}
+          onSave={() => { setConfirmFormLeave(false); formBuilderRef.current?.save(); }}
+          onDiscard={() => { setConfirmFormLeave(false); setEditingForm(null); }}
+          onCancel={() => setConfirmFormLeave(false)}
+        />
         <div className="fixed inset-0 z-50 bg-background flex flex-col">
           <header className="sticky top-0 z-30 h-14 flex items-center gap-3 border-b border-border bg-card/95 px-4 shrink-0">
             <button
-              onClick={() => setEditingForm(null)}
+              onClick={() => {
+                if (formBuilderRef.current?.isDirty) {
+                  setConfirmFormLeave(true);
+                } else {
+                  setEditingForm(null);
+                }
+              }}
               className="flex items-center justify-center h-8 w-8 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
             >
               <ArrowLeft className="h-4 w-4" />
@@ -337,6 +351,7 @@ export default function SpeakerModule() {
             </div>
           </div>
         </div>
+        </>
       )}
     </div>
   );

@@ -252,7 +252,7 @@ const isStep1Valid = fields.firstName.trim() && fields.lastName.trim() && fields
                     {creating ? "Adding…" : "Send Intake Form"}
                   </Button>
                   <p className="text-[11px] text-slate-400 text-center leading-snug px-1">
-                    <span className="font-semibold text-slate-500">Recommended.</span> Speaker creates an account to manage their own profile and cards.
+                    <span className="font-semibold text-slate-500">Recommended.</span> Speaker logs in or creates a free account to submit their details and access their cards.
                   </p>
                 </div>
                 {/* Fill in myself — secondary, right */}
@@ -266,7 +266,7 @@ const isStep1Valid = fields.firstName.trim() && fields.lastName.trim() && fields
                     {creating ? "Adding…" : "Fill in myself"}
                   </Button>
                   <p className="text-[11px] text-slate-400 text-center leading-snug px-1">
-                    Speaker won't have an account — they can't update their own profile or view their cards.
+                    You manage their profile on their behalf — no form sent to the speaker.
                   </p>
                 </div>
               </div>

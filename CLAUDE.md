@@ -42,6 +42,7 @@ Rules for every agent that touches this file:
   - Actions (Copy Link, Save, etc.) pushed right with `ml-auto`
   - Body: `<div className="flex-1 overflow-y-auto">` wrapping content
   - **Never** use `ChevronLeft` for back-navigation; always `ArrowLeft`
+- **Unsaved changes:** any page/overlay where the user edits must guard navigation with `useWarnOnLeave(isDirty)` (beforeunload) and `UnsavedChangesDialog` (Save / Discard / Keep editing). `useBlocker` from react-router does NOT work — app uses `<BrowserRouter>`, not a data router.
 - **Commits:** only when explicitly instructed.
 
 ---
@@ -57,10 +58,12 @@ Rules for every agent that touches this file:
 
 ## Help system — phases
 
-**Phase 1 — DONE.** Contextual `HelpTip` popovers on unclear section titles.
-- Reusable component: `src/components/ui/HelpTip.tsx` (Popover-based, `?` icon trigger)
-- Applied to: Status column in SpeakersTable, Embed tab banner, Applications tab header
-- Pattern: `<HelpTip title="…" side="bottom"><p>…</p></HelpTip>` — keep content to 3 short paragraphs max
+**Phase 1 — DONE.** Contextual `HelpTip` popovers on every tab and the card builders.
+- Reusable component: `src/components/ui/HelpTip.tsx` (Popover-based, click-to-open)
+- Default: pill button labelled "How this works" — `bg-secondary/50` style. Compact mode (`compact` prop): icon-only for tight spaces like column headers.
+- **Always the rightmost item** in every tab header / toolbar. `align="end"` on the popover.
+- Applied to: Speakers tab, Applications tab, Embed tab, SpeakersTable status column (compact), Speaker Card builder, Social Card builder
+- Pattern: `<HelpTip title="…" side="bottom" align="end"><p>…</p></HelpTip>` — 3 short paragraphs max
 
 **Phase 2 — NEXT.** Getting started checklist on the Event Dashboard.
 - A collapsible "Get started" card shown until all steps are complete
@@ -102,6 +105,9 @@ Rules for every agent that touches this file:
 - `src/components/organizer/SpeakerContentTab.tsx` — Content tab (upload, replace, archive, restore, version history)
 - `src/pages/organizer/SpeakerPortal.tsx` — individual speaker, 4 URL-driven tabs: Info / Speaker Card / Social Card / Content
 - `src/pages/organizer/SpeakerModule.tsx` — speaker module main page ⚠️ see routing note
+- `src/components/ui/HelpTip.tsx` — contextual help popovers (pill + compact modes)
+- `src/hooks/useWarnOnLeave.ts` — beforeunload guard for unsaved changes
+- `src/components/ui/UnsavedChangesDialog.tsx` — Save / Discard / Keep editing dialog
 - `src/lib/api.ts` — API functions
 - `openapi.json` — API spec (source of truth)
 
