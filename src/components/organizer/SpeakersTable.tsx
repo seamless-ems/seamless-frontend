@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { useQueryClient } from "@tanstack/react-query";
 import { updateSpeaker, deleteSpeaker } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
@@ -15,6 +17,15 @@ type Props = {
   formConfig?: any[] | null;
   websiteCardConfigured?: boolean;
   promoCardConfigured?: boolean;
+  // Controls
+  searchQuery?: string;
+  setSearchQuery?: (s: string) => void;
+  statusFilter?: string;
+  setStatusFilter?: (s: string) => void;
+  sortBy?: string;
+  setSortBy?: (s: string) => void;
+  totalCount?: number;
+  pendingCount?: number;
 };
 
 // Download a remote image by fetching it as a blob (handles CORS-proxied URLs).
@@ -175,7 +186,7 @@ function formatDate(dateStr: string | null | undefined) {
   }
 }
 
-export default function SpeakersTable({ speakers, isLoading, eventId, selectedTab, formConfig, websiteCardConfigured = false, promoCardConfigured = false }: Props) {
+export default function SpeakersTable({ speakers, isLoading, eventId, selectedTab, formConfig, websiteCardConfigured = false, promoCardConfigured = false, searchQuery, setSearchQuery, statusFilter, setStatusFilter, sortBy, setSortBy, totalCount, pendingCount }: Props) {
   const queryClient = useQueryClient();
   const eventUuid = eventId ?? "";
 
@@ -186,27 +197,67 @@ export default function SpeakersTable({ speakers, isLoading, eventId, selectedTa
   const showBio = fieldEnabled("bio");
   const showLogo = fieldEnabled("company_logo");
 
+  const showControls = !!setSearchQuery;
+
   if (isLoading) {
     return <div className="py-12 text-center text-sm text-muted-foreground">Loading speakers…</div>;
   }
 
-  if (!speakers || speakers.length === 0) {
+  if (!showControls && (!speakers || speakers.length === 0)) {
     return <div className="py-12 text-center text-sm text-muted-foreground">No speakers found</div>;
   }
 
   return (
     <table className="w-full">
-      <thead className="border-b border-border bg-muted/30">
+      <thead className="bg-muted/30 border-b border-border">
         <tr>
-          <th className="px-5 py-4 text-left text-xs font-medium text-muted-foreground w-[68px]"></th>
-          <th className="px-5 py-4 text-left text-xs font-medium text-muted-foreground"></th>
-          <th className="px-5 py-4 text-left text-xs font-medium text-muted-foreground w-[140px]">Status</th>
-          {/* Asset download columns */}
-          {showBio && <th className="px-3 py-4 text-center text-xs font-medium text-muted-foreground w-[52px]">Bio</th>}
-          <th className="px-3 py-4 text-center text-xs font-medium text-muted-foreground w-[80px]">Website<br/>Card</th>
-          <th className="px-3 py-4 text-center text-xs font-medium text-muted-foreground w-[80px]">Promo<br/>Card</th>
-          {showLogo && <th className="px-3 py-4 text-center text-xs font-medium text-muted-foreground w-[72px]">Company<br/>Logo</th>}
-          <th className="px-5 py-4 text-left text-xs font-medium text-muted-foreground w-[130px]">Last<br/>Updated</th>
+          {/* Avatar + name columns merged — controls sit flush with the table left edge */}
+          <th colSpan={2} className="px-5 py-2.5">
+            {showControls ? (
+              <div className="flex items-center gap-2">
+                <Input
+                  placeholder="Search speakers…"
+                  value={searchQuery ?? ""}
+                  onChange={(e) => setSearchQuery?.(e.target.value)}
+                  className="w-[180px] h-8 text-sm"
+                />
+                <Select value={statusFilter ?? "all"} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-[150px] h-8 text-sm">
+                    <SelectValue placeholder="All Statuses" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    <SelectItem value="pending">Info Pending</SelectItem>
+                    <SelectItem value="submitted">Card Approval Pending</SelectItem>
+                    <SelectItem value="cards_approved">Cards Approved</SelectItem>
+                    <SelectItem value="published">Published</SelectItem>
+                    <SelectItem value="archived">Archived</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={sortBy ?? "newest"} onValueChange={setSortBy}>
+                  <SelectTrigger className="w-[120px] h-8 text-sm">
+                    <SelectValue placeholder="Sort by" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="newest">Newest First</SelectItem>
+                    <SelectItem value="oldest">Oldest First</SelectItem>
+                    <SelectItem value="name">Name A–Z</SelectItem>
+                  </SelectContent>
+                </Select>
+                {(pendingCount ?? 0) > 0 && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-warning/10 text-warning rounded text-xs font-medium whitespace-nowrap">
+                    ⚠ {pendingCount} pending
+                  </span>
+                )}
+              </div>
+            ) : null}
+          </th>
+          <th className="px-5 py-3 text-left text-xs font-medium text-muted-foreground w-[140px]">Status</th>
+          {showBio && <th className="px-3 py-3 text-center text-xs font-medium text-muted-foreground w-[52px]">Bio</th>}
+          <th className="px-3 py-3 text-center text-xs font-medium text-muted-foreground w-[80px]">Website<br/>Card</th>
+          <th className="px-3 py-3 text-center text-xs font-medium text-muted-foreground w-[80px]">Promo<br/>Card</th>
+          {showLogo && <th className="px-3 py-3 text-center text-xs font-medium text-muted-foreground w-[72px]">Company<br/>Logo</th>}
+          <th className="px-5 py-3 text-left text-xs font-medium text-muted-foreground w-[130px]">Last<br/>Updated</th>
         </tr>
       </thead>
       <tbody>
@@ -357,6 +408,13 @@ export default function SpeakersTable({ speakers, isLoading, eventId, selectedTa
             </tr>
           );
         })}
+        {speakers.length === 0 && (
+          <tr>
+            <td colSpan={8} className="py-12 text-center text-sm text-muted-foreground">
+              No speakers found
+            </td>
+          </tr>
+        )}
       </tbody>
     </table>
   );

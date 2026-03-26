@@ -35,7 +35,7 @@ Rules for every agent that touches this file:
 - **Sub-page navigation:** any view launched from a tab (e.g. Edit Form, Speaker detail) must go full-page with a standard `h-14` sticky header:
   - Container: `fixed inset-0 z-50 bg-background flex flex-col`
   - Header: `sticky top-0 z-30 h-14 flex items-center gap-3 border-b border-border bg-card/95 px-4 shrink-0`
-  - Back button: `ArrowLeft` (from lucide-react), `h-8 w-8` rounded button
+  - Back button: `ArrowLeft` (from lucide-react), `h-8 w-8` rounded button, always calls `navigate(-1)` — never hardcodes a destination URL
   - Wordmark: `"Seamless"` (primary, semibold) + module name (muted, xs)
   - Entity name after a `|` separator, truncated
   - Actions (Copy Link, Save, etc.) pushed right with `ml-auto`

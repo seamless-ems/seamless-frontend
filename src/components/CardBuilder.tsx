@@ -23,6 +23,7 @@ import {
   ChevronUp,
   ChevronDown,
   ArrowLeft,
+  ChevronLeft,
   RotateCcw,
   AlignLeft,
   AlignRight,

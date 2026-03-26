@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Edit } from "lucide-react";
+import { ArrowLeft, Check, Edit, X } from "lucide-react";
 import { Speaker } from "@/types/event";
 import { getJson, updateSpeaker, uploadFile, getFormConfigForEvent } from "@/lib/api";
 import { ImageCropDialog } from "@/components/ImageCropDialog";
@@ -32,11 +32,21 @@ export default function SpeakerPortal() {
     enabled: Boolean(id && speakerId),
   });
 
+  // Detect form type from the speaker record
+  const rawFormType = (speaker as any)?.form_type ?? (speaker as any)?.formType ?? 'speaker-info';
+  const isApplication = rawFormType === 'call-for-speakers';
+
   const { data: formConfig } = useQuery<any>({
-    queryKey: ["formConfig", id, "speaker-info"],
-    queryFn: () => getFormConfigForEvent(id!, "speaker-info"),
-    enabled: Boolean(id),
-    onError: (err: any) => { if (err?.status === 404) setMissingFormDialogOpen(true); },
+    queryKey: ["formConfig", id, isApplication ? "call-for-speakers" : "speaker-info"],
+    queryFn: async () => {
+      try {
+        return await getFormConfigForEvent(id!, isApplication ? "call-for-speakers" : "speaker-info");
+      } catch (err: any) {
+        if (err?.status === 404 && !isApplication) setMissingFormDialogOpen(true);
+        return null;
+      }
+    },
+    enabled: Boolean(id) && !!speaker,
   });
 
   const configFields: any[] = (() => {
@@ -68,6 +78,7 @@ export default function SpeakerPortal() {
     embedEnabled: (speaker as any).embedEnabled ?? (speaker as any).embed_enabled ?? false,
     internalNotes: (speaker as any).internalNotes ?? (speaker as any).internal_notes ?? '',
     customFields: (speaker as any).customFields ?? (speaker as any).custom_fields ?? {},
+    callForSpeakersStatus: (speaker as any).call_for_speakers_status ?? (speaker as any).callForSpeakersStatus ?? 'pending',
   } : null;
 
   // ── Status badge ──────────────────────────────────────────────────
@@ -100,6 +111,7 @@ export default function SpeakerPortal() {
   const [cropType, setCropType] = useState<'headshot' | 'logo' | null>(null);
   const [uploadingHeadshot, setUploadingHeadshot] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [updatingAppStatus, setUpdatingAppStatus] = useState(false);
   const headshotInputRef = useRef<HTMLInputElement | null>(null);
   const logoInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -135,6 +147,23 @@ export default function SpeakerPortal() {
     queryClient.invalidateQueries({ queryKey: ['event', id, 'speaker', speakerId] });
     queryClient.invalidateQueries({ queryKey: ['event', id, 'speakers'], exact: false });
     toast({ title: promoApproved ? 'Social card unapproved' : 'Social card approved' });
+  };
+
+  // ── Application approve/reject ────────────────────────────────────
+  const handleApplicationStatus = async (status: 'approved' | 'rejected') => {
+    if (!id || !speakerId) return;
+    setUpdatingAppStatus(true);
+    try {
+      await updateSpeaker(id, speakerId, { call_for_speakers_status: status });
+      queryClient.invalidateQueries({ queryKey: ['event', id, 'speaker', speakerId] });
+      queryClient.invalidateQueries({ queryKey: ['event', id, 'applications'] });
+      queryClient.invalidateQueries({ queryKey: ['event', id, 'speakers'], exact: false });
+      toast({ title: status === 'approved' ? 'Application approved — speaker added to your Speakers list' : 'Application rejected' });
+    } catch (err: any) {
+      toast({ title: 'Failed to update application', variant: 'destructive' });
+    } finally {
+      setUpdatingAppStatus(false);
+    }
   };
 
   // ── Crop / upload ─────────────────────────────────────────────────
@@ -204,7 +233,7 @@ export default function SpeakerPortal() {
       {/* Top bar */}
       <header className="sticky top-0 z-30 h-14 flex items-center gap-3 border-b border-border bg-card/95 px-4 shrink-0">
         <button
-          onClick={() => navigate(`/organizer/event/${id}/speakers`)}
+          onClick={() => navigate(-1)}
           className="flex items-center justify-center h-8 w-8 rounded-md hover:bg-muted transition-colors"
           title="Back to speakers"
         >
@@ -221,23 +250,51 @@ export default function SpeakerPortal() {
           </>
         )}
         <div className="flex-1" />
+        {/* Application approve/reject actions */}
+        {isApplication && s?.callForSpeakersStatus !== 'approved' && (
+          <div className="flex items-center gap-2">
+            {s?.callForSpeakersStatus === 'rejected' ? (
+              <Button size="sm" onClick={() => handleApplicationStatus('approved')} disabled={updatingAppStatus}>
+                <Check className="h-3.5 w-3.5 mr-1.5" />Approve
+              </Button>
+            ) : (
+              <>
+                <Button variant="outline" size="sm" className="text-destructive border-destructive/30 hover:bg-destructive/10" onClick={() => handleApplicationStatus('rejected')} disabled={updatingAppStatus}>
+                  <X className="h-3.5 w-3.5 mr-1.5" />Reject
+                </Button>
+                <Button size="sm" onClick={() => handleApplicationStatus('approved')} disabled={updatingAppStatus}>
+                  <Check className="h-3.5 w-3.5 mr-1.5" />{updatingAppStatus ? 'Approving…' : 'Approve'}
+                </Button>
+              </>
+            )}
+          </div>
+        )}
+        {isApplication && s?.callForSpeakersStatus === 'approved' && (
+          <span className="text-sm text-success font-medium flex items-center gap-1.5">
+            <Check className="h-4 w-4" />Approved
+          </span>
+        )}
       </header>
 
       {/* Tab bar */}
       <div className="border-b border-border bg-card/50 px-6 shrink-0">
         <div className="flex gap-6">
           <button onClick={() => navigate(`/organizer/event/${id}/speakers/${speakerId}`)} className={tabClass('info')}>
-            Info
+            {isApplication ? 'Application' : 'Info'}
           </button>
-          <button onClick={() => navigate(`/organizer/event/${id}/speakers/${speakerId}/speaker-card`)} className={tabClass('speaker-card')}>
-            Speaker Card
-          </button>
-          <button onClick={() => navigate(`/organizer/event/${id}/speakers/${speakerId}/social-card`)} className={tabClass('social-card')}>
-            Social Card
-          </button>
-          <button onClick={() => navigate(`/organizer/event/${id}/speakers/${speakerId}/content`)} className={tabClass('content')}>
-            Content
-          </button>
+          {!isApplication && (
+            <>
+              <button onClick={() => navigate(`/organizer/event/${id}/speakers/${speakerId}/speaker-card`)} className={tabClass('speaker-card')}>
+                Speaker Card
+              </button>
+              <button onClick={() => navigate(`/organizer/event/${id}/speakers/${speakerId}/social-card`)} className={tabClass('social-card')}>
+                Social Card
+              </button>
+              <button onClick={() => navigate(`/organizer/event/${id}/speakers/${speakerId}/content`)} className={tabClass('content')}>
+                Content
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -284,7 +341,7 @@ export default function SpeakerPortal() {
               <div className="rounded-lg border border-border overflow-hidden">
                 {/* Header */}
                 <div className="px-6 py-4 bg-muted/30 border-b border-border flex items-center justify-between">
-                  <p className="text-sm font-medium text-foreground">Speaker Information</p>
+                  <p className="text-sm font-medium text-foreground">{isApplication ? 'Application Details' : 'Speaker Information'}</p>
                   <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs" onClick={() => setEditOpen(true)}>
                     <Edit className="h-3.5 w-3.5" />Edit
                   </Button>
@@ -338,9 +395,11 @@ export default function SpeakerPortal() {
                     </div>
                   </div>
 
-                  {/* Right: images */}
+                  {/* Right: images — only if form asked for them */}
+                  {(fieldEnabled('headshot') || fieldEnabled('company_logo')) && (
                   <div className="w-[200px] shrink-0 px-6 py-6 flex flex-col items-center gap-6">
                     {/* Headshot */}
+                    {fieldEnabled('headshot') && (
                     <div className="flex flex-col items-center gap-1.5 w-full">
                       <p className="text-xs font-medium text-muted-foreground self-start mb-1">Headshot</p>
                       <div className="w-[120px] h-[120px] rounded-lg border-2 border-border overflow-hidden bg-muted flex items-center justify-center">
@@ -358,8 +417,10 @@ export default function SpeakerPortal() {
                       </button>
                       <input ref={headshotInputRef} type="file" accept="image/png,image/jpeg" className="hidden" onChange={makeFileHandler('headshot')} />
                     </div>
+                    )}
 
                     {/* Logo */}
+                    {fieldEnabled('company_logo') && (
                     <div className="flex flex-col items-center gap-1.5 w-full">
                       <p className="text-xs font-medium text-muted-foreground self-start mb-1">Company Logo</p>
                       <div className="w-full h-[64px] rounded-lg border border-border bg-white flex items-center justify-center p-2.5">
@@ -377,7 +438,9 @@ export default function SpeakerPortal() {
                       </button>
                       <input ref={logoInputRef} type="file" accept="image/png,image/jpeg" className="hidden" onChange={makeFileHandler('logo')} />
                     </div>
+                    )}
                   </div>
+                  )}
                 </div>
               </div>
             );

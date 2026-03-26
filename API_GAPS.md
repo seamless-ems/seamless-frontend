@@ -37,6 +37,29 @@ The SpeakerPortal preview embeds this same HTML — fixing the embed fixes the p
 
 ---
 
+## Speaker intake email — direct send
+
+When an organiser adds a speaker via "Send Intake Form", the UI generates an editable email template and lets the organiser copy it manually. Direct sending requires:
+
+- `POST /events/{eventId}/speakers/{speakerId}/send-intake` (or similar)
+- Backend sends the intake form link to `speaker.email`
+- Returns success; frontend shows confirmation and removes "Direct send coming soon" note
+
+---
+
+## Call for Speakers — approval flow
+
+`PATCH /events/{eventId}/speakers/{speakerId}` needs to accept `call_for_speakers_status` values: `"approved"`, `"rejected"`.
+
+On approval the backend must:
+1. Set `call_for_speakers_status: "approved"` on the speaker record
+2. Make the speaker appear in the standard speakers list (i.e. `GET /events/{eventId}/speakers` without `?form_type=call-for-speakers`) so they show up in the Speakers tab with whatever data they submitted
+3. Optionally trigger a notification email with a Speaker Intake link so they can fill in missing fields (headshot etc.)
+
+Frontend sends: `{ call_for_speakers_status: "approved" | "rejected" }`
+
+---
+
 ## Card rendering — per-speaker text logic
 
 `cfg.fontSize` is the **maximum**. Apply per speaker at render time:
