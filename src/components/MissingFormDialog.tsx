@@ -1,4 +1,5 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -18,30 +19,28 @@ export default function MissingFormDialog({
   onOpenChange,
   eventId,
 }: MissingFormDialogProps) {
+  const navigate = useNavigate();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle className="text-destructive">
-            Speaker Form Not Found
-          </DialogTitle>
+          <DialogTitle>Set up your Intake Form first</DialogTitle>
         </DialogHeader>
         <div className="mt-2">
           <p className="text-sm text-muted-foreground">
-            We couldn't find a saved "Speaker Information" form for this
-            event. Please create and save your speaker information form first.
+            Before building your speaker card template, you need to set up your Speaker Intake form. This tells speakers what information to submit — like their bio, headshot, and company logo.
           </p>
           <div className="mt-4 flex justify-end gap-2">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Close
+              Cancel
             </Button>
             <Button
-              variant="destructive"
               onClick={() => {
-                window.location.href = `/organizer/event/${eventId}/speakers/forms`;
+                onOpenChange(false);
+                navigate(`/organizer/event/${eventId}/speakers?edit-form=speaker-info`);
               }}
             >
-              Go to Forms
+              Set up Intake Form
             </Button>
           </div>
         </div>

@@ -65,13 +65,10 @@ Rules for every agent that touches this file:
 - Applied to: Speakers tab, Applications tab, Embed tab, SpeakersTable status column (compact), Speaker Card builder, Social Card builder
 - Pattern: `<HelpTip title="…" side="bottom" align="end"><p>…</p></HelpTip>` — 3 short paragraphs max
 
-**Phase 2 — NEXT.** Getting started checklist on the Event Dashboard.
-- A collapsible "Get started" card shown until all steps are complete
-- Steps (in order): Add a speaker → Configure speaker card template → Configure social card template → Approve a speaker's cards → Copy embed code
-- Each step links directly to the relevant page/tab
-- Collapsed state persists in localStorage key `seamless-onboarding-checklist-{eventId}`
-- Show a progress indicator (e.g. "3 of 5 complete")
-- Once all 5 done, card shows a completion state for one session then disappears
+**Phase 2 — DONE.** Getting started checklist on the Speakers tab.
+- `src/components/organizer/GettingStartedChecklist.tsx` — collapsible card, primary-tinted header
+- Steps: Application form (skippable) → Intake form (skippable) → Speaker Card template → Social Card template → Embed
+- LocalStorage keys: `seamless-onboarding-checklist-{eventId}` (collapsed), `seamless-checklist-skipped-{eventId}` (skipped steps JSON array), `seamless-embed-visited-{eventId}` (embed step), `seamless-checklist-dismissed-{eventId}` (dismissed after all done)
 
 **Phase 3 — LATER.** First-time guided walkthrough on Speakers tab (Shepherd.js or similar).
 - Triggered once per event on first visit

@@ -133,6 +133,24 @@ export default function SpeakerPortal() {
     toast({ title: websiteApproved ? 'Speaker card unapproved' : 'Speaker card approved' });
   };
 
+  const handleWebsiteApprovalAndPublish = async () => {
+    if (!id || !speakerId || !canApprove) return;
+    const payload: any = {
+      id: speakerId,
+      firstName: s?.firstName ?? '',
+      lastName: s?.lastName ?? '',
+      email: s?.email ?? '',
+      formType: s?.formType ?? 'speaker-info',
+      websiteCardApproved: true,
+      embedEnabled: true,
+      speakerInformationStatus: 'cards_approved',
+    };
+    await updateSpeaker(id, speakerId, payload);
+    queryClient.invalidateQueries({ queryKey: ['event', id, 'speaker', speakerId] });
+    queryClient.invalidateQueries({ queryKey: ['event', id, 'speakers'], exact: false });
+    toast({ title: 'Speaker card approved and published to Speaker Wall' });
+  };
+
   const handlePromoApproval = async () => {
     if (!id || !speakerId || !canApprove) return;
     const payload: any = {
@@ -454,6 +472,7 @@ export default function SpeakerPortal() {
               isApproved={websiteApproved}
               canApprove={canApprove}
               onToggleApproval={handleWebsiteApproval}
+              onApproveAndPublish={!websiteApproved ? handleWebsiteApprovalAndPublish : undefined}
             />
           )}
 

@@ -12,27 +12,34 @@ import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Calendar, Mail, Mic2, Users } from "lucide-react";
+import { Calendar, FileText, Mail, Mic2, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-const availableModules = [
+const activeModules = [
   {
     id: "speaker",
     name: "Speakers",
-    description: "Manage speakers, intake forms, promo cards, and content uploads",
+    description: "Manage speakers, intake forms, and promo cards",
     icon: Mic2,
     color: "speaker",
-    available: true,
   },
+  {
+    id: "content",
+    name: "Content",
+    description: "Centralized hub for presentations and files",
+    icon: FileText,
+    color: "content",
+  },
+];
+
+const comingSoonModules = [
   {
     id: "schedule",
     name: "Schedule",
     description: "Create and publish event schedules",
     icon: Calendar,
     color: "schedule",
-    available: false,
-    comingSoon: true,
   },
   {
     id: "partners",
@@ -40,8 +47,6 @@ const availableModules = [
     description: "Manage sponsors and partners",
     icon: Users,
     color: "primary",
-    available: false,
-    comingSoon: true,
   },
   {
     id: "attendee",
@@ -49,8 +54,6 @@ const availableModules = [
     description: "Manage registrations and communications",
     icon: Users,
     color: "attendee",
-    available: false,
-    comingSoon: true,
   },
 ];
 
@@ -212,7 +215,7 @@ export default function EventSettings() {
                   <CardTitle style={{ fontSize: 'var(--font-h3)', fontWeight: 600 }}>Billing</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <p className="text-sm text-muted-foreground">Purchase the Speakers module for this event.</p>
+                  <p className="text-sm text-muted-foreground">Subscribe to the Speakers &amp; Content module for this event.</p>
                   <div className="flex items-center gap-2 justify-end">
                     <Button variant="outline" type="button" onClick={async () => {
                       if (!id) return;
@@ -227,7 +230,7 @@ export default function EventSettings() {
                       } catch (err: any) {
                         toast({ title: "Checkout failed", description: String(err?.message || err) });
                       }
-                    }}>Pay for Speakers</Button>
+                    }}>Subscribe</Button>
                   </div>
                 </CardContent>
               </Card>
@@ -292,7 +295,7 @@ export default function EventSettings() {
                 </div>
                 <div className="space-y-2">
                   <Label>'Reply To' Email</Label>
-                  <Input type="email" placeholder="hello@yourcompany.com" value={formData.replyToEmail}
+                  <Input type="email" placeholder="Optional — defaults to From Email" value={formData.replyToEmail}
                     onChange={(e) => { setFormData((prev) => ({ ...prev, replyToEmail: e.target.value })); setIsDirty(true); }} />
                 </div>
               </div>
@@ -309,42 +312,43 @@ export default function EventSettings() {
             <CardHeader>
               <CardTitle style={{ fontSize: 'var(--font-h3)', fontWeight: 600 }}>Event Modules</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {availableModules.map((module) => {
+            <CardContent className="space-y-3">
+              {/* Row 1: active modules */}
+              <div className="grid gap-3 grid-cols-2">
+                {activeModules.map((module) => {
                   const Icon = module.icon;
                   const isSelected = selectedModules.includes(module.id);
-
                   return (
                     <div
                       key={module.id}
-                      className={cn(
-                        "rounded-lg border p-3 transition-all duration-200 cursor-pointer",
-                        isSelected ? "border-primary bg-primary/5" : "border-border hover:border-primary/30",
-                        !module.available && "opacity-50 cursor-not-allowed"
-                      )}
-                      onClick={() => module.available && toggleModule(module.id)}
+                      className={cn("rounded-lg border p-3 transition-all duration-200 cursor-pointer", isSelected ? "border-primary bg-primary/5" : "border-border hover:border-primary/30")}
+                      onClick={() => toggleModule(module.id)}
                     >
                       <div className="flex items-center justify-between mb-2">
-                        <div
-                          className={cn(
-                            "flex h-8 w-8 items-center justify-center rounded",
-                            isSelected ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-                          )}
-                        >
+                        <div className={cn("flex h-8 w-8 items-center justify-center rounded", isSelected ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>
                           <Icon className="h-4 w-4" />
                         </div>
-                        {module.comingSoon ? (
-                          <Badge variant="secondary" className="text-xs">Coming Soon</Badge>
-                        ) : (
-                          <div onClick={(e) => e.stopPropagation()}>
-                            <Switch
-                              checked={isSelected}
-                              disabled={!module.available}
-                              onCheckedChange={() => module.available && toggleModule(module.id)}
-                            />
-                          </div>
-                        )}
+                        <div onClick={(e) => e.stopPropagation()}>
+                          <Switch checked={isSelected} onCheckedChange={() => toggleModule(module.id)} />
+                        </div>
+                      </div>
+                      <h4 className="font-medium text-foreground text-sm mb-1">{module.name}</h4>
+                      <p className="text-xs text-muted-foreground">{module.description}</p>
+                    </div>
+                  );
+                })}
+              </div>
+              {/* Row 2: coming soon */}
+              <div className="grid gap-3 sm:grid-cols-3">
+                {comingSoonModules.map((module) => {
+                  const Icon = module.icon;
+                  return (
+                    <div key={module.id} className="rounded-lg border p-3 opacity-50 cursor-not-allowed border-border">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex h-8 w-8 items-center justify-center rounded bg-muted text-muted-foreground">
+                          <Icon className="h-4 w-4" />
+                        </div>
+                        <Badge variant="secondary" className="text-xs">Coming Soon</Badge>
                       </div>
                       <h4 className="font-medium text-foreground text-sm mb-1">{module.name}</h4>
                       <p className="text-xs text-muted-foreground">{module.description}</p>

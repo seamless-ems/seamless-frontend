@@ -2,7 +2,6 @@ import { ReactNode } from 'react';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -50,19 +49,17 @@ export default function EventLayout({ children }: { children: ReactNode }) {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="flex items-center gap-2 pl-2">
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={me?.avatarUrl ?? me?.avatar_url ?? ''} />
-                  <AvatarFallback className="bg-primary/10 text-primary text-sm">
-                    {(((me?.firstName ?? me?.first_name)?.[0] ?? '') + ((me?.lastName ?? me?.last_name)?.[0] ?? '')).toUpperCase() || (me?.email?.[0] ?? '').toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
+                <Users className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">
+                  {teams?.[0]?.name ?? me?.firstName ?? me?.first_name ?? "Account"}
+                </span>
                 <ChevronDown className="h-4 w-4 text-muted-foreground" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-64">
               <div className="px-3 py-3 border-b">
                 <div className="text-sm font-semibold">
-                  {me?.organization?.name || me?.organization_name || 'Team Seamless'}
+                  {teams?.[0]?.name ?? '—'}
                 </div>
                 <div className="text-xs text-muted-foreground mt-0.5">
                   {me ? `${me.firstName ?? me.first_name ?? ''} ${me.lastName ?? me.last_name ?? ''}`.trim() : 'User'}

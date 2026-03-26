@@ -15,9 +15,10 @@ type Props = {
   isApproved: boolean;
   canApprove: boolean;
   onToggleApproval: () => Promise<void>;
+  onApproveAndPublish?: () => Promise<void>;
 };
 
-export default function SpeakerCardTab({ type, s, isApproved, canApprove, onToggleApproval }: Props) {
+export default function SpeakerCardTab({ type, s, isApproved, canApprove, onToggleApproval, onApproveAndPublish }: Props) {
   const [copied, setCopied] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -36,6 +37,18 @@ export default function SpeakerCardTab({ type, s, isApproved, canApprove, onTogg
       await onToggleApproval();
     } catch (err: any) {
       toast({ title: 'Failed to update approval', description: String(err?.message || err) });
+    } finally {
+      setLoading(false);
+      setConfirmOpen(false);
+    }
+  };
+
+  const handleConfirmAndPublish = async () => {
+    setLoading(true);
+    try {
+      await onApproveAndPublish?.();
+    } catch (err: any) {
+      toast({ title: 'Failed to approve and publish', description: String(err?.message || err) });
     } finally {
       setLoading(false);
       setConfirmOpen(false);
@@ -92,15 +105,32 @@ export default function SpeakerCardTab({ type, s, isApproved, canApprove, onTogg
             </AlertDialogTitle>
             <AlertDialogDescription>
               {isApproved
-                ? `This removes the ${label.toLowerCase()} from approved status. ${s?.name ?? 'This speaker'} will no longer be eligible for the embed until re-approved.`
-                : `Approve the ${label.toLowerCase()} for ${s?.name ?? 'this speaker'}. Once both cards are approved they can be toggled live in the embed.`}
+                ? type === 'website'
+                  ? `This removes the speaker card from approved status. ${s?.name ?? 'This speaker'} will no longer appear in the Speaker Wall.`
+                  : `This removes the social card from approved status for ${s?.name ?? 'this speaker'}.`
+                : type === 'website'
+                  ? `Approve the speaker card for ${s?.name ?? 'this speaker'}. You can publish them to your Speaker Wall now or do it later.`
+                  : `Approve the social card for ${s?.name ?? 'this speaker'}. Approved cards can be downloaded from the Speakers table.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirm} disabled={loading}>
-              {isApproved ? 'Yes, unapprove' : 'Yes, approve'}
-            </AlertDialogAction>
+            {isApproved ? (
+              <AlertDialogAction onClick={handleConfirm} disabled={loading}>
+                Yes, unapprove
+              </AlertDialogAction>
+            ) : (
+              <>
+                <AlertDialogAction onClick={handleConfirm} disabled={loading} className="bg-secondary text-secondary-foreground hover:bg-secondary/80">
+                  {onApproveAndPublish ? 'Approve only' : 'Approve'}
+                </AlertDialogAction>
+                {onApproveAndPublish && (
+                  <AlertDialogAction onClick={handleConfirmAndPublish} disabled={loading}>
+                    Approve & Publish to Wall
+                  </AlertDialogAction>
+                )}
+              </>
+            )}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

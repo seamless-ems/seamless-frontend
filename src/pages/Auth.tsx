@@ -243,6 +243,19 @@ const Auth: React.FC = () => {
                     </div>
                 </div>
 
+                {/* Toggle between login/signup */}
+                <div className="text-center mb-6 text-sm text-muted-foreground">
+                    {mode === "login" ? (
+                        <span>
+                            New here? <Link to="/signup" className="text-primary hover:underline">Create account</Link>
+                        </span>
+                    ) : (
+                        <span>
+                            Already have an account? <Link to="/login" className="text-primary hover:underline">Sign in</Link>
+                        </span>
+                    )}
+                </div>
+
                 {/* Form */}
                 <div key={mode} className="space-y-4">
                     {mode === "signup" ? (
@@ -269,13 +282,13 @@ const Auth: React.FC = () => {
                         onClick={async () => {
                             if (isSsoLoading) return;
                             setIsSsoLoading(true);
-                            
+
                             try {
                                 await signInWithGooglePopup();
-                                
+
                                 // Token exchange + user hydration handled by firebase.ts listener
                             } catch (e) {
-                                
+
                                 toast.error("Unable to sign in with Google");
                             } finally {
                                 setIsSsoLoading(false);
@@ -285,19 +298,6 @@ const Auth: React.FC = () => {
                         <GoogleIcon />
                         <span>{isSsoLoading ? "Connecting..." : "Google"}</span>
                     </Button>
-                </div>
-
-                {/* Toggle between login/signup */}
-                <div className="text-center mt-6 text-sm text-muted-foreground">
-                    {mode === "login" ? (
-                        <span>
-                            New here? <Link to="/signup" className="text-primary hover:underline">Create account</Link>
-                        </span>
-                    ) : (
-                        <span>
-                            Have an account? <Link to="/login" className="text-primary hover:underline">Sign in</Link>
-                        </span>
-                    )}
                 </div>
             </div>
         </div>

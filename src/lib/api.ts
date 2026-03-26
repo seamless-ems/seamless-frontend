@@ -233,6 +233,19 @@ export async function deleteTeamMember(memberId: string): Promise<void> {
   }
 }
 
+export async function deleteTeam(teamId: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/account/team/${encodeURIComponent(teamId)}`, {
+    method: "DELETE",
+    headers: authHeaders(),
+    credentials: "include",
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || res.statusText);
+  }
+}
+
 export function getSubscription(): Promise<any> {
   return getJson<any>(`/account/subscription`);
 }

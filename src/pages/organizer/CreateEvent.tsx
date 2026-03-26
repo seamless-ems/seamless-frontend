@@ -13,6 +13,7 @@ import {
 	Mail,
 	Link as LinkIcon,
 	Mic2,
+	FileText,
 	Users,
 	// FolderOpen, // TODO: Google Drive
 } from "lucide-react";
@@ -42,23 +43,30 @@ import {
 import EventMediaUploader from "@/components/organizer/EventMediaUploader";
 import { generateUuid } from "@/lib/utils";
 
-const availableModules = [
+const activeModules = [
 	{
 		id: "speaker",
 		name: "Speakers",
-		description: "Manage speakers, intake forms, promo cards, and content uploads",
+		description: "Manage speakers, intake forms, and promo cards",
 		icon: Mic2,
 		color: "speaker",
-		available: true,
 	},
+	{
+		id: "content",
+		name: "Content",
+		description: "Centralized hub for presentations and files",
+		icon: FileText,
+		color: "content",
+	},
+];
+
+const comingSoonModules = [
 	{
 		id: "schedule",
 		name: "Schedule",
 		description: "Create and publish event schedules",
 		icon: Calendar,
 		color: "schedule",
-		available: false,
-		comingSoon: true,
 	},
 	{
 		id: "partners",
@@ -66,8 +74,6 @@ const availableModules = [
 		description: "Manage sponsors and partners",
 		icon: Users,
 		color: "primary",
-		available: false,
-		comingSoon: true,
 	},
 	{
 		id: "attendee",
@@ -75,8 +81,6 @@ const availableModules = [
 		description: "Manage registrations and communications",
 		icon: Users,
 		color: "attendee",
-		available: false,
-		comingSoon: true,
 	},
 ];
 
@@ -97,7 +101,7 @@ export default function CreateEvent() {
 		// integrationId: null,         // TODO: Google Drive
 	});
 
-	const [selectedModules, setSelectedModules] = useState<string[]>(["speaker"]);
+	const [selectedModules, setSelectedModules] = useState<string[]>(["speaker", "content"]);
 	// const [driveFolders, setDriveFolders] = useState<any[]>([]);           // TODO: Google Drive
 	// const [selectedFolderPath, setSelectedFolderPath] = useState<string[]>([]); // TODO: Google Drive
 	const { data: teams } = useQuery<any[]>({ queryKey: ["teams"], queryFn: () => getTeam() });
@@ -241,15 +245,15 @@ export default function CreateEvent() {
 		{/* Speaker purchase modal */}
 		<AlertDialog open={speakerModalOpen} onOpenChange={setSpeakerModalOpen}>
 			<AlertDialogContent>
-				<AlertDialogTitle>Enable Speakers Module</AlertDialogTitle>
+				<AlertDialogTitle>Speakers & Content Module</AlertDialogTitle>
 				<AlertDialogDescription>
-					The Speakers module adds speaker intake forms, management, and promo cards. Start a 14-day free trial, or pay now to enable immediately for this event.
+					Manage speakers, intake forms, promo cards, and content uploads. Includes a 14-day free trial — no credit card required.
 				</AlertDialogDescription>
 				<div className="mt-4 flex gap-2 justify-end">
 					<AlertDialogCancel onClick={() => {
 						setSpeakerModalOpen(false);
 						if (createdEventId) navigate(`/organizer/event/${createdEventId}/speakers`);
-					}}>Ignore / Use Trial</AlertDialogCancel>
+					}}>Start 14-Day Trial</AlertDialogCancel>
 					<AlertDialogAction asChild>
 						<Button
 							variant="primary"
@@ -273,7 +277,7 @@ export default function CreateEvent() {
 								}
 							}}
 						>
-							Pay Now
+							Subscribe
 						</Button>
 					</AlertDialogAction>
 				</div>
@@ -283,15 +287,15 @@ export default function CreateEvent() {
 		{/* Schedule purchase modal */}
 		<AlertDialog open={scheduleModalOpen} onOpenChange={setScheduleModalOpen}>
 			<AlertDialogContent>
-				<AlertDialogTitle>Enable Schedule Module</AlertDialogTitle>
+				<AlertDialogTitle>Schedule Module</AlertDialogTitle>
 				<AlertDialogDescription>
-					The Schedule module adds session management and publishing. Start a 14-day free trial, or pay now to enable immediately for this event.
+					Create and publish event schedules and sessions. Includes a 14-day free trial — no credit card required.
 				</AlertDialogDescription>
 				<div className="mt-4 flex gap-2 justify-end">
 					<AlertDialogCancel onClick={() => {
 						setScheduleModalOpen(false);
 						if (createdEventId) navigate(`/organizer/event/${createdEventId}/speakers`);
-					}}>Ignore / Use Trial</AlertDialogCancel>
+					}}>Start 14-Day Trial</AlertDialogCancel>
 					<AlertDialogAction asChild>
 						<Button
 							variant="primary"
@@ -315,7 +319,7 @@ export default function CreateEvent() {
 								}
 							}}
 						>
-							Pay Now
+							Subscribe
 						</Button>
 					</AlertDialogAction>
 				</div>
@@ -455,7 +459,7 @@ export default function CreateEvent() {
 							</div>
 							<div className="space-y-2">
 								<Label htmlFor="replyToEmail">'Reply To' Email</Label>
-								<Input id="replyToEmail" type="email" placeholder="hello@yourcompany.com" value={formData.replyToEmail}
+								<Input id="replyToEmail" type="email" placeholder="Optional — defaults to From Email" value={formData.replyToEmail}
 									onChange={(e) => setFormData((prev) => ({ ...prev, replyToEmail: e.target.value }))} />
 							</div>
 						</div>
@@ -472,54 +476,47 @@ export default function CreateEvent() {
 					<CardHeader>
 						<CardTitle className="text-lg">Active Modules</CardTitle>
 					</CardHeader>
-					<CardContent>
-						<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-							{availableModules.map((module) => {
+					<CardContent className="space-y-3">
+						{/* Row 1: active modules */}
+						<div className="grid gap-3 grid-cols-2">
+							{activeModules.map((module) => {
 								const Icon = module.icon;
 								const isSelected = selectedModules.includes(module.id);
-
 								return (
 									<div
 										key={module.id}
 										className={cn(
 											"rounded-lg border p-3 transition-all duration-200 cursor-pointer",
-											isSelected
-												? "border-primary bg-primary/5"
-												: "border-border hover:border-primary/30",
-											!module.available && "opacity-50 cursor-not-allowed"
+											isSelected ? "border-primary bg-primary/5" : "border-border hover:border-primary/30"
 										)}
-										onClick={() =>
-											module.available && toggleModule(module.id)
-										}
+										onClick={() => toggleModule(module.id)}
 									>
 										<div className="flex items-center justify-between mb-2">
-											<div
-												className={cn(
-													"flex h-8 w-8 items-center justify-center rounded",
-													isSelected
-														? "bg-primary text-primary-foreground"
-														: "bg-muted text-muted-foreground"
-												)}
-											>
+											<div className={cn("flex h-8 w-8 items-center justify-center rounded", isSelected ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>
 												<Icon className="h-4 w-4" />
 											</div>
-											{module.comingSoon ? (
-												<Badge variant="secondary" className="text-xs">
-													Coming Soon
-												</Badge>
-											) : (
-												<Switch
-													checked={isSelected}
-													disabled={!module.available}
-												/>
-											)}
+											<Switch checked={isSelected} />
 										</div>
-										<h4 className="font-medium text-foreground text-sm mb-1">
-											{module.name}
-										</h4>
-										<p className="text-xs text-muted-foreground">
-											{module.description}
-										</p>
+										<h4 className="font-medium text-foreground text-sm mb-1">{module.name}</h4>
+										<p className="text-xs text-muted-foreground">{module.description}</p>
+									</div>
+								);
+							})}
+						</div>
+						{/* Row 2: coming soon */}
+						<div className="grid gap-3 sm:grid-cols-3">
+							{comingSoonModules.map((module) => {
+								const Icon = module.icon;
+								return (
+									<div key={module.id} className="rounded-lg border p-3 opacity-50 cursor-not-allowed border-border">
+										<div className="flex items-center justify-between mb-2">
+											<div className="flex h-8 w-8 items-center justify-center rounded bg-muted text-muted-foreground">
+												<Icon className="h-4 w-4" />
+											</div>
+											<Badge variant="secondary" className="text-xs">Coming Soon</Badge>
+										</div>
+										<h4 className="font-medium text-foreground text-sm mb-1">{module.name}</h4>
+										<p className="text-xs text-muted-foreground">{module.description}</p>
 									</div>
 								);
 							})}

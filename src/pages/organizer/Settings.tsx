@@ -18,7 +18,6 @@ import {
   Mail,
   Globe,
 } from "lucide-react";
-import OrganizationSection from "@/components/organizer/OrganizationSection";
 import TeamSection from "@/components/organizer/TeamSection";
 
 export default function Settings() {
@@ -88,25 +87,19 @@ export default function Settings() {
         {Array.isArray(teams) && teams.length === 0 && (
           <Card className="border-destructive/30">
             <CardHeader>
-              <CardTitle className="text-lg text-destructive">Organization & Team Required</CardTitle>
-              <CardDescription className="text-destructive">You currently do not belong to any team. The rest of the application requires an organization and at least one team to function correctly (events, speakers, assets).</CardDescription>
+              <CardTitle className="text-lg text-destructive">Team Required</CardTitle>
+              <CardDescription className="text-destructive">You don't belong to a team yet. Create one below to get started with events and speakers.</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Create or join an organization and team to continue.</p>
-                </div>
-                <Button
-                  variant="destructive"
-                  onClick={() => {
-                    // scroll to team section
-                    const el = document.getElementById("team-section");
-                    if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
-                  }}
-                >
-                  Manage teams
-                </Button>
-              </div>
+              <Button
+                variant="destructive"
+                onClick={() => {
+                  const el = document.getElementById("team-section");
+                  if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+                }}
+              >
+                Create a team
+              </Button>
             </CardContent>
           </Card>
         )}
@@ -136,11 +129,8 @@ export default function Settings() {
             </div>
           </CardContent>
         </Card>
-        <div className="space-y-8">
-          <OrganizationSection />
-          <div id="team-section">
-            <TeamSection />
-          </div>
+        <div id="team-section">
+          <TeamSection />
         </div>
         {/* Danger Zone */}
         <Card className="border-destructive/30">

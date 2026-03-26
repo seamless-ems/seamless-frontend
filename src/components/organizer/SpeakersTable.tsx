@@ -208,6 +208,46 @@ export default function SpeakersTable({ speakers, isLoading, eventId, selectedTa
     return <div className="py-12 text-center text-sm text-muted-foreground">No speakers found</div>;
   }
 
+  // When controls are shown but there are no speakers, render controls + empty state (no column headers)
+  if (showControls && speakers.length === 0) {
+    return (
+      <div>
+        <div className="bg-secondary/30 border-b border-border px-5 py-2.5 flex items-center gap-2">
+          <Input
+            placeholder="Search speakers…"
+            value={searchQuery ?? ""}
+            onChange={(e) => setSearchQuery?.(e.target.value)}
+            className="w-[180px] h-8 text-sm"
+          />
+          <Select value={statusFilter ?? "all"} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[150px] h-8 text-sm">
+              <SelectValue placeholder="All Statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="pending">Info Pending</SelectItem>
+              <SelectItem value="submitted">Card Approval Pending</SelectItem>
+              <SelectItem value="cards_approved">Cards Approved</SelectItem>
+              <SelectItem value="published">Published</SelectItem>
+              <SelectItem value="archived">Archived</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={sortBy ?? "newest"} onValueChange={setSortBy}>
+            <SelectTrigger className="w-[120px] h-8 text-sm">
+              <SelectValue placeholder="Sort by" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="newest">Newest First</SelectItem>
+              <SelectItem value="oldest">Oldest First</SelectItem>
+              <SelectItem value="name">Name A–Z</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="py-12 text-center text-sm text-muted-foreground">No speakers yet — add your first one above.</div>
+      </div>
+    );
+  }
+
   return (
     <table className="w-full">
       <thead className="bg-secondary/30 border-b border-border">
@@ -295,7 +335,7 @@ export default function SpeakersTable({ speakers, isLoading, eventId, selectedTa
               className="border-b border-border hover:bg-muted/40 transition-colors group"
             >
               {/* Headshot — click to download */}
-              <td className="px-5 py-4">
+              <td className="pl-5 pr-2 py-4 w-14">
                 <button
                   title={headshotUrl ? "Download headshot" : "No headshot uploaded"}
                   disabled={!headshotUrl}
@@ -315,7 +355,7 @@ export default function SpeakersTable({ speakers, isLoading, eventId, selectedTa
               </td>
 
               {/* Speaker info — selectable text for copy-paste */}
-              <td className="px-5 py-4">
+              <td className="pr-5 pl-2 py-4">
                 <div className="flex items-center">
                   <div
                     className="text-sm font-semibold text-foreground cursor-pointer hover:text-primary transition-colors leading-tight"

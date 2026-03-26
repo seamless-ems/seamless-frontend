@@ -15,6 +15,8 @@ type Props = {
   eventId?: string;
   eventName?: string;
   emailDefaults?: { fromName: string; fromEmail: string; replyToEmail: string };
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 };
 
 const DEFAULT_INTRO = (eventName: string) =>
@@ -80,10 +82,16 @@ function buildHtml(
   return { headerMeta, html };
 }
 
-export default function AddSpeakerDialog({ eventId, eventName = "the event", emailDefaults }: Props) {
+export default function AddSpeakerDialog({ eventId, eventName = "the event", emailDefaults, open: controlledOpen, onOpenChange: controlledOnOpenChange }: Props) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = (val: boolean) => {
+    if (isControlled) controlledOnOpenChange?.(val);
+    else setInternalOpen(val);
+  };
   const [step, setStep] = useState<Step>("add");
   const [creating, setCreating] = useState(false);
   const [copied, setCopied] = useState(false);

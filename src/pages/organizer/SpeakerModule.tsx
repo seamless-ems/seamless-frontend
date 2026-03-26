@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
@@ -11,6 +11,7 @@ import EmbedBuilder from "@/components/organizer/EmbedBuilder";
 import ApplicationsTab from "@/components/organizer/ApplicationsTab";
 import CardBuilder from "@/components/CardBuilder";
 import SpeakerFormBuilder, { type SpeakerFormBuilderHandle } from "@/components/SpeakerFormBuilder";
+import GettingStartedChecklist from "@/components/organizer/GettingStartedChecklist";
 import { toast } from "@/hooks/use-toast";
 import { HelpTip } from "@/components/ui/HelpTip";
 import { UnsavedChangesDialog } from "@/components/ui/UnsavedChangesDialog";
@@ -23,6 +24,7 @@ export default function SpeakerModule() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState("newest");
   const [shareOpen, setShareOpen] = useState(false);
+  const [addSpeakerOpen, setAddSpeakerOpen] = useState(false);
   const [editingForm, setEditingForm] = useState<"speaker-info" | "call-for-speakers" | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
   const [confirmFormLeave, setConfirmFormLeave] = useState(false);
@@ -35,6 +37,31 @@ export default function SpeakerModule() {
     : pathname.endsWith('/promo-card-builder') ? 'promo-card-builder'
     : pathname.endsWith('/website-card-builder') ? 'website-card-builder'
     : 'speakers';
+
+  const EMBED_VISITED_KEY = id ? `seamless-embed-visited-${id}` : null;
+  const [embedVisited, setEmbedVisited] = useState(() => {
+    try { return EMBED_VISITED_KEY ? localStorage.getItem(EMBED_VISITED_KEY) === "true" : false; } catch { return false; }
+  });
+
+  // Mark embed tab as visited (step 5 of checklist)
+  useEffect(() => {
+    if (activeTab === "embed" && EMBED_VISITED_KEY && !embedVisited) {
+      setEmbedVisited(true);
+      try { localStorage.setItem(EMBED_VISITED_KEY, "true"); } catch {}
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
+  // Open form editor directly if ?edit-form=<type> is in the URL
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const editForm = params.get("edit-form");
+    if (editForm === "speaker-info" || editForm === "call-for-speakers") {
+      setEditingForm(editForm);
+      navigate(`/organizer/event/${id}/speakers`, { replace: true });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.search]);
 
   const handleCopyFormLink = (formType: "speaker-info" | "call-for-speakers") => {
     const slug = formType === "speaker-info" ? "speaker-intake" : "call-for-speakers";
@@ -65,6 +92,20 @@ export default function SpeakerModule() {
         if (Array.isArray(res.config)) return res.config;
         if (Array.isArray(res.config.fields)) return res.config.fields;
         return null;
+      } catch {
+        return null;
+      }
+    },
+    enabled: Boolean(id),
+  });
+
+  const { data: cfsFormConfig } = useQuery<any, Error>({
+    queryKey: ["event", id, "form-config", "call-for-speakers"],
+    queryFn: async () => {
+      try {
+        const res = await getFormConfigForEvent(id!, "call-for-speakers");
+        if (!res?.config) return null;
+        return res;
       } catch {
         return null;
       }
@@ -219,7 +260,7 @@ export default function SpeakerModule() {
               Applications
             </button>
             <button onClick={() => navigate(`/organizer/event/${id}/speakers/embed`)} className={tabClass("embed")}>
-              Speaker Card Embed
+              Speaker Wall
             </button>
             <button onClick={() => navigate(`/organizer/event/${id}/website-card-builder`)} className={tabClass("website-card-builder")}>
               Speaker Card Template
@@ -235,9 +276,20 @@ export default function SpeakerModule() {
       {/* Speakers Tab Content */}
       {activeTab === "speakers" && (
         <div className="space-y-6 pt-6">
+          {id && (
+            <GettingStartedChecklist
+              eventId={id}
+              applicationFormConfigured={!!cfsFormConfig}
+              intakeFormConfigured={!!formConfig && formConfig.length > 0}
+              websiteCardConfigured={!!websiteCardConfig}
+              promoCardConfigured={!!promoCardConfig}
+              embedVisited={embedVisited}
+              onEditForm={(type) => setEditingForm(type)}
+            />
+          )}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <AddSpeakerDialog eventId={id} eventName={eventName} emailDefaults={emailDefaults} />
+              <AddSpeakerDialog eventId={id} eventName={eventName} emailDefaults={emailDefaults} open={addSpeakerOpen} onOpenChange={setAddSpeakerOpen} />
               <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setEditingForm("speaker-info")}>
                 <FileEdit className="h-3.5 w-3.5" />Edit Intake Form
               </Button>

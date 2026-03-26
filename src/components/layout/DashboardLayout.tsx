@@ -7,7 +7,6 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -132,27 +131,19 @@ export function DashboardLayout({ children, eventId, mode: propMode }: Dashboard
                 variant="ghost"
                 className="flex items-center gap-2 pl-2"
               >
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={me?.avatarUrl ?? me?.avatar_url ?? ""} />
-                  <AvatarFallback className="bg-primary/10 text-primary text-sm">
-                    {(((me?.firstName ?? me?.first_name)?.[0] ?? "") + ((me?.lastName ?? me?.last_name)?.[0] ?? "")).toUpperCase() || (me?.email?.[0] ?? "").toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="hidden md:inline text-sm font-medium">
-                  {me ? `${me.firstName ?? me.first_name ?? ""} ${me.lastName ?? me.last_name ?? ""}`.trim() : "Account"}
+                <Users className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">
+                  {teams?.[0]?.name ?? me?.firstName ?? me?.first_name ?? "Account"}
                 </span>
                 <ChevronDown className="h-4 w-4 text-muted-foreground" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-64">
-              {/* Header: Org + User */}
+              {/* Header: Team + User */}
               <div className="px-3 py-3 border-b">
-                <Link
-                  to="/organizer/settings"
-                  className="text-sm font-semibold text-foreground hover:text-primary transition-colors block"
-                >
-                  {me?.organization?.name || me?.organization_name || "Team Seamless"}
-                </Link>
+                <div className="text-sm font-semibold text-foreground">
+                  {teams?.[0]?.name ?? "—"}
+                </div>
                 <Link
                   to="/organizer/settings"
                   className="text-xs text-muted-foreground hover:text-foreground transition-colors mt-0.5 block"
