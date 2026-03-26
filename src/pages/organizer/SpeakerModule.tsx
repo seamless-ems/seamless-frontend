@@ -12,6 +12,7 @@ import ApplicationsTab from "@/components/organizer/ApplicationsTab";
 import CardBuilder from "@/components/CardBuilder";
 import SpeakerFormBuilder, { type SpeakerFormBuilderHandle } from "@/components/SpeakerFormBuilder";
 import GettingStartedChecklist from "@/components/organizer/GettingStartedChecklist";
+import EventContentTab from "@/components/organizer/EventContentTab";
 import { toast } from "@/hooks/use-toast";
 import { HelpTip } from "@/components/ui/HelpTip";
 import { UnsavedChangesDialog } from "@/components/ui/UnsavedChangesDialog";
@@ -34,6 +35,7 @@ export default function SpeakerModule() {
   const pathname = location.pathname;
   const activeTab = pathname.endsWith('/applications') ? 'applications'
     : pathname.endsWith('/embed') ? 'embed'
+    : pathname.endsWith('/content') ? 'content'
     : pathname.endsWith('/promo-card-builder') ? 'promo-card-builder'
     : pathname.endsWith('/website-card-builder') ? 'website-card-builder'
     : 'speakers';
@@ -128,14 +130,15 @@ export default function SpeakerModule() {
     enabled: Boolean(id),
   });
 
+  const speakerQueryTab = activeTab === "applications" ? "applications" : "speakers";
   const { data: rawSpeakers, isLoading } = useQuery<any, Error>({
-    queryKey: ["event", id, "speakers", activeTab],
+    queryKey: ["event", id, "speakers", speakerQueryTab],
     queryFn: () => {
       const formType = activeTab === "applications" ? "call-for-speakers" : "speaker-info";
       const qs = `?form_type=${encodeURIComponent(formType)}`;
       return getJson<any>(`/events/${id}/speakers${qs}`);
     },
-    enabled: Boolean(id) && (activeTab === "speakers" || activeTab === "applications"),
+    enabled: Boolean(id) && (activeTab === "speakers" || activeTab === "applications" || activeTab === "content"),
   });
 
   // Normalize response shapes into any[]
@@ -262,6 +265,9 @@ export default function SpeakerModule() {
             <button onClick={() => navigate(`/organizer/event/${id}/speakers/embed`)} className={tabClass("embed")}>
               Speaker Wall
             </button>
+            <button onClick={() => navigate(`/organizer/event/${id}/speakers/content`)} className={tabClass("content")}>
+              Content
+            </button>
             <button onClick={() => navigate(`/organizer/event/${id}/website-card-builder`)} className={tabClass("website-card-builder")}>
               Speaker Card Template
             </button>
@@ -343,6 +349,11 @@ export default function SpeakerModule() {
       {/* Embed Builder Tab */}
       {activeTab === "embed" && (
         <EmbedBuilder eventId={id} />
+      )}
+
+      {/* Content Tab */}
+      {activeTab === "content" && id && (
+        <EventContentTab eventId={id} />
       )}
 
       {/* Card Builder Tabs */}

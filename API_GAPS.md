@@ -4,6 +4,16 @@ Missing backend fields/endpoints needed by frontend.
 
 ---
 
+## Content overview — bulk endpoint
+
+`GET /events/{eventId}/content` — returns all content items for all speakers in one call, each with a `speakerId` field.
+
+**Why needed:** the event-level Content tab currently uses an accordion that loads per-speaker content lazily (on expand) and fires N parallel calls for "Download All". A single endpoint would allow the overview to load instantly with full data and make Download All much faster.
+
+**Current workaround:** accordion with lazy per-speaker loading; Download All fires parallel `/content/{speakerId}` calls on click.
+
+---
+
 ## Asset downloads — CORS on company logo CDN
 
 Company logo URLs are served from a CDN that does not return `Access-Control-Allow-Origin` headers. Client-side `fetch()` fails with a CORS error, causing the download to fall back to opening in a new tab instead of saving the file. Fix options:
