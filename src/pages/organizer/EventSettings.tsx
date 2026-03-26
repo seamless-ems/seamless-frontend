@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Calendar, FileText, Mail, Mic2, Users } from "lucide-react";
+import { Calendar, Mail, Mic2, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
@@ -20,7 +20,7 @@ const availableModules = [
   {
     id: "speaker",
     name: "Speakers",
-    description: "Manage speakers, intake forms, and promo cards",
+    description: "Manage speakers, intake forms, promo cards, and content uploads",
     icon: Mic2,
     color: "speaker",
     available: true,
@@ -31,15 +31,6 @@ const availableModules = [
     description: "Create and publish event schedules",
     icon: Calendar,
     color: "schedule",
-    available: false,
-    comingSoon: true,
-  },
-  {
-    id: "content",
-    name: "Content",
-    description: "Centralized hub for presentations and files",
-    icon: FileText,
-    color: "content",
     available: false,
     comingSoon: true,
   },
@@ -279,6 +270,40 @@ export default function EventSettings() {
             </CardContent>
           </Card>
 
+          {/* Email Settings */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2" style={{ fontSize: 'var(--font-h3)', fontWeight: 600 }}>
+                <Mail className="h-5 w-5 text-primary" />
+                Email Settings
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>'From' Name</Label>
+                <Input placeholder="e.g., Your Company Events" value={formData.fromName}
+                  onChange={(e) => { setFormData((prev) => ({ ...prev, fromName: e.target.value })); setIsDirty(true); }} />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>'From' Email</Label>
+                  <Input type="email" placeholder="events@yourcompany.com" value={formData.fromEmail}
+                    onChange={(e) => { setFormData((prev) => ({ ...prev, fromEmail: e.target.value })); setIsDirty(true); }} />
+                </div>
+                <div className="space-y-2">
+                  <Label>'Reply To' Email</Label>
+                  <Input type="email" placeholder="hello@yourcompany.com" value={formData.replyToEmail}
+                    onChange={(e) => { setFormData((prev) => ({ ...prev, replyToEmail: e.target.value })); setIsDirty(true); }} />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Email Signature</Label>
+                <Textarea placeholder="Your default email signature…" value={formData.emailSignature}
+                  onChange={(e) => { setFormData((prev) => ({ ...prev, emailSignature: e.target.value })); setIsDirty(true); }} rows={3} />
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Module Selection */}
           <Card>
             <CardHeader>
@@ -326,40 +351,6 @@ export default function EventSettings() {
                     </div>
                   );
                 })}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Email Settings */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2" style={{ fontSize: 'var(--font-h3)', fontWeight: 600 }}>
-                <Mail className="h-5 w-5 text-primary" />
-                Email Settings
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>'From' Name</Label>
-                <Input placeholder="e.g., Your Company Events" value={formData.fromName}
-                  onChange={(e) => { setFormData((prev) => ({ ...prev, fromName: e.target.value })); setIsDirty(true); }} />
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>'From' Email</Label>
-                  <Input type="email" placeholder="events@yourcompany.com" value={formData.fromEmail}
-                    onChange={(e) => { setFormData((prev) => ({ ...prev, fromEmail: e.target.value })); setIsDirty(true); }} />
-                </div>
-                <div className="space-y-2">
-                  <Label>'Reply To' Email</Label>
-                  <Input type="email" placeholder="hello@yourcompany.com" value={formData.replyToEmail}
-                    onChange={(e) => { setFormData((prev) => ({ ...prev, replyToEmail: e.target.value })); setIsDirty(true); }} />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Email Signature</Label>
-                <Textarea placeholder="Your default email signature…" value={formData.emailSignature}
-                  onChange={(e) => { setFormData((prev) => ({ ...prev, emailSignature: e.target.value })); setIsDirty(true); }} rows={3} />
               </div>
             </CardContent>
           </Card>

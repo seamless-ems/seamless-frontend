@@ -13,7 +13,6 @@ import {
 	Mail,
 	Link as LinkIcon,
 	Mic2,
-	FileText,
 	Users,
 	// FolderOpen, // TODO: Google Drive
 } from "lucide-react";
@@ -47,7 +46,7 @@ const availableModules = [
 	{
 		id: "speaker",
 		name: "Speakers",
-		description: "Manage speakers, intake forms, and promo cards",
+		description: "Manage speakers, intake forms, promo cards, and content uploads",
 		icon: Mic2,
 		color: "speaker",
 		available: true,
@@ -58,15 +57,6 @@ const availableModules = [
 		description: "Create and publish event schedules",
 		icon: Calendar,
 		color: "schedule",
-		available: false,
-		comingSoon: true,
-	},
-	{
-		id: "content",
-		name: "Content",
-		description: "Centralized hub for presentations and files",
-		icon: FileText,
-		color: "content",
 		available: false,
 		comingSoon: true,
 	},
@@ -443,7 +433,7 @@ export default function CreateEvent() {
 					</CardContent>
 				</Card>
 
-				{/* TODO: Email Settings — moved to per-module config. See git history to restore.
+				{/* Email Settings */}
 				<Card>
 					<CardHeader>
 						<CardTitle className="text-lg flex items-center gap-2">
@@ -476,7 +466,6 @@ export default function CreateEvent() {
 						</div>
 					</CardContent>
 				</Card>
-				*/}
 
 				{/* Modules */}
 				<Card>

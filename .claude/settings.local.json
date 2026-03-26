@@ -128,7 +128,8 @@
       "WebFetch(domain:summit.codeforamerica.org)",
       "WebFetch(domain:sxsw.com)",
       "WebFetch(domain:learn.sessionboard.com)",
-      "WebFetch(domain:www.accelevents.com)"
+      "WebFetch(domain:www.accelevents.com)",
+      "Bash(python3:*)"
     ]
   }
 }
