@@ -29,7 +29,8 @@ Rules for every agent that touches this file:
 - **No completion docs:** never create summary/review/completed files. Update this file in place. Report results verbally.
 - **CSS consistency:**
   - Cards: `bg-card border border-border hover:shadow-sm hover:border-primary`
-  - Tables: `rounded-lg border border-border overflow-hidden`, header `bg-muted/30`, rows `hover:bg-muted/40`
+  - Tables: `rounded-lg border border-border overflow-hidden`, header `bg-secondary/30`, rows `hover:bg-muted/40`
+  - Info/callout banners: `bg-secondary/30 border-secondary/60` (lavender tint)
   - Badges: `bg-success/10 text-success border-success/30` (approved), `bg-warning/10 text-warning border-warning/30` (pending)
   - Spacing: tab content `pt-6`, forms `space-y-6`
 - **Sub-page navigation:** any view launched from a tab (e.g. Edit Form, Speaker detail) must go full-page with a standard `h-14` sticky header:
@@ -51,6 +52,32 @@ Rules for every agent that touches this file:
 1. Implement `PROMO_PRESETS` — social media formats: square 1080×1080, landscape 1080×608, story 608×1080.
 2. Promo onboarding flow gated behind `cardType === 'promo'`, localStorage key `seamless-card-builder-onboarding-promo-v1`.
 3. No bleed between website and promo template logic.
+
+---
+
+## Help system — phases
+
+**Phase 1 — DONE.** Contextual `HelpTip` popovers on unclear section titles.
+- Reusable component: `src/components/ui/HelpTip.tsx` (Popover-based, `?` icon trigger)
+- Applied to: Status column in SpeakersTable, Embed tab banner, Applications tab header
+- Pattern: `<HelpTip title="…" side="bottom"><p>…</p></HelpTip>` — keep content to 3 short paragraphs max
+
+**Phase 2 — NEXT.** Getting started checklist on the Event Dashboard.
+- A collapsible "Get started" card shown until all steps are complete
+- Steps (in order): Add a speaker → Configure speaker card template → Configure social card template → Approve a speaker's cards → Copy embed code
+- Each step links directly to the relevant page/tab
+- Collapsed state persists in localStorage key `seamless-onboarding-checklist-{eventId}`
+- Show a progress indicator (e.g. "3 of 5 complete")
+- Once all 5 done, card shows a completion state for one session then disappears
+
+**Phase 3 — LATER.** First-time guided walkthrough on Speakers tab (Shepherd.js or similar).
+- Triggered once per event on first visit
+- Highlights: Add Speaker → speaker portal → card approval → embed toggle
+- Skippable, never shown again (localStorage flag)
+
+**Phase 4 — LATER.** External help centre (Notion or GitBook).
+- Linked from a persistent `?` button in the top nav (opens new tab)
+- Key articles: full speaker workflow, status definitions, embed explained, card templates, Call for Speakers vs manual add
 
 ---
 

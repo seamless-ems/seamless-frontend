@@ -279,18 +279,18 @@ export default function SpeakerPortal() {
       {/* Tab bar */}
       <div className="border-b border-border bg-card/50 px-6 shrink-0">
         <div className="flex gap-6">
-          <button onClick={() => navigate(`/organizer/event/${id}/speakers/${speakerId}`)} className={tabClass('info')}>
+          <button onClick={() => navigate(`/organizer/event/${id}/speakers/${speakerId}`, { replace: true })} className={tabClass('info')}>
             {isApplication ? 'Application' : 'Info'}
           </button>
           {!isApplication && (
             <>
-              <button onClick={() => navigate(`/organizer/event/${id}/speakers/${speakerId}/speaker-card`)} className={tabClass('speaker-card')}>
+              <button onClick={() => navigate(`/organizer/event/${id}/speakers/${speakerId}/speaker-card`, { replace: true })} className={tabClass('speaker-card')}>
                 Speaker Card
               </button>
-              <button onClick={() => navigate(`/organizer/event/${id}/speakers/${speakerId}/social-card`)} className={tabClass('social-card')}>
+              <button onClick={() => navigate(`/organizer/event/${id}/speakers/${speakerId}/social-card`, { replace: true })} className={tabClass('social-card')}>
                 Social Card
               </button>
-              <button onClick={() => navigate(`/organizer/event/${id}/speakers/${speakerId}/content`)} className={tabClass('content')}>
+              <button onClick={() => navigate(`/organizer/event/${id}/speakers/${speakerId}/content`, { replace: true })} className={tabClass('content')}>
                 Content
               </button>
             </>

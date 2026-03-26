@@ -7,6 +7,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Check, Copy, ExternalLink } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
+import { HelpTip } from "@/components/ui/HelpTip";
 
 export default function EmbedBuilder({ eventId }: { eventId: string | undefined }) {
   const queryClient = useQueryClient();
@@ -112,6 +113,11 @@ export default function EmbedBuilder({ eventId }: { eventId: string | undefined 
           >
             <ExternalLink className="h-3.5 w-3.5" />Preview
           </Button>
+          <HelpTip title="How the embed works" side="bottom" align="end">
+            <p>Copy the code once and paste it into your website. From then on, you control what shows — toggle a speaker on here and they appear on your site instantly, no code changes needed.</p>
+            <p>Only speakers with approved cards in the <span className="font-medium text-foreground">Speakers</span> tab are available to toggle on.</p>
+            <p>Use <span className="font-medium text-foreground">iFrame snippet</span> for a transparent background (blends with your page) or <span className="font-medium text-foreground">Direct URL</span> if your site builder needs a plain link rather than embed code.</p>
+          </HelpTip>
         </div>
       </div>
 

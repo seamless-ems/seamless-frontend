@@ -46,6 +46,7 @@ import {
   ChevronUp as BringForward,
   ChevronDown as SendBackward,
 } from "lucide-react";
+import { HelpTip } from "@/components/ui/HelpTip";
 import { fabric } from "fabric";
 import {
   deriveInitialCardType,
@@ -2166,6 +2167,20 @@ export default function CardBuilder({
                 <Download className="h-3 w-3 mr-1" />
                 Export
               </Button>
+              <div className="h-5 w-px bg-border mx-0.5" />
+              {cardType === "website" ? (
+                <HelpTip title="Speaker Card Template" side="bottom" align="end">
+                  <p>This template applies to <span className="font-medium text-foreground">all speakers</span> for this event — one design, every speaker. Change it here and all cards update.</p>
+                  <p>Use <span className="font-medium text-foreground">Templates</span> to start from a preset, or build from scratch. The headshot, name, title and company are filled in automatically per speaker.</p>
+                  <p>Once saved, go to each speaker's profile to preview and <span className="font-medium text-foreground">approve their card</span>. Approved cards then appear in the Embed tab.</p>
+                </HelpTip>
+              ) : (
+                <HelpTip title="Social Card Template" side="bottom" align="end">
+                  <p>Social cards are for sharing on <span className="font-medium text-foreground">LinkedIn, Twitter, Instagram</span>, and similar. One template, every speaker gets their own version.</p>
+                  <p>Choose a format — <span className="font-medium text-foreground">square</span> (1:1), <span className="font-medium text-foreground">landscape</span> (16:9), or <span className="font-medium text-foreground">story</span> (9:16) — then design the layout using the sidebar tools.</p>
+                  <p>Speakers download their individual card from their profile page once you've approved it.</p>
+                </HelpTip>
+              )}
             </div>
           </div>
 

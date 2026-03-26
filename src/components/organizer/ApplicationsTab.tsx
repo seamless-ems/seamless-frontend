@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { toast } from "@/hooks/use-toast";
 import { Check, ChevronRight, Copy, FileEdit, MoreVertical, Search, Share2 } from "lucide-react";
+import { HelpTip } from "@/components/ui/HelpTip";
 
 function buildRejectionEmail(firstName: string, eventName: string) {
   return {
@@ -311,6 +312,11 @@ export default function ApplicationsTab({ eventId, eventName = "", emailDefaults
           >
             <Share2 className="h-3.5 w-3.5" />Share
           </Button>
+          <HelpTip title="Call for Speakers" side="bottom" align="end">
+            <p>Share your application form link so speakers can apply directly. Use <span className="font-medium text-foreground">Edit Application Form</span> to customise what you ask for.</p>
+            <p>When you <span className="font-medium text-foreground">approve</span> an application, the speaker is moved to your Speakers tab and sent a link to complete their full profile — headshot, bio, logo, and card details.</p>
+            <p><span className="font-medium text-foreground">Rejected</span> applicants are not notified unless you choose to send the rejection email shown after clicking Reject.</p>
+          </HelpTip>
         </div>
       </div>
 

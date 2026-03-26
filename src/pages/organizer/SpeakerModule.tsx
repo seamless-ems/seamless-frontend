@@ -12,6 +12,7 @@ import ApplicationsTab from "@/components/organizer/ApplicationsTab";
 import CardBuilder from "@/components/CardBuilder";
 import SpeakerFormBuilder, { type SpeakerFormBuilderHandle } from "@/components/SpeakerFormBuilder";
 import { toast } from "@/hooks/use-toast";
+import { HelpTip } from "@/components/ui/HelpTip";
 
 export default function SpeakerModule() {
   const { id } = useParams();
@@ -244,6 +245,11 @@ export default function SpeakerModule() {
                 <Share2 className="h-3.5 w-3.5" />Share Speaker List
               </Button>
               <ShareDialog open={shareOpen} onOpenChange={setShareOpen} />
+              <HelpTip title="How the Speakers tab works" side="bottom" align="end">
+                <p>Add speakers manually or approve them from the <span className="font-medium text-foreground">Applications</span> tab. Either way, they'll need to submit their details before their cards can be built.</p>
+                <p>Send each speaker the <span className="font-medium text-foreground">intake form link</span> so they can complete their profile — headshot, bio, company logo — from their own Seamless account.</p>
+                <p>Once their info is in, go to their profile to review and approve their <span className="font-medium text-foreground">speaker card</span> and <span className="font-medium text-foreground">social card</span>. Approved cards can then be toggled live in the <span className="font-medium text-foreground">Embed</span> tab.</p>
+              </HelpTip>
             </div>
           </div>
           <div className="rounded-lg border border-border overflow-hidden">

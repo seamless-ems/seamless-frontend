@@ -8,6 +8,7 @@ import { updateSpeaker, deleteSpeaker } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 import { Download, ExternalLink, Copy, Check, ChevronRight } from "lucide-react";
 import { API_BASE } from "@/lib/api";
+import { HelpTip } from "@/components/ui/HelpTip";
 
 type Props = {
   speakers: any[];
@@ -252,7 +253,17 @@ export default function SpeakersTable({ speakers, isLoading, eventId, selectedTa
               </div>
             ) : null}
           </th>
-          <th className="px-5 py-2.5 text-left text-xs font-medium text-muted-foreground w-[140px]">Status</th>
+          <th className="px-5 py-2.5 text-left text-xs font-medium text-muted-foreground w-[140px]">
+            <div className="flex items-center gap-1.5">
+              Status
+              <HelpTip title="Speaker status" side="bottom" align="start" compact>
+                <p><span className="font-medium text-foreground">Info Pending</span> — waiting for the speaker to submit their details via the intake form.</p>
+                <p><span className="font-medium text-foreground">Card Approval Pending</span> — details received, review and approve their speaker and social cards.</p>
+                <p><span className="font-medium text-foreground">Cards Approved</span> — cards approved, toggle them on in the Embed tab to publish to your website.</p>
+                <p><span className="font-medium text-foreground">Published</span> — live on your website embed.</p>
+              </HelpTip>
+            </div>
+          </th>
           {showBio && <th className="px-3 py-2.5 text-center text-xs font-medium text-muted-foreground w-[52px]">Bio</th>}
           <th className="px-3 py-2.5 text-center text-xs font-medium text-muted-foreground w-[80px]">Speaker Card</th>
           <th className="px-3 py-2.5 text-center text-xs font-medium text-muted-foreground w-[80px]">Social Card</th>
