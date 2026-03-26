@@ -90,9 +90,10 @@ function formatDate(dateStr: string | null | undefined) {
   }
 }
 
-export default function ApplicationsTab({ eventId, eventName = "", onEditForm, onCopyFormLink, copiedLink }: {
+export default function ApplicationsTab({ eventId, eventName = "", emailDefaults, onEditForm, onCopyFormLink, copiedLink }: {
   eventId: string | undefined;
   eventName?: string;
+  emailDefaults?: { fromName: string; fromEmail: string; replyToEmail: string };
   onEditForm?: () => void;
   onCopyFormLink?: () => void;
   copiedLink?: boolean;
@@ -211,8 +212,8 @@ export default function ApplicationsTab({ eventId, eventName = "", onEditForm, o
       });
       queryClient.invalidateQueries({ queryKey: ["event", eventId, "applications"] });
       queryClient.invalidateQueries({ queryKey: ["event", eventId, "speakers"] });
-      const savedFromName = localStorage.getItem("seamless-email-from-name") ?? "";
-      const savedFromEmail = localStorage.getItem("seamless-email-from-email") ?? "";
+      const savedFromName = emailDefaults?.fromName || localStorage.getItem("seamless-email-from-name") || "";
+      const savedFromEmail = emailDefaults?.fromEmail || localStorage.getItem("seamless-email-from-email") || "";
       if (status === "approved") {
         const tpl = buildApprovalEmail(speaker.firstName, eventName);
         setApprovalEmail({
@@ -265,8 +266,11 @@ export default function ApplicationsTab({ eventId, eventName = "", onEditForm, o
             : "No applications awaiting review"}
         </p>
         <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={onEditForm}>
+            <FileEdit className="h-3.5 w-3.5" />Edit Application Form
+          </Button>
           <Button variant="outline" size="sm" className="gap-1.5" onClick={onCopyFormLink}>
-            {copiedLink ? <><Check className="h-3.5 w-3.5" />Copied</> : <><Copy className="h-3.5 w-3.5" />Copy Application Link</>}
+            {copiedLink ? <><Check className="h-3.5 w-3.5" />Copied</> : <><Copy className="h-3.5 w-3.5" />Copy Link</>}
           </Button>
           <Button
             variant="outline"
@@ -283,9 +287,6 @@ export default function ApplicationsTab({ eventId, eventName = "", onEditForm, o
             }}
           >
             <Share2 className="h-3.5 w-3.5" />Share
-          </Button>
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={onEditForm}>
-            <FileEdit className="h-3.5 w-3.5" />Edit Form
           </Button>
         </div>
       </div>

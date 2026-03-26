@@ -47,6 +47,11 @@ export default function SpeakerModule() {
     enabled: !!id,
   });
   const eventName = eventData?.title || eventData?.name || '';
+  const emailDefaults = {
+    fromName: eventData?.from_name ?? eventData?.fromName ?? '',
+    fromEmail: eventData?.from_email ?? eventData?.fromEmail ?? '',
+    replyToEmail: eventData?.reply_to_email ?? eventData?.replyToEmail ?? '',
+  };
 
   const { data: formConfig } = useQuery<any[], Error>({
     queryKey: ["event", id, "form-config", "speaker-info"],
@@ -229,9 +234,9 @@ export default function SpeakerModule() {
         <div className="space-y-6 pt-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <AddSpeakerDialog eventId={id} eventName={eventName} />
+              <AddSpeakerDialog eventId={id} eventName={eventName} emailDefaults={emailDefaults} />
               <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setEditingForm("speaker-info")}>
-                <FileEdit className="h-3.5 w-3.5" />Edit Form
+                <FileEdit className="h-3.5 w-3.5" />Edit Intake Form
               </Button>
             </div>
             <div className="flex items-center gap-2">
@@ -269,6 +274,7 @@ export default function SpeakerModule() {
         <ApplicationsTab
           eventId={id}
           eventName={eventName}
+          emailDefaults={emailDefaults}
           onEditForm={() => setEditingForm("call-for-speakers")}
           onCopyFormLink={() => handleCopyFormLink("call-for-speakers")}
           copiedLink={copiedLink}

@@ -37,6 +37,18 @@ The SpeakerPortal preview embeds this same HTML — fixing the embed fixes the p
 
 ---
 
+## Event email settings — `from_name`, `from_email`, `reply_to_email`, `email_signature`
+
+Frontend sends these fields on `POST /events` (create) and `PATCH /events/{id}` (update). Backend must:
+
+- Store and return all four fields on `GET /events/{id}`
+- Field names (snake_case): `from_name`, `from_email`, `reply_to_email`, `email_signature`
+- These pre-fill the From / Reply-To fields in speaker intake and application emails shown to the organiser
+
+Until the backend returns them, the frontend falls back to `localStorage` keys `seamless-email-from-name` / `seamless-email-from-email`.
+
+---
+
 ## Speaker intake email — direct send
 
 The organiser composes and copies the intake email manually today. Direct sending requires:

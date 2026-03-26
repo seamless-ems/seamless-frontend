@@ -3,13 +3,14 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getJson, updateEvent, getTeam, createCheckout } from "@/lib/api";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Calendar, FileText, Mic2, Users } from "lucide-react";
+import { Calendar, FileText, Mail, Mic2, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
@@ -77,6 +78,10 @@ export default function EventSettings() {
     endDate: "",
     location: "",
     eventWebsite: "",
+    fromName: "",
+    fromEmail: "",
+    replyToEmail: "",
+    emailSignature: "",
   });
 
   const [selectedModules, setSelectedModules] = useState<string[]>(["speaker"]);
@@ -114,6 +119,10 @@ export default function EventSettings() {
       endDate: toDateInput(rawEvent.end_date ?? rawEvent.endDate ?? ""),
       location: rawEvent.location ?? "",
       eventWebsite: rawEvent.event_website ?? rawEvent.eventWebsite ?? "",
+      fromName: rawEvent.from_name ?? rawEvent.fromName ?? "",
+      fromEmail: rawEvent.from_email ?? rawEvent.fromEmail ?? "",
+      replyToEmail: rawEvent.reply_to_email ?? rawEvent.replyToEmail ?? "",
+      emailSignature: rawEvent.email_signature ?? rawEvent.emailSignature ?? "",
     }));
 
     // modules - support new object shape { speaker: true } or older array/string formats
@@ -154,6 +163,10 @@ export default function EventSettings() {
         location: formData.location || undefined,
         event_website: formData.eventWebsite || undefined,
         modules: modulesObj,
+        from_name: formData.fromName || undefined,
+        from_email: formData.fromEmail || undefined,
+        reply_to_email: formData.replyToEmail || undefined,
+        email_signature: formData.emailSignature || undefined,
       };
 
       // Only include team_id if it's actually set
@@ -309,6 +322,40 @@ export default function EventSettings() {
                     </div>
                   );
                 })}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Email Settings */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2" style={{ fontSize: 'var(--font-h3)', fontWeight: 600 }}>
+                <Mail className="h-5 w-5 text-primary" />
+                Email Settings
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>'From' Name</Label>
+                <Input placeholder="e.g., Your Company Events" value={formData.fromName}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, fromName: e.target.value }))} />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>'From' Email</Label>
+                  <Input type="email" placeholder="events@yourcompany.com" value={formData.fromEmail}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, fromEmail: e.target.value }))} />
+                </div>
+                <div className="space-y-2">
+                  <Label>'Reply To' Email</Label>
+                  <Input type="email" placeholder="hello@yourcompany.com" value={formData.replyToEmail}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, replyToEmail: e.target.value }))} />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Email Signature</Label>
+                <Textarea placeholder="Your default email signature…" value={formData.emailSignature}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, emailSignature: e.target.value }))} rows={3} />
               </div>
             </CardContent>
           </Card>

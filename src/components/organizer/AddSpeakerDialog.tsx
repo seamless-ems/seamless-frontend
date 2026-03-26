@@ -14,6 +14,7 @@ type Step = "add" | "email";
 type Props = {
   eventId?: string;
   eventName?: string;
+  emailDefaults?: { fromName: string; fromEmail: string; replyToEmail: string };
 };
 
 const DEFAULT_INTRO = (eventName: string) =>
@@ -79,7 +80,7 @@ function buildHtml(
   return { headerMeta, html };
 }
 
-export default function AddSpeakerDialog({ eventId, eventName = "the event" }: Props) {
+export default function AddSpeakerDialog({ eventId, eventName = "the event", emailDefaults }: Props) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -89,9 +90,9 @@ export default function AddSpeakerDialog({ eventId, eventName = "the event" }: P
   const [createdSpeakerId, setCreatedSpeakerId] = useState<string | null>(null);
 
   const [fields, setFields] = useState({ firstName: "", lastName: "", email: "" });
-  const [fromName, setFromName] = useState("");
-  const [fromEmail, setFromEmail] = useState("");
-  const [replyTo, setReplyTo] = useState("");
+  const [fromName, setFromName] = useState(emailDefaults?.fromName || localStorage.getItem("seamless-email-from-name") || "");
+  const [fromEmail, setFromEmail] = useState(emailDefaults?.fromEmail || localStorage.getItem("seamless-email-from-email") || "");
+  const [replyTo, setReplyTo] = useState(emailDefaults?.replyToEmail || "");
   const [emailSubject, setEmailSubject] = useState("");
   const [ctaLabel, setCtaLabel] = useState(CTA_LABEL);
   const [introText, setIntroText] = useState("");
@@ -102,9 +103,9 @@ export default function AddSpeakerDialog({ eventId, eventName = "the event" }: P
   const reset = () => {
     setStep("add");
     setFields({ firstName: "", lastName: "", email: "" });
-    setFromName("");
-    setFromEmail("");
-    setReplyTo("");
+    setFromName(emailDefaults?.fromName || localStorage.getItem("seamless-email-from-name") || "");
+    setFromEmail(emailDefaults?.fromEmail || localStorage.getItem("seamless-email-from-email") || "");
+    setReplyTo(emailDefaults?.replyToEmail || "");
     setEmailSubject("");
     setCtaLabel(CTA_LABEL);
     setIntroText("");
