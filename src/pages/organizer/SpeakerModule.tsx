@@ -268,6 +268,7 @@ export default function SpeakerModule() {
       {activeTab === "applications" && (
         <ApplicationsTab
           eventId={id}
+          eventName={eventName}
           onEditForm={() => setEditingForm("call-for-speakers")}
           onCopyFormLink={() => handleCopyFormLink("call-for-speakers")}
           copiedLink={copiedLink}

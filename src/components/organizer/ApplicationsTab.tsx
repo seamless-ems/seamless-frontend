@@ -5,6 +5,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -13,7 +15,53 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "@/hooks/use-toast";
-import { Check, ChevronRight, Copy, FileEdit, MoreVertical, Search } from "lucide-react";
+import { Check, ChevronRight, Copy, FileEdit, MoreVertical, Search, Share2 } from "lucide-react";
+
+function buildRejectionEmail(firstName: string, eventName: string) {
+  return {
+    subject: `Your application to speak at ${eventName}`,
+    body: `Thank you for taking the time to apply to speak at ${eventName}.\n\nAfter careful consideration, we're unfortunately unable to offer you a speaking slot on this occasion. We had a high volume of applications and the decision was a difficult one.\n\nWe hope you'll consider applying again in the future — we'd love to have you involved.\n\nThanks again for your interest, and we hope to see you at ${eventName}.\n\nBest regards,\nTeam ${eventName}`,
+  };
+}
+
+function buildApprovalEmail(firstName: string, eventName: string) {
+  return {
+    subject: `You're in! Complete your speaker profile for ${eventName}`,
+    body: `Congratulations! We're thrilled to let you know that your application to speak at ${eventName} has been accepted.\n\nTo get started, please complete your speaker profile using the link below. You'll need to log in or create a free Seamless account — this is where you'll manage your profile, view your speaker cards, and update your details going forward.\n\nPlease try to complete this as soon as possible so we can promote your session.\n\nIf you have any questions, don't hesitate to get in touch.`,
+    signOff: `Best regards,\nTeam ${eventName}`,
+    ctaLabel: "Complete your speaker profile",
+  };
+}
+
+function buildEmailHtml(firstName: string, body: string, intakeUrl: string, ctaLabel: string | undefined, signOff?: string) {
+  const bodyHtml = body.split("\n\n").map(p =>
+    `<p style="margin:0 0 16px 0;color:#374151;font-size:15px;line-height:1.6">${p.replace(/\n/g, "<br>")}</p>`
+  ).join("");
+  const btnHtml = ctaLabel && intakeUrl
+    ? `<table cellpadding="0" cellspacing="0" style="margin:8px 0 24px"><tr><td><a href="${intakeUrl}" style="display:inline-block;background:#4F46E5;color:#fff;font-size:15px;font-weight:600;padding:14px 28px;border-radius:6px;text-decoration:none">${ctaLabel}</a></td></tr></table>`
+    : "";
+  const signOffHtml = signOff
+    ? signOff.split("\n\n").map(p =>
+        `<p style="margin:0 0 12px 0;color:#374151;font-size:15px;line-height:1.6">${p.replace(/\n/g, "<br>")}</p>`
+      ).join("")
+    : "";
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#f9fafb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;padding:40px 0">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:8px;border:1px solid #e5e7eb">
+        <tr><td style="padding:40px 48px">
+          <p style="margin:0 0 24px 0;color:#374151;font-size:15px;line-height:1.6">Hi ${firstName},</p>
+          ${bodyHtml}${btnHtml}${signOffHtml}
+        </td></tr>
+        <tr><td style="padding:16px 48px 24px;border-top:1px solid #f3f4f6;text-align:center">
+          <p style="margin:0;font-size:11px;color:#9ca3af">Powered by <a href="https://seamlessevents.ai" style="color:#9ca3af;text-decoration:underline">Seamless Events</a></p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`;
+}
 
 function resolveAppStatus(speaker: any) {
   const s =
@@ -42,8 +90,9 @@ function formatDate(dateStr: string | null | undefined) {
   }
 }
 
-export default function ApplicationsTab({ eventId, onEditForm, onCopyFormLink, copiedLink }: {
+export default function ApplicationsTab({ eventId, eventName = "", onEditForm, onCopyFormLink, copiedLink }: {
   eventId: string | undefined;
+  eventName?: string;
   onEditForm?: () => void;
   onCopyFormLink?: () => void;
   copiedLink?: boolean;
@@ -52,6 +101,19 @@ export default function ApplicationsTab({ eventId, onEditForm, onCopyFormLink, c
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "submitted" | "approved" | "rejected">("all");
   const [approvingId, setApprovingId] = useState<string | null>(null);
+
+  type EmailDraft = {
+    speaker: any;
+    subject: string;
+    body: string;
+    signOff?: string;
+    ctaLabel?: string;
+    fromName: string;
+    fromEmail: string;
+    copied: boolean;
+  };
+  const [approvalEmail, setApprovalEmail] = useState<EmailDraft | null>(null);
+  const [rejectionEmail, setRejectionEmail] = useState<EmailDraft | null>(null);
 
   // Fetch call-for-speakers form config to know which columns to show
   const { data: rawFormConfig } = useQuery<any>({
@@ -135,20 +197,52 @@ export default function ApplicationsTab({ eventId, onEditForm, onCopyFormLink, c
     rejected: allApplications.filter((a) => a.callForSpeakersStatus === "rejected").length,
   };
 
-  const handleUpdateStatus = async (speakerId: string, status: "approved" | "rejected") => {
-    if (status === "approved") setApprovingId(speakerId);
+  const handleUpdateStatus = async (speaker: any, status: "approved" | "rejected") => {
+    if (status === "approved") setApprovingId(speaker.id);
     try {
-      await updateSpeaker(eventId!, speakerId, { call_for_speakers_status: status });
-      toast({
-        title: status === "approved" ? "Application approved" : "Application rejected",
-        description: status === "approved"
-          ? "The speaker has been moved to your Speakers list."
-          : "The application has been marked as rejected.",
+      // Backend requires all fields on PATCH — include required fields alongside status
+      await updateSpeaker(eventId!, speaker.id, {
+        id: speaker.id,
+        firstName: speaker.firstName,
+        lastName: speaker.lastName,
+        email: speaker.email,
+        formType: "call-for-speakers",
+        call_for_speakers_status: status,
       });
       queryClient.invalidateQueries({ queryKey: ["event", eventId, "applications"] });
       queryClient.invalidateQueries({ queryKey: ["event", eventId, "speakers"] });
-    } catch {
-      toast({ title: "Failed to update status", variant: "destructive" });
+      const savedFromName = localStorage.getItem("seamless-email-from-name") ?? "";
+      const savedFromEmail = localStorage.getItem("seamless-email-from-email") ?? "";
+      if (status === "approved") {
+        const tpl = buildApprovalEmail(speaker.firstName, eventName);
+        setApprovalEmail({
+          speaker,
+          subject: tpl.subject,
+          body: tpl.body,
+          signOff: tpl.signOff,
+          ctaLabel: tpl.ctaLabel,
+          fromName: savedFromName,
+          fromEmail: savedFromEmail,
+          copied: false,
+        });
+      } else {
+        const tpl = buildRejectionEmail(speaker.firstName, eventName);
+        setRejectionEmail({
+          speaker,
+          subject: tpl.subject,
+          body: tpl.body,
+          fromName: savedFromName,
+          fromEmail: savedFromEmail,
+          copied: false,
+        });
+      }
+    } catch (err: any) {
+      console.error("updateSpeaker error:", err);
+      toast({
+        title: "Failed to update status",
+        description: err?.message || err?.responseText || "Unknown error",
+        variant: "destructive",
+      });
     } finally {
       setApprovingId(null);
     }
@@ -172,7 +266,23 @@ export default function ApplicationsTab({ eventId, onEditForm, onCopyFormLink, c
         </p>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" className="gap-1.5" onClick={onCopyFormLink}>
-            {copiedLink ? <><Check className="h-3.5 w-3.5" />Copied</> : <><Copy className="h-3.5 w-3.5" />Copy Link</>}
+            {copiedLink ? <><Check className="h-3.5 w-3.5" />Copied</> : <><Copy className="h-3.5 w-3.5" />Copy Application Link</>}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            onClick={async () => {
+              const url = `${window.location.origin}/call-for-speakers/${eventId}`;
+              if (navigator.share) {
+                try { await navigator.share({ title: "Call for Speakers", url }); } catch {}
+              } else {
+                await navigator.clipboard.writeText(url);
+                toast({ title: "Application link copied" });
+              }
+            }}
+          >
+            <Share2 className="h-3.5 w-3.5" />Share
           </Button>
           <Button variant="outline" size="sm" className="gap-1.5" onClick={onEditForm}>
             <FileEdit className="h-3.5 w-3.5" />Edit Form
@@ -314,24 +424,34 @@ export default function ApplicationsTab({ eventId, onEditForm, onCopyFormLink, c
                     {/* Actions */}
                     <td className="px-5 py-4">
                       <div className="flex items-center justify-end gap-2">
-                        {!isApproved && !isRejected && (
-                          <Button
-                            size="sm"
-                            className="h-7 text-xs"
-                            onClick={() => handleUpdateStatus(applicant.id, "approved")}
-                            disabled={isApproving}
-                          >
-                            {isApproving ? (
-                              "Approving…"
-                            ) : (
-                              <><Check className="h-3 w-3 mr-1" />Approve</>
-                            )}
-                          </Button>
-                        )}
                         {isApproved && (
                           <span className="text-xs text-success font-medium flex items-center gap-1">
                             <Check className="h-3 w-3" />Approved
                           </span>
+                        )}
+                        {isRejected && (
+                          <span className="text-xs text-destructive font-medium">Rejected</span>
+                        )}
+                        {!isApproved && !isRejected && (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
+                              onClick={() => handleUpdateStatus(applicant, "rejected")}
+                              disabled={isApproving}
+                            >
+                              Reject
+                            </Button>
+                            <Button
+                              size="sm"
+                              className="h-7 text-xs"
+                              onClick={() => handleUpdateStatus(applicant, "approved")}
+                              disabled={isApproving}
+                            >
+                              {isApproving ? "Approving…" : <><Check className="h-3 w-3 mr-1" />Approve</>}
+                            </Button>
+                          </>
                         )}
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -343,18 +463,15 @@ export default function ApplicationsTab({ eventId, onEditForm, onCopyFormLink, c
                             <DropdownMenuItem onClick={() => window.location.href = `/organizer/event/${eventId}/speakers/${applicant.id}`}>
                               View application
                             </DropdownMenuItem>
-                            {!isApproved && (
-                              <DropdownMenuItem onClick={() => handleUpdateStatus(applicant.id, "approved")}>
-                                Approve
+                            {!isApproved && <DropdownMenuSeparator />}
+                            {isApproved && (
+                              <DropdownMenuItem className="text-destructive" onClick={() => handleUpdateStatus(applicant, "rejected")}>
+                                Reject
                               </DropdownMenuItem>
                             )}
-                            <DropdownMenuSeparator />
-                            {!isRejected && (
-                              <DropdownMenuItem
-                                className="text-destructive"
-                                onClick={() => handleUpdateStatus(applicant.id, "rejected")}
-                              >
-                                Reject
+                            {isRejected && (
+                              <DropdownMenuItem onClick={() => handleUpdateStatus(applicant, "approved")}>
+                                Approve
                               </DropdownMenuItem>
                             )}
                           </DropdownMenuContent>
@@ -368,6 +485,217 @@ export default function ApplicationsTab({ eventId, onEditForm, onCopyFormLink, c
           </table>
         )}
       </div>
+
+      {/* Approval email dialog */}
+      {approvalEmail && (() => {
+        const intakeUrl = `${window.location.origin}/speaker-intake/${eventId}`;
+        const headerRowCls = "flex items-center gap-3 border-b border-border/50 py-2";
+        const headerLabelCls = "text-xs font-medium text-muted-foreground w-16 shrink-0";
+
+        const handleCopy = async () => {
+          const html = buildEmailHtml(approvalEmail.speaker.firstName, approvalEmail.body, intakeUrl, approvalEmail.ctaLabel, approvalEmail.signOff);
+          const from = [approvalEmail.fromName, approvalEmail.fromEmail ? `<${approvalEmail.fromEmail}>` : ""].filter(Boolean).join(" ");
+          const plain = `${from ? `From: ${from}\n` : ""}To: ${approvalEmail.speaker.email}\nSubject: ${approvalEmail.subject}\n\nHi ${approvalEmail.speaker.firstName},\n\n${approvalEmail.body}\n\n${approvalEmail.ctaLabel}:\n${intakeUrl}${approvalEmail.signOff ? `\n\n${approvalEmail.signOff}` : ""}`;
+          try {
+            await navigator.clipboard.write([
+              new ClipboardItem({
+                "text/html": new Blob([html], { type: "text/html" }),
+                "text/plain": new Blob([plain], { type: "text/plain" }),
+              }),
+            ]);
+          } catch {
+            await navigator.clipboard.writeText(plain);
+          }
+          setApprovalEmail((e) => e ? { ...e, copied: true } : null);
+          setTimeout(() => setApprovalEmail((e) => e ? { ...e, copied: false } : null), 2000);
+        };
+
+        return (
+          <Dialog open onOpenChange={() => setApprovalEmail(null)}>
+            <DialogContent className="sm:max-w-3xl flex flex-col max-h-[90vh]">
+              <DialogHeader className="shrink-0">
+                <DialogTitle>Send congratulations to {approvalEmail.speaker.firstName}</DialogTitle>
+              </DialogHeader>
+
+              <div className="overflow-y-auto flex-1 space-y-0 pt-1">
+                {/* Email header */}
+                <div className="rounded-t-lg border border-border bg-muted/20 px-4">
+                  <div className={headerRowCls}>
+                    <span className={headerLabelCls}>From</span>
+                    <Input
+                      value={approvalEmail.fromName}
+                      onChange={(e) => { localStorage.setItem("seamless-email-from-name", e.target.value); setApprovalEmail((s) => s ? { ...s, fromName: e.target.value } : null); }}
+                      placeholder="Your name or team"
+                      className="h-8 text-sm border-0 shadow-none p-0 focus-visible:ring-0 bg-transparent flex-1"
+                    />
+                    <Input
+                      type="email"
+                      value={approvalEmail.fromEmail}
+                      onChange={(e) => { localStorage.setItem("seamless-email-from-email", e.target.value); setApprovalEmail((s) => s ? { ...s, fromEmail: e.target.value } : null); }}
+                      placeholder="you@yourorg.com"
+                      className="h-8 text-sm border-0 shadow-none p-0 focus-visible:ring-0 bg-transparent w-48"
+                    />
+                  </div>
+                  <div className={headerRowCls}>
+                    <span className={headerLabelCls}>To</span>
+                    <span className="text-sm text-foreground">{approvalEmail.speaker.email}</span>
+                  </div>
+                  <div className={`${headerRowCls} border-b-0`}>
+                    <span className={headerLabelCls}>Subject</span>
+                    <Input
+                      value={approvalEmail.subject}
+                      onChange={(e) => setApprovalEmail((s) => s ? { ...s, subject: e.target.value } : null)}
+                      className="h-8 text-sm border-0 shadow-none p-0 focus-visible:ring-0 bg-transparent flex-1"
+                    />
+                  </div>
+                </div>
+
+                {/* Email body */}
+                <div className="rounded-b-lg border border-t-0 border-border bg-white px-8 pt-6 pb-4 space-y-4">
+                  <p className="text-sm text-gray-700">Hi {approvalEmail.speaker.firstName},</p>
+
+                  <Textarea
+                    value={approvalEmail.body}
+                    rows={10}
+                    onChange={(e) => {
+                      setApprovalEmail((s) => s ? { ...s, body: e.target.value } : null);
+                      e.currentTarget.style.height = "auto";
+                      e.currentTarget.style.height = e.currentTarget.scrollHeight + "px";
+                    }}
+                    className="text-sm resize-none overflow-hidden border border-dashed border-border/60 bg-transparent shadow-none leading-relaxed focus-visible:border-primary/40"
+                  />
+
+                  <div className="py-1">
+                    <span style={{ display: "inline-block", background: "#4F46E5", color: "#fff", fontSize: 14, fontWeight: 600, padding: "11px 22px", borderRadius: 6, cursor: "default" }}>
+                      {approvalEmail.ctaLabel}
+                    </span>
+                  </div>
+
+                  {approvalEmail.signOff !== undefined && (
+                    <Textarea
+                      value={approvalEmail.signOff}
+                      rows={2}
+                      onChange={(e) => {
+                        setApprovalEmail((s) => s ? { ...s, signOff: e.target.value } : null);
+                        e.currentTarget.style.height = "auto";
+                        e.currentTarget.style.height = e.currentTarget.scrollHeight + "px";
+                      }}
+                      className="text-sm resize-none overflow-hidden border border-dashed border-border/60 bg-transparent shadow-none leading-relaxed focus-visible:border-primary/40"
+                    />
+                  )}
+
+                  <div className="border-t border-gray-100 pt-3 text-center">
+                    <span className="text-[11px] text-gray-400">Powered by <span className="font-medium">Seamless Events</span></span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-1 shrink-0">
+                <Button variant="outline" className="flex-1" onClick={handleCopy}>
+                  {approvalEmail.copied
+                    ? <><Check className="h-3.5 w-3.5 mr-1.5" />Copied</>
+                    : <><Copy className="h-3.5 w-3.5 mr-1.5" />Copy Email</>}
+                </Button>
+                <Button onClick={() => setApprovalEmail(null)}>Send</Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        );
+      })()}
+
+      {/* Rejection email dialog */}
+      {rejectionEmail && (() => {
+        const headerRowCls = "flex items-center gap-3 border-b border-border/50 py-2";
+        const headerLabelCls = "text-xs font-medium text-muted-foreground w-16 shrink-0";
+
+        const handleCopy = async () => {
+          const html = buildEmailHtml(rejectionEmail.speaker.firstName, rejectionEmail.body, "", undefined);
+          const from = [rejectionEmail.fromName, rejectionEmail.fromEmail ? `<${rejectionEmail.fromEmail}>` : ""].filter(Boolean).join(" ");
+          const plain = `${from ? `From: ${from}\n` : ""}To: ${rejectionEmail.speaker.email}\nSubject: ${rejectionEmail.subject}\n\nHi ${rejectionEmail.speaker.firstName},\n\n${rejectionEmail.body}`;
+          try {
+            await navigator.clipboard.write([
+              new ClipboardItem({
+                "text/html": new Blob([html], { type: "text/html" }),
+                "text/plain": new Blob([plain], { type: "text/plain" }),
+              }),
+            ]);
+          } catch {
+            await navigator.clipboard.writeText(plain);
+          }
+          setRejectionEmail((e) => e ? { ...e, copied: true } : null);
+          setTimeout(() => setRejectionEmail((e) => e ? { ...e, copied: false } : null), 2000);
+        };
+
+        return (
+          <Dialog open onOpenChange={() => setRejectionEmail(null)}>
+            <DialogContent className="sm:max-w-3xl flex flex-col max-h-[90vh]">
+              <DialogHeader className="shrink-0">
+                <DialogTitle>Let {rejectionEmail.speaker.firstName} know</DialogTitle>
+              </DialogHeader>
+
+              <div className="overflow-y-auto flex-1 space-y-0 pt-1">
+                <div className="rounded-t-lg border border-border bg-muted/20 px-4">
+                  <div className={headerRowCls}>
+                    <span className={headerLabelCls}>From</span>
+                    <Input
+                      value={rejectionEmail.fromName}
+                      onChange={(e) => { localStorage.setItem("seamless-email-from-name", e.target.value); setRejectionEmail((s) => s ? { ...s, fromName: e.target.value } : null); }}
+                      placeholder="Your name or team"
+                      className="h-8 text-sm border-0 shadow-none p-0 focus-visible:ring-0 bg-transparent flex-1"
+                    />
+                    <Input
+                      type="email"
+                      value={rejectionEmail.fromEmail}
+                      onChange={(e) => { localStorage.setItem("seamless-email-from-email", e.target.value); setRejectionEmail((s) => s ? { ...s, fromEmail: e.target.value } : null); }}
+                      placeholder="you@yourorg.com"
+                      className="h-8 text-sm border-0 shadow-none p-0 focus-visible:ring-0 bg-transparent w-48"
+                    />
+                  </div>
+                  <div className={headerRowCls}>
+                    <span className={headerLabelCls}>To</span>
+                    <span className="text-sm text-foreground">{rejectionEmail.speaker.email}</span>
+                  </div>
+                  <div className={`${headerRowCls} border-b-0`}>
+                    <span className={headerLabelCls}>Subject</span>
+                    <Input
+                      value={rejectionEmail.subject}
+                      onChange={(e) => setRejectionEmail((s) => s ? { ...s, subject: e.target.value } : null)}
+                      className="h-8 text-sm border-0 shadow-none p-0 focus-visible:ring-0 bg-transparent flex-1"
+                    />
+                  </div>
+                </div>
+
+                <div className="rounded-b-lg border border-t-0 border-border bg-white px-8 pt-6 pb-4 space-y-4">
+                  <p className="text-sm text-gray-700">Hi {rejectionEmail.speaker.firstName},</p>
+                  <Textarea
+                    value={rejectionEmail.body}
+                    rows={10}
+                    onChange={(e) => {
+                      setRejectionEmail((s) => s ? { ...s, body: e.target.value } : null);
+                      e.currentTarget.style.height = "auto";
+                      e.currentTarget.style.height = e.currentTarget.scrollHeight + "px";
+                    }}
+                    className="text-sm resize-none overflow-hidden border border-dashed border-border/60 bg-transparent shadow-none leading-relaxed focus-visible:border-primary/40"
+                  />
+                  <div className="border-t border-gray-100 pt-3 text-center">
+                    <span className="text-[11px] text-gray-400">Powered by <span className="font-medium">Seamless Events</span></span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-1 shrink-0">
+                <Button variant="outline" className="flex-1" onClick={handleCopy}>
+                  {rejectionEmail.copied
+                    ? <><Check className="h-3.5 w-3.5 mr-1.5" />Copied</>
+                    : <><Copy className="h-3.5 w-3.5 mr-1.5" />Copy Email</>}
+                </Button>
+                <Button variant="outline" onClick={() => setRejectionEmail(null)}>Skip</Button>
+                <Button onClick={() => setRejectionEmail(null)}>Send</Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        );
+      })()}
     </div>
   );
 }

@@ -39,11 +39,12 @@ The SpeakerPortal preview embeds this same HTML — fixing the embed fixes the p
 
 ## Speaker intake email — direct send
 
-When an organiser adds a speaker via "Send Intake Form", the UI generates an editable email template and lets the organiser copy it manually. Direct sending requires:
+The organiser composes and copies the intake email manually today. Direct sending requires:
 
 - `POST /events/{eventId}/speakers/{speakerId}/send-intake` (or similar)
-- Backend sends the intake form link to `speaker.email`
-- Returns success; frontend shows confirmation and removes "Direct send coming soon" note
+- Backend sends the intake form link (`{origin}/speaker-intake/{eventId}`) to `speaker.email`
+- The email should match the template the organiser has already seen: personalised greeting, CTA button, "Powered by Seamless Events" footer
+- Returns success so the frontend can confirm delivery
 
 ---
 
@@ -53,10 +54,14 @@ When an organiser adds a speaker via "Send Intake Form", the UI generates an edi
 
 On approval the backend must:
 1. Set `call_for_speakers_status: "approved"` on the speaker record
-2. Make the speaker appear in the standard speakers list (i.e. `GET /events/{eventId}/speakers` without `?form_type=call-for-speakers`) so they show up in the Speakers tab with whatever data they submitted
-3. Optionally trigger a notification email with a Speaker Intake link so they can fill in missing fields (headshot etc.)
+2. Carry over all submitted application data (name, email, bio, company, role) into the standard speaker record — these fields should not be blank when the speaker appears in the Speakers tab
+3. Make the speaker appear in the standard speakers list (`GET /events/{eventId}/speakers` without `?form_type=call-for-speakers`) so they show in the Speakers tab
+4. **Send a notification email** to the speaker confirming their application was accepted and including the Speaker Intake link (`{origin}/speaker-intake/{eventId}`) so they can log in / create a Seamless account and complete their profile (headshot, logo, any missing fields). This is required — not optional — because speakers must have a Seamless account to manage their own profile and view their cards.
 
-Frontend sends: `{ call_for_speakers_status: "approved" | "rejected" }`
+On rejection:
+- Set `call_for_speakers_status: "rejected"` only — speaker does not appear in the standard speakers list
+
+Frontend sends: `{ call_for_speakers_status: "approved" | "rejected" }` alongside `id`, `firstName`, `lastName`, `email`, `formType` as a workaround — the backend currently rejects partial PATCH bodies (treats PATCH like PUT). Fix: make those fields optional on PATCH so a status-only update works.
 
 ---
 
