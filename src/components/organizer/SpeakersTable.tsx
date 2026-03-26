@@ -209,7 +209,7 @@ export default function SpeakersTable({ speakers, isLoading, eventId, selectedTa
 
   return (
     <table className="w-full">
-      <thead className="bg-muted/30 border-b border-border">
+      <thead className="bg-secondary/30 border-b border-border">
         <tr>
           {/* Avatar + name columns merged — controls sit flush with the table left edge */}
           <th colSpan={2} className="px-5 py-2.5">
@@ -252,12 +252,12 @@ export default function SpeakersTable({ speakers, isLoading, eventId, selectedTa
               </div>
             ) : null}
           </th>
-          <th className="px-5 py-3 text-left text-xs font-medium text-muted-foreground w-[140px]">Status</th>
-          {showBio && <th className="px-3 py-3 text-center text-xs font-medium text-muted-foreground w-[52px]">Bio</th>}
-          <th className="px-3 py-3 text-center text-xs font-medium text-muted-foreground w-[80px]">Website<br/>Card</th>
-          <th className="px-3 py-3 text-center text-xs font-medium text-muted-foreground w-[80px]">Promo<br/>Card</th>
-          {showLogo && <th className="px-3 py-3 text-center text-xs font-medium text-muted-foreground w-[72px]">Company<br/>Logo</th>}
-          <th className="px-5 py-3 text-left text-xs font-medium text-muted-foreground w-[130px]">Last<br/>Updated</th>
+          <th className="px-5 py-2.5 text-left text-xs font-medium text-muted-foreground w-[140px]">Status</th>
+          {showBio && <th className="px-3 py-2.5 text-center text-xs font-medium text-muted-foreground w-[52px]">Bio</th>}
+          <th className="px-3 py-2.5 text-center text-xs font-medium text-muted-foreground w-[80px]">Speaker Card</th>
+          <th className="px-3 py-2.5 text-center text-xs font-medium text-muted-foreground w-[80px]">Social Card</th>
+          {showLogo && <th className="px-3 py-2.5 text-center text-xs font-medium text-muted-foreground w-[72px]">Logo</th>}
+          <th className="px-5 py-2.5 text-left text-xs font-medium text-muted-foreground w-[130px]">Updated</th>
         </tr>
       </thead>
       <tbody>

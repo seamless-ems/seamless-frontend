@@ -258,14 +258,37 @@ export default function ApplicationsTab({ eventId, eventName = "", emailDefaults
 
   return (
     <div className="space-y-4 pt-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          {counts.submitted > 0
-            ? `${counts.submitted} application${counts.submitted !== 1 ? "s" : ""} awaiting review`
-            : "No applications awaiting review"}
-        </p>
-        <div className="flex items-center gap-2">
+      {/* Single header row: search + filters left, actions right */}
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Search applicants…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-8 h-8 text-sm w-[180px]"
+            />
+          </div>
+          <div className="flex items-center gap-1.5">
+            <button className={filterBtnClass("all")} onClick={() => setStatusFilter("all")}>
+              All <span className="ml-1 opacity-60">{counts.all}</span>
+            </button>
+            <button className={filterBtnClass("submitted")} onClick={() => setStatusFilter("submitted")}>
+              Submitted <span className="ml-1 opacity-60">{counts.submitted}</span>
+            </button>
+            <button className={filterBtnClass("pending")} onClick={() => setStatusFilter("pending")}>
+              Pending <span className="ml-1 opacity-60">{counts.pending}</span>
+            </button>
+            <button className={filterBtnClass("approved")} onClick={() => setStatusFilter("approved")}>
+              Approved <span className="ml-1 opacity-60">{counts.approved}</span>
+            </button>
+            <button className={filterBtnClass("rejected")} onClick={() => setStatusFilter("rejected")}>
+              Rejected <span className="ml-1 opacity-60">{counts.rejected}</span>
+            </button>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
           <Button variant="outline" size="sm" className="gap-1.5" onClick={onEditForm}>
             <FileEdit className="h-3.5 w-3.5" />Edit Application Form
           </Button>
@@ -291,36 +314,6 @@ export default function ApplicationsTab({ eventId, eventName = "", emailDefaults
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="relative flex-1 max-w-xs">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input
-            placeholder="Search applicants…"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-8 h-8 text-sm"
-          />
-        </div>
-        <div className="flex items-center gap-1.5">
-          <button className={filterBtnClass("all")} onClick={() => setStatusFilter("all")}>
-            All <span className="ml-1 opacity-60">{counts.all}</span>
-          </button>
-          <button className={filterBtnClass("submitted")} onClick={() => setStatusFilter("submitted")}>
-            Submitted <span className="ml-1 opacity-60">{counts.submitted}</span>
-          </button>
-          <button className={filterBtnClass("pending")} onClick={() => setStatusFilter("pending")}>
-            Pending <span className="ml-1 opacity-60">{counts.pending}</span>
-          </button>
-          <button className={filterBtnClass("approved")} onClick={() => setStatusFilter("approved")}>
-            Approved <span className="ml-1 opacity-60">{counts.approved}</span>
-          </button>
-          <button className={filterBtnClass("rejected")} onClick={() => setStatusFilter("rejected")}>
-            Rejected <span className="ml-1 opacity-60">{counts.rejected}</span>
-          </button>
-        </div>
-      </div>
-
       {/* Table */}
       <div className="rounded-lg border border-border overflow-hidden">
         {isLoading ? (
@@ -331,7 +324,7 @@ export default function ApplicationsTab({ eventId, eventName = "", emailDefaults
           </div>
         ) : (
           <table className="w-full">
-            <thead className="border-b border-border bg-muted/30">
+            <thead className="border-b border-border bg-secondary/30">
               <tr>
                 {showHeadshot && <th className="px-5 py-4 text-left text-xs font-medium text-muted-foreground w-[68px]"></th>}
                 <th className="px-5 py-4 text-left text-xs font-medium text-muted-foreground">Applicant</th>

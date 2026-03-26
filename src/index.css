@@ -12,7 +12,7 @@
     --primary-foreground: 0 0% 100%;
 
     /* Backgrounds */
-    --background: 30 33% 97%; /* #FAFAF9 */
+    --background: 0 0% 98%; /* near-white */
     --foreground: 220 39% 11%; /* #111827 */
 
     --card: 0 0% 100%;
@@ -28,7 +28,7 @@
     --secondary: 231 53% 90%; /* #E8EAF6 - Primary Subtle */
     --secondary-foreground: 220 39% 11%;
 
-    --muted: 30 20% 94%;
+    --muted: 220 14% 95%;
     --muted-foreground: 220 9% 46%; /* #6B7280 */
 
     --destructive: 0 84% 60%; /* #DC2626 */
@@ -65,7 +65,7 @@
     --primary-hover: 231 36% 40%; /* #3D4A8F */
     --primary-subtle: 231 53% 90%; /* #E8EAF6 */
 
-    --bg-app: 30 33% 97%;
+    --bg-app: 0 0% 98%;
     --bg-surface: 0 0% 100%;
     --border-default: 220 13% 91%;
 

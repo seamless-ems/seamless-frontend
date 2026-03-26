@@ -73,55 +73,34 @@ export default function EmbedBuilder({ eventId }: { eventId: string | undefined 
   };
 
   return (
-    <div className="space-y-0 pt-6">
-      {/* Persistent info banner */}
-      <div className="rounded-lg border border-border bg-muted/30 px-5 py-3.5 mb-4 text-sm text-muted-foreground leading-relaxed">
-        A live speaker wall for your website. Paste the embed code into your site once — it updates automatically as you toggle speakers live.{" "}
-        Speakers become available here once their card is approved in the{" "}
-        <Link to={`/organizer/event/${eventId}/speakers`} className="text-foreground underline hover:text-primary transition-colors">Speakers</Link> tab.
-      </div>
-
-      {/* Single header row */}
-      <div className="rounded-t-lg border border-border bg-muted/30 px-5 py-3.5 flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <p className="text-sm font-medium text-foreground">Speaker Card Embed</p>
-            {eligibleSpeakers.length > 0 && (
-              <span className="text-xs text-muted-foreground">
-                {liveSpeakers.length} of {eligibleSpeakers.length} live
-              </span>
-            )}
-          </div>
-          {liveSpeakers.length === 0 && (
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {eligibleSpeakers.length === 0 ? (
-                <>Go to{" "}
-                  <Link to={`/organizer/event/${eventId}/speakers`} className="underline hover:text-foreground transition-colors">Speakers</Link>
-                  {" "}and approve a speaker's cards to make them available here
-                </>
-              ) : (
-                "Toggle speakers on below to add them to your website embed"
-              )}
-            </p>
-          )}
+    <div className="space-y-4 pt-6">
+      {/* Info banner */}
+      <div className="rounded-lg border border-secondary/60 bg-secondary/30 px-5 py-4 flex items-start gap-4">
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-foreground mb-0.5">Speaker wall for your website</p>
+          <p className="text-sm text-muted-foreground">
+            Paste the embed code into your site once — toggle speakers on or off any time and it updates live.{" "}
+            Speakers appear here once their cards are approved in the{" "}
+            <Link to={`/organizer/event/${eventId}/speakers`} className="text-foreground underline underline-offset-2 hover:text-primary transition-colors">Speakers</Link> tab.
+          </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0 pt-0.5">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="gap-1.5 h-8">
                 {copiedEmbed
                   ? <><Check className="h-3.5 w-3.5" />Copied</>
-                  : <><Copy className="h-3.5 w-3.5" />Copy embed code</>}
+                  : <><Copy className="h-3.5 w-3.5" />Copy code</>}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => copyText(iframeSnippet, "iframe")}>
                 {copiedEmbed === "iframe" ? <Check className="h-3.5 w-3.5 mr-2" /> : <Copy className="h-3.5 w-3.5 mr-2" />}
-                iFrame <span className="text-muted-foreground ml-1">(transparent)</span>
+                iFrame snippet <span className="text-muted-foreground ml-1.5 text-xs">transparent bg</span>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => copyText(embedUrl, "url")}>
                 {copiedEmbed === "url" ? <Check className="h-3.5 w-3.5 mr-2" /> : <Copy className="h-3.5 w-3.5 mr-2" />}
-                URL <span className="text-muted-foreground ml-1">(white)</span>
+                Direct URL <span className="text-muted-foreground ml-1.5 text-xs">white bg</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -131,21 +110,32 @@ export default function EmbedBuilder({ eventId }: { eventId: string | undefined 
             className="gap-1.5 h-8"
             onClick={() => window.open(embedUrl, "_blank", "noopener")}
           >
-            <ExternalLink className="h-3.5 w-3.5" />
-            Preview
+            <ExternalLink className="h-3.5 w-3.5" />Preview
           </Button>
         </div>
       </div>
 
-      {/* Speaker list — no separate header */}
-      <div className="rounded-b-lg border-x border-b border-border overflow-hidden">
+      {/* Speaker list */}
+      <div className="rounded-lg border border-border overflow-hidden">
+        <div className="bg-secondary/30 border-b border-border px-5 py-2.5 flex items-center justify-between">
+          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Speakers</span>
+          {eligibleSpeakers.length > 0 && (
+            <span className="text-xs text-muted-foreground">
+              <span className="font-medium text-foreground">{liveSpeakers.length}</span> of {eligibleSpeakers.length} live
+            </span>
+          )}
+        </div>
 
         {isLoading ? (
           <div className="py-10 text-center text-sm text-muted-foreground">Loading speakers…</div>
         ) : eligibleSpeakers.length === 0 ? (
-          <div className="py-10 text-center text-sm text-muted-foreground">
-            No speakers with approved cards yet.{" "}
-            <span className="text-muted-foreground/60">Approve cards on a speaker's page to make them available here.</span>
+          <div className="py-12 text-center space-y-1">
+            <p className="text-sm font-medium text-foreground">No speakers ready yet</p>
+            <p className="text-sm text-muted-foreground">
+              Approve a speaker's cards in the{" "}
+              <Link to={`/organizer/event/${eventId}/speakers`} className="text-foreground underline underline-offset-2 hover:text-primary transition-colors">Speakers</Link>
+              {" "}tab to make them available here.
+            </p>
           </div>
         ) : (
           <table className="w-full">
@@ -173,9 +163,14 @@ export default function EmbedBuilder({ eventId }: { eventId: string | undefined 
                         </p>
                       )}
                     </td>
-                    <td className="px-5 py-3.5 text-right w-16">
-                      {isLive && (
-                        <span className="text-xs text-success font-medium">Live</span>
+                    <td className="px-5 py-3.5 text-right w-24">
+                      {isLive ? (
+                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-success/10 text-success border border-success/20">
+                          <span className="h-1.5 w-1.5 rounded-full bg-success" />
+                          Live
+                        </span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground/40">Off</span>
                       )}
                     </td>
                   </tr>
