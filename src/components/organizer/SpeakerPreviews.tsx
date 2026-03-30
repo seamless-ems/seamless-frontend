@@ -16,6 +16,7 @@ export default function SpeakerPreviews({ s, type }: Props) {
   const appendedScripts = useRef<HTMLScriptElement[]>([]);
   const originalWindowOnclick = useRef<any>(null);
   const controllerRef = useRef<AbortController | null>(null);
+  const appendedIframes = useRef<HTMLIFrameElement[]>([]);
 
   useEffect(() => {
     let mounted = true;
@@ -40,30 +41,37 @@ export default function SpeakerPreviews({ s, type }: Props) {
         const parser = new DOMParser();
         const doc = parser.parseFromString(text, 'text/html');
 
-        Array.from(doc.querySelectorAll('link') as NodeListOf<HTMLLinkElement>).forEach((lnk) => {
-          const newLink = document.createElement('link');
-          for (let i = 0; i < lnk.attributes.length; i++) {
-            newLink.setAttribute(lnk.attributes[i].name, lnk.attributes[i].value);
+        // Use an isolated iframe for the preview so styles and scripts from the
+        // fetched HTML do not affect the host page. We inject a <base> tag so
+        // relative URLs resolve against the original fetch URL.
+        // Ensure a base href exists so relative asset URLs resolve correctly.
+        if (!doc.querySelector('base')) {
+          try {
+            const baseEl = doc.createElement('base');
+            baseEl.setAttribute('href', url);
+            if (doc.head) doc.head.insertBefore(baseEl, doc.head.firstChild);
+          } catch (e) {
+            // ignore
           }
-          document.head.appendChild(newLink);
-          appendedHeadLinks.current.push(newLink);
-        });
+        }
 
+        const serialized = doc.documentElement?.outerHTML || text;
+
+        // Create iframe with the fetched HTML as srcdoc to fully isolate it.
         container.innerHTML = '';
-        const firstNode = Array.from(doc.body.childNodes).find(n => n.nodeName.toLowerCase() !== 'script');
-        if (firstNode) container.appendChild(document.importNode(firstNode, true));
+        const iframe = document.createElement('iframe');
+        iframe.setAttribute('title', 'Speaker preview');
+        iframe.setAttribute('aria-hidden', 'true');
+        iframe.style.width = '100%';
+        iframe.style.minHeight = '1200px';
+        iframe.style.border = '0';
+        // Setting srcdoc runs the HTML in an isolated browsing context.
+        iframe.srcdoc = serialized;
+        container.appendChild(iframe);
+        appendedIframes.current.push(iframe);
 
-        originalWindowOnclick.current = (window as any).onclick;
-        Array.from(doc.querySelectorAll('script') as NodeListOf<HTMLScriptElement>).forEach((sc) => {
-          const newScript = document.createElement('script');
-          for (let i = 0; i < sc.attributes.length; i++) {
-            newScript.setAttribute(sc.attributes[i].name, sc.attributes[i].value);
-          }
-          if (sc.src) { newScript.src = sc.src; newScript.async = false; }
-          else { newScript.textContent = sc.textContent || ''; }
-          container.appendChild(newScript);
-          appendedScripts.current.push(newScript);
-        });
+        // Preview rendered inside an isolated iframe (srcdoc); no DOM/script
+        // injection into the host page is performed.
       } catch (err: any) {
         if (!(err instanceof DOMException && err.name === 'AbortError')) {
           if (mounted) setError(err?.message || String(err));
@@ -78,10 +86,8 @@ export default function SpeakerPreviews({ s, type }: Props) {
     return () => {
       mounted = false;
       controller.abort();
-      appendedHeadLinks.current.forEach(l => l.remove());
-      appendedHeadLinks.current = [];
-      appendedScripts.current.forEach(s => s.remove());
-      appendedScripts.current = [];
+      appendedIframes.current.forEach(i => i.remove());
+      appendedIframes.current = [];
       try { (window as any).onclick = originalWindowOnclick.current; } catch {}
     };
   }, [eventId, s?.id, type]);

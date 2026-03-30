@@ -270,7 +270,7 @@ export async function renderAllElements(params: RenderParams) {
 
         const rect = new fabric.Rect({ left: 0, top: 0, width: width, height: height, fill: "#e5e7eb", stroke: "#d1d5db", strokeWidth: 2, strokeUniform: true, rx: shape === "circle" ? width / 2 : shape === "rounded" || shape === "full-bleed" ? 16 : 4, ry: shape === "circle" ? height / 2 : shape === "rounded" || shape === "full-bleed" ? 16 : 4, selectable: false, evented: false });
 
-        const text = new fabric.Text("Headshot", { left: width / 2, top: height / 2, fontSize: Math.min(Math.max(14, width / 6), 20), fill: "#9ca3af", fontFamily: "Inter", originX: "center", originY: "center", selectable: false, evented: false });
+        const text = new fabric.Text("Headshot", { left: width / 2, top: height / 2, fontSize: cfg.fontSize ?? Math.min(Math.max(14, width / 6), 20), fill: "#9ca3af", fontFamily: "Inter", originX: "center", originY: "center", selectable: false, evented: false });
 
         const group = new fabric.Group([rect, text], { left: cfg.x, top: cfg.y, selectable: true, hasControls: true, lockRotation: true, lockUniScaling: true, subTargetCheck: false, data: { elementKey: "headshot" } });
 
@@ -321,7 +321,7 @@ export async function renderAllElements(params: RenderParams) {
 
         const borderRect = new fabric.Rect({ left: 2, top: 2, width: width - 4, height: height - 4, fill: "transparent", stroke: "#9ca3af", strokeWidth: 1.5, strokeDashArray: [5, 5], strokeUniform: true, rx: 3, ry: 3, selectable: false, evented: false });
 
-        const text = new fabric.Text("Logo Drop Zone", { left: width / 2, top: height / 2, fontSize: Math.min(Math.max(11, width / 8), 18), fill: "#6b7280", fontFamily: "Inter", originX: "center", originY: "center", selectable: false, evented: false });
+        const text = new fabric.Text("Logo Drop Zone", { left: width / 2, top: height / 2, fontSize: cfg.fontSize ?? Math.min(Math.max(11, width / 8), 18), fill: "#6b7280", fontFamily: "Inter", originX: "center", originY: "center", selectable: false, evented: false });
 
         const group = new fabric.Group([fillRect, borderRect, text], { left: cfg.x, top: cfg.y, selectable: true, hasControls: true, lockRotation: true, subTargetCheck: false, data: { elementKey: "companyLogo" } });
 
@@ -359,7 +359,7 @@ export async function renderAllElements(params: RenderParams) {
 
         const fillRect = new fabric.Rect({ left: 0, top: 0, width: width, height: height, fill: "#e5e7eb", strokeWidth: 0, rx: 4, ry: 4, selectable: false, evented: false });
         const borderRect = new fabric.Rect({ left: 2, top: 2, width: width - 4, height: height - 4, fill: "transparent", stroke: "#9ca3af", strokeWidth: 1.5, strokeDashArray: [5, 5], strokeUniform: true, rx: 3, ry: 3, selectable: false, evented: false });
-        const text = new fabric.Text("Event Logo", { left: width / 2, top: height / 2, fontSize: Math.min(Math.max(11, width / 8), 18), fill: "#6b7280", fontFamily: "Inter", originX: "center", originY: "center", selectable: false, evented: false });
+        const text = new fabric.Text("Event Logo", { left: width / 2, top: height / 2, fontSize: cfg.fontSize ?? Math.min(Math.max(11, width / 8), 18), fill: "#6b7280", fontFamily: "Inter", originX: "center", originY: "center", selectable: false, evented: false });
 
         const group = new fabric.Group([fillRect, borderRect, text], { left: cfg.x, top: cfg.y, selectable: true, hasControls: true, lockRotation: true, subTargetCheck: false, data: { elementKey: "eventLogo" } });
 
