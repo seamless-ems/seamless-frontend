@@ -195,7 +195,7 @@ export function DashboardLayout({ children, eventId, mode: propMode }: Dashboard
               <DropdownMenuSeparator />
 
               {/* Switch Team (if multiple teams) */}
-              {teams && teams.length > 1 && (
+              {/* {teams && teams.length > 1 && (
                 <>
                   <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground">Switch Team</div>
                   {teams.map((t: any) => (
@@ -206,7 +206,7 @@ export function DashboardLayout({ children, eventId, mode: propMode }: Dashboard
                   ))}
                   <DropdownMenuSeparator />
                 </>
-              )}
+              )} */}
 
               {/* Switch Mode (Organizer/Speaker) */}
               {/* {mode !== "organizer" ? (

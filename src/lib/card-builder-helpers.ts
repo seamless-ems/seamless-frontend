@@ -978,7 +978,9 @@ export const handleSave = async (
       try {
         const fetched = await fetch(finalTemplateUrl);
         const blob = await fetched.blob();
-        const fileName = `template-${Date.now()}`;
+        const safeType = params.cardType ? String(params.cardType).toLowerCase() : "unknown";
+        const fileName = `template-background-image-${safeType}`;
+        console.log("Uploading background image to server...", fileName);
         const file = new File(
           [blob],
           `${fileName}.${(blob.type || "image/png").split("/").pop()}`,

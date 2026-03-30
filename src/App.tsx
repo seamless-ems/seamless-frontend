@@ -140,6 +140,17 @@ const App = () => {
               }
             />
 
+            <Route
+              path="/organizer/event/:id/speakers/content"
+              element={
+                <ProtectedRoute>
+                  <EventLayoutWrapper>
+                    <SpeakerModule />
+                  </EventLayoutWrapper>
+                </ProtectedRoute>
+              }
+            />
+
             {/* SpeakerPortal — fullscreen, own layout, no EventLayoutWrapper */}
             {[
               "/organizer/event/:id/speakers/:speakerId",

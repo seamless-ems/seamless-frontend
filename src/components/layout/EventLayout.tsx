@@ -102,7 +102,7 @@ export default function EventLayout({ children }: { children: ReactNode }) {
 
               <DropdownMenuSeparator />
 
-              {teams && teams.length > 1 && (
+              {/* {teams && teams.length > 1 && (
                 <>
                   <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground">Switch Team</div>
                   {teams.map((t: any) => (
@@ -113,7 +113,7 @@ export default function EventLayout({ children }: { children: ReactNode }) {
                   ))}
                   <DropdownMenuSeparator />
                 </>
-              )}
+              )} */}
 
               {/* <DropdownMenuItem
                 onSelect={() => {

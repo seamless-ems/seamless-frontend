@@ -12,14 +12,14 @@ import { isOnboardingCompleted } from "@/lib/onboarding";
 import { useAuth } from "@/contexts/AuthContext";
 
 const loginSchema = z.object({
-    email: z.string().email(),
-    password: z.string().min(1),
+  email: z.string().email(),
+  password: z.string().min(1),
 });
 
 const signupSchema = z.object({
-    name: z.string().min(1).optional(),
-    email: z.string().email(),
-    password: z.string().min(6),
+  name: z.string().min(1).optional(),
+  email: z.string().email(),
+  password: z.string().min(6),
 });
 
 // Google icon SVG
@@ -50,258 +50,315 @@ type LoginValues = z.infer<typeof loginSchema>;
 type SignupValues = z.infer<typeof signupSchema>;
 
 function LoginForm({ onSuccess }: { onSuccess: () => void }) {
-    const loginMutation = useLogin({
-        onSuccess: () => {
-            toast.success("Signed in");
-            onSuccess();
-        },
-        onError: (err) => {
-            toast.error(String(err));
-        },
-    });
+  const loginMutation = useLogin({
+    onSuccess: () => {
+      toast.success("Signed in");
+      onSuccess();
+    },
+    onError: (err) => {
+      toast.error(String(err));
+    },
+  });
 
-    const form = useForm<LoginValues>({
-        resolver: zodResolver(loginSchema),
-        defaultValues: { email: "", password: "" },
-    });
+  const form = useForm<LoginValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { email: "", password: "" },
+  });
 
-    const onSubmit = async (data: LoginValues) => {
-        
-        try {
-            await loginMutation.mutateAsync({ email: data.email, password: data.password });
-            
-        } catch (err) {
-            
-        }
-    };
+  const onSubmit = async (data: LoginValues) => {
+    try {
+      await loginMutation.mutateAsync({
+        email: data.email,
+        password: data.password,
+      });
+    } catch (err) {}
+  };
 
-    return (
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="space-y-2">
-                <label className="text-sm font-medium">Email</label>
-                <Input {...form.register("email")} type="email" placeholder="you@example.com" className="h-12" />
-            </div>
+  return (
+    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <div className="space-y-2">
+        <label className="text-sm font-medium">Email</label>
+        <Input
+          {...form.register("email")}
+          type="email"
+          placeholder="you@example.com"
+          className="h-12"
+        />
+      </div>
 
-            <div className="space-y-2">
-                <label className="text-sm font-medium">Password</label>
-                <Input {...form.register("password")} type="password" placeholder="Enter password" className="h-12" />
-            </div>
+      <div className="space-y-2">
+        <label className="text-sm font-medium">Password</label>
+        <Input
+          {...form.register("password")}
+          type="password"
+          placeholder="Enter password"
+          className="h-12"
+        />
+      </div>
 
-            <div className="text-right">
-                <a href="#" className="text-sm text-primary hover:underline">
-                    Forgot password?
-                </a>
-            </div>
+      <div className="text-right">
+        <a href="#" className="text-sm text-primary hover:underline">
+          Forgot password?
+        </a>
+      </div>
 
-            <Button type="submit" variant="outline" className="w-full h-12 border-[1.5px] font-medium" disabled={loginMutation.status === "pending"}>
-                Sign in
-            </Button>
-        </form>
-    );
+      <Button
+        type="submit"
+        variant="outline"
+        className="w-full h-12 border-[1.5px] font-medium"
+        disabled={loginMutation.status === "pending"}
+      >
+        Sign in
+      </Button>
+    </form>
+  );
 }
 
 function SignupForm({ onSuccess }: { onSuccess: () => void }) {
-    const signupMutation = useSignup({
-        onSuccess: () => {
-            toast.success("Account created");
-            onSuccess();
-        },
-        onError: (err) => {
-            toast.error(String(err));
-        },
-    });
+  const signupMutation = useSignup({
+    onSuccess: () => {
+      toast.success("Account created");
+      onSuccess();
+    },
+    onError: (err) => {
+      toast.error(String(err));
+    },
+  });
 
-    const form = useForm<SignupValues>({
-        resolver: zodResolver(signupSchema),
-        defaultValues: { name: "", email: "", password: "" },
-    });
+  const form = useForm<SignupValues>({
+    resolver: zodResolver(signupSchema),
+    defaultValues: { name: "", email: "", password: "" },
+  });
 
-    const onSubmit = async (data: SignupValues) => {
-        
-        try {
-            await signupMutation.mutateAsync({
-                email: data.email,
-                password: data.password,
-                name: data.name,
-            });
-            
-        } catch (err) {
-            
-        }
-    };
+  const onSubmit = async (data: SignupValues) => {
+    try {
+      await signupMutation.mutateAsync({
+        email: data.email,
+        password: data.password,
+        name: data.name,
+      });
+    } catch (err) {}
+  };
 
-    return (
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="space-y-2">
-                <label className="text-sm font-medium">Name</label>
-                <Input {...form.register("name")} type="text" placeholder="Name" className="h-12" />
-            </div>
+  return (
+    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <div className="space-y-2">
+        <label className="text-sm font-medium">Name</label>
+        <Input
+          {...form.register("name")}
+          type="text"
+          placeholder="Name"
+          className="h-12"
+        />
+      </div>
 
-            <div className="space-y-2">
-                <label className="text-sm font-medium">Email</label>
-                <Input {...form.register("email")} type="email" placeholder="you@example.com" className="h-12" />
-            </div>
+      <div className="space-y-2">
+        <label className="text-sm font-medium">Email</label>
+        <Input
+          {...form.register("email")}
+          type="email"
+          placeholder="you@example.com"
+          className="h-12"
+        />
+      </div>
 
-            <div className="space-y-2">
-                <label className="text-sm font-medium">Password</label>
-                <Input {...form.register("password")} type="password" placeholder="Enter password" className="h-12" />
-            </div>
+      <div className="space-y-2">
+        <label className="text-sm font-medium">Password</label>
+        <Input
+          {...form.register("password")}
+          type="password"
+          placeholder="Enter password"
+          className="h-12"
+        />
+      </div>
 
-            <Button type="submit" variant="outline" className="w-full h-12 border-[1.5px] font-medium" disabled={signupMutation.status === "pending"}>
-                Create account
-            </Button>
-        </form>
-    );
+      <Button
+        type="submit"
+        variant="outline"
+        className="w-full h-12 border-[1.5px] font-medium"
+        disabled={signupMutation.status === "pending"}
+      >
+        Create account
+      </Button>
+    </form>
+  );
 }
 
 const Auth: React.FC = () => {
-    const location = useLocation();
-    const mode = location.pathname === "/signup" ? "signup" : "login";
-    const navigate = useNavigate();
+  const location = useLocation();
+  const mode = location.pathname === "/signup" ? "signup" : "login";
+  const navigate = useNavigate();
 
-    const { isAuthenticated, isLoading } = useAuth();
-    const [isSsoLoading, setIsSsoLoading] = React.useState(false);
+  const { isAuthenticated, isLoading } = useAuth();
+  const [isSsoLoading, setIsSsoLoading] = React.useState(false);
 
-    // Navigate when auth state becomes authenticated
-    React.useEffect(() => {
-        if (isLoading) return;
-        if (isAuthenticated) {
-            
-            if (mode === "signup" || !isOnboardingCompleted()) {
-                navigate("/onboarding", { replace: true });
-            } else {
-                navigate("/organizer", { replace: true });
-            }
-        }
-    }, [isAuthenticated, isLoading, mode, navigate]);
+  // Navigate when auth state becomes authenticated
+  React.useEffect(() => {
+    if (isLoading) return;
+    if (isAuthenticated) {
+      if (mode === "signup" || !isOnboardingCompleted()) {
+        navigate("/onboarding", { replace: true });
+      } else {
+        navigate("/organizer", { replace: true });
+      }
+    }
+  }, [isAuthenticated, isLoading, mode, navigate]);
 
-    return (
-        <div className="min-h-screen flex items-center justify-center relative" style={{
-            background: 'linear-gradient(135deg, hsl(var(--primary-subtle)) 0%, hsl(var(--bg-app)) 100%)'
-        }}>
-            {/* Decorative flow - top */}
-            <div className="fixed top-0 left-0 w-full h-[60px] pointer-events-none z-[1]">
-                <svg viewBox="0 0 1200 60" preserveAspectRatio="none" className="w-full h-full">
-                    <path
-                        d="M0 35 Q150 15, 300 28 Q450 42, 600 25 Q750 12, 900 35 Q1050 48, 1200 30"
-                        stroke="hsl(var(--primary))"
-                        strokeWidth="4"
-                        fill="none"
-                        strokeLinecap="round"
-                        opacity="0.25"
-                    />
-                    <path
-                        d="M0 20 Q150 38, 300 22 Q450 8, 600 25 Q750 40, 900 18 Q1050 5, 1200 25"
-                        stroke="hsl(var(--primary))"
-                        strokeWidth="4"
-                        fill="none"
-                        strokeLinecap="round"
-                        opacity="0.15"
-                    />
-                </svg>
-            </div>
+  return (
+    <div
+      className="min-h-screen flex items-center justify-center relative"
+      style={{
+        background:
+          "linear-gradient(135deg, hsl(var(--primary-subtle)) 0%, hsl(var(--bg-app)) 100%)",
+      }}
+    >
+      {/* Decorative flow - top */}
+      <div className="fixed top-0 left-0 w-full h-[60px] pointer-events-none z-[1]">
+        <svg
+          viewBox="0 0 1200 60"
+          preserveAspectRatio="none"
+          className="w-full h-full"
+        >
+          <path
+            d="M0 35 Q150 15, 300 28 Q450 42, 600 25 Q750 12, 900 35 Q1050 48, 1200 30"
+            stroke="hsl(var(--primary))"
+            strokeWidth="4"
+            fill="none"
+            strokeLinecap="round"
+            opacity="0.25"
+          />
+          <path
+            d="M0 20 Q150 38, 300 22 Q450 8, 600 25 Q750 40, 900 18 Q1050 5, 1200 25"
+            stroke="hsl(var(--primary))"
+            strokeWidth="4"
+            fill="none"
+            strokeLinecap="round"
+            opacity="0.15"
+          />
+        </svg>
+      </div>
 
-            {/* Decorative flow - bottom */}
-            <div className="fixed bottom-0 left-0 w-full h-[60px] pointer-events-none z-[1] rotate-180">
-                <svg viewBox="0 0 1200 60" preserveAspectRatio="none" className="w-full h-full">
-                    <path
-                        d="M0 35 Q150 15, 300 28 Q450 42, 600 25 Q750 12, 900 35 Q1050 48, 1200 30"
-                        stroke="hsl(var(--primary))"
-                        strokeWidth="4"
-                        fill="none"
-                        strokeLinecap="round"
-                        opacity="0.25"
-                    />
-                    <path
-                        d="M0 20 Q150 38, 300 22 Q450 8, 600 25 Q750 40, 900 18 Q1050 5, 1200 25"
-                        stroke="hsl(var(--primary))"
-                        strokeWidth="4"
-                        fill="none"
-                        strokeLinecap="round"
-                        opacity="0.15"
-                    />
-                </svg>
-            </div>
+      {/* Decorative flow - bottom */}
+      <div className="fixed bottom-0 left-0 w-full h-[60px] pointer-events-none z-[1] rotate-180">
+        <svg
+          viewBox="0 0 1200 60"
+          preserveAspectRatio="none"
+          className="w-full h-full"
+        >
+          <path
+            d="M0 35 Q150 15, 300 28 Q450 42, 600 25 Q750 12, 900 35 Q1050 48, 1200 30"
+            stroke="hsl(var(--primary))"
+            strokeWidth="4"
+            fill="none"
+            strokeLinecap="round"
+            opacity="0.25"
+          />
+          <path
+            d="M0 20 Q150 38, 300 22 Q450 8, 600 25 Q750 40, 900 18 Q1050 5, 1200 25"
+            stroke="hsl(var(--primary))"
+            strokeWidth="4"
+            fill="none"
+            strokeLinecap="round"
+            opacity="0.15"
+          />
+        </svg>
+      </div>
 
-            <div className="w-[90%] max-w-[420px] bg-card rounded-lg p-12 relative z-10" style={{
-                boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
-            }}>
-                {/* Logo */}
-                <div className="mb-8 text-center">
-                    <div className="flex items-baseline justify-center gap-2 leading-none">
-                        <span className="text-[36px] font-semibold" style={{
-                            letterSpacing: '-0.01em',
-                            color: 'hsl(var(--primary))'
-                        }}>
-                            Seamless
-                        </span>
-                        <span className="text-[28px] font-normal" style={{
-                            color: 'hsl(var(--text-secondary))'
-                        }}>
-                            Events
-                        </span>
-                    </div>
-                </div>
-
-                {/* Toggle between login/signup */}
-                <div className="text-center mb-6 text-sm text-muted-foreground">
-                    {mode === "login" ? (
-                        <span>
-                            New here? <Link to="/signup" className="text-primary hover:underline">Create account</Link>
-                        </span>
-                    ) : (
-                        <span>
-                            Already have an account? <Link to="/login" className="text-primary hover:underline">Sign in</Link>
-                        </span>
-                    )}
-                </div>
-
-                {/* Form */}
-                <div key={mode} className="space-y-4">
-                    {mode === "signup" ? (
-                        <SignupForm onSuccess={() => {}} />
-                    ) : (
-                        <LoginForm onSuccess={() => {}} />
-                    )}
-                </div>
-
-                {/* Divider */}
-                <div className="flex items-center my-6">
-                    <div className="flex-1 h-px bg-border" />
-                    <span className="px-4 text-sm text-muted-foreground">or continue with</span>
-                    <div className="flex-1 h-px bg-border" />
-                </div>
-
-                {/* SSO Buttons */}
-                <div className="flex flex-col gap-4">
-                    <Button
-                        variant="outline"
-                        className="w-full h-12 border-[1.5px]"
-                        type="button"
-                        disabled={isSsoLoading}
-                        onClick={async () => {
-                            if (isSsoLoading) return;
-                            setIsSsoLoading(true);
-
-                            try {
-                                await signInWithGooglePopup();
-
-                                // Token exchange + user hydration handled by firebase.ts listener
-                            } catch (e) {
-
-                                toast.error("Unable to sign in with Google");
-                            } finally {
-                                setIsSsoLoading(false);
-                            }
-                        }}
-                    >
-                        <GoogleIcon />
-                        <span>{isSsoLoading ? "Connecting..." : "Google"}</span>
-                    </Button>
-                </div>
-            </div>
+      <div
+        className="w-[90%] max-w-[420px] bg-card rounded-lg p-12 relative z-10"
+        style={{
+          boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
+        }}
+      >
+        {/* Logo */}
+        <div className="mb-8 text-center">
+          <div className="flex items-baseline justify-center gap-2 leading-none">
+            <span
+              className="text-[36px] font-semibold"
+              style={{
+                letterSpacing: "-0.01em",
+                color: "hsl(var(--primary))",
+              }}
+            >
+              Seamless
+            </span>
+            <span
+              className="text-[28px] font-normal"
+              style={{
+                color: "hsl(var(--text-secondary))",
+              }}
+            >
+              Events
+            </span>
+          </div>
         </div>
-    );
+
+        {/* Form */}
+        <div key={mode} className="space-y-4">
+          {mode === "signup" ? (
+            <SignupForm onSuccess={() => {}} />
+          ) : (
+            <LoginForm onSuccess={() => {}} />
+          )}
+        </div>
+
+        {/* Toggle between login/signup */}
+        <div className="text-center mt-6 mb-6 text-sm text-muted-foreground">
+          {mode === "login" ? (
+            <span>
+              New here?{" "}
+              <Link to="/signup" className="text-primary hover:underline">
+                Create account
+              </Link>
+            </span>
+          ) : (
+            <span>
+              Already have an account?{" "}
+              <Link to="/login" className="text-primary hover:underline">
+                Sign in
+              </Link>
+            </span>
+          )}
+        </div>
+
+        {/* Divider */}
+        <div className="flex items-center my-6">
+          <div className="flex-1 h-px bg-border" />
+          <span className="px-4 text-sm text-muted-foreground">
+            or continue with
+          </span>
+          <div className="flex-1 h-px bg-border" />
+        </div>
+
+        {/* SSO Buttons */}
+        <div className="flex flex-col gap-4">
+          <Button
+            variant="outline"
+            className="w-full h-12 border-[1.5px]"
+            type="button"
+            disabled={isSsoLoading}
+            onClick={async () => {
+              if (isSsoLoading) return;
+              setIsSsoLoading(true);
+
+              try {
+                await signInWithGooglePopup();
+
+                // Token exchange + user hydration handled by firebase.ts listener
+              } catch (e) {
+                toast.error("Unable to sign in with Google");
+              } finally {
+                setIsSsoLoading(false);
+              }
+            }}
+          >
+            <GoogleIcon />
+            <span>{isSsoLoading ? "Connecting..." : "Google"}</span>
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default Auth;

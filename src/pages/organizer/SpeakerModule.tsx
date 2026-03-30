@@ -30,6 +30,7 @@ export default function SpeakerModule() {
   const [copiedLink, setCopiedLink] = useState(false);
   const [confirmFormLeave, setConfirmFormLeave] = useState(false);
   const formBuilderRef = useRef<SpeakerFormBuilderHandle>(null);
+  
 
   // Derive active tab from URL path
   const pathname = location.pathname;
@@ -72,6 +73,20 @@ export default function SpeakerModule() {
     toast({ title: "Link copied to clipboard" });
     setTimeout(() => setCopiedLink(false), 2000);
   };
+
+  const handleCopyForm = async () => {
+    if (!formConfig) {
+      toast({ title: "No form configured to copy", variant: "destructive" });
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(formConfig, null, 2));
+      toast({ title: "Form JSON copied to clipboard" });
+    } catch (err) {
+      toast({ title: "Copy failed", variant: "destructive" });
+    }
+  };
+  
 
   const { data: eventData } = useQuery<any>({
     queryKey: ['event', id],
@@ -296,8 +311,11 @@ export default function SpeakerModule() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <AddSpeakerDialog eventId={id} eventName={eventName} emailDefaults={emailDefaults} open={addSpeakerOpen} onOpenChange={setAddSpeakerOpen} />
-              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setEditingForm("speaker-info")}>
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setEditingForm("speaker-info") }>
                 <FileEdit className="h-3.5 w-3.5" />Edit Intake Form
+              </Button>
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => handleCopyFormLink('speaker-info')} title="Copy intake form link">
+                <Copy className="h-3.5 w-3.5" />Copy Form Link
               </Button>
             </div>
             <div className="flex items-center gap-2">
@@ -312,7 +330,6 @@ export default function SpeakerModule() {
             </div>
           </div>
           <div className="rounded-lg border border-border overflow-hidden">
-            {/* @ts-ignore */}
             <SpeakersTable
               speakers={filteredSpeakers}
               isLoading={isLoading}

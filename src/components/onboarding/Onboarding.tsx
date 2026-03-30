@@ -26,7 +26,7 @@ const Onboarding: React.FC = () => {
     if (!teamName.trim()) return;
     setIsLoading(true);
     try {
-      const orgRes = await createOrganization({ name: teamName.trim() });
+      const orgRes = await createOrganization({ name: `${teamName.trim()}'s Organization` });
       await createTeam({ name: teamName.trim(), organizationId: orgRes.id });
       setOnboardingCompleted(true);
       navigate("/organizer/events/new", { replace: true });

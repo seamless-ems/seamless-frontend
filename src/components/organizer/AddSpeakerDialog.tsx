@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { createSpeaker } from "@/lib/api";
+import { createSpeaker, emailSpeaker } from "@/lib/api";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
 import { Check, Copy, Plus } from "lucide-react";
@@ -192,6 +192,39 @@ export default function AddSpeakerDialog({ eventId, eventName = "the event", ema
     }
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleSendClick = async () => {
+    if (!eventId) {
+      toast({ title: "Missing event id" });
+      return;
+    }
+    if (!createdSpeakerId) {
+      toast({ title: "Missing speaker id" });
+      return;
+    }
+
+    const { headerMeta, html } = buildHtml(
+      fields.firstName, introText, closingText, intakeUrl, ctaLabel,
+      fromEmail, fromName, replyTo, fields.email, emailSubject
+    );
+
+    const body = {
+      recipient_email: fields.email,
+      recipient_name: `${fields.firstName} ${fields.lastName}`.trim(),
+      subject: emailSubject || `Your speaker details for ${eventName}`,
+      html_content: html,
+      from_name: fromName || fromEmail || `Team ${eventName}`,
+    };
+
+    try {
+      await emailSpeaker(eventId, createdSpeakerId, body);
+      toast({ title: "Email sent" });
+      setOpen(false);
+      reset();
+    } catch (err: any) {
+      toast({ title: "Failed to send email", description: String(err?.message || err) });
+    }
   };
 
 const isStep1Valid = fields.firstName.trim() && fields.lastName.trim() && fields.email.trim();
@@ -391,7 +424,7 @@ const isStep1Valid = fields.firstName.trim() && fields.lastName.trim() && fields
                   <><Copy className="h-3.5 w-3.5 mr-1.5" />Copy Email</>
                 )}
               </Button>
-              <Button onClick={() => { setOpen(false); reset(); }}>
+              <Button onClick={handleSendClick}>
                 Send
               </Button>
             </div>

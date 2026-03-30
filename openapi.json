@@ -1821,6 +1821,52 @@
         }
       }
     },
+    "/events/{event_id}/content": {
+      "get": {
+        "tags": [
+          "Events"
+        ],
+        "summary": "Get Event Content",
+        "operationId": "get_event_content_events__event_id__content_get",
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Event Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ContentSchema"
+                  },
+                  "title": "Response Get Event Content Events  Event Id  Content Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/forms/config": {
       "post": {
         "tags": [
@@ -2344,6 +2390,67 @@
               "application/json": {
                 "schema": {
 
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/events/{event_id}/speakers/{speaker_id}/email": {
+      "post": {
+        "tags": [
+          "Events"
+        ],
+        "summary": "Email Speaker",
+        "operationId": "email_speaker_events__event_id__speakers__speaker_id__email_post",
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Event Id"
+            }
+          },
+          {
+            "name": "speaker_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Speaker Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailPayloadSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailPayloadSchema"
                 }
               }
             }
@@ -4241,6 +4348,46 @@
         ],
         "title": "CreateContentSchema"
       },
+      "EmailPayloadSchema": {
+        "properties": {
+          "recipientEmail": {
+            "type": "string",
+            "format": "email",
+            "title": "Recipientemail"
+          },
+          "recipientName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recipientname"
+          },
+          "subject": {
+            "type": "string",
+            "title": "Subject"
+          },
+          "htmlContent": {
+            "type": "string",
+            "title": "Htmlcontent"
+          },
+          "fromName": {
+            "type": "string",
+            "title": "Fromname",
+            "default": "Seamless"
+          }
+        },
+        "type": "object",
+        "required": [
+          "recipientEmail",
+          "subject",
+          "htmlContent"
+        ],
+        "title": "EmailPayloadSchema"
+      },
       "EventSchema": {
         "properties": {
           "id": {
@@ -4297,6 +4444,41 @@
               "content": false,
               "attendee": false
             }
+          },
+          "fromEmail": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "email"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fromemail"
+          },
+          "replyToEmail": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "email"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Replytoemail"
+          },
+          "emailSignature": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Emailsignature"
           },
           "googleDriveConnected": {
             "type": "boolean",

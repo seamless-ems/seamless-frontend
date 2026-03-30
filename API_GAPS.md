@@ -4,26 +4,6 @@ Missing backend fields/endpoints needed by frontend.
 
 ---
 
-## Content overview — bulk endpoint
-
-`GET /events/{eventId}/content` — returns all content items for all speakers in one call, each with a `speakerId` field.
-
-**Why needed:** the event-level Content tab currently uses an accordion that loads per-speaker content lazily (on expand) and fires N parallel calls for "Download All". A single endpoint would allow the overview to load instantly with full data and make Download All much faster.
-
-**Current workaround:** accordion with lazy per-speaker loading; Download All fires parallel `/content/{speakerId}` calls on click.
-
----
-
-## Asset downloads — CORS on company logo CDN
-
-Company logo URLs are served from a CDN that does not return `Access-Control-Allow-Origin` headers. Client-side `fetch()` fails with a CORS error, causing the download to fall back to opening in a new tab instead of saving the file. Fix options:
-
-- Enable CORS on the logo CDN bucket, **or**
-- Add a backend proxy endpoint (e.g. `GET /uploads/proxy?url=...`) that fetches and streams the asset with `Content-Disposition: attachment`
-
-Headshot downloads work because their CDN origin allows CORS.
-
----
 
 ## Embed page — transparent background
 
@@ -47,28 +27,6 @@ The SpeakerPortal preview embeds this same HTML — fixing the embed fixes the p
 
 ---
 
-## Event email settings — `from_name`, `from_email`, `reply_to_email`, `email_signature`
-
-Frontend sends these fields on `POST /events` (create) and `PATCH /events/{id}` (update). Backend must:
-
-- Store and return all four fields on `GET /events/{id}`
-- Field names (snake_case): `from_name`, `from_email`, `reply_to_email`, `email_signature`
-- These pre-fill the From / Reply-To fields in speaker intake and application emails shown to the organiser
-
-Until the backend returns them, the frontend falls back to `localStorage` keys `seamless-email-from-name` / `seamless-email-from-email`.
-
----
-
-## Speaker intake email — direct send
-
-The organiser composes and copies the intake email manually today. Direct sending requires:
-
-- `POST /events/{eventId}/speakers/{speakerId}/send-intake` (or similar)
-- Backend sends the intake form link (`{origin}/speaker-intake/{eventId}`) to `speaker.email`
-- The email should match the template the organiser has already seen: personalised greeting, CTA button, "Powered by Seamless Events" footer
-- Returns success so the frontend can confirm delivery
-
----
 
 ## Call for Speakers — approval flow
 

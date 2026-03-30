@@ -392,6 +392,11 @@ export function createSpeaker<T = any>(eventId: string, body: T): Promise<any> {
   return postJson<T, any>(`/events/${eventId}/speakers`, body);
 }
 
+// Send an email to a speaker for an event. Backend: POST /events/{event_id}/speakers/{speaker_id}/email
+export function emailSpeaker(eventId: string, speakerId: string, body: { recipient_email: string; recipient_name: string; subject: string; html_content: string; from_name?: string; }) {
+  return postJson<typeof body, any>(`/events/${encodeURIComponent(eventId)}/speakers/${encodeURIComponent(speakerId)}/email`, body);
+}
+
 export async function updateSpeaker<T = any>(eventId: string, speakerId: string, body: T): Promise<any> {
   return patchJson<T, any>(`/events/${eventId}/speakers/${speakerId}`, body);
 }
@@ -430,6 +435,11 @@ export function sendSupportMessage(body: { name?: string; email: string; subject
 // --- Content endpoints (speaker-specific) ---
 export function getSpeakerContent(speakerId: string): Promise<any[]> {
   return getJson<any[]>(`/content/${encodeURIComponent(speakerId)}`);
+}
+
+// Event-level content endpoint (new): returns all content items for an event with `speakerId` on each item
+export function getEventContent(eventId: string): Promise<any[]> {
+  return getJson<any[]>(`/events/${encodeURIComponent(eventId)}/content`);
 }
 
 export function createSpeakerContent(speakerId: string, body: { content: string; contentType?: string; documentId?: string | null; name?: string; }): Promise<any> {

@@ -135,8 +135,15 @@ export default function ApplicationsTab({ eventId, eventName = "", emailDefaults
   });
 
   const formConfig: any[] | null = rawFormConfig ?? null;
-  const fieldEnabled = (fieldId: string) =>
-    !formConfig || formConfig.some((f: any) => f.id === fieldId && f.enabled);
+  const fieldEnabled = (fieldId: string) => {
+    if (!formConfig) return true; // no form config -> show field by default
+    // Normalize unexpected shapes (defensive): prefer array, otherwise try .fields
+    const cfgArray = Array.isArray(formConfig)
+      ? formConfig
+      : (Array.isArray((formConfig as any).fields) ? (formConfig as any).fields : null);
+    if (!cfgArray) return true; // unknown shape -> show field
+    return cfgArray.some((f: any) => f.id === fieldId && f.enabled);
+  };
 
   const showHeadshot = fieldEnabled("headshot");
   const showCompany = fieldEnabled("company_name");

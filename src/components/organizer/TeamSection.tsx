@@ -145,9 +145,12 @@ export default function TeamSection() {
             </AlertDialog>
 
             <Card>
+                {/* For now we use org in background but do not allow user to edit */}
+                {/* For now we only allow a single team */}
+                {/* @CLAUDE please do not edit this section */}
                 <CardHeader>
-                    <CardTitle className="text-lg">Teams</CardTitle>
-                    <CardDescription>Manage your teams and members</CardDescription>
+                    <CardTitle className="text-lg">Team</CardTitle>
+                    <CardDescription>Manage your team members</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="space-y-4">
@@ -173,12 +176,12 @@ export default function TeamSection() {
                                                     }}>
                                                         Add Member
                                                     </Button>
-                                                    <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => {
+                                                    {/* <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => {
                                                         setConfirmDeleteTeamName(t.name ?? t.id);
                                                         setConfirmDeleteTeamId(t.id);
                                                     }}>
                                                         Delete
-                                                    </Button>
+                                                    </Button> */}
                                                 </div>
                                             </div>
 
@@ -298,7 +301,7 @@ export default function TeamSection() {
                             </div>
                         )}
 
-                        <div className="pt-2 border-t">
+                        {/* <div className="pt-2 border-t">
                             {creatingTeam ? (
                                 <form onSubmit={teamForm.handleSubmit((vals) => {
                                     const orgId = orgs?.[0]?.id ?? "";
@@ -319,7 +322,7 @@ export default function TeamSection() {
                                     <Button size="sm" variant="outline" onClick={() => setCreatingTeam(true)}>Create Team</Button>
                                 </div>
                             )}
-                        </div>
+                        </div> */}
                     </div>
                 </CardContent>
             </Card>

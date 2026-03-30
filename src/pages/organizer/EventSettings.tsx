@@ -73,7 +73,7 @@ export default function EventSettings() {
     startDate: "",
     endDate: "",
     location: "",
-    eventWebsite: "",
+    website: "",
     fromName: "",
     fromEmail: "",
     replyToEmail: "",
@@ -118,7 +118,7 @@ export default function EventSettings() {
       startDate: toDateInput(rawEvent.start_date ?? rawEvent.startDate ?? ""),
       endDate: toDateInput(rawEvent.end_date ?? rawEvent.endDate ?? ""),
       location: rawEvent.location ?? "",
-      eventWebsite: rawEvent.event_website ?? rawEvent.eventWebsite ?? "",
+      website: rawEvent.website ?? "",
       fromName: rawEvent.from_name ?? rawEvent.fromName ?? "",
       fromEmail: rawEvent.from_email ?? rawEvent.fromEmail ?? "",
       replyToEmail: rawEvent.reply_to_email ?? rawEvent.replyToEmail ?? "",
@@ -159,7 +159,7 @@ export default function EventSettings() {
         start_date: formData.startDate || undefined,
         end_date: formData.endDate || undefined,
         location: formData.location || undefined,
-        event_website: formData.eventWebsite || undefined,
+        website: formData.website || undefined,
         modules: modulesObj,
         from_name: formData.fromName || undefined,
         from_email: formData.fromEmail || undefined,
@@ -268,7 +268,7 @@ export default function EventSettings() {
 
               <div className="space-y-2">
                 <Label>Event Website</Label>
-                <Input type="text" placeholder="www.example.com/event" value={formData.eventWebsite} onChange={(e) => { setFormData((prev) => ({ ...prev, eventWebsite: e.target.value })); setIsDirty(true); }} required />
+                <Input type="text" placeholder="www.example.com/event" value={formData.website} onChange={(e) => { setFormData((prev) => ({ ...prev, website: e.target.value })); setIsDirty(true); }} required />
               </div>
             </CardContent>
           </Card>
