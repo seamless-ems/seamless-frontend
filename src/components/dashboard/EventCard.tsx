@@ -64,9 +64,11 @@ export function EventCard({ event, index = 0, onDelete }: EventCardProps) {
     return false;
   };
   const paid = isEventPaid(event);
+  const targetLink = event.userRole === 'speaker' ? `/speaker` : `/organizer/event/${event.id}/speakers`;
+
   return (
     <Link
-      to={`/organizer/event/${event.id}/speakers`}
+      to={targetLink}
       className="group block rounded-lg border border-border bg-card p-6 transition-all duration-200 hover:border-primary hover:shadow-sm"
       style={{ animationDelay: `${index * 100}ms` }}
     >
@@ -77,6 +79,16 @@ export function EventCard({ event, index = 0, onDelete }: EventCardProps) {
             <Badge variant="outline" className="text-success">Paid</Badge>
           ) : (
             <Badge variant="outline" className="text-muted-foreground">Free</Badge>
+          )}
+          {event.userRole && (
+            <Badge
+              variant="outline"
+              className={`ml-1 text-xs ${
+                event.userRole === 'organizer' ? 'text-primary' : event.userRole === 'speaker' ? 'text-blue-600' : 'text-muted-foreground'
+              }`}
+            >
+              {String(event.userRole).charAt(0).toUpperCase() + String(event.userRole).slice(1)}
+            </Badge>
           )}
         </h3>
 

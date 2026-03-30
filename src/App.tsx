@@ -245,6 +245,31 @@ const App = () => {
             />
 
             <Route
+              path="/speaker/event/:id"
+              element={
+                <ProtectedRoute>
+                  <DashboardLayout mode="speaker">
+                    <EventLayoutWrapper>
+                      <SpeakerDashboard />
+                    </EventLayoutWrapper>
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/speaker/event/:id/speaker/:speakerId"
+              element={
+                <ProtectedRoute>
+                  <DashboardLayout mode="speaker">
+                    <EventLayoutWrapper>
+                      <SpeakerDashboard />
+                    </EventLayoutWrapper>
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
               path="/speaker/profile"
               element={
                 <ProtectedRoute>

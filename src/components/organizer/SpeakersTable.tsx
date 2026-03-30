@@ -6,9 +6,19 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { useQueryClient } from "@tanstack/react-query";
 import { updateSpeaker, deleteSpeaker } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
-import { Download, ExternalLink, Copy, Check, ChevronRight } from "lucide-react";
+import { Download, ExternalLink, Copy, Check, ChevronRight, Trash } from "lucide-react";
 import { API_BASE } from "@/lib/api";
 import { HelpTip } from "@/components/ui/HelpTip";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog";
 
 type Props = {
   speakers: any[];
@@ -190,6 +200,9 @@ function formatDate(dateStr: string | null | undefined) {
 export default function SpeakersTable({ speakers, isLoading, eventId, selectedTab, formConfig, websiteCardConfigured = false, promoCardConfigured = false, searchQuery, setSearchQuery, statusFilter, setStatusFilter, sortBy, setSortBy, totalCount, pendingCount }: Props) {
   const queryClient = useQueryClient();
   const eventUuid = eventId ?? "";
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmTarget, setConfirmTarget] = useState<{ id: string; name: string } | null>(null);
 
   // Determine which optional columns to show based on form config.
   // If config not yet loaded, default to showing all.
@@ -249,7 +262,8 @@ export default function SpeakersTable({ speakers, isLoading, eventId, selectedTa
   }
 
   return (
-    <table className="w-full">
+    <>
+      <table className="w-full">
       <thead className="bg-secondary/30 border-b border-border">
         <tr>
           {/* Avatar + name columns merged — controls sit flush with the table left edge */}
@@ -309,6 +323,7 @@ export default function SpeakersTable({ speakers, isLoading, eventId, selectedTa
           <th className="px-3 py-2.5 text-center text-xs font-medium text-muted-foreground w-[80px]">Social Card</th>
           {showLogo && <th className="px-3 py-2.5 text-center text-xs font-medium text-muted-foreground w-[72px]">Logo</th>}
           <th className="px-5 py-2.5 text-left text-xs font-medium text-muted-foreground w-[130px]">Updated</th>
+          <th className="px-3 py-2.5 text-left text-xs font-medium text-muted-foreground w-[56px]"> </th>
         </tr>
       </thead>
       <tbody>
@@ -456,6 +471,27 @@ export default function SpeakersTable({ speakers, isLoading, eventId, selectedTa
                   {updatedDate ?? <span className="text-muted-foreground/30">—</span>}
                 </span>
               </td>
+
+              {/* Actions: delete speaker */}
+              <td className="px-3 py-4">
+                <div className="flex items-center">
+                  <button
+                    title="Delete speaker"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!eventId) {
+                        toast({ title: "Missing event id" });
+                        return;
+                      }
+                      setConfirmTarget({ id: speaker.id, name: speakerName });
+                      setConfirmOpen(true);
+                    }}
+                    className={`rounded p-1.5 transition-colors text-muted-foreground hover:text-red-600 hover:bg-red-50 ${deletingId === speaker.id ? "opacity-60 pointer-events-none" : ""}`}
+                  >
+                    <Trash className="h-4 w-4" />
+                  </button>
+                </div>
+              </td>
             </tr>
           );
         })}
@@ -468,5 +504,41 @@ export default function SpeakersTable({ speakers, isLoading, eventId, selectedTa
         )}
       </tbody>
     </table>
+    {/* Danger confirmation modal for deletions */}
+    <AlertDialog open={confirmOpen} onOpenChange={(open) => { if (!open) { setConfirmTarget(null); } setConfirmOpen(open); }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete speaker?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This will permanently delete the speaker{confirmTarget ? ` — ${confirmTarget.name}` : ""}. This action cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            className="bg-red-600 hover:bg-red-700 text-white"
+            onClick={async () => {
+              if (!eventId || !confirmTarget) return;
+              const id = confirmTarget.id;
+              try {
+                setDeletingId(id);
+                await deleteSpeaker(eventId, id);
+                queryClient.invalidateQueries({ queryKey: ["event", eventId, "speakers"] });
+                toast({ title: "Speaker deleted" });
+              } catch (err: any) {
+                toast({ title: "Failed to delete speaker", description: String(err?.message || err) });
+              } finally {
+                setDeletingId(null);
+                setConfirmOpen(false);
+                setConfirmTarget(null);
+              }
+            }}
+          >
+            Delete speaker
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }

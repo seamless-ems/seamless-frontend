@@ -86,7 +86,24 @@ export default function Index() {
         {isLoading ? (
           <div>Loading...</div>
         ) : displayEvents.length > 0 ? (
-          displayEvents.map((event, index) => <EventCard key={event.id} event={event} index={index} />)
+          displayEvents.map((event, index) => {
+            // Resolve speakerId from `me` for this event, if present
+            const speakerId = (() => {
+              if (!me) return undefined;
+              const top = me.speakerId ?? me.speaker_id ?? null;
+              const topEvent = me.eventId ?? me.event_id ?? null;
+              if (top && (!topEvent || String(topEvent) === String(event.id))) return top;
+              if (Array.isArray(me.speakers)) {
+                for (const s of me.speakers) {
+                  const sid = s.id ?? s.speakerId ?? s.speaker_id ?? null;
+                  const eid = s.eventId ?? s.event_id ?? s.event ?? null;
+                  if (sid && (!eid || String(eid) === String(event.id))) return sid;
+                }
+              }
+              return undefined;
+            })();
+            return <EventCard key={event.id} event={event} index={index} me={me} speakerId={speakerId} />
+          })
         ) : (
           <div className="col-span-full text-center py-12 text-muted-foreground">
             No {activeTab} events

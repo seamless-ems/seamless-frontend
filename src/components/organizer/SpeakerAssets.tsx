@@ -9,7 +9,7 @@ type Props = {
   logoInputRef: React.RefObject<HTMLInputElement>;
   uploadingHeadshot: boolean;
   uploadingLogo: boolean;
-  onSelectFile: (fileType: 'headshot' | 'logo', dataUrl: string) => void;
+  onSelectFile: (fileType: 'headshot' | 'logo', dataUrl: string, file?: File) => void;
 };
 
 export default function SpeakerAssets({ s, headshotInputRef, logoInputRef, uploadingHeadshot, uploadingLogo, onSelectFile }: Props) {
@@ -44,7 +44,7 @@ export default function SpeakerAssets({ s, headshotInputRef, logoInputRef, uploa
               return;
             }
             const reader = new FileReader();
-            reader.onloadend = () => onSelectFile('headshot', reader.result as string);
+            reader.onloadend = () => onSelectFile('headshot', reader.result as string, file);
             reader.readAsDataURL(file);
           }}
         />
@@ -88,7 +88,7 @@ export default function SpeakerAssets({ s, headshotInputRef, logoInputRef, uploa
               return;
             }
             const reader = new FileReader();
-            reader.onloadend = () => onSelectFile('logo', reader.result as string);
+            reader.onloadend = () => onSelectFile('logo', reader.result as string, file);
             reader.readAsDataURL(file);
           }}
         />

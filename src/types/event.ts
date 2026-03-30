@@ -5,6 +5,7 @@ export interface Event {
   endDate?: string;
   location: string;
   status: 'draft' | 'active' | 'completed';
+  userRole?: 'organizer' | 'speaker' | 'attendee' | 'none';
   speakerCount: number;
   attendeeCount: number;
   modules: EventModule[];

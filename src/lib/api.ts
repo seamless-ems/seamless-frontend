@@ -276,6 +276,32 @@ export function getMe(): Promise<any> {
   return getJson<any>(`/account/me`);
 }
 
+// Return speakers associated with the current account (appearances)
+export function getSpeakerAppearances(): Promise<any[]> {
+  return getJson<any[]>(`/account/speaker-appearances`);
+}
+
+export async function updateSpeakerAppearance(speakerId: string, body: any): Promise<any> {
+  const url = `${API_BASE}/account/speaker-appearances/${encodeURIComponent(speakerId)}`;
+  const res = await fetch(url, {
+    method: "PUT",
+    headers: authHeaders(),
+    body: JSON.stringify(body),
+    credentials: "include",
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    const err = new Error(text || res.statusText) as any;
+    err.status = res.status;
+    err.responseText = text;
+    throw err;
+  }
+
+  const json = await res.json();
+  return deepCamel(json);
+}
+
 // List available roles for the current account/organization
 export function getRoles(): Promise<any[]> {
   return getJson<any[]>(`/account/roles`);
