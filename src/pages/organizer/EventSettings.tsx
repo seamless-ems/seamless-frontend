@@ -163,11 +163,17 @@ export default function EventSettings() {
         modules: modulesObj,
         from_name: formData.fromName || undefined,
         from_email: formData.fromEmail || undefined,
-        reply_to_email: formData.replyToEmail || undefined,
+        // If replyToEmail is not provided, default to fromEmail (trim and ignore empty strings)
+        reply_to_email: (formData.replyToEmail && formData.replyToEmail.trim()) ? formData.replyToEmail.trim() : (formData.fromEmail && formData.fromEmail.trim() ? formData.fromEmail.trim() : undefined),
         email_signature: formData.emailSignature || undefined,
       };
       if (selectedTeamId) payload.team_id = selectedTeamId;
-      Object.keys(payload).forEach(key => { if (payload[key] === undefined) delete payload[key]; });
+      // Remove undefined or empty-string values so we don't send "" for optional fields
+      Object.keys(payload).forEach(key => {
+        const v = payload[key];
+        if (v === undefined) { delete payload[key]; return; }
+        if (typeof v === "string" && v.trim() === "") { delete payload[key]; }
+      });
       await updateEvent(id, payload);
       queryClient.invalidateQueries({ queryKey: ["event", id] });
       setIsDirty(false);

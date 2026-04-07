@@ -196,6 +196,17 @@ export default function CreateEvent() {
 
 			const payload: any = { ...formData, modules: modulesObj, team_id: selectedTeamId, id: eventId };
 
+			// Ensure replyToEmail defaults to fromEmail and trim values; remove empty-string fields
+			if (payload.replyToEmail && typeof payload.replyToEmail === "string") payload.replyToEmail = payload.replyToEmail.trim();
+			if ((!payload.replyToEmail || payload.replyToEmail === "") && payload.fromEmail && typeof payload.fromEmail === "string") {
+				payload.replyToEmail = payload.fromEmail.trim();
+			}
+			Object.keys(payload).forEach((k) => {
+				const v = payload[k];
+				if (v === undefined) { delete payload[k]; return; }
+				if (typeof v === "string" && v.trim() === "") delete payload[k];
+			});
+
 			// TODO: Google Drive — re-enable when Drive integration is active
 			// if (formData.googleDriveConnected && formData.integrationId) {
 			// 	payload.integrationId = formData.integrationId;
