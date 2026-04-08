@@ -22,6 +22,7 @@ type CreateCanvasParams = {
   setHasUnsavedChanges: (b: boolean) => void;
   addToHistory: (cfg: any) => void;
   elementRefs: React.MutableRefObject<{ [key: string]: fabric.Object }>;
+  onReady?: () => void;
 };
 
 export const createFabricCanvas = (params: CreateCanvasParams) => {
@@ -45,6 +46,7 @@ export const createFabricCanvas = (params: CreateCanvasParams) => {
     setHasUnsavedChanges,
     addToHistory,
     elementRefs,
+    onReady,
   } = params;
 
   // Only log init attempts the first time (reduce noisy repeated calls).
@@ -117,6 +119,7 @@ export const createFabricCanvas = (params: CreateCanvasParams) => {
         fabricCanvasRef.current = canvas;
         console.debug("createFabricCanvas: readiness confirmed", { attempts, lowerCanvasEl: lower });
         clearInterval(iv);
+        onReady?.();
       } else if (attempts >= maxAttempts) {
         console.warn("createFabricCanvas: readiness not confirmed after retries", { attempts, lowerExists: !!lower, lowerIsConnected: !!(lower && lower.isConnected) });
         try {
@@ -380,6 +383,7 @@ export const createFabricCanvas = (params: CreateCanvasParams) => {
 
       if (obj.type === "textbox") {
         updates.width = obj.width || 300;
+        updates.text = obj.text ?? "";
       }
 
       setHasUnsavedChanges(true);
@@ -389,6 +393,21 @@ export const createFabricCanvas = (params: CreateCanvasParams) => {
         return newConfig;
       });
     }
+  });
+
+  // Sync text content back to config when the user finishes editing a textbox in-place.
+  // object:modified doesn't always fire after text-only edits, so this is the reliable hook.
+  canvas.on("text:editing:exited", (e: any) => {
+    const obj = e.target;
+    const elementKey = obj?.data?.elementKey;
+    if (!elementKey) return;
+    setConfig((prev: any) => {
+      if (!prev[elementKey]) return prev;
+      const newConfig = { ...prev, [elementKey]: { ...prev[elementKey], text: obj.text ?? "" } };
+      addToHistory(newConfig);
+      return newConfig;
+    });
+    setHasUnsavedChanges(true);
   });
 
   return true;

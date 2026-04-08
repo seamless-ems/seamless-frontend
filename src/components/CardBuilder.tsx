@@ -43,6 +43,7 @@ import {
   Lock,
   Unlock,
   Copy,
+  AlertTriangle,
   ChevronsUp,
   ChevronsDown,
   ChevronUp as BringForward,
@@ -155,6 +156,7 @@ import {
   getCanvasRelativePos,
   FIXED_KEYS,
   AlignDirection,
+  isLightColor,
 } from "@/lib/card-builder-utils";
 import { renderAllElements as renderAllElementsHelper } from "@/lib/card-builder-renderer";
 import { createFabricCanvas } from "@/lib/card-builder-canvas";
@@ -218,6 +220,9 @@ export default function CardBuilder({
 
   const [canvasWidth, setCanvasWidth] = useState(600);
   const [canvasHeight, setCanvasHeight] = useState(600);
+  // Incremented each time the Fabric canvas confirms it's ready — triggers a re-render
+  // so the render effect fires after canvas init completes (avoids race on first load).
+  const [canvasReady, setCanvasReady] = useState(0);
 
   // Test images — preview only, never saved to server
   const [testHeadshot, setTestHeadshot] = useState<string | null>(null);
@@ -237,8 +242,10 @@ export default function CardBuilder({
   } | null>(null);
   const [bgColor, setBgColor] = useState<string>("#ffffff");
 
+
   const [bgIsGenerated, setBgIsGenerated] = useState(false);
   const [bgPanelOpen, setBgPanelOpen] = useState(false);
+  const [eventLogoPanelOpen, setEventLogoPanelOpen] = useState(false);
 
   // Onboarding — controlled by API or default off (no localStorage)
   const [showOnboarding, setShowOnboarding] = useState<boolean>(false);
@@ -524,7 +531,9 @@ export default function CardBuilder({
     );
   };
 
-  // Initialize Fabric canvas via helper (poll until shadow/DOM mounts), with cleanup
+  // Initialize Fabric canvas ONCE on mount — no dimension deps.
+  // Dimension changes are handled by a separate effect via setDimensions (below),
+  // which avoids a full canvas dispose/recreate race when config load changes the size.
   useEffect(() => {
     let initInterval: number | null = null;
 
@@ -554,22 +563,19 @@ export default function CardBuilder({
             setHistoryIndex,
           }),
         elementRefs,
+        onReady: () => setCanvasReady((n) => n + 1),
       });
 
     // Try immediately, otherwise poll until the canvas element is present
-    let canvasInstance: fabric.Canvas | null = null;
     if (!tryCreate()) {
       initInterval = window.setInterval(() => {
         if (tryCreate()) {
-          canvasInstance = fabricCanvasRef.current;
           if (initInterval) {
             clearInterval(initInterval);
             initInterval = null;
           }
         }
       }, 100);
-    } else {
-      canvasInstance = fabricCanvasRef.current;
     }
 
     return () => {
@@ -577,9 +583,46 @@ export default function CardBuilder({
         clearInterval(initInterval);
         initInterval = null;
       }
-      canvasInstance?.dispose();
+      // Dispose whichever canvas instance is live (canvasInstance may be null
+      // because the ref is set asynchronously — so always check the ref too).
+      const liveCanvas = fabricCanvasRef.current;
+      fabricCanvasRef.current = null;
+      try { liveCanvas?.dispose(); } catch (_) {}
     };
-  }, [canvasWidth, canvasHeight]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // run once — dimension changes handled below
+
+  // Resize canvas when dimensions change (e.g. after config load) without reinitialising.
+  // canvasReady is included so this re-fires if dimensions were set before the canvas was ready.
+  useEffect(() => {
+    const canvas = fabricCanvasRef.current;
+    if (!canvas) return;
+    canvas.setDimensions({ width: canvasWidth, height: canvasHeight });
+    canvas.setBackgroundColor("#ffffff", () => canvas.renderAll());
+  }, [canvasWidth, canvasHeight, canvasReady]);
+
+  // Auto-fit: when canvas dimensions change (template applied / config loaded),
+  // scale to fill the available container without exceeding 100%.
+  const autoFitDimsRef = useRef<{ w: number; h: number } | null>(null);
+  useEffect(() => {
+    // Only re-fit when the dimensions themselves change, not on every canvasReady tick
+    const prev = autoFitDimsRef.current;
+    if (prev?.w === canvasWidth && prev?.h === canvasHeight) return;
+    if (!canvasContainerRef.current || !fabricCanvasRef.current) return;
+    autoFitDimsRef.current = { w: canvasWidth, h: canvasHeight };
+    const container = canvasContainerRef.current;
+    const PADDING = 80; // matches p-8 (32px) × 2 + some breathing room
+    const availW = container.clientWidth - PADDING;
+    const availH = container.clientHeight - PADDING;
+    if (availW <= 0 || availH <= 0) return;
+    const fitZoom = Math.min(availW / canvasWidth, availH / canvasHeight, 1);
+    hb_applyZoom(Math.max(0.1, Math.round(fitZoom * 100) / 100), {
+      fabricCanvasRef,
+      canvasWidth,
+      canvasHeight,
+      setZoom,
+    });
+  }, [canvasWidth, canvasHeight, canvasReady]);
 
   // Delegate heavy rendering to helper to keep component small
   const renderAllElements = useCallback(
@@ -598,6 +641,19 @@ export default function CardBuilder({
         canvasWidth,
         canvasHeight,
         toast,
+        onFontSizeResolved: (updates) => {
+          // Patch config with the auto-shrunk font sizes so the toolbar reflects reality.
+          // Only fires when a size actually changed — prevents re-render loops.
+          setConfig((prev) => {
+            const next = { ...prev };
+            for (const [k, fs] of Object.entries(updates)) {
+              if (next[k] && next[k].fontSize !== fs) {
+                next[k] = { ...next[k], fontSize: fs };
+              }
+            }
+            return next;
+          });
+        },
       }),
     [
       fabricCanvasRef,
@@ -706,6 +762,7 @@ export default function CardBuilder({
     bgColor,
     bgGradient,
     renderAllElements,
+    canvasReady,
   ]);
 
   // Undo/redo and duplicate helpers — declared here so keyboard handlers can reference them
@@ -870,6 +927,15 @@ export default function CardBuilder({
   // Save handler — use shared helper to avoid duplication
   const handleSave = useCallback(
     async (silent = false) => {
+      // Warn (and block) if the event logo element is on the canvas but no image has been uploaded.
+      if (!silent && config.eventLogo && !testEventLogo && !config.eventLogo?.url) {
+        toast({
+          title: "Event logo missing",
+          description: "An Event Logo element is on the canvas but no logo image has been uploaded. Please upload a logo or remove the element.",
+          variant: "destructive",
+        });
+        return;
+      }
       await hb_handleSave(silent, {
         config,
         elementRefs,
@@ -888,6 +954,7 @@ export default function CardBuilder({
     },
     [
       config,
+      testEventLogo,
       elementRefs,
       canvasWidth,
       canvasHeight,
@@ -899,6 +966,7 @@ export default function CardBuilder({
       setTemplateUrl,
       setBgIsGenerated,
       setHasUnsavedChanges,
+      toast,
     ],
   );
 
@@ -950,24 +1018,24 @@ export default function CardBuilder({
       const savedHeight =
         serverConfig.canvasHeight ?? serverConfig.canvas_height ?? null;
 
+      const savedBgColor = serverConfig.bgColor ?? serverConfig.bg_color ?? "#ffffff";
+
       if (savedConfig) {
         const { migrated, changed } = migrateLoadedConfig(savedConfig);
         setConfig(migrated);
         setHasUnsavedChanges(changed);
+        // Restore event logo preview from saved URL
+        if (migrated.eventLogo?.url) {
+          setTestEventLogo(migrated.eventLogo.url as string);
+        }
       }
 
       if (savedWidth && savedHeight) {
         setCanvasWidth(savedWidth);
         setCanvasHeight(savedHeight);
-        if (fabricCanvasRef.current) {
-          fabricCanvasRef.current.setDimensions({
-            width: savedWidth,
-            height: savedHeight,
-          });
-        }
+        // setDimensions is handled by the dedicated resize effect — no call needed here
       }
 
-      const savedBgColor = serverConfig.bgColor ?? serverConfig.bg_color;
       if (savedBgColor) setBgColor(savedBgColor);
       const savedBgGradient =
         serverConfig.bgGradient ?? serverConfig.bg_gradient;
@@ -1002,11 +1070,14 @@ export default function CardBuilder({
           getAbsoluteUrl(savedTemplateUrl, API_BASE) || savedTemplateUrl;
       }
 
-      toast({
-        title: "Loaded",
-        description: "Loaded template from event",
-        duration: 2000,
-      });
+      // Only show the toast when there's a visible template to announce.
+      // Silently loading an empty/default config produces no notification.
+      if (savedConfig && Object.keys(savedConfig).some(k => !["canvasWidth","canvasHeight","bgColor","bgGradient","bgIsGenerated","templateUrl","canvas_width","canvas_height","bg_color","bg_gradient"].includes(k))) {
+        toast({
+          title: "Template loaded",
+          duration: 2000,
+        });
+      }
     })();
   }, [eventId, cardType]); // Load when eventId or cardType changes
 
@@ -1204,6 +1275,7 @@ export default function CardBuilder({
       setTestEventLogo,
       config,
       addElementToCanvas,
+      updateElement,
       setCropDialogOpen,
       setCropImageUrl,
       setCropMode,
@@ -1287,6 +1359,23 @@ export default function CardBuilder({
       presetApply: preset.apply,
       dismissOnboarding: (p: unknown) => dismissOnboarding(),
     });
+
+  const getFieldLabel = (elementKey: string, fallback: string): string => {
+    const fieldMapping: Record<string, string[]> = {
+      headshot: ['headshot'],
+      firstName: ['first_name'],
+      lastName: ['last_name'],
+      title: ['company_role'],
+      company: ['company_name'],
+      companyLogo: ['company_logo'],
+    };
+    const fieldIds = fieldMapping[elementKey] || [];
+    for (const fid of fieldIds) {
+      const field = _fieldsArray.find((f: any) => f.id === fid);
+      if (field?.label) return field.label;
+    }
+    return fallback;
+  };
 
   return (
     <>
@@ -1814,35 +1903,6 @@ export default function CardBuilder({
                   </button>
                 </div>
 
-                {/* Event logo upload */}
-                <div className="mb-5">
-                  <label className="text-xs font-medium mb-2 block">Event Logo</label>
-                  <div className="flex items-center gap-3">
-                    {testEventLogo ? (
-                      <div className="relative w-32 h-12 rounded-lg border border-border overflow-hidden bg-muted/30 flex items-center justify-center">
-                        <img src={testEventLogo} alt="Event logo" className="max-w-full max-h-full object-contain p-1" />
-                        <button
-                          type="button"
-                          onClick={() => setTestEventLogo(null)}
-                          className="absolute top-0.5 right-0.5 p-0.5 rounded bg-background/80 hover:bg-background text-muted-foreground"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => eventLogoInputRef.current?.click()}
-                        className="flex items-center gap-2 px-4 py-2.5 rounded-lg border-2 border-dashed border-border hover:border-primary hover:bg-primary/5 text-sm text-muted-foreground hover:text-primary transition-all"
-                      >
-                        <Upload className="h-4 w-4" />
-                        Upload event logo
-                      </button>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1.5">PNG or JPEG — will appear on every promo card</p>
-                </div>
-
                 {/* Brand colour + text colour */}
                 <div className="grid grid-cols-2 gap-4 mb-6">
                   <div>
@@ -1960,7 +2020,7 @@ export default function CardBuilder({
                   Seamless
                 </span>
                 <span className="text-xs font-normal text-muted-foreground">
-                  Card Builder
+                  {cardType === "promo" ? "Social Card Builder" : "Speaker Card Builder"}
                 </span>
               </div>
               {!fullscreen && (
@@ -1988,27 +2048,6 @@ export default function CardBuilder({
 
             {/* Right: Layers, undo/redo, zoom, export, save */}
             <div className="flex items-center gap-1 shrink-0">
-              {/* Templates button — website and promo card builders */}
-              {(cardType === "website" || cardType === "promo") && (
-                <>
-                  <button
-                    onClick={() => {
-                      if (isPromo) {
-                        setOnboardingBrandSetup(true);
-                      } else {
-                        setOnboardingShowShapePicker(true);
-                      }
-                      setShowOnboarding(true);
-                    }}
-                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-xs font-semibold transition-colors"
-                    title="Browse templates"
-                  >
-                    <Layers className="h-3.5 w-3.5" />
-                    Templates
-                  </button>
-                  <div className="h-5 w-px bg-border mx-0.5" />
-                </>
-              )}
               {/* Layers panel */}
               <div className="relative">
                 <button
@@ -2038,8 +2077,13 @@ export default function CardBuilder({
                             className={`flex items-center justify-between p-2 rounded text-sm hover:bg-accent cursor-pointer ${selectedElement === key ? "bg-accent" : ""}`}
                             onClick={() => selectLayerItem(key)}
                           >
-                            <span className="flex-1 truncate">
-                              {element.label || key}
+                            <span className="flex items-center gap-1 flex-1 truncate min-w-0">
+                              <span className="truncate">{element.label || key}</span>
+                              {element.visible !== false && element.color && element.color.toLowerCase() === bgColor.toLowerCase() && (
+                                <span title="This element is invisible — its colour matches the background">
+                                  <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0" />
+                                </span>
+                              )}
                             </span>
                             <div className="flex items-center gap-1">
                               <button
@@ -2194,66 +2238,303 @@ export default function CardBuilder({
             </div>
           </div>
 
-          {/* Row 2: Context-sensitive formatting bar */}
-          <div className="flex items-center gap-2 px-3 h-10 overflow-x-auto bg-muted/10 shrink-0">
-            {/* Default (nothing selected): hint */}
-            {!selectedElement && !multiSelectActive && (
-              <span className="text-xs text-muted-foreground/40 italic shrink-0">
-                ← use the left panel to add elements and set the canvas
-              </span>
-            )}
+          {/* Row 2: Canvas controls — always visible */}
+          <div className="flex items-center gap-1.5 px-3 h-9 border-b border-border/40 bg-muted/5 shrink-0">
+            {/* Templates */}
+            <button
+              onClick={() => {
+                if (isPromo) {
+                  setOnboardingBrandSetup(true);
+                  setQuickBg("#0f172a");
+                  setQuickTextColor("#ffffff");
+                } else {
+                  setOnboardingShowShapePicker(true);
+                }
+                setShowOnboarding(true);
+              }}
+              className="flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              title="Browse templates"
+            >
+              <Layers className="h-3.5 w-3.5" />
+              Templates
+            </button>
 
-            {/* Alignment (shown whenever anything is selected) */}
-            {(selectedElement || multiSelectActive) && (
-              <div className="flex items-center gap-0.5 px-1.5 py-0.5 bg-muted/40 rounded-md shrink-0">
-                <span className="text-xs text-muted-foreground mr-1 whitespace-nowrap">
-                  Align
-                </span>
-                <button
-                  onClick={() => alignSelection("left")}
-                  className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground"
-                  title="Align Left"
-                >
-                  <AlignStartVertical className="h-3.5 w-3.5" />
-                </button>
-                <button
-                  onClick={() => alignSelection("centerH")}
-                  className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground"
-                  title="Centre H"
-                >
-                  <AlignCenterVertical className="h-3.5 w-3.5" />
-                </button>
-                <button
-                  onClick={() => alignSelection("right")}
-                  className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground"
-                  title="Align Right"
-                >
-                  <AlignEndVertical className="h-3.5 w-3.5" />
-                </button>
-                <div className="h-3.5 w-px bg-border mx-0.5" />
-                <button
-                  onClick={() => alignSelection("top")}
-                  className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground"
-                  title="Align Top"
-                >
-                  <AlignStartHorizontal className="h-3.5 w-3.5" />
-                </button>
-                <button
-                  onClick={() => alignSelection("centerV")}
-                  className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground"
-                  title="Centre V"
-                >
-                  <AlignCenterHorizontal className="h-3.5 w-3.5" />
-                </button>
-                <button
-                  onClick={() => alignSelection("bottom")}
-                  className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground"
-                  title="Align Bottom"
-                >
-                  <AlignEndHorizontal className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            )}
+            <div className="h-4 w-px bg-border" />
+
+            {/* Background */}
+            <div className="relative">
+              <button
+                onClick={() => setBgPanelOpen(!bgPanelOpen)}
+                className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium transition-colors ${bgPanelOpen ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground hover:bg-accent"}`}
+                title="Background colour or image"
+              >
+                <div className="relative">
+                  <ImageIcon className="h-3.5 w-3.5" />
+                  <div
+                    className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-sm border border-border/80"
+                    style={{
+                      background: bgGradient
+                        ? `linear-gradient(135deg, ${bgGradient.from}, ${bgGradient.to})`
+                        : bgColor,
+                    }}
+                  />
+                </div>
+                Background
+              </button>
+              {bgPanelOpen && (
+                <div className="absolute top-full left-0 mt-1 w-56 rounded-lg border border-border bg-card shadow-xl p-2 space-y-2 z-50">
+                  {/* Image upload */}
+                  <div>
+                    <div className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Background image</div>
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className={`w-full flex items-center gap-1.5 px-2 py-1.5 rounded border text-xs transition-colors ${templateUrl ? "border-primary/40 bg-primary/5 text-primary" : "border-border hover:bg-accent"}`}
+                    >
+                      <Upload className="h-3 w-3 shrink-0" />
+                      <span className="truncate">{templateUrl ? "Replace image" : "Upload image"}</span>
+                    </button>
+                    {templateUrl && (
+                      <button
+                        onClick={() => { setTemplateUrl(null); setHasUnsavedChanges(true); }}
+                        className="w-full text-[10px] text-muted-foreground hover:text-destructive text-left mt-1"
+                      >
+                        ✕ Remove image
+                      </button>
+                    )}
+                  </div>
+                  {/* Colour swatches */}
+                  <div>
+                    <div className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Solid colour</div>
+                    <div className="flex flex-wrap gap-1 mb-1.5">
+                      {["#ffffff","#000000","#1e293b","#0f172a","#1d4ed8","#dc2626","#16a34a","#d97706","#7c3aed","#db2777","#0891b2","#374151"].map((c) => (
+                        <button
+                          key={c}
+                          onClick={() => { setBgColor(c); setBgGradient(null); setBgGradientStyle(null); setHasUnsavedChanges(true); }}
+                          className={`w-5 h-5 rounded border-2 transition-transform hover:scale-110 ${!bgGradient && bgColor === c ? "border-primary" : "border-border/60"}`}
+                          style={{ backgroundColor: c }}
+                          title={c}
+                        />
+                      ))}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <QuickColorPicker
+                        value={bgColor}
+                        onChange={(hex) => { setBgColor(hex); setBgGradient(null); setBgGradientStyle(null); setHasUnsavedChanges(true); }}
+                        label="Background colour"
+                      />
+                      <HexColorInput
+                        value={bgColor}
+                        onChange={(hex) => { setBgColor(hex); setBgGradient(null); setBgGradientStyle(null); setHasUnsavedChanges(true); }}
+                        className="flex-1 h-6 text-xs font-mono px-1 rounded border border-border bg-background min-w-0"
+                      />
+                    </div>
+                  </div>
+                  {/* Gradient */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Gradient</div>
+                      {bgGradient && (
+                        <button onClick={clearGradient} className="text-[10px] text-muted-foreground hover:text-destructive">✕ Remove</button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-3 gap-1">
+                      {GRADIENT_STYLES.map((style) => {
+                        const preview = deriveGradient(bgColor, style as any);
+                        const isActive = bgGradientStyle === (style as any);
+                        return (
+                          <button
+                            key={style}
+                            onClick={() => applyGradientStyle(style)}
+                            className={`flex flex-col items-center gap-1 py-1.5 rounded border-2 transition-colors capitalize text-[10px] ${isActive ? "border-primary bg-primary/5 text-primary" : "border-border hover:border-primary/40"}`}
+                          >
+                            <div className="w-full rounded-sm h-5" style={{ background: `linear-gradient(135deg, ${preview.from}, ${preview.to})` }} />
+                            {style}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Event Logo */}
+            <div className="relative">
+              <button
+                onClick={() => setEventLogoPanelOpen(!eventLogoPanelOpen)}
+                className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium transition-colors ${eventLogoPanelOpen ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground hover:bg-accent"} ${testEventLogo || config.eventLogo ? "text-foreground" : ""}`}
+                title="Event logo"
+              >
+                <ImageIcon className="h-3.5 w-3.5" />
+                Event Logo
+                {testEventLogo && <span className="w-1.5 h-1.5 rounded-full bg-primary ml-0.5" />}
+              </button>
+              {eventLogoPanelOpen && (
+                <div className="absolute top-full left-0 mt-1 w-52 rounded-lg border border-border bg-card shadow-xl p-3 z-50 space-y-2">
+                  <div className="text-xs font-medium">Event Logo</div>
+                  <p className="text-[10px] text-muted-foreground leading-snug">Appears on every card. Same logo for all speakers.</p>
+                  <input
+                    ref={eventLogoInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg"
+                    onChange={handleEventLogoUpload}
+                    className="hidden"
+                  />
+                  {testEventLogo ? (
+                    <div className="relative rounded-lg overflow-hidden border border-border bg-muted/30">
+                      <img src={testEventLogo} alt="Event logo" className="w-full h-14 object-contain p-2" />
+                      <button
+                        onClick={() => setTestEventLogo(null)}
+                        className="absolute top-1 right-1 p-0.5 bg-background/90 rounded-full shadow text-muted-foreground hover:text-foreground"
+                        title="Remove"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => eventLogoInputRef.current?.click()}
+                      className="w-full h-12 flex flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-border hover:border-primary/50 hover:bg-primary/5 transition-colors text-muted-foreground hover:text-primary"
+                    >
+                      <Upload className="h-3.5 w-3.5" />
+                      <span className="text-xs">Upload logo</span>
+                    </button>
+                  )}
+                  {/* Toggle visibility on canvas */}
+                  <button
+                    onClick={() => toggleElement("eventLogo")}
+                    className={`w-full flex items-center justify-between px-2 py-1.5 rounded border text-xs transition-colors ${config.eventLogo ? "border-primary/40 bg-primary/5 text-primary" : "border-border hover:bg-accent text-muted-foreground"}`}
+                  >
+                    <span>{config.eventLogo ? "On canvas" : "Add to canvas"}</span>
+                    {config.eventLogo ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="h-4 w-px bg-border" />
+
+            {/* + Overlay */}
+            <button
+              onClick={() => {
+                const newKey = `gradientOverlay_${Date.now()}`;
+                setConfig((prev) => {
+                  const maxZ = Math.max(0, ...Object.values(prev).map((c) => c.zIndex || 0));
+                  const next = {
+                    ...prev,
+                    [newKey]: {
+                      ...ELEMENT_TEMPLATES.gradientOverlay,
+                      x: 0,
+                      y: Math.round(canvasHeight / 2),
+                      width: canvasWidth,
+                      height: Math.round(canvasHeight / 2),
+                      gradientDirection: "bottom" as const,
+                      overlayOpacity: 0.9,
+                      zIndex: maxZ + 1,
+                    },
+                  };
+                  addToHistory(next);
+                  return next;
+                });
+                setHasUnsavedChanges(true);
+              }}
+              className="flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              title="Add a gradient overlay"
+            >
+              <Square className="h-3.5 w-3.5" />
+              + Overlay
+            </button>
+
+            {/* + Text */}
+            <button
+              onClick={() => {
+                const newKey = `dynamic_text_${Date.now()}`;
+                const textColor = isLightColor(bgColor) ? "#111827" : "#ffffff";
+                const w = Math.round(canvasWidth * 0.6);
+                setConfig((prev) => {
+                  const maxZ = Math.max(0, ...Object.values(prev).map((c) => c.zIndex || 0));
+                  const next = {
+                    ...prev,
+                    [newKey]: {
+                      type: "dynamic-text",
+                      label: "Text",
+                      text: "Text",
+                      x: Math.round((canvasWidth - w) / 2),
+                      y: Math.round(canvasHeight * 0.4),
+                      fontSize: Math.round(canvasHeight * 0.055),
+                      fontFamily: "Inter",
+                      color: textColor,
+                      fontWeight: 700,
+                      textAlign: "center",
+                      width: w,
+                      zIndex: maxZ + 1,
+                      visible: true,
+                    },
+                  };
+                  addToHistory(next);
+                  return next;
+                });
+                setHasUnsavedChanges(true);
+              }}
+              className="flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              title="Add a text box"
+            >
+              <Type className="h-3.5 w-3.5" />
+              + Text
+            </button>
+          </div>
+
+          {/* Row 3: Formatting bar — alignment always-on, rest context-sensitive */}
+          <div className="flex items-center gap-2 px-3 h-10 overflow-x-auto bg-muted/10 shrink-0">
+            {/* Alignment — always visible */}
+            <div className="flex items-center gap-0.5 px-1.5 py-0.5 bg-muted/40 rounded-md shrink-0">
+              <span className="text-xs text-muted-foreground mr-1 whitespace-nowrap">
+                Align
+              </span>
+              <button
+                onClick={() => alignSelection("left")}
+                className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground"
+                title="Align Left"
+              >
+                <AlignStartVertical className="h-3.5 w-3.5" />
+              </button>
+              <button
+                onClick={() => alignSelection("centerH")}
+                className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground"
+                title="Centre H"
+              >
+                <AlignCenterVertical className="h-3.5 w-3.5" />
+              </button>
+              <button
+                onClick={() => alignSelection("right")}
+                className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground"
+                title="Align Right"
+              >
+                <AlignEndVertical className="h-3.5 w-3.5" />
+              </button>
+              <div className="h-3.5 w-px bg-border mx-0.5" />
+              <button
+                onClick={() => alignSelection("top")}
+                className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground"
+                title="Align Top"
+              >
+                <AlignStartHorizontal className="h-3.5 w-3.5" />
+              </button>
+              <button
+                onClick={() => alignSelection("centerV")}
+                className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground"
+                title="Centre V"
+              >
+                <AlignCenterHorizontal className="h-3.5 w-3.5" />
+              </button>
+              <button
+                onClick={() => alignSelection("bottom")}
+                className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground"
+                title="Align Bottom"
+              >
+                <AlignEndHorizontal className="h-3.5 w-3.5" />
+              </button>
+            </div>
 
             {/* X/Y position inputs — single element only (not multi-select) */}
             {selectedElement &&
@@ -2317,11 +2598,14 @@ export default function CardBuilder({
                     CORE_TEXT_FIELDS.includes(k as any) ||
                     config[k]?.type === "dynamic-text",
                 );
-              if (!isSingleText && !isMultiText) return null;
+              const isTextActive = isSingleText || isMultiText;
               const activeKey = isSingleText
                 ? selectedElement!
-                : multiSelectedKeys[0];
+                : isMultiText
+                  ? multiSelectedKeys[0]
+                  : null;
               const applyUpdate = (updates: Partial<ElementConfig>) => {
+                if (!isTextActive) return;
                 if (isSingleText) {
                   updateElement(selectedElement!, updates);
                 } else {
@@ -2332,13 +2616,13 @@ export default function CardBuilder({
                 <>
                   <div className="h-6 w-px bg-border shrink-0" />
                   <div
-                    className="flex items-center gap-2 shrink-0"
+                    className={`flex items-center gap-2 shrink-0 transition-opacity ${!isTextActive ? "opacity-40 pointer-events-none" : ""}`}
                     onMouseDown={(e) => e.stopPropagation()}
                     onClick={(e) => e.stopPropagation()}
                   >
                     {/* Font family */}
                     <select
-                      value={config[activeKey]?.fontFamily || "Montserrat"}
+                      value={config[activeKey ?? ""]?.fontFamily || "Montserrat"}
                       onChange={(e) =>
                         applyUpdate({ fontFamily: e.target.value })
                       }
@@ -2383,7 +2667,7 @@ export default function CardBuilder({
                     </select>
                     {/* Font size — uses local-state input to allow clearing and retyping freely */}
                     <FontSizeInput
-                      value={config[activeKey]?.fontSize || 16}
+                      value={config[activeKey ?? ""]?.fontSize || 16}
                       onChange={(val) => applyUpdate({ fontSize: val })}
                       className="w-12 h-7 text-xs text-center px-1 rounded border border-border bg-background font-mono"
                     />
@@ -2394,10 +2678,10 @@ export default function CardBuilder({
                         onClick={() =>
                           applyUpdate({
                             fontWeight:
-                              config[activeKey]?.fontWeight === 700 ? 400 : 700,
+                              config[activeKey ?? ""]?.fontWeight === 700 ? 400 : 700,
                           })
                         }
-                        className={`h-6 w-6 flex items-center justify-center rounded transition-colors ${config[activeKey]?.fontWeight === 700 ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                        className={`h-6 w-6 flex items-center justify-center rounded transition-colors ${config[activeKey ?? ""]?.fontWeight === 700 ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
                         title="Bold"
                       >
                         <Bold className="h-3.5 w-3.5" />
@@ -2406,12 +2690,12 @@ export default function CardBuilder({
                         onClick={() =>
                           applyUpdate({
                             fontStyle:
-                              config[activeKey]?.fontStyle === "italic"
+                              config[activeKey ?? ""]?.fontStyle === "italic"
                                 ? "normal"
                                 : "italic",
                           })
                         }
-                        className={`h-6 w-6 flex items-center justify-center rounded transition-colors ${config[activeKey]?.fontStyle === "italic" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                        className={`h-6 w-6 flex items-center justify-center rounded transition-colors ${config[activeKey ?? ""]?.fontStyle === "italic" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
                         title="Italic"
                       >
                         <Italic className="h-3.5 w-3.5" />
@@ -2419,10 +2703,10 @@ export default function CardBuilder({
                       <button
                         onClick={() =>
                           applyUpdate({
-                            underline: !config[activeKey]?.underline,
+                            underline: !config[activeKey ?? ""]?.underline,
                           })
                         }
-                        className={`h-6 w-6 flex items-center justify-center rounded transition-colors ${config[activeKey]?.underline ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                        className={`h-6 w-6 flex items-center justify-center rounded transition-colors ${config[activeKey ?? ""]?.underline ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
                         title="Underline"
                       >
                         <Underline className="h-3.5 w-3.5" />
@@ -2453,7 +2737,7 @@ export default function CardBuilder({
                         <button
                           key={val}
                           onClick={() => applyUpdate({ textAlign: val })}
-                          className={`h-6 w-6 flex items-center justify-center rounded transition-colors ${config[activeKey]?.textAlign === val ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                          className={`h-6 w-6 flex items-center justify-center rounded transition-colors ${config[activeKey ?? ""]?.textAlign === val ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
                           title={`Align ${title}`}
                         >
                           {icon}
@@ -2484,12 +2768,12 @@ export default function CardBuilder({
                         ))}
                       </div>
                       <QuickColorPicker
-                        value={config[activeKey]?.color || "#000000"}
+                        value={config[activeKey ?? ""]?.color || "#000000"}
                         onChange={(hex) => applyUpdate({ color: hex })}
                         label="Text colour"
                       />
                       <HexColorInput
-                        value={config[activeKey]?.color || "#000000"}
+                        value={config[activeKey ?? ""]?.color || "#000000"}
                         onChange={(hex) => applyUpdate({ color: hex })}
                         className="w-20 h-7 text-xs font-mono px-1.5 rounded border border-border bg-background"
                       />
@@ -2505,7 +2789,7 @@ export default function CardBuilder({
                       </span>
                       <input
                         type="number"
-                        value={config[activeKey]?.lineHeight || 1.2}
+                        value={config[activeKey ?? ""]?.lineHeight || 1.2}
                         onChange={(e) => {
                           const v = parseFloat(e.target.value);
                           if (!isNaN(v) && v >= 0.5 && v <= 3)
@@ -2528,7 +2812,7 @@ export default function CardBuilder({
                       </span>
                       <input
                         type="number"
-                        value={config[activeKey]?.charSpacing || 0}
+                        value={config[activeKey ?? ""]?.charSpacing || 0}
                         onChange={(e) => {
                           const v = parseInt(e.target.value);
                           if (!isNaN(v) && v >= -100 && v <= 500)
@@ -2547,7 +2831,7 @@ export default function CardBuilder({
                       min={0}
                       max={1}
                       step={0.05}
-                      value={config[activeKey]?.opacity ?? 1}
+                      value={config[activeKey ?? ""]?.opacity ?? 1}
                       onChange={(e) =>
                         applyUpdate({ opacity: parseFloat(e.target.value) })
                       }
@@ -2555,7 +2839,7 @@ export default function CardBuilder({
                       title="Opacity"
                     />
                     <span className="text-xs w-8 tabular-nums">
-                      {Math.round((config[activeKey]?.opacity ?? 1) * 100)}%
+                      {Math.round((config[activeKey ?? ""]?.opacity ?? 1) * 100)}%
                     </span>
                   </div>
                 </>
@@ -2772,6 +3056,13 @@ export default function CardBuilder({
         {/* Main Area */}
         <div className="flex-1 flex overflow-hidden">
           {/* Left Sidebar - Elements */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/png,image/jpeg"
+            onChange={handleBackgroundUpload}
+            className="hidden"
+          />
           <div
             className="relative border-r border-border/60 bg-muted/20 flex flex-col items-center pt-3 pb-4 gap-3 overflow-y-auto shrink-0"
             style={{ width: sidebarWidth }}
@@ -2786,271 +3077,14 @@ export default function CardBuilder({
                 e.preventDefault();
               }}
             />
-            <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50 w-full px-3">
-              Elements
-            </span>
-
-            {/* First-run getting started tip */}
-            {showSidebarTip && cardType === "website" && (
-              <div className="w-full px-2">
-                <div className="rounded-lg border border-primary/25 bg-primary/5 p-2.5 relative">
-                  <button
-                    onClick={() => {
-                      setShowSidebarTip(false);
-                    }}
-                    className="absolute top-1.5 right-1.5 p-0.5 rounded hover:bg-accent text-muted-foreground"
-                    title="Dismiss"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                  <p className="text-[10px] font-semibold text-primary mb-2 pr-4">
-                    Getting started
-                  </p>
-                  <div className="space-y-1.5 pr-3">
-                    {[
-                      "Click to select, drag to move",
-                      "Background colour — section below",
-                      "Test photos — right panel",
-                    ].map((tip, i) => (
-                      <div key={i} className="flex items-start gap-1.5">
-                        <span className="text-[9px] font-bold text-primary mt-px leading-none">
-                          {i + 1}
-                        </span>
-                        <p className="text-[10px] text-muted-foreground leading-tight">
-                          {tip}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Starter Templates */}
-            <div className="w-full px-2">
-              <button
-                onClick={() => {
-                  if (isPromo) {
-                    setOnboardingBrandSetup(true);
-                  } else {
-                    setOnboardingShowShapePicker(true);
-                  }
-                  setShowOnboarding(true);
-                }}
-                className="w-full flex flex-col items-center gap-1 p-2 rounded-lg transition-colors hover:bg-accent"
-                title="Starter Templates"
-              >
-                <Layers className="h-5 w-5" />
-                <span className="text-xs">Templates</span>
-              </button>
+            <div className="w-full px-3">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
+                Speaker Info
+              </span>
+              <p className="text-[10px] text-muted-foreground/60 mt-0.5 leading-tight">
+                Fields auto-fill per speaker
+              </p>
             </div>
-
-            {/* Background — colour + image, unified inline panel */}
-            <div className="w-full px-2">
-              <button
-                onClick={() => setBgPanelOpen(!bgPanelOpen)}
-                className={`w-full flex flex-col items-center gap-1 p-2 rounded-lg transition-colors ${bgPanelOpen ? "bg-accent" : "hover:bg-accent"}`}
-                title="Background colour or image"
-              >
-                <div className="relative">
-                  <ImageIcon className="h-5 w-5" />
-                  <div
-                    className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-sm border border-border/80 shadow-sm"
-                    style={{
-                      background: bgGradient
-                        ? `linear-gradient(135deg, ${bgGradient.from}, ${bgGradient.to})`
-                        : bgColor,
-                    }}
-                  />
-                </div>
-                <span className="text-xs">Background</span>
-              </button>
-
-              {bgPanelOpen && (
-                <div className="mt-1 rounded-lg border border-border bg-card p-2 space-y-2">
-                  {/* Canvas size */}
-                  <div>
-                    <div className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">
-                      Size
-                    </div>
-                    <select
-                      value={
-                        [
-                          "600x600",
-                          "1200x628",
-                          "900x1200",
-                          "1584x396",
-                        ].includes(`${canvasWidth}x${canvasHeight}`)
-                          ? `${canvasWidth}x${canvasHeight}`
-                          : "custom"
-                      }
-                      onChange={(e) => {
-                        if (e.target.value === "custom") return;
-                        const [w, h] = e.target.value.split("x").map(Number);
-                        setCanvasWidth(w);
-                        setCanvasHeight(h);
-                        setHasUnsavedChanges(true);
-                        if (fabricCanvasRef.current) {
-                          fabricCanvasRef.current.setDimensions({
-                            width: w,
-                            height: h,
-                          });
-                          fabricCanvasRef.current.renderAll();
-                        }
-                      }}
-                      className="w-full h-7 px-2 text-xs border border-border rounded bg-background"
-                    >
-                      <option value="600x600">Square (600×600)</option>
-                      <option value="1200x628">Landscape (1200×628)</option>
-                      <option value="900x1200">Portrait (900×1200)</option>
-                      <option value="1584x396">Banner (1584×396)</option>
-                      <option value="custom" disabled>
-                        Custom: {canvasWidth}×{canvasHeight}
-                      </option>
-                    </select>
-                  </div>
-
-                  {/* Image upload */}
-                  <div>
-                    <div className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">
-                      Background image
-                    </div>
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      className={`w-full flex items-center gap-1.5 px-2 py-1.5 rounded border text-xs transition-colors ${templateUrl ? "border-primary/40 bg-primary/5 text-primary" : "border-border hover:bg-accent"}`}
-                    >
-                      <Upload className="h-3 w-3 shrink-0" />
-                      <span className="truncate">
-                        {templateUrl ? "Replace image" : "Upload image"}
-                      </span>
-                    </button>
-                    {templateUrl && (
-                      <button
-                        onClick={() => {
-                          setTemplateUrl(null);
-                          setHasUnsavedChanges(true);
-                        }}
-                        className="w-full text-[10px] text-muted-foreground hover:text-destructive text-left mt-1"
-                      >
-                        ✕ Remove image
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Colour swatches */}
-                  <div>
-                    <div className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">
-                      Solid colour
-                    </div>
-                    <div className="flex flex-wrap gap-1 mb-1.5">
-                      {[
-                        "#ffffff",
-                        "#000000",
-                        "#1e293b",
-                        "#0f172a",
-                        "#1d4ed8",
-                        "#dc2626",
-                        "#16a34a",
-                        "#d97706",
-                        "#7c3aed",
-                        "#db2777",
-                        "#0891b2",
-                        "#374151",
-                      ].map((c) => (
-                        <button
-                          key={c}
-                          onClick={() => {
-                            setBgColor(c);
-                            setBgGradient(null);
-                            setBgGradientStyle(null);
-                            setHasUnsavedChanges(true);
-                          }}
-                          className={`w-5 h-5 rounded border-2 transition-transform hover:scale-110 ${!bgGradient && bgColor === c ? "border-primary" : "border-border/60"}`}
-                          style={{ backgroundColor: c }}
-                          title={c}
-                        />
-                      ))}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <QuickColorPicker
-                        value={bgColor}
-                        onChange={(hex) => {
-                          setBgColor(hex);
-                          setBgGradient(null);
-                          setBgGradientStyle(null);
-                          setHasUnsavedChanges(true);
-                        }}
-                        label="Background colour"
-                      />
-                      <HexColorInput
-                        value={bgColor}
-                        onChange={(hex) => {
-                          setBgColor(hex);
-                          setBgGradient(null);
-                          setBgGradientStyle(null);
-                          setHasUnsavedChanges(true);
-                        }}
-                        className="flex-1 h-6 text-xs font-mono px-1 rounded border border-border bg-background min-w-0"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Gradient — derives from the current background colour */}
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="text-[10px] text-muted-foreground uppercase tracking-wide">
-                        Gradient
-                      </div>
-                      {bgGradient && (
-                        <button
-                          onClick={clearGradient}
-                          className="text-[10px] text-muted-foreground hover:text-destructive"
-                        >
-                          ✕ Remove
-                        </button>
-                      )}
-                    </div>
-                    <div className="grid grid-cols-3 gap-1">
-                      {GRADIENT_STYLES.map((style) => {
-                        const preview = deriveGradient(bgColor, style as any);
-                        const isActive = bgGradientStyle === (style as any);
-                        return (
-                          <button
-                            key={style}
-                            title={
-                              style === "dark"
-                                ? "Rich fade to colour"
-                                : style === "tonal"
-                                  ? "Darker → lighter hue"
-                                  : "Colour → light tint"
-                            }
-                            onClick={() => applyGradientStyle(style)}
-                            className={`flex flex-col items-center gap-1 py-1.5 rounded border-2 transition-colors capitalize text-[10px] ${isActive ? "border-primary bg-primary/5 text-primary" : "border-border hover:border-primary/40"}`}
-                          >
-                            <div
-                              className="w-full rounded-sm h-5"
-                              style={{
-                                background: `linear-gradient(135deg, ${preview.from}, ${preview.to})`,
-                              }}
-                            />
-                            {style}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/png,image/jpeg"
-              onChange={handleBackgroundUpload}
-              className="hidden"
-            />
-
-            <div className="h-px w-12 bg-border" />
 
             {shouldShowElement("headshot") && (
               <div className="relative w-full px-2">
@@ -3074,7 +3108,7 @@ export default function CardBuilder({
                   <span
                     className={`text-xs ${config.headshot ? "text-primary font-semibold" : ""}`}
                   >
-                    Headshot
+                    {getFieldLabel("headshot", "Headshot")}
                   </span>
                 </button>
 
@@ -3156,7 +3190,7 @@ export default function CardBuilder({
                 title={config.firstName ? "Click to remove" : "Drag to canvas or click to add"}
               >
                 <Type className={`h-5 w-5 ${config.firstName ? "text-primary" : ""}`} />
-                <span className={`text-xs ${config.firstName ? "text-primary font-semibold" : ""}`}>First Name</span>
+                <span className={`text-xs ${config.firstName ? "text-primary font-semibold" : ""}`}>{getFieldLabel("firstName", "First Name")}</span>
               </button>
             )}
 
@@ -3169,7 +3203,7 @@ export default function CardBuilder({
                 title={config.lastName ? "Click to remove" : "Drag to canvas or click to add"}
               >
                 <Type className={`h-5 w-5 ${config.lastName ? "text-primary" : ""}`} />
-                <span className={`text-xs ${config.lastName ? "text-primary font-semibold" : ""}`}>Last Name</span>
+                <span className={`text-xs ${config.lastName ? "text-primary font-semibold" : ""}`}>{getFieldLabel("lastName", "Last Name")}</span>
               </button>
             )}
 
@@ -3191,7 +3225,7 @@ export default function CardBuilder({
                 <span
                   className={`text-xs ${config.title ? "text-primary font-semibold" : ""}`}
                 >
-                  Title
+                  {getFieldLabel("title", "Title")}
                 </span>
               </button>
             )}
@@ -3214,7 +3248,7 @@ export default function CardBuilder({
                 <span
                   className={`text-xs ${config.company ? "text-primary font-semibold" : ""}`}
                 >
-                  Company
+                  {getFieldLabel("company", "Company")}
                 </span>
               </button>
             )}
@@ -3237,45 +3271,10 @@ export default function CardBuilder({
                 <span
                   className={`text-xs ${config.companyLogo ? "text-primary font-semibold" : ""}`}
                 >
-                  Logo
+                  {getFieldLabel("companyLogo", "Company Logo")}
                 </span>
               </button>
             )}
-
-            <div className="h-px w-12 bg-border" />
-
-            <button
-              onClick={() => {
-                const newKey = `gradientOverlay_${Date.now()}`;
-                setConfig((prev) => {
-                  const maxZ = Math.max(
-                    0,
-                    ...Object.values(prev).map((c) => c.zIndex || 0),
-                  );
-                  const next = {
-                    ...prev,
-                    [newKey]: {
-                      ...ELEMENT_TEMPLATES.gradientOverlay,
-                      x: 0,
-                      y: Math.round(canvasHeight / 2),
-                      width: canvasWidth,
-                      height: Math.round(canvasHeight / 2),
-                      gradientDirection: "bottom" as const,
-                      overlayOpacity: 0.9,
-                      zIndex: maxZ + 1,
-                    },
-                  };
-                  addToHistory(next);
-                  return next;
-                });
-                setHasUnsavedChanges(true);
-              }}
-              className="w-full flex flex-col items-center gap-1 p-2 rounded-lg transition-colors hover:bg-accent"
-              title="Add a gradient overlay (can add multiple)"
-            >
-              <Square className="h-5 w-5" />
-              <span className="text-xs">+ Overlay</span>
-            </button>
 
             {/* Dynamic fields from form builder */}
             {cardBuilderFields.length > 0 && (
@@ -3482,6 +3481,8 @@ export default function CardBuilder({
                     onClick={() => {
                       if (isPromo) {
                         setOnboardingBrandSetup(true);
+                        setQuickBg("#0f172a");
+                        setQuickTextColor("#ffffff");
                       } else {
                         setOnboardingShowShapePicker(true);
                       }
@@ -3513,47 +3514,6 @@ export default function CardBuilder({
 
           {/* Right Sidebar - Preview */}
           <div className="w-56 border-l bg-card/30 p-4 overflow-y-auto space-y-5">
-            {/* Event Logo — promo only, sits above the preview section */}
-            {isPromo && (
-              <div>
-                <h3 className="text-sm font-semibold mb-0.5">Event Logo</h3>
-                <p className="text-xs text-muted-foreground mb-2 leading-snug">
-                  Appears on every promo card.
-                </p>
-                <input
-                  ref={eventLogoInputRef}
-                  type="file"
-                  accept="image/png,image/jpeg"
-                  onChange={handleEventLogoUpload}
-                  className="hidden"
-                />
-                {testEventLogo ? (
-                  <div className="relative rounded-lg overflow-hidden border border-border bg-muted/30">
-                    <img
-                      src={testEventLogo}
-                      alt="Event logo"
-                      className="w-full h-16 object-contain p-2"
-                    />
-                    <button
-                      onClick={() => setTestEventLogo(null)}
-                      className="absolute top-1.5 right-1.5 p-1 bg-background/90 rounded-full shadow text-muted-foreground hover:text-foreground"
-                      title="Remove"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => eventLogoInputRef.current?.click()}
-                    className="w-full h-16 flex flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-border hover:border-primary/50 hover:bg-primary/5 transition-colors text-muted-foreground hover:text-primary"
-                  >
-                    <Upload className="h-4 w-4" />
-                    <span className="text-xs">Upload event logo</span>
-                  </button>
-                )}
-              </div>
-            )}
-
             {/* Header */}
             <div>
               <h3 className="text-sm font-semibold">Preview</h3>

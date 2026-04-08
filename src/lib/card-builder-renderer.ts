@@ -24,6 +24,7 @@ type RenderParams = {
   canvasWidth: number;
   canvasHeight: number;
   toast: (opts: any) => void;
+  onFontSizeResolved?: (updates: Record<string, number>) => void;
 };
 
 export async function renderAllElements(params: RenderParams) {
@@ -41,7 +42,12 @@ export async function renderAllElements(params: RenderParams) {
     canvasWidth,
     canvasHeight,
     toast,
+    onFontSizeResolved,
   } = params;
+
+  // Tracks the actual rendered font size for name/title elements after auto-shrink.
+  // Used to sync firstName/lastName to the same size and to update the toolbar.
+  const resolvedNameFontSizes: Record<string, number> = {};
 
   const canvas = fabricCanvasRef.current;
   if (!canvas) return;
@@ -329,8 +335,9 @@ export async function renderAllElements(params: RenderParams) {
         elementRefs.current.companyLogo = group;
       }
     } else if (key === "eventLogo") {
-      if (testEventLogo) {
-        const img = await loadImagePromise(testEventLogo);
+      const eventLogoSrc = testEventLogo || (cfg.url as string | undefined) || null;
+      if (eventLogoSrc) {
+        const img = await loadImagePromise(eventLogoSrc);
         const fabricImg = new fabric.Image(img, { left: cfg.x, top: cfg.y, opacity: cfg.opacity ?? 1, selectable: true, hasControls: true, lockRotation: true, lockUniScaling: false, data: { elementKey: "eventLogo" } });
 
         const LOGO_PAD = 10;
@@ -415,6 +422,8 @@ export async function renderAllElements(params: RenderParams) {
         text.set({ width: boxWidth });
         text.initDimensions();
         text.setCoords();
+        // Record the actual rendered font size so we can sync name pairs and update the toolbar
+        resolvedNameFontSizes[key] = fs;
       }
 
       canvas.add(text);
@@ -470,6 +479,36 @@ export async function renderAllElements(params: RenderParams) {
       obj.set({ lockMovementX: true, lockMovementY: true, lockScalingX: true, lockScalingY: true, hasControls: false, hoverCursor: "not-allowed" });
     }
   });
+
+  // Sync firstName/lastName to the same font size so they always match.
+  // Whichever one needed more shrinking sets the size for both.
+  if (resolvedNameFontSizes.firstName !== undefined && resolvedNameFontSizes.lastName !== undefined) {
+    const minFs = Math.min(resolvedNameFontSizes.firstName, resolvedNameFontSizes.lastName);
+    for (const nameKey of ["firstName", "lastName"] as const) {
+      if (resolvedNameFontSizes[nameKey] !== minFs) {
+        const el = elementRefs.current[nameKey] as fabric.Textbox | undefined;
+        if (el) {
+          el.set({ fontSize: minFs });
+          el.initDimensions();
+          el.setCoords();
+        }
+        resolvedNameFontSizes[nameKey] = minFs;
+      }
+    }
+  }
+
+  // Notify the toolbar of any font sizes that were auto-shrunk away from their config value.
+  if (onFontSizeResolved) {
+    const updates: Record<string, number> = {};
+    for (const [k, fs] of Object.entries(resolvedNameFontSizes)) {
+      if (config[k]?.fontSize !== fs) {
+        updates[k] = fs;
+      }
+    }
+    if (Object.keys(updates).length > 0) {
+      onFontSizeResolved(updates);
+    }
+  }
 
   canvas.renderAll();
 }
