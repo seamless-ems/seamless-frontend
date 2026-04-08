@@ -913,8 +913,8 @@ export const handleCropComplete = async (
     if (!params.config.eventLogo) {
       params.addElementToCanvas("eventLogo");
     }
-    // Calculate the rendered dimensions and centered position — same fit-to-zone math as the
-    // renderer so the backend gets the exact scale, and the renderer uses the correct x/y directly.
+    // Calculate rendered dimensions + centered position — same fit-to-zone math as the renderer
+    // so the backend gets the exact scale and the renderer uses correct x/y directly.
     const LOGO_PAD = 10;
     const dropW = (params.config.eventLogo?.width ?? params.config.eventLogo?.size ?? 700) as number;
     const dropH = (params.config.eventLogo?.height ?? params.config.eventLogo?.size ?? 160) as number;
@@ -928,7 +928,6 @@ export const handleCropComplete = async (
         const scale = Math.min(maxW / img.naturalWidth, maxH / img.naturalHeight);
         const actualWidth = Math.round(img.naturalWidth * scale);
         const actualHeight = Math.round(img.naturalHeight * scale);
-        // Store the centered position so the renderer places it correctly when cfg.actualWidth is set.
         const centeredX = Math.round(dropX + (dropW - actualWidth) / 2);
         const centeredY = Math.round(dropY + (dropH - actualHeight) / 2);
         params.updateElement("eventLogo", { url: dataUrl, actualWidth, actualHeight, x: centeredX, y: centeredY });
@@ -969,7 +968,7 @@ export const handleSave = async (
   const effectiveConfig = { ...params.config };
   const backendConfig = { ...effectiveConfig };
 
-  // Upload event logo data URL to server and replace with persistent URL
+  // Upload event logo data URL to server and replace with a persistent URL before saving config.
   if (
     backendConfig.eventLogo?.url &&
     (backendConfig.eventLogo.url.startsWith("data:") ||

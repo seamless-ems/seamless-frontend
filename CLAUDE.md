@@ -83,7 +83,7 @@ Rules for every agent that touches this file:
 
 ## Known issues
 - **`nameFormat: "two-line"`** — saves correctly but embed renders single line. Backend bug (see API_GAPS.md).
-- **`company` / `companyLogo`** — not persisting after server save/reload. Backend bug.
+- **`company` / `companyLogo`** — not persisting after server save/reload. Backend bug (see API_GAPS.md).
 - **Custom field keys** — backend strips underscores (`custom_123` → `custom123`). Frontend has fallback logic.
 - **ShareDialog** — UI complete, not yet wired to backend.
 - **Card downloads** — open in new tab only; PNG export not yet available (see API_GAPS.md).

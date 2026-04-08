@@ -165,7 +165,7 @@ export default function AddSpeakerDialog({ eventId, eventName = "the event", ema
       toast({ title: "Speaker added" });
       setOpen(false);
       reset();
-      navigate(`/organizer/event/${eventId}/speakers/${speakerId}`);
+      navigate(`/organizer/event/${eventId}/speakers/${speakerId}`, { state: { openEdit: true } });
     } catch (err: any) {
       toast({ title: "Failed to add speaker", description: String(err?.message || err) });
     } finally {

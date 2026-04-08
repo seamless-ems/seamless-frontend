@@ -45,8 +45,7 @@ export async function renderAllElements(params: RenderParams) {
     onFontSizeResolved,
   } = params;
 
-  // Tracks the actual rendered font size for name/title elements after auto-shrink.
-  // Used to sync firstName/lastName to the same size and to update the toolbar.
+  // Tracks actual rendered font sizes after auto-shrink, for syncing name pairs and toolbar.
   const resolvedNameFontSizes: Record<string, number> = {};
 
   const canvas = fabricCanvasRef.current;
@@ -480,8 +479,7 @@ export async function renderAllElements(params: RenderParams) {
     }
   });
 
-  // Sync firstName/lastName to the same font size so they always match.
-  // Whichever one needed more shrinking sets the size for both.
+  // Sync firstName/lastName to the same font size — whichever needed more shrinking wins.
   if (resolvedNameFontSizes.firstName !== undefined && resolvedNameFontSizes.lastName !== undefined) {
     const minFs = Math.min(resolvedNameFontSizes.firstName, resolvedNameFontSizes.lastName);
     for (const nameKey of ["firstName", "lastName"] as const) {
@@ -497,7 +495,7 @@ export async function renderAllElements(params: RenderParams) {
     }
   }
 
-  // Notify the toolbar of any font sizes that were auto-shrunk away from their config value.
+  // Notify the toolbar of font sizes that were auto-shrunk away from their config value.
   if (onFontSizeResolved) {
     const updates: Record<string, number> = {};
     for (const [k, fs] of Object.entries(resolvedNameFontSizes)) {
