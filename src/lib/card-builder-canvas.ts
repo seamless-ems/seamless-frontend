@@ -372,10 +372,13 @@ export const createFabricCanvas = (params: CreateCanvasParams) => {
           updates.scaleX = 1;
           updates.scaleY = 1;
         } else {
-          updates.actualWidth = Math.round(obj.getScaledWidth());
-          updates.actualHeight = Math.round(obj.getScaledHeight());
-          updates.scaleX = obj.scaleX || 1;
-          updates.scaleY = obj.scaleY || 1;
+          // Normalise logo images same as headshot: store actual display size as
+          // width/height and reset scale to 1. This keeps fit-to-zone behaviour
+          // consistent across reloads (no compounding scale accumulation).
+          updates.width = Math.round(obj.getScaledWidth());
+          updates.height = Math.round(obj.getScaledHeight());
+          updates.scaleX = 1;
+          updates.scaleY = 1;
         }
       }
 

@@ -307,20 +307,15 @@ export async function renderAllElements(params: RenderParams) {
         const LOGO_PAD = 10;
         const dropW = cfg.width || cfg.size;
         const dropH = cfg.height || cfg.size;
-
-        if (cfg.actualWidth) {
-          fabricImg.scaleToWidth(cfg.actualWidth);
-        } else {
-          const naturalW = (fabricImg.width as number) || 1;
-          const naturalH = (fabricImg.height as number) || 1;
-          const maxW = dropW - LOGO_PAD * 2;
-          const maxH = dropH - LOGO_PAD * 2;
-          const scale = Math.min(maxW / naturalW, maxH / naturalH);
-          fabricImg.set({ scaleX: scale, scaleY: scale });
-          const scaledW = naturalW * scale;
-          const scaledH = naturalH * scale;
-          fabricImg.set({ left: cfg.x + (dropW - scaledW) / 2, top: cfg.y + (dropH - scaledH) / 2 });
-        }
+        const naturalW = (fabricImg.width as number) || 1;
+        const naturalH = (fabricImg.height as number) || 1;
+        const maxW = dropW - LOGO_PAD * 2;
+        const maxH = dropH - LOGO_PAD * 2;
+        const scale = Math.min(maxW / naturalW, maxH / naturalH);
+        fabricImg.set({ scaleX: scale, scaleY: scale });
+        const scaledW = naturalW * scale;
+        const scaledH = naturalH * scale;
+        fabricImg.set({ left: cfg.x + (dropW - scaledW) / 2, top: cfg.y + (dropH - scaledH) / 2 });
 
         canvas.add(fabricImg);
         elementRefs.current.companyLogo = fabricImg;
@@ -351,20 +346,15 @@ export async function renderAllElements(params: RenderParams) {
         const LOGO_PAD = 10;
         const dropW = cfg.width || cfg.size;
         const dropH = cfg.height || cfg.size;
-
-        if (cfg.actualWidth) {
-          fabricImg.scaleToWidth(cfg.actualWidth);
-        } else {
-          const naturalW = (fabricImg.width as number) || 1;
-          const naturalH = (fabricImg.height as number) || 1;
-          const maxW = dropW - LOGO_PAD * 2;
-          const maxH = dropH - LOGO_PAD * 2;
-          const scale = Math.min(maxW / naturalW, maxH / naturalH);
-          fabricImg.set({ scaleX: scale, scaleY: scale });
-          const scaledW = naturalW * scale;
-          const scaledH = naturalH * scale;
-          fabricImg.set({ left: cfg.x + (dropW - scaledW) / 2, top: cfg.y + (dropH - scaledH) / 2 });
-        }
+        const naturalW = (fabricImg.width as number) || 1;
+        const naturalH = (fabricImg.height as number) || 1;
+        const maxW = dropW - LOGO_PAD * 2;
+        const maxH = dropH - LOGO_PAD * 2;
+        const scale = Math.min(maxW / naturalW, maxH / naturalH);
+        fabricImg.set({ scaleX: scale, scaleY: scale });
+        const scaledW = naturalW * scale;
+        const scaledH = naturalH * scale;
+        fabricImg.set({ left: cfg.x + (dropW - scaledW) / 2, top: cfg.y + (dropH - scaledH) / 2 });
 
         canvas.add(fabricImg);
         elementRefs.current.eventLogo = fabricImg;

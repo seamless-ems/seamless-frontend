@@ -251,7 +251,7 @@ export default function SpeakerPortal() {
       {/* Top bar */}
       <header className="sticky top-0 z-30 h-14 flex items-center gap-3 border-b border-border bg-card/95 px-4 shrink-0">
         <button
-          onClick={() => navigate(-1)}
+          onClick={() => navigate(`/organizer/event/${id}/speakers`)}
           className="flex items-center justify-center h-8 w-8 rounded-md hover:bg-muted transition-colors"
           title="Back to speakers"
         >

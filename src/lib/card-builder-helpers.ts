@@ -906,9 +906,8 @@ export const handleCropComplete = async (
     params.setTestEventLogo(dataUrl);
     if (!params.config.eventLogo) params.addElementToCanvas("eventLogo");
     // Store URL so handleSave can upload it to the server.
-    // Do NOT touch x/y/width/height — template drop zone positions must stay intact
-    // so the renderer's fit-to-zone centering works correctly (same approach as companyLogo).
-    params.updateElement("eventLogo", { url: dataUrl, actualWidth: undefined, actualHeight: undefined });
+    // Do NOT touch x/y/width/height or actualWidth/actualHeight — preserve any size the user set.
+    params.updateElement("eventLogo", { url: dataUrl });
     params.toast({ title: "Event logo uploaded" });
   }
 

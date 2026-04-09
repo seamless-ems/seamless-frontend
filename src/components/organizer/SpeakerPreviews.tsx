@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { API_BASE } from '@/lib/api';
+import { ZoomIn, ZoomOut } from 'lucide-react';
 
 type Props = {
   s: any;
@@ -12,16 +13,18 @@ export default function SpeakerPreviews({ s, type }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [containerWidth, setContainerWidth] = useState(0);
-  const [contentHeight, setContentHeight] = useState(0);
+  const [cardDims, setCardDims] = useState<{ w: number; h: number } | null>(null);
+  const [userZoom, setUserZoom] = useState(1.0);
+
   const outerRef = useRef<HTMLDivElement | null>(null);
-  const innerRef = useRef<HTMLDivElement | null>(null);
+  const scaleRef = useRef<HTMLDivElement | null>(null); // always in DOM — iframe appended here
   const controllerRef = useRef<AbortController | null>(null);
   const appendedIframes = useRef<HTMLIFrameElement[]>([]);
 
-  // Native card width: website = 600px, social/promo = 1080px
+  // Fallback native width used before card dimensions are measured
   const nativeWidth = type === 'website' ? 600 : 1080;
 
-  // Track outer container width via ResizeObserver
+  // Measure container width via ResizeObserver
   useEffect(() => {
     const el = outerRef.current;
     if (!el) return;
@@ -32,11 +35,10 @@ export default function SpeakerPreviews({ s, type }: Props) {
     return () => ro.disconnect();
   }, []);
 
-  const scale = containerWidth > 0 ? Math.min(1, containerWidth / nativeWidth) : 1;
-
+  // Fetch and render the card inside an iframe
   useEffect(() => {
     let mounted = true;
-    const container = innerRef.current;
+    const container = scaleRef.current;
     if (!eventId || !s?.id || !container) return;
 
     const controller = new AbortController();
@@ -49,7 +51,7 @@ export default function SpeakerPreviews({ s, type }: Props) {
     const load = async () => {
       setLoading(true);
       setError(null);
-      setContentHeight(0);
+      setCardDims(null);
       try {
         const resp = await fetch(url, { signal: controller.signal });
         if (!resp.ok) throw new Error(`${resp.status} ${resp.statusText}`);
@@ -58,6 +60,7 @@ export default function SpeakerPreviews({ s, type }: Props) {
         const parser = new DOMParser();
         const doc = parser.parseFromString(text, 'text/html');
 
+        // Base href so relative asset URLs resolve correctly
         if (!doc.querySelector('base')) {
           try {
             const baseEl = doc.createElement('base');
@@ -66,20 +69,27 @@ export default function SpeakerPreviews({ s, type }: Props) {
           } catch {}
         }
 
+        // Suppress iframe-internal scrollbars
+        try {
+          const styleEl = doc.createElement('style');
+          styleEl.textContent = 'html,body{overflow:hidden!important;margin:0!important;padding:0!important;}';
+          doc.head?.appendChild(styleEl);
+        } catch {}
+
         const serialized = doc.documentElement?.outerHTML || text;
 
         container.innerHTML = '';
         const iframe = document.createElement('iframe');
         iframe.setAttribute('title', 'Speaker preview');
         iframe.setAttribute('aria-hidden', 'true');
-        iframe.style.cssText = `width:${nativeWidth}px;height:1px;border:0;display:block;`;
+        // Start oversized — measure actual card dims after load, then resize
+        iframe.style.cssText = `width:2000px;height:2000px;border:0;display:block;`;
         iframe.onload = () => {
           try {
-            const h =
-              iframe.contentDocument?.documentElement?.scrollHeight ||
-              iframe.contentDocument?.body?.scrollHeight ||
-              nativeWidth;
-            if (mounted) setContentHeight(h);
+            const w = iframe.contentDocument?.documentElement?.scrollWidth || nativeWidth;
+            const h = iframe.contentDocument?.documentElement?.scrollHeight || nativeWidth;
+            if (mounted) setCardDims({ w, h });
+            iframe.style.width = `${w}px`;
             iframe.style.height = `${h}px`;
           } catch {}
         };
@@ -105,8 +115,19 @@ export default function SpeakerPreviews({ s, type }: Props) {
     };
   }, [eventId, s?.id, type]);
 
+  // Scale: fit card to container width (cap at 1 — no upscaling at default zoom)
+  const cardW = cardDims?.w || nativeWidth;
+  const cardH = cardDims?.h || nativeWidth;
+  const fitScale = containerWidth > 0 && cardW > 0
+    ? Math.min(1, containerWidth / cardW)
+    : 1;
+  const scale = Math.min(Math.max(fitScale * userZoom, 0.1), 3);
+  const displayWidth = Math.round(cardW * scale);
+  const displayHeight = Math.round(cardH * scale);
+  const scalePct = Math.round(scale * 100);
+
   return (
-    <div ref={outerRef} className="w-full rounded-lg border border-border overflow-hidden bg-white">
+    <div ref={outerRef} className="w-full rounded-lg border border-border bg-white">
       {loading && (
         <div className="p-8 flex items-center justify-center min-h-[200px]">
           <p className="text-sm text-muted-foreground">Loading preview…</p>
@@ -117,23 +138,57 @@ export default function SpeakerPreviews({ s, type }: Props) {
           <p className="text-sm text-destructive">{error}</p>
         </div>
       )}
-      {/* Scale wrapper: outer clips to scaled height, inner transforms to native width */}
-      {!loading && !error && (
+
+      {/*
+        Scale wrapper — always in DOM so scaleRef is never null when the effect runs.
+        Hidden via display:none while loading/error so the ref stays attached.
+
+        Sizing: the wrapper is (displayWidth × displayHeight) — the VISUAL size of the
+        scaled card. scaleRef is positioned absolutely at native card dimensions and
+        scaled down. Because the transform origin is top-left and the wrapper clips at
+        exactly the visual extent of the content, nothing gets cut off.
+      */}
+      <div
+        style={{
+          display: loading || error ? 'none' : 'block',
+          width: displayWidth,
+          height: displayHeight,
+          overflow: 'hidden',
+          position: 'relative',
+        }}
+      >
         <div
+          ref={scaleRef}
           style={{
-            width: '100%',
-            overflow: 'hidden',
-            height: contentHeight ? Math.round(contentHeight * scale) : undefined,
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: cardW,
+            height: cardH,
+            transformOrigin: 'top left',
+            transform: `scale(${scale})`,
           }}
-        >
-          <div
-            ref={innerRef}
-            style={{
-              width: nativeWidth,
-              transformOrigin: 'top left',
-              transform: `scale(${scale})`,
-            }}
-          />
+        />
+      </div>
+
+      {/* Zoom controls — only shown once card is measured */}
+      {!loading && !error && cardDims && (
+        <div className="flex items-center justify-end gap-1 px-3 py-2 border-t border-border">
+          <button
+            onClick={() => setUserZoom(z => Math.max(+(z - 0.25).toFixed(2), 0.25))}
+            className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted transition-colors"
+            title="Zoom out"
+          >
+            <ZoomOut className="h-3.5 w-3.5 text-muted-foreground" />
+          </button>
+          <span className="text-xs text-muted-foreground w-10 text-center tabular-nums">{scalePct}%</span>
+          <button
+            onClick={() => setUserZoom(z => Math.min(+(z + 0.25).toFixed(2), 3))}
+            className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted transition-colors"
+            title="Zoom in"
+          >
+            <ZoomIn className="h-3.5 w-3.5 text-muted-foreground" />
+          </button>
         </div>
       )}
     </div>

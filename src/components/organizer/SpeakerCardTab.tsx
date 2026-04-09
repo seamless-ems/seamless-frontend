@@ -1,12 +1,14 @@
 import { useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { AlertCircle, Check, CheckCircle, Share2 } from 'lucide-react';
+import { AlertCircle, CheckCircle, Download } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { API_BASE } from '@/lib/api';
 import SpeakerPreviews from './SpeakerPreviews';
 
 type Props = {
@@ -19,17 +21,35 @@ type Props = {
 };
 
 export default function SpeakerCardTab({ type, s, isApproved, canApprove, onToggleApproval, onApproveAndPublish }: Props) {
-  const [copied, setCopied] = useState(false);
+  const { id: eventId } = useParams();
+  const [downloading, setDownloading] = useState(false);
+
+  const cardUrl = type === 'website'
+    ? `${API_BASE}/embed/${encodeURIComponent(eventId ?? '')}/speaker/${encodeURIComponent(s?.id ?? '')}`
+    : `${API_BASE}/promo-cards/${encodeURIComponent(eventId ?? '')}/speaker/${encodeURIComponent(s?.id ?? '')}`;
+
+  const handleDownload = async () => {
+    setDownloading(true);
+    try {
+      const resp = await fetch(cardUrl);
+      if (!resp.ok) throw new Error(`${resp.status}`);
+      const blob = await resp.blob();
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `${s?.name ?? 'speaker'}-${type === 'website' ? 'speaker-card' : 'social-card'}.html`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    } catch {
+      // fallback — open in new tab if download fails
+      window.open(cardUrl, '_blank', 'noopener,noreferrer');
+    } finally {
+      setDownloading(false);
+    }
+  };
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const label = type === 'website' ? 'Speaker Card' : 'Social Card';
-
-  const copyShare = () => {
-    navigator.clipboard.writeText(window.location.href);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   const handleConfirm = async () => {
     setLoading(true);
@@ -85,10 +105,8 @@ export default function SpeakerCardTab({ type, s, isApproved, canApprove, onTogg
             <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
             {isApproved ? 'Unapprove' : `Approve ${label}`}
           </Button>
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={copyShare}>
-            {copied
-              ? <><Check className="h-3.5 w-3.5" />Copied</>
-              : <><Share2 className="h-3.5 w-3.5" />Share</>}
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={handleDownload} disabled={downloading}>
+            <Download className="h-3.5 w-3.5" />{downloading ? 'Downloading…' : 'Download'}
           </Button>
         </div>
       </div>

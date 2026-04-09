@@ -29,7 +29,7 @@ export const ELEMENT_TEMPLATES: { [key: string]: any } = {
   },
   lastName: {
     label: "Last Name",
-    text: "Bartholomew-Richardson",
+    text: "Richardson",
     x: 150,
     y: 86,
     fontSize: 32,

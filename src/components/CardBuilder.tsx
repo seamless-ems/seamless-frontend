@@ -379,12 +379,13 @@ export default function CardBuilder({
       }
       // Preserve event logo URL across template switches.
       // Use cached data URL from localStorage (avoids CORS issues with server URLs).
+      // Templates don't include eventLogo by default — keep the element in config if a URL exists.
       try {
         const cachedEventLogo = localStorage.getItem(`event-logo-${cardType}-${eventId}`);
         if (cachedEventLogo) {
-          if (newConfig.eventLogo) {
-            newConfig = { ...newConfig, eventLogo: { ...newConfig.eventLogo, url: cachedEventLogo } };
-          }
+          // Use existing element (preserves user's position/size) or fall back to template defaults.
+          const base = newConfig.eventLogo ?? ELEMENT_TEMPLATES.eventLogo;
+          newConfig = { ...newConfig, eventLogo: { ...base, url: cachedEventLogo } };
           setTestEventLogo(cachedEventLogo);
         }
       } catch {}
@@ -2416,7 +2417,15 @@ export default function CardBuilder({
                     </button>
                   )}
                   <button
-                    onClick={() => toggleElement("eventLogo")}
+                    onClick={() => {
+                      if (!config.eventLogo && testEventLogo) {
+                        // Adding: add element and immediately set URL so the backend receives it.
+                        // Both setConfig calls use functional updaters and compose safely.
+                        addElementToCanvas("eventLogo", undefined, { url: testEventLogo });
+                      } else {
+                        toggleElement("eventLogo");
+                      }
+                    }}
                     className={`w-full flex items-center justify-between px-2 py-1.5 rounded border text-xs transition-colors ${config.eventLogo ? "border-primary/40 bg-primary/5 text-primary" : "border-border hover:bg-accent text-muted-foreground"}`}
                   >
                     <span>{config.eventLogo ? "On canvas" : "Add to canvas"}</span>
