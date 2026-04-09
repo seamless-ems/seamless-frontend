@@ -337,6 +337,16 @@ export function updateSettings(body: any): Promise<any> {
   return postJson<any, any>(`/account/settings`, body);
 }
 
+// Check whether an email is registered and its providers (google.com etc.)
+export function checkFirebaseEmail(body: { email: string }): Promise<{ exists: boolean; providers: string[] }> {
+  return postJson<typeof body, { exists: boolean; providers: string[] }>(`/auth/firebase/check-email`, body);
+}
+
+// Trigger password reset email via Firebase-backed endpoint
+export function resetFirebasePassword(body: { email: string }): Promise<any> {
+  return postJson<typeof body, any>(`/auth/firebase/reset-password`, body);
+}
+
 // Integrations
 export function getIntegrationUrl(provider: string): Promise<{ url: string }> {
   // backend returns { url: string }

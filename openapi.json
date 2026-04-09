@@ -668,6 +668,130 @@
         }
       }
     },
+    "/auth/firebase/create-anon-user": {
+      "post": {
+        "tags": [
+          "Oauth 2"
+        ],
+        "summary": "Create Anon Firebase User",
+        "description": "Create an anonymous Firebase user",
+        "operationId": "create_anon_firebase_user_auth_firebase_create_anon_user_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FirebaseEmailCheckRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenSchema"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/firebase/check-email": {
+      "post": {
+        "tags": [
+          "Oauth 2"
+        ],
+        "summary": "Check Email",
+        "operationId": "check_email_auth_firebase_check_email_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FirebaseEmailCheckRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FirebaseEmailCheckResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/firebase/reset-password": {
+      "post": {
+        "tags": [
+          "Oauth 2"
+        ],
+        "summary": "Reset Password",
+        "operationId": "reset_password_auth_firebase_reset_password_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FirebaseEmailCheckRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/account/organization": {
       "get": {
         "tags": [
@@ -1449,13 +1573,89 @@
         }
       }
     },
+    "/account/speaker-appearances": {
+      "get": {
+        "tags": [
+          "account"
+        ],
+        "summary": "List Speaker Appearances",
+        "operationId": "list_speaker_appearances_account_speaker_appearances_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SpeakerWithEvents"
+                  },
+                  "type": "array",
+                  "title": "Response List Speaker Appearances Account Speaker Appearances Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/account/speaker-appearances/{speaker_id}": {
+      "put": {
+        "tags": [
+          "account"
+        ],
+        "summary": "Update Speaker Appearance",
+        "operationId": "update_speaker_appearance_account_speaker_appearances__speaker_id__put",
+        "parameters": [
+          {
+            "name": "speaker_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Speaker Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SpeakerBase"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpeakerBase"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/events": {
       "get": {
         "tags": [
           "Events"
         ],
         "summary": "List Events",
-        "description": "Return paginated list of events for the user's team.",
         "operationId": "list_events_events_get",
         "parameters": [
           {
@@ -2451,6 +2651,57 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/EmailPayloadSchema"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/events/{event_id}/speaker/check-speaker-exists": {
+      "get": {
+        "tags": [
+          "Events"
+        ],
+        "summary": "Check Speaker Exists",
+        "operationId": "check_speaker_exists_events__event_id__speaker_check_speaker_exists_get",
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Event Id"
+            }
+          },
+          {
+            "name": "email",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Email"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+
                 }
               }
             }
@@ -4356,14 +4607,7 @@
             "title": "Recipientemail"
           },
           "recipientName": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
+            "type": "string",
             "title": "Recipientname"
           },
           "subject": {
@@ -4374,17 +4618,24 @@
             "type": "string",
             "title": "Htmlcontent"
           },
-          "fromName": {
+          "userName": {
             "type": "string",
-            "title": "Fromname",
-            "default": "Seamless"
+            "title": "Username"
+          },
+          "userEmail": {
+            "type": "string",
+            "format": "email",
+            "title": "Useremail"
           }
         },
         "type": "object",
         "required": [
           "recipientEmail",
+          "recipientName",
           "subject",
-          "htmlContent"
+          "htmlContent",
+          "userName",
+          "userEmail"
         ],
         "title": "EmailPayloadSchema"
       },
@@ -4565,6 +4816,17 @@
             "type": "boolean",
             "title": "Paid",
             "default": false
+          },
+          "userRole": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Userrole"
           }
         },
         "type": "object",
@@ -4609,6 +4871,106 @@
           "totalCallForSpeakersPending"
         ],
         "title": "EventSpeakerOverviewSchema"
+      },
+      "EventSummary": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Startdate"
+          },
+          "endDate": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enddate"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          },
+          "speakerIntakeFormConfig": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FormConfigSchema"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "startDate"
+        ],
+        "title": "EventSummary",
+        "description": "Lightweight event representation for embedding on other objects.\n\nThis intentionally excludes nested `speakers` to avoid recursion when\nserializing Event -\u003E Speaker -\u003E Event cycles."
+      },
+      "FirebaseEmailCheckRequest": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "title": "FirebaseEmailCheckRequest"
+      },
+      "FirebaseEmailCheckResponse": {
+        "properties": {
+          "exists": {
+            "type": "boolean",
+            "title": "Exists"
+          },
+          "providers": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Providers",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "exists"
+        ],
+        "title": "FirebaseEmailCheckResponse"
       },
       "FormConfigCreateSchema": {
         "properties": {
@@ -5210,6 +5572,17 @@
             "format": "email",
             "title": "Email"
           },
+          "userId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Userid"
+          },
           "companyName": {
             "anyOf": [
               {
@@ -5441,6 +5814,17 @@
             "format": "email",
             "title": "Email"
           },
+          "userId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Userid"
+          },
           "companyName": {
             "anyOf": [
               {
@@ -5603,6 +5987,17 @@
             "type": "string",
             "format": "email",
             "title": "Email"
+          },
+          "userId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Userid"
           },
           "companyName": {
             "anyOf": [
@@ -5814,6 +6209,276 @@
           "formType"
         ],
         "title": "SpeakerUpdate"
+      },
+      "SpeakerWithEvents": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "firstName": {
+            "type": "string",
+            "title": "Firstname"
+          },
+          "lastName": {
+            "type": "string",
+            "title": "Lastname"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "userId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Userid"
+          },
+          "companyName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Companyname"
+          },
+          "companyRole": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Companyrole"
+          },
+          "linkedin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Linkedin"
+          },
+          "bio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bio"
+          },
+          "headshot": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "format": "uri"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Headshot"
+          },
+          "companyLogo": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "format": "uri"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Companylogo"
+          },
+          "talkTopic": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Talktopic"
+          },
+          "sampleContent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Samplecontent"
+          },
+          "formType": {
+            "type": "string",
+            "title": "Formtype"
+          },
+          "speakerInformationStatus": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Speakerinformationstatus",
+            "default": "info_pending"
+          },
+          "callForSpeakersStatus": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callforspeakersstatus",
+            "default": "submitted"
+          },
+          "customFields": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customfields"
+          },
+          "websiteCardApproved": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Websitecardapproved"
+          },
+          "promoCardApproved": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Promocardapproved"
+          },
+          "embedEnabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Embedenabled"
+          },
+          "internalNotes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Internalnotes"
+          },
+          "createdAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Createdat"
+          },
+          "updatedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updatedat"
+          },
+          "events": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/EventSummary"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Events"
+          },
+          "contentItems": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ContentSchema"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contentitems"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "firstName",
+          "lastName",
+          "email",
+          "formType"
+        ],
+        "title": "SpeakerWithEvents"
       },
       "TeamCreateSchema": {
         "properties": {

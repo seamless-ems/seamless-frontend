@@ -20,6 +20,7 @@ import EventSettings from "./pages/organizer/EventSettings";
 import Support from "./pages/Support";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
+import ResetPassword from "./pages/ResetPassword";
 import ProtectedRoute from "./components/ProtectedRoute";
 import PromoEmbed from "./pages/public/PromoEmbed";
 import PromoCardBuilderPage from "./pages/organizer/PromoCardBuilderPage";
@@ -54,6 +55,7 @@ const App = () => {
             <Route path="/" element={<RootRedirect />} />
             <Route path="/login" element={<Auth />} />
             <Route path="/signup" element={<Auth />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/onboarding" element={
               <ProtectedRoute>
                 <Onboarding />

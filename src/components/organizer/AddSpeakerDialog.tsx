@@ -71,7 +71,7 @@ function buildHtml(
           ${closingHtml}
         </td></tr>
         <tr><td style="padding:16px 48px 24px;border-top:1px solid #f3f4f6;text-align:center">
-          <p style="margin:0;font-size:11px;color:#9ca3af">Powered by <a href="https://seamlessevents.ai" style="color:#9ca3af;text-decoration:underline">Seamless Events</a></p>
+          <p style="margin:0;font-size:11px;color:#9ca3af">Powered by <a href="https://seamlessevents.io" style="color:#9ca3af;text-decoration:underline">Seamless Events</a></p>
         </td></tr>
       </table>
     </td></tr>
@@ -106,7 +106,7 @@ export default function AddSpeakerDialog({ eventId, eventName = "the event", ema
   const [introText, setIntroText] = useState("");
   const [closingText, setClosingText] = useState("");
 
-  const intakeUrl = `${window.location.origin}/speaker-intake/${eventId}`;
+  const intakeUrl = `${window.location.origin}/login?speakerEmail=${encodeURIComponent(fields.email)}`;
 
   const reset = () => {
     setStep("add");
@@ -214,7 +214,8 @@ export default function AddSpeakerDialog({ eventId, eventName = "the event", ema
       recipient_name: `${fields.firstName} ${fields.lastName}`.trim(),
       subject: emailSubject || `Your speaker details for ${eventName}`,
       html_content: html,
-      from_name: fromName || fromEmail || `Team ${eventName}`,
+      userName: fromName || fromEmail || `Team ${eventName}`,
+      userEmail: fromEmail,
     };
 
     try {
