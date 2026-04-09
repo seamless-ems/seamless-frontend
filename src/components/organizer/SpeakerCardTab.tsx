@@ -56,7 +56,7 @@ export default function SpeakerCardTab({ type, s, isApproved, canApprove, onTogg
   };
 
   return (
-    <div className="space-y-5 min-w-[1200px]">
+    <div className="space-y-5">
       {/* Actions row */}
       <div className="flex items-center justify-between">
         <div>

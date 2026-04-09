@@ -102,7 +102,6 @@ import {
   INSTAGRAM_FEED_PRESETS,
   INSTAGRAM_STORY_PRESETS,
   LINKEDIN_PRESETS,
-  X_PRESETS,
 } from "@/constants/promoCardTemplates";
 import { ImageCropDialog } from "@/components/ImageCropDialog";
 import ShadowContainer from "@/components/ShadowContainer";
@@ -372,6 +371,17 @@ export default function CardBuilder({
           headshot: { ...newConfig.headshot, shape: headshotShape },
         };
       }
+      // Preserve event logo URL across template switches.
+      // Use cached data URL from localStorage (avoids CORS issues with server URLs).
+      try {
+        const cachedEventLogo = localStorage.getItem(`event-logo-${cardType}-${eventId}`);
+        if (cachedEventLogo) {
+          if (newConfig.eventLogo) {
+            newConfig = { ...newConfig, eventLogo: { ...newConfig.eventLogo, url: cachedEventLogo } };
+          }
+          setTestEventLogo(cachedEventLogo);
+        }
+      } catch {}
       setBgColor(bg);
       setBgGradient(null);
       setBgGradientStyle(null);
@@ -508,16 +518,6 @@ export default function CardBuilder({
     ),
   }));
 
-  const PROMO_X_PRESETS: StarterPreset[] = (
-    presetMetasFromData(X_PRESETS) as StarterPreset[]
-  ).map((m, i) => ({
-    ...m,
-    thumbnailShape: X_PRESETS[i].thumbnailShape,
-    apply: makeApply(
-      (bg = m.defaultBg, textColor = m.defaultTextColor, font = "Montserrat") =>
-        X_PRESETS[i].build(ELEMENT_TEMPLATES, bg, textColor, font),
-    ),
-  }));
 
   // Returns the website preset list for the currently-selected onboarding shape (website only)
   const presetsForShape = (shape: "square" | "landscape" | "portrait") => {
@@ -1039,10 +1039,11 @@ export default function CardBuilder({
       const { migrated, changed } = migrateLoadedConfig(serverConfig);
       setConfig(migrated);
       setHasUnsavedChanges(changed);
-      // Restore event logo preview from saved URL so it renders without re-uploading
-      if (migrated.eventLogo?.url) {
-        setTestEventLogo(migrated.eventLogo.url as string);
-      }
+      // Restore event logo from localStorage (data URL) — avoids CORS issues with server URLs.
+      try {
+        const cached = localStorage.getItem(`event-logo-${cardType}-${eventId}`);
+        if (cached) setTestEventLogo(cached);
+      } catch {}
 
       if (savedWidth && savedHeight) {
         setCanvasWidth(savedWidth);
@@ -1276,8 +1277,10 @@ export default function CardBuilder({
       toast,
     });
 
-  const handleCropComplete = async (blob: Blob) =>
-    hb_handleCropComplete(blob, {
+  const eventLogoStorageKey = `event-logo-${cardType}-${eventId}`;
+
+  const handleCropComplete = async (blob: Blob) => {
+    await hb_handleCropComplete(blob, {
       cropMode,
       setTemplateUrl,
       setBgIsGenerated,
@@ -1292,6 +1295,15 @@ export default function CardBuilder({
       setCropMode,
       toast,
     });
+    // Persist event logo data URL to localStorage so it survives page reloads and template switches.
+    if (cropMode === "event-logo") {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        try { localStorage.setItem(eventLogoStorageKey, reader.result as string); } catch {}
+      };
+      reader.readAsDataURL(blob);
+    }
+  };
 
   // Export PNG at 1:1 scale (resets zoom transform temporarily)
   const handleExport = () =>
@@ -1998,7 +2010,6 @@ export default function CardBuilder({
                     { label: "Instagram Feed", sub: "1080 × 1080 px", preset: PROMO_INSTAGRAM_FEED_PRESETS[0], shapeW: 28, shapeH: 28 },
                     { label: "Instagram Story", sub: "1080 × 1920 px", preset: PROMO_INSTAGRAM_STORY_PRESETS[0], shapeW: 18, shapeH: 32 },
                     { label: "LinkedIn Post",   sub: "1200 × 627 px",  preset: PROMO_LINKEDIN_PRESETS[0],        shapeW: 36, shapeH: 19 },
-                    { label: "X / Twitter",     sub: "1200 × 675 px",  preset: PROMO_X_PRESETS[0],              shapeW: 36, shapeH: 20 },
                   ].map(({ label, sub, preset, shapeW, shapeH }) => (
                     <button
                       key={label}
@@ -2413,7 +2424,7 @@ export default function CardBuilder({
                     <div className="relative rounded-lg overflow-hidden border border-border bg-muted/30">
                       <img src={testEventLogo} alt="Event logo" className="w-full h-14 object-contain p-2" />
                       <button
-                        onClick={() => setTestEventLogo(null)}
+                        onClick={() => { setTestEventLogo(null); try { localStorage.removeItem(eventLogoStorageKey); } catch {} }}
                         className="absolute top-1 right-1 p-0.5 bg-background/90 rounded-full shadow text-muted-foreground hover:text-foreground"
                         title="Remove"
                       >

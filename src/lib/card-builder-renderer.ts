@@ -183,8 +183,11 @@ export async function renderAllElements(params: RenderParams) {
     if (!cfg.visible) continue;
 
     if (key === "headshot") {
+      let img: HTMLImageElement | null = null;
       if (testHeadshot) {
-        const img = await loadImagePromise(testHeadshot);
+        try { img = await loadImagePromise(testHeadshot); } catch (_) { /* failed to load — fall through to placeholder */ }
+      }
+      if (img) {
         const fabricImg = new fabric.Image(img, {
           left: cfg.x,
           top: cfg.y,
@@ -294,8 +297,11 @@ export async function renderAllElements(params: RenderParams) {
         elementRefs.current.headshot = group;
       }
     } else if (key === "companyLogo") {
+      let img: HTMLImageElement | null = null;
       if (testLogo) {
-        const img = await loadImagePromise(testLogo);
+        try { img = await loadImagePromise(testLogo); } catch (_) { /* failed to load — fall through to placeholder */ }
+      }
+      if (img) {
         const fabricImg = new fabric.Image(img, { left: cfg.x, top: cfg.y, opacity: cfg.opacity ?? 1, selectable: true, hasControls: true, lockRotation: true, lockUniScaling: false, data: { elementKey: "companyLogo" } });
 
         const LOGO_PAD = 10;
@@ -335,8 +341,11 @@ export async function renderAllElements(params: RenderParams) {
       }
     } else if (key === "eventLogo") {
       const eventLogoSrc = testEventLogo || (cfg.url as string | undefined) || null;
+      let img: HTMLImageElement | null = null;
       if (eventLogoSrc) {
-        const img = await loadImagePromise(eventLogoSrc);
+        try { img = await loadImagePromise(eventLogoSrc); } catch (_) { /* failed to load — fall through to placeholder */ }
+      }
+      if (img) {
         const fabricImg = new fabric.Image(img, { left: cfg.x, top: cfg.y, opacity: cfg.opacity ?? 1, selectable: true, hasControls: true, lockRotation: true, lockUniScaling: false, data: { elementKey: "eventLogo" } });
 
         const LOGO_PAD = 10;
