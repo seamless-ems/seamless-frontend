@@ -22,6 +22,8 @@ type CreateCanvasParams = {
   setHasUnsavedChanges: (b: boolean) => void;
   addToHistory: (cfg: any) => void;
   elementRefs: React.MutableRefObject<{ [key: string]: fabric.Object }>;
+  /** Called once the Fabric canvas is fully initialised and ready to render. */
+  onReady?: () => void;
 };
 
 export const createFabricCanvas = (params: CreateCanvasParams) => {
@@ -45,6 +47,7 @@ export const createFabricCanvas = (params: CreateCanvasParams) => {
     setHasUnsavedChanges,
     addToHistory,
     elementRefs,
+    onReady,
   } = params;
 
   // Only log init attempts the first time (reduce noisy repeated calls).
@@ -116,6 +119,7 @@ export const createFabricCanvas = (params: CreateCanvasParams) => {
         (canvas as any).__seamless_ready = true;
         fabricCanvasRef.current = canvas;
         console.debug("createFabricCanvas: readiness confirmed", { attempts, lowerCanvasEl: lower });
+        onReady?.();
         clearInterval(iv);
       } else if (attempts >= maxAttempts) {
         console.warn("createFabricCanvas: readiness not confirmed after retries", { attempts, lowerExists: !!lower, lowerIsConnected: !!(lower && lower.isConnected) });
@@ -314,17 +318,20 @@ export const createFabricCanvas = (params: CreateCanvasParams) => {
     if (!ctx) return;
     const cH = canvas.getHeight();
     const cW = canvas.getWidth();
-    const safeY = cH - 50;
+    // Use viewport zoom so the safe zone line stays fixed at the same content
+    // position (50px from the bottom of the card) regardless of zoom level.
+    const zoom = ((canvas as any).viewportTransform?.[0] as number) || 1;
+    const safeY = cH - 50 * zoom;
     ctx.save();
     ctx.strokeStyle = "rgba(79, 156, 251, 0.55)";
-    ctx.lineWidth = 1;
-    ctx.setLineDash([5, 4]);
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([6, 4]);
     ctx.beginPath();
     ctx.moveTo(0, safeY);
     ctx.lineTo(cW, safeY);
     ctx.stroke();
     ctx.setLineDash([]);
-    ctx.font = "10px sans-serif";
+    ctx.font = "11px sans-serif";
     ctx.fillStyle = "rgba(79, 156, 251, 0.7)";
     ctx.textAlign = "right";
     ctx.fillText("safe zone", cW - 6, safeY - 4);
@@ -380,6 +387,7 @@ export const createFabricCanvas = (params: CreateCanvasParams) => {
 
       if (obj.type === "textbox") {
         updates.width = obj.width || 300;
+        updates.text = obj.text ?? "";
       }
 
       setHasUnsavedChanges(true);
@@ -389,6 +397,21 @@ export const createFabricCanvas = (params: CreateCanvasParams) => {
         return newConfig;
       });
     }
+  });
+
+  // Sync text content back to config when the user finishes editing a textbox in-place.
+  // object:modified doesn't always fire after text-only edits, so this is the reliable hook.
+  canvas.on("text:editing:exited", (e: any) => {
+    const obj = e.target;
+    const elementKey = obj?.data?.elementKey;
+    if (!elementKey) return;
+    setConfig((prev: any) => {
+      if (!prev[elementKey]) return prev;
+      const newConfig = { ...prev, [elementKey]: { ...prev[elementKey], text: obj.text ?? "" } };
+      addToHistory(newConfig);
+      return newConfig;
+    });
+    setHasUnsavedChanges(true);
   });
 
   return true;

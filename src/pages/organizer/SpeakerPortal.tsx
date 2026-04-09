@@ -103,7 +103,7 @@ export default function SpeakerPortal() {
   // ── State ─────────────────────────────────────────────────────────
   const queryClient = useQueryClient();
   const [missingFormDialogOpen, setMissingFormDialogOpen] = useState(false);
-  const [editOpen, setEditOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(() => !!(location.state as any)?.openEdit);
   const [bioOpen, setBioOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
   const [internalNotes, setInternalNotes] = useState('');
@@ -431,7 +431,7 @@ export default function SpeakerPortal() {
                         onClick={() => headshotInputRef.current?.click()}
                         disabled={uploadingHeadshot}
                       >
-                        {uploadingHeadshot ? 'Uploading…' : 'Replace'}
+                        {uploadingHeadshot ? 'Uploading…' : headshotUrl ? 'Replace' : 'Upload'}
                       </button>
                       <input ref={headshotInputRef} type="file" accept="image/png,image/jpeg" className="hidden" onChange={makeFileHandler('headshot')} />
                     </div>
@@ -452,7 +452,7 @@ export default function SpeakerPortal() {
                         onClick={() => logoInputRef.current?.click()}
                         disabled={uploadingLogo}
                       >
-                        {uploadingLogo ? 'Uploading…' : 'Replace'}
+                        {uploadingLogo ? 'Uploading…' : s?.companyLogo ? 'Replace' : 'Upload'}
                       </button>
                       <input ref={logoInputRef} type="file" accept="image/png,image/jpeg" className="hidden" onChange={makeFileHandler('logo')} />
                     </div>

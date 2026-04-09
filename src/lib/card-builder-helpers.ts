@@ -882,6 +882,7 @@ export const handleCropComplete = async (
     setTestEventLogo: (u: string | null) => void;
     config: any;
     addElementToCanvas: (k: string, p?: any, pr?: any) => void;
+    updateElement: (k: string, updates: any) => void;
     setCropDialogOpen: (v: boolean) => void;
     setCropImageUrl: (u: string) => void;
     setCropMode: (m: any) => void;
@@ -909,7 +910,35 @@ export const handleCropComplete = async (
     params.toast({ title: "Test logo uploaded" });
   } else if (params.cropMode === "event-logo") {
     params.setTestEventLogo(dataUrl);
-    if (!params.config.eventLogo) params.addElementToCanvas("eventLogo");
+    if (!params.config.eventLogo) {
+      params.addElementToCanvas("eventLogo");
+    }
+    // Calculate rendered dimensions + centered position — same fit-to-zone math as the renderer
+    // so the backend gets the exact scale and the renderer uses correct x/y directly.
+    const LOGO_PAD = 10;
+    const dropW = (params.config.eventLogo?.width ?? params.config.eventLogo?.size ?? 700) as number;
+    const dropH = (params.config.eventLogo?.height ?? params.config.eventLogo?.size ?? 160) as number;
+    const dropX = (params.config.eventLogo?.x ?? 0) as number;
+    const dropY = (params.config.eventLogo?.y ?? 0) as number;
+    await new Promise<void>((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const maxW = dropW - LOGO_PAD * 2;
+        const maxH = dropH - LOGO_PAD * 2;
+        const scale = Math.min(maxW / img.naturalWidth, maxH / img.naturalHeight);
+        const actualWidth = Math.round(img.naturalWidth * scale);
+        const actualHeight = Math.round(img.naturalHeight * scale);
+        const centeredX = Math.round(dropX + (dropW - actualWidth) / 2);
+        const centeredY = Math.round(dropY + (dropH - actualHeight) / 2);
+        params.updateElement("eventLogo", { url: dataUrl, actualWidth, actualHeight, x: centeredX, y: centeredY });
+        resolve();
+      };
+      img.onerror = () => {
+        params.updateElement("eventLogo", { url: dataUrl });
+        resolve();
+      };
+      img.src = dataUrl;
+    });
     params.toast({ title: "Event logo uploaded" });
   }
 
@@ -938,6 +967,35 @@ export const handleSave = async (
 ) => {
   const effectiveConfig = { ...params.config };
   const backendConfig = { ...effectiveConfig };
+
+  // Upload event logo data URL to server and replace with a persistent URL before saving config.
+  if (
+    backendConfig.eventLogo?.url &&
+    (backendConfig.eventLogo.url.startsWith("data:") ||
+      backendConfig.eventLogo.url.startsWith("blob:"))
+  ) {
+    try {
+      const fetched = await fetch(backendConfig.eventLogo.url);
+      const blob = await fetched.blob();
+      const file = new File(
+        [blob],
+        `event-logo.${(blob.type || "image/png").split("/").pop()}`,
+        { type: blob.type || "image/png" },
+      );
+      const uploadRes = await uploadFile(file, undefined, params.eventId);
+      const uploadedUrl =
+        uploadRes?.public_url ??
+        uploadRes?.publicUrl ??
+        uploadRes?.url ??
+        uploadRes?.id ??
+        null;
+      if (uploadedUrl) {
+        backendConfig.eventLogo = { ...backendConfig.eventLogo, url: uploadedUrl };
+      }
+    } catch (_e) {
+      // non-fatal — data URL will still be saved as fallback
+    }
+  }
 
   if (params.eventId) {
     let finalTemplateUrl = params.templateUrl;

@@ -129,7 +129,10 @@
       "WebFetch(domain:sxsw.com)",
       "WebFetch(domain:learn.sessionboard.com)",
       "WebFetch(domain:www.accelevents.com)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(grep -r \"TODO\\\\|FIXME\\\\|STUB\\\\|XXX\\\\|HACK\" /mnt/c/Users/james/OneDrive/Documents/Seamless/seamless-frontend/src/components/CardBuilder.tsx /mnt/c/Users/james/OneDrive/Documents/Seamless/seamless-frontend/src/lib/card-builder*.ts /mnt/c/Users/james/OneDrive/Documents/Seamless/seamless-frontend/src/constants/promoCardTemplates.ts /mnt/c/Users/james/OneDrive/Documents/Seamless/seamless-frontend/src/constants/websiteCardTemplates.ts /mnt/c/Users/james/OneDrive/Documents/Seamless/seamless-frontend/src/types/card-builder.ts)",
+      "Bash(node:*)",
+      "Bash(ls \"/mnt/c/Users/james/OneDrive/Documents/Seamless/seamless-frontend/\"*.html \"/mnt/c/Users/james/OneDrive/Documents/Seamless/seamless-frontend/\"*.json)"
     ]
   }
 }
