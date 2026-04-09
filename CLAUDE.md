@@ -100,6 +100,7 @@ Replace the 4-tab layout with a full-width 3-column dashboard for non-applicatio
 ## Known issues
 - **`nameFormat: "two-line"`** — saves correctly but embed renders single line. Backend bug (see API_GAPS.md).
 - **`company` / `companyLogo`** — not persisting after server save/reload. Backend bug (see API_GAPS.md).
+- **Event logo not appearing in embed** — `companyLogo.url` is not persisted across template switches in the website card builder (no localStorage for it, unlike `eventLogo`). Also `testEventLogo` is set in `makeApply` even when the template has no `eventLogo` element. Investigate both paths before touching.
 - **Custom field keys** — backend strips underscores (`custom_123` → `custom123`). Frontend has fallback logic.
 - **ShareDialog** — UI complete, not yet wired to backend.
 - **Card downloads** — open in new tab only; PNG export not yet available (see API_GAPS.md).

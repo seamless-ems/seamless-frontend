@@ -18,26 +18,20 @@ export const getStorageKey = (cardType: string, eventId?: string) =>
 
 export const getPresetsForShape = (
   isPromo: boolean,
-  shape: "square" | "landscape" | "portrait",
+  shape: "square" | "landscape",
   SQUARE_PRESETS: StarterPreset[],
   LANDSCAPE_PRESETS: StarterPreset[],
-  PORTRAIT_PRESETS: StarterPreset[],
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _unused1: StarterPreset[],
   PROMO_SQUARE_PRESETS: StarterPreset[],
   PROMO_LANDSCAPE_PRESETS: StarterPreset[],
-  PROMO_PORTRAIT_PRESETS: StarterPreset[],
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _unused2: StarterPreset[],
 ) => {
   if (isPromo) {
-    return shape === "landscape"
-      ? PROMO_LANDSCAPE_PRESETS
-      : shape === "portrait"
-        ? PROMO_PORTRAIT_PRESETS
-        : PROMO_SQUARE_PRESETS;
+    return shape === "landscape" ? PROMO_LANDSCAPE_PRESETS : PROMO_SQUARE_PRESETS;
   }
-  return shape === "landscape"
-    ? LANDSCAPE_PRESETS
-    : shape === "portrait"
-      ? PORTRAIT_PRESETS
-      : SQUARE_PRESETS;
+  return shape === "landscape" ? LANDSCAPE_PRESETS : SQUARE_PRESETS;
 };
 
 export default {};
