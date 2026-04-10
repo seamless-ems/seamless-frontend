@@ -64,7 +64,7 @@ export function EventCard({ event, index = 0, onDelete }: EventCardProps) {
     return false;
   };
   const paid = isEventPaid(event);
-  const targetLink = event.userRole === 'speaker' ? `/speaker` : `/organizer/event/${event.id}/speakers`;
+  const targetLink = event.userRole === 'speaker' ? `/speaker/${event.speakerId}/event/${event.id}` : `/organizer/event/${event.id}/speakers`;
 
   return (
     <Link

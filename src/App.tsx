@@ -52,7 +52,16 @@ const App = () => {
         <Sonner />
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<RootRedirect />} />
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <DashboardLayout mode="organizer">
+                    <Index />
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
             <Route path="/login" element={<Auth />} />
             <Route path="/signup" element={<Auth />} />
             <Route path="/reset-password" element={<ResetPassword />} />
@@ -235,16 +244,23 @@ const App = () => {
             <Route path="/call-for-speakers/:eventId" element={<SpeakerIntakeForm />} />
 
             {/* Speaker management routes */}
-            <Route
-              path="/speaker"
-              element={
-                <ProtectedRoute>
-                  <DashboardLayout mode="speaker">
-                    <SpeakerDashboard />
-                  </DashboardLayout>
-                </ProtectedRoute>
-              }
-            />
+            {/* SpeakerPortal — fullscreen, own layout, no EventLayoutWrapper */}
+            {[
+              "/speaker/:speakerId/event/:id",
+              "/speaker/:speakerId/event/:id/speaker-card",
+              "/speaker/:speakerId/event/:id/social-card",
+              "/speaker/:speakerId/event/:id/content",
+            ].map(path => (
+              <Route
+                key={path}
+                path={path}
+                element={
+                  <ProtectedRoute>
+                    <SpeakerPortal />
+                  </ProtectedRoute>
+                }
+              />
+            ))}
 
             <Route
               path="/speaker/event/:id"

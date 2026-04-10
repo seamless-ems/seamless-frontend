@@ -6,6 +6,8 @@ export interface Event {
   location: string;
   status: 'draft' | 'active' | 'completed';
   userRole?: 'organizer' | 'speaker' | 'attendee' | 'none';
+  // if the userRole is speaker, this will be the speakerId of the current user for this event
+  speakerId?: string;
   speakerCount: number;
   attendeeCount: number;
   modules: EventModule[];
