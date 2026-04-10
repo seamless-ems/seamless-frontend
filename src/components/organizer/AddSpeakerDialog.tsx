@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { createSpeaker, emailSpeaker } from "@/lib/api";
+import { createSpeaker, emailSpeaker, checkSpeakerExistsForEvent } from "@/lib/api";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
 import { Check, Copy, Plus } from "lucide-react";
@@ -96,6 +96,11 @@ export default function AddSpeakerDialog({ eventId, eventName = "the event", ema
   const [creating, setCreating] = useState(false);
   const [copied, setCopied] = useState(false);
   const [createdSpeakerId, setCreatedSpeakerId] = useState<string | null>(null);
+  const [isCheckingExistingEmail, setIsCheckingExistingEmail] = useState(false);
+  const [emailExistsForEvent, setEmailExistsForEvent] = useState(false);
+  const [existingSpeakerId, setExistingSpeakerId] = useState<string | null>(null);
+  const emailCheckTimeoutRef = useRef<number | null>(null);
+  const emailCheckRequestRef = useRef(0);
 
   const [fields, setFields] = useState({ firstName: "", lastName: "", email: "" });
   const [fromName, setFromName] = useState(emailDefaults?.fromName || localStorage.getItem("seamless-email-from-name") || "");
@@ -119,8 +124,60 @@ export default function AddSpeakerDialog({ eventId, eventName = "the event", ema
     setIntroText("");
     setClosingText("");
     setCreatedSpeakerId(null);
+    setIsCheckingExistingEmail(false);
+    setEmailExistsForEvent(false);
+    setExistingSpeakerId(null);
     setCopied(false);
   };
+
+  useEffect(() => {
+    return () => {
+      if (emailCheckTimeoutRef.current) window.clearTimeout(emailCheckTimeoutRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (step !== "add" || !eventId) {
+      emailCheckRequestRef.current += 1;
+      setIsCheckingExistingEmail(false);
+      setEmailExistsForEvent(false);
+      setExistingSpeakerId(null);
+      return;
+    }
+
+    const email = fields.email.trim().toLowerCase();
+    const isValidEmail = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
+
+    if (!email || !isValidEmail) {
+      emailCheckRequestRef.current += 1;
+      setIsCheckingExistingEmail(false);
+      setEmailExistsForEvent(false);
+      setExistingSpeakerId(null);
+      if (emailCheckTimeoutRef.current) window.clearTimeout(emailCheckTimeoutRef.current);
+      return;
+    }
+
+    if (emailCheckTimeoutRef.current) window.clearTimeout(emailCheckTimeoutRef.current);
+
+    setIsCheckingExistingEmail(true);
+    const requestId = emailCheckRequestRef.current + 1;
+    emailCheckRequestRef.current = requestId;
+
+    emailCheckTimeoutRef.current = window.setTimeout(async () => {
+      try {
+        const res = await checkSpeakerExistsForEvent(eventId, email);
+        if (requestId !== emailCheckRequestRef.current) return;
+        setEmailExistsForEvent(Boolean(res?.exists));
+        setExistingSpeakerId(res?.exists ? (res.speakerId ?? null) : null);
+      } catch {
+        if (requestId !== emailCheckRequestRef.current) return;
+        setEmailExistsForEvent(false);
+        setExistingSpeakerId(null);
+      } finally {
+        if (requestId === emailCheckRequestRef.current) setIsCheckingExistingEmail(false);
+      }
+    }, 600);
+  }, [step, eventId, fields.email]);
 
   const handleOpenChange = (v: boolean) => {
     setOpen(v);
@@ -129,6 +186,16 @@ export default function AddSpeakerDialog({ eventId, eventName = "the event", ema
 
   const doCreate = async () => {
     if (!eventId) return null;
+    const email = fields.email.trim().toLowerCase();
+    if (email) {
+      const res = await checkSpeakerExistsForEvent(eventId, email);
+      if (res?.exists) {
+        setEmailExistsForEvent(true);
+        setExistingSpeakerId(res.speakerId ?? null);
+        return null;
+      }
+    }
+
     const speakerId = crypto.randomUUID();
     await createSpeaker(eventId, {
       id: speakerId,
@@ -162,6 +229,7 @@ export default function AddSpeakerDialog({ eventId, eventName = "the event", ema
     setCreating(true);
     try {
       const speakerId = await doCreate();
+      if (!speakerId) return;
       toast({ title: "Speaker added" });
       setOpen(false);
       reset();
@@ -281,6 +349,28 @@ const isStep1Valid = fields.firstName.trim() && fields.lastName.trim() && fields
                   placeholder="jane@company.com"
                   className="h-10"
                 />
+                {isCheckingExistingEmail && (
+                  <p className="text-xs text-muted-foreground">Checking for existing speaker…</p>
+                )}
+                {!isCheckingExistingEmail && emailExistsForEvent && (
+                  <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 space-y-2">
+                    <p className="text-xs text-destructive">A speaker with this email already exists for this event.</p>
+                    {existingSpeakerId && (
+                      <Button
+                        type="button"
+                        variant="link"
+                        className="h-auto p-0 text-destructive"
+                        onClick={() => {
+                          setOpen(false);
+                          reset();
+                          navigate(`/organizer/event/${eventId}/speakers/${existingSpeakerId}`);
+                        }}
+                      >
+                        Open existing speaker portal
+                      </Button>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4 pt-2">
@@ -288,7 +378,7 @@ const isStep1Valid = fields.firstName.trim() && fields.lastName.trim() && fields
                 <div className="space-y-2">
                   <Button
                     className="w-full h-10"
-                    disabled={!isStep1Valid || creating}
+                    disabled={!isStep1Valid || creating || isCheckingExistingEmail || emailExistsForEvent}
                     onClick={handleSendForm}
                   >
                     {creating ? "Adding…" : "Send Intake Form"}
@@ -302,7 +392,7 @@ const isStep1Valid = fields.firstName.trim() && fields.lastName.trim() && fields
                   <Button
                     variant="outline"
                     className="w-full h-10"
-                    disabled={!isStep1Valid || creating}
+                    disabled={!isStep1Valid || creating || isCheckingExistingEmail || emailExistsForEvent}
                     onClick={handleFillMyself}
                   >
                     {creating ? "Adding…" : "Fill in myself"}

@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
-import { getJson, createSpeakerIntake, presignUpload, uploadFile, updateSpeaker } from "@/lib/api";
+import { getJson, createSpeakerIntake, presignUpload, uploadFile, updateSpeaker, checkSpeakerExistsForEvent } from "@/lib/api";
 import {
   Form,
   FormControl,
@@ -17,6 +17,16 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   MapPin,
   CheckCircle,
@@ -32,6 +42,7 @@ import MissingFormDialog from "@/components/MissingFormDialog";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+const DUPLICATE_EMAIL_MESSAGE = "A speaker with this email already exists for this event.";
 
 // Default fields for fallback when no form config exists
 const DEFAULT_FORM_FIELDS: FormFieldConfig[] = [
@@ -118,8 +129,13 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
   const [formName, setFormName] = useState<string>("Speaker Information");
   const [uploadingHeadshot, setUploadingHeadshot] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [existingEmailError, setExistingEmailError] = useState<string | null>(null);
+  const [isCheckingExistingEmail, setIsCheckingExistingEmail] = useState(false);
+  const [duplicateEmailModalOpen, setDuplicateEmailModalOpen] = useState(false);
   const headshotInputRef = useRef<HTMLInputElement | null>(null);
   const logoInputRef = useRef<HTMLInputElement | null>(null);
+  const emailCheckTimeoutRef = useRef<number | null>(null);
+  const emailCheckRequestRef = useRef(0);
   const location = useLocation();
   const search = new URLSearchParams(location.search);
   const speakerId = search.get("speakerId") ?? undefined;
@@ -183,28 +199,6 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
 
   // Missing form dialog state handled above with `missingFormDialogOpen`/`setMissingFormDialogOpen`
 
-  // Load website/promo config for this event (used to pick crop shapes)
-  React.useEffect(() => {
-    if (!eventId) return;
-    let mounted = true;
-    import("@/lib/api").then(({ getWebsiteConfigForEvent }) => {
-      getWebsiteConfigForEvent(eventId)
-        .then((res) => {
-          if (!mounted) return;
-          setWebsiteConfig(res ?? null);
-        })
-        .catch(() => {
-          if (!mounted) return;
-          setWebsiteConfig(null);
-        });
-    }).catch(() => {
-      if (!mounted) return;
-      setWebsiteConfig(null);
-    });
-
-    return () => { mounted = false; };
-  }, [eventId]);
-
   // Update the visible form name based on page type
   React.useEffect(() => {
     // only set default form name when not provided by config metadata
@@ -230,6 +224,12 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
     resolver: zodResolver(dynamicSchema),
     defaultValues,
   });
+
+  const emailFieldEnabled = React.useMemo(
+    () => formConfig.some((field) => field.enabled && field.id === "email"),
+    [formConfig]
+  );
+  const watchedEmail = String(form.watch("email" as any) ?? "");
 
   const { data: fetchedSpeaker } = useQuery<any, Error>({
     queryKey: ["event", eventId, "speaker", speakerId],
@@ -262,6 +262,64 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
     setHeadshotPreview(s.headshot_url ?? null);
     setCompanyLogoPreview(s.company_logo ?? null);
   }, [fetchedSpeaker, formConfig]);
+
+  React.useEffect(() => {
+    return () => {
+      if (emailCheckTimeoutRef.current) {
+        window.clearTimeout(emailCheckTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  React.useEffect(() => {
+    if (!eventId || !emailFieldEnabled) {
+      emailCheckRequestRef.current += 1;
+      setExistingEmailError(null);
+      setIsCheckingExistingEmail(false);
+      setDuplicateEmailModalOpen(false);
+      return;
+    }
+
+    const cleanEmail = watchedEmail.trim().toLowerCase();
+    const isValidEmail = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(cleanEmail);
+    const originalEmail = String((fetchedSpeaker as any)?.email ?? "").trim().toLowerCase();
+
+    if (!cleanEmail || !isValidEmail || (isEditing && originalEmail && cleanEmail === originalEmail)) {
+      emailCheckRequestRef.current += 1;
+      setExistingEmailError(null);
+      setIsCheckingExistingEmail(false);
+      setDuplicateEmailModalOpen(false);
+      if (emailCheckTimeoutRef.current) {
+        window.clearTimeout(emailCheckTimeoutRef.current);
+      }
+      return;
+    }
+
+    if (emailCheckTimeoutRef.current) {
+      window.clearTimeout(emailCheckTimeoutRef.current);
+    }
+
+    setIsCheckingExistingEmail(true);
+    const requestId = emailCheckRequestRef.current + 1;
+    emailCheckRequestRef.current = requestId;
+
+    emailCheckTimeoutRef.current = window.setTimeout(async () => {
+      try {
+        const existsResult = await checkSpeakerExistsForEvent(eventId, cleanEmail);
+        const exists = Boolean(existsResult?.exists);
+        if (requestId !== emailCheckRequestRef.current) return;
+        setExistingEmailError(exists ? DUPLICATE_EMAIL_MESSAGE : null);
+        if (exists) setDuplicateEmailModalOpen(true);
+      } catch {
+        if (requestId !== emailCheckRequestRef.current) return;
+        setExistingEmailError(null);
+      } finally {
+        if (requestId === emailCheckRequestRef.current) {
+          setIsCheckingExistingEmail(false);
+        }
+      }
+    }, 600);
+  }, [eventId, emailFieldEnabled, watchedEmail, isEditing, fetchedSpeaker]);
 
   const handleCropComplete = async (croppedBlob: Blob) => {
     try {
@@ -324,6 +382,32 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
         toast.error("Invalid event");
         setIsSubmitting(false);
         return;
+      }
+
+      if (existingEmailError) {
+        setDuplicateEmailModalOpen(true);
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (isCheckingExistingEmail) {
+        toast.error("Please wait while we verify that email.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      const submittedEmail = String(data.email ?? "").trim().toLowerCase();
+      const isValidSubmittedEmail = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(submittedEmail);
+      const originalEmail = String((fetchedSpeaker as any)?.email ?? "").trim().toLowerCase();
+      if (emailFieldEnabled && submittedEmail && isValidSubmittedEmail && !(isEditing && originalEmail && submittedEmail === originalEmail)) {
+        const existsResult = await checkSpeakerExistsForEvent(eventId, submittedEmail);
+        const exists = Boolean(existsResult?.exists);
+        if (exists) {
+          setExistingEmailError(DUPLICATE_EMAIL_MESSAGE);
+          setDuplicateEmailModalOpen(true);
+          setIsSubmitting(false);
+          return;
+        }
       }
 
       const payload: Record<string, any> = {};
@@ -692,8 +776,8 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
                   <Button variant="ghost" type="button" onClick={() => navigate(-1)}>
                     Cancel
                   </Button>
-                  <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? (isEditing ? "Updating…" : "Submitting…") : isEditing ? "Update" : "Submit"}
+                  <Button type="submit" disabled={isSubmitting || Boolean(existingEmailError) || isCheckingExistingEmail}>
+                    {isSubmitting ? (isEditing ? "Updating…" : "Submitting…") : isCheckingExistingEmail ? "Checking email…" : isEditing ? "Update" : "Submit"}
                   </Button>
                 </div>
               </form>
@@ -703,6 +787,30 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
           )}
         </div>
       </div>
+
+      <AlertDialog open={duplicateEmailModalOpen} onOpenChange={setDuplicateEmailModalOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-destructive">Speaker already exists</AlertDialogTitle>
+            <AlertDialogDescription className="text-destructive">
+              A speaker with this email already exists for this event. Please log in and update your profile from the speaker dashboard instead of submitting a new intake form.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Close</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                const email = String(form.getValues("email" as any) ?? "").trim();
+                const qs = email ? `?speakerEmail=${encodeURIComponent(email)}` : "";
+                navigate(`/login${qs}`);
+              }}
+            >
+              Log in to update profile
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

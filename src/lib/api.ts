@@ -428,6 +428,25 @@ export function createSpeaker<T = any>(eventId: string, body: T): Promise<any> {
   return postJson<T, any>(`/events/${eventId}/speakers`, body);
 }
 
+export type SpeakerExistsCheckResult = {
+  exists: boolean;
+  speakerId?: string | null;
+};
+
+export async function checkSpeakerExistsForEvent(eventId: string, email: string): Promise<SpeakerExistsCheckResult> {
+  const path = `/events/${encodeURIComponent(eventId)}/speaker/check-speaker-exists?email=${encodeURIComponent(email)}`;
+  try {
+    const res = await getJson<any>(path);
+    return {
+      exists: Boolean(res?.exists),
+      speakerId: res?.speakerId ?? res?.speaker_id ?? null,
+    };
+  } catch (error: any) {
+    if (error?.status === 404) return { exists: false, speakerId: null };
+    throw error;
+  }
+}
+
 // Send an email to a speaker for an event. Backend: POST /events/{event_id}/speakers/{speaker_id}/email
 export function emailSpeaker(eventId: string, speakerId: string, body: { recipient_email: string; recipient_name: string; subject: string; html_content: string; from_name?: string; }) {
   return postJson<typeof body, any>(`/events/${encodeURIComponent(eventId)}/speakers/${encodeURIComponent(speakerId)}/email`, body);
