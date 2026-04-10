@@ -16,6 +16,7 @@ export interface Event {
   emailSignature?: string;
   googleDriveConnected: boolean;
   rootFolder?: string;
+  trialEnded: boolean;
 }
 
 export interface EventModule {

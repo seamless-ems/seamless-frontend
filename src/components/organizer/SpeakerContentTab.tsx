@@ -120,7 +120,7 @@ function HistorySection({ speakerId, documentId, currentVersion, itemName, onRes
   );
 }
 
-export default function SpeakerContentTab({ eventId, speakerId }: { eventId: string; speakerId: string }) {
+export default function SpeakerContentTab({ eventId, speakerId, showApprovals = true }: { eventId: string; speakerId: string; showApprovals?: boolean }) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const currentUserName = user?.name || user?.email || undefined;
@@ -257,25 +257,27 @@ export default function SpeakerContentTab({ eventId, speakerId }: { eventId: str
           {archivedItems.length > 0 && ` · ${archivedItems.length} archived`}
         </p>
         <div className="flex items-center gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-1.5">
-                {shareCopied
-                  ? <><Check className="h-3.5 w-3.5" />Copied</>
-                  : <><Share2 className="h-3.5 w-3.5" />Share</>}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => copyShare('view')}>
-                {shareCopied === 'view' ? <Check className="h-3.5 w-3.5 mr-2" /> : <Copy className="h-3.5 w-3.5 mr-2" />}
-                View only link
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => copyShare('edit')}>
-                {shareCopied === 'edit' ? <Check className="h-3.5 w-3.5 mr-2" /> : <Copy className="h-3.5 w-3.5 mr-2" />}
-                Can upload link
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {showApprovals && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-1.5">
+                  {shareCopied
+                    ? <><Check className="h-3.5 w-3.5" />Copied</>
+                    : <><Share2 className="h-3.5 w-3.5" />Share</>}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => copyShare('view')}>
+                  {shareCopied === 'view' ? <Check className="h-3.5 w-3.5 mr-2" /> : <Copy className="h-3.5 w-3.5 mr-2" />}
+                  View only link
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => copyShare('edit')}>
+                  {shareCopied === 'edit' ? <Check className="h-3.5 w-3.5 mr-2" /> : <Copy className="h-3.5 w-3.5 mr-2" />}
+                  Can upload link
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
           <Button size="sm" className="gap-1.5" onClick={() => setUploadOpen(true)}>
             <Plus className="h-3.5 w-3.5" />Upload file
           </Button>

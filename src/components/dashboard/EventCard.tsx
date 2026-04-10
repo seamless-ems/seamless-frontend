@@ -22,6 +22,8 @@ import { deleteEvent } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 import React from "react";
 import { Event } from "@/types/event";
+import { createCheckout } from '@/lib/api';
+import { useState } from 'react';
 
 interface EventCardProps {
   event: Event;
@@ -54,6 +56,7 @@ const formatDateRange = (start?: string, end?: string) => {
 
 export function EventCard({ event, index = 0, onDelete }: EventCardProps) {
   const navigate = useNavigate();
+  const [creatingCheckout, setCreatingCheckout] = useState(false);
   const [confirmOpen, setConfirmOpen] = React.useState(false);
   const [deleting, setDeleting] = React.useState(false);
   const isEventPaid = (ev: any) => {
@@ -65,6 +68,29 @@ export function EventCard({ event, index = 0, onDelete }: EventCardProps) {
   };
   const paid = isEventPaid(event);
   const targetLink = event.userRole === 'speaker' ? `/speaker/${event.speakerId}/event/${event.id}` : `/organizer/event/${event.id}/speakers`;
+
+  const trialEnded = (event as any).trialEnded ?? (event as any).trial_ended ?? false;
+  const isOrganizer = event.userRole === 'organizer' || (event as any).user_role === 'organizer';
+
+  const handlePayNow = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!event?.id) return;
+    setCreatingCheckout(true);
+    try {
+      const res = await createCheckout('speaker', String(event.id));
+      const url = res?.url || res?.checkout_url || res?.redirect_url || res?.checkoutUrl || (typeof res === 'string' ? res : undefined) || res?.data?.url;
+      if (url) {
+        window.open(url, '_blank', 'noopener,noreferrer');
+      } else {
+        toast({ title: 'Checkout created', description: 'No redirect URL returned; please check your billing dashboard.' });
+      }
+    } catch (err: any) {
+      toast({ title: 'Checkout failed', description: String(err?.message || err), variant: 'destructive' });
+    } finally {
+      setCreatingCheckout(false);
+    }
+  };
 
   return (
     <Link
@@ -179,6 +205,17 @@ export function EventCard({ event, index = 0, onDelete }: EventCardProps) {
         <div>{formatDateRange(event.startDate, event.endDate)}</div>
         <div>{event.location}</div>
       </div>
+
+          {trialEnded && isOrganizer && !paid && (
+        <div className="mb-4 p-3 rounded-md border-l-4 border-warning bg-warning/5">
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-warning">Your trial has ended for this event. Upgrade to continue full access.</div>
+            <Button size="sm" onClick={handlePayNow} disabled={creatingCheckout}>
+              {creatingCheckout ? 'Processing…' : 'Pay now'}
+            </Button>
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-2">
         {(() => {

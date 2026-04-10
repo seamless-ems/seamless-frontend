@@ -30,6 +30,7 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
 
   // support both organizer and speaker-facing routes
   const isSpeakerView = location.pathname.split('/')[1] === 'speaker';
+  const isOrganizerView = location.pathname.includes('/organizer');
   const baseSpeakerPath = isSpeakerView ? `/speaker/${spkId}/event/${id}` : `/organizer/event/${id}/speakers/${spkId}`;
   const backPath = isSpeakerView ? `/` : `/organizer/event/${id}/speakers`;
 
@@ -269,7 +270,7 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
           </>
         )}
         <div className="flex-1" />
-        {isApplication && s?.callForSpeakersStatus !== 'approved' && (
+        {isOrganizerView && isApplication && s?.callForSpeakersStatus !== 'approved' && (
           <div className="flex items-center gap-2">
             {s?.callForSpeakersStatus === 'rejected' ? (
               <Button size="sm" onClick={() => handleApplicationStatus('approved')} disabled={updatingAppStatus}>
@@ -287,7 +288,7 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
             )}
           </div>
         )}
-        {isApplication && s?.callForSpeakersStatus === 'approved' && (
+        {isOrganizerView && isApplication && s?.callForSpeakersStatus === 'approved' && (
           <span className="text-sm text-success font-medium flex items-center gap-1.5">
             <Check className="h-4 w-4" />Approved
           </span>
@@ -461,6 +462,7 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
               canApprove={canApprove}
               onToggleApproval={handleWebsiteApproval}
               onApproveAndPublish={!websiteApproved ? handleWebsiteApprovalAndPublish : undefined}
+              showApprovals={isOrganizerView}
             />
           )}
 
@@ -471,11 +473,12 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
               isApproved={promoApproved}
               canApprove={canApprove}
               onToggleApproval={handlePromoApproval}
+              showApprovals={isOrganizerView}
             />
           )}
 
           {activeTab === 'content' && (
-            <SpeakerContentTab eventId={id!} speakerId={spkId!} />
+            <SpeakerContentTab eventId={id!} speakerId={spkId!} showApprovals={isOrganizerView} />
           )}
 
         </div>
