@@ -18,9 +18,10 @@ type Props = {
   canApprove: boolean;
   onToggleApproval: () => Promise<void>;
   onApproveAndPublish?: () => Promise<void>;
+  showApprovals?: boolean;
 };
 
-export default function SpeakerCardTab({ type, s, isApproved, canApprove, onToggleApproval, onApproveAndPublish }: Props) {
+export default function SpeakerCardTab({ type, s, isApproved, canApprove, onToggleApproval, onApproveAndPublish, showApprovals = true }: Props) {
   const { id: eventId } = useParams();
   const [downloading, setDownloading] = useState(false);
 
@@ -79,32 +80,38 @@ export default function SpeakerCardTab({ type, s, isApproved, canApprove, onTogg
     <div className="space-y-5">
       {/* Actions row */}
       <div className="flex items-center justify-between">
-        <div>
-          {isApproved ? (
-            <Badge variant="outline" className="bg-success/10 text-success border-success/30 text-xs">
-              <CheckCircle className="h-3 w-3 mr-1" />Approved
-            </Badge>
-          ) : (
-            <Badge variant="outline" className="bg-warning/10 text-warning border-warning/30 text-xs">
-              Pending approval
-            </Badge>
-          )}
-        </div>
+          <div>
+            {isApproved ? (
+              <Badge variant="outline" className="bg-success/10 text-success border-success/30 text-xs">
+                <CheckCircle className="h-3 w-3 mr-1" />Approved
+              </Badge>
+            ) : (
+              showApprovals ? (
+                <Badge variant="outline" className="bg-warning/10 text-warning border-warning/30 text-xs">
+                  Pending approval
+                </Badge>
+              ) : null
+            )}
+          </div>
         <div className="flex items-center gap-2">
-          {!canApprove && (
-            <span className="text-xs text-muted-foreground flex items-center gap-1">
-              <AlertCircle className="h-3 w-3" />Upload a headshot to approve
-            </span>
-          )}
-          <Button
-            size="sm"
-            variant={isApproved ? 'outline' : 'default'}
-            disabled={!canApprove || loading}
-            onClick={() => setConfirmOpen(true)}
-          >
-            <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
-            {isApproved ? 'Unapprove' : `Approve ${label}`}
-          </Button>
+          {showApprovals ? (
+            <>
+              {!canApprove && (
+                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />Upload a headshot to approve
+                </span>
+              )}
+              <Button
+                size="sm"
+                variant={isApproved ? 'outline' : 'default'}
+                disabled={!canApprove || loading}
+                onClick={() => setConfirmOpen(true)}
+              >
+                <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
+                {isApproved ? 'Unapprove' : `Approve ${label}`}
+              </Button>
+            </>
+          ) : null}
           <Button variant="outline" size="sm" className="gap-1.5" onClick={handleDownload} disabled={downloading}>
             <Download className="h-3.5 w-3.5" />{downloading ? 'Downloading…' : 'Download'}
           </Button>

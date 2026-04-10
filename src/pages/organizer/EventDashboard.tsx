@@ -2,6 +2,8 @@ import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { getJson } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { createCheckout } from '@/lib/api';
+import React, { useState } from 'react';
 import { Badge } from "@/components/ui/badge";
 export default function EventDashboard() {
 	const { id } = useParams();
@@ -96,6 +98,26 @@ export default function EventDashboard() {
 
 	return (
 		<div>
+			{/* Trial ended / billing prompt */}
+			{(rawEvent?.trialEnded || rawEvent?.trial_ended) && (rawEvent?.userRole === 'organizer' || rawEvent?.user_role === 'organizer') && !(rawEvent?.paid || rawEvent?.is_paid || rawEvent?.paid_until) && (
+				<div className="mb-4 p-4 rounded-md border-l-4 border-warning bg-warning/5">
+					<div className="flex items-center justify-between">
+						<div className="text-sm text-warning">Your trial has ended for this event. Please upgrade to continue full access.</div>
+						<Button size="sm" onClick={async () => {
+							if (!rawEvent?.id) return;
+							try {
+								// trigger checkout for the speaker product by default
+								const res = await createCheckout('speaker', String(rawEvent.id));
+								const url = res?.url || res?.checkout_url || res?.redirect_url || res?.checkoutUrl || (typeof res === 'string' ? res : undefined) || res?.data?.url;
+								if (url) window.open(url, '_blank', 'noopener,noreferrer');
+								else toast({ title: 'Checkout created', description: 'No redirect URL returned; please check your billing dashboard.' });
+							} catch (err: any) {
+								toast({ title: 'Checkout failed', description: String(err?.message || err), variant: 'destructive' });
+							}
+						}}>Pay now</Button>
+					</div>
+				</div>
+			)}
 			{/* Module Navigation Buttons */}
 			<div className="mb-6">
 				<h3 style={{ fontSize: 'var(--font-body)', fontWeight: 600, marginBottom: '12px' }} className="text-muted-foreground">

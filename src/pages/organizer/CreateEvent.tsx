@@ -288,7 +288,7 @@ export default function CreateEvent() {
 								}
 							}}
 						>
-							Subscribe
+							Pay Now
 						</Button>
 					</AlertDialogAction>
 				</div>
@@ -330,7 +330,7 @@ export default function CreateEvent() {
 								}
 							}}
 						>
-							Subscribe
+							Pay Now
 						</Button>
 					</AlertDialogAction>
 				</div>

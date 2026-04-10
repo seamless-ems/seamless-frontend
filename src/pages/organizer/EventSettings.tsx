@@ -221,7 +221,7 @@ export default function EventSettings() {
                   <CardTitle style={{ fontSize: 'var(--font-h3)', fontWeight: 600 }}>Billing</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <p className="text-sm text-muted-foreground">Subscribe to the Speakers &amp; Content module for this event.</p>
+                  <p className="text-sm text-muted-foreground">Pay for the Speakers &amp; Content module for this event for full access forever.</p>
                   <div className="flex items-center gap-2 justify-end">
                     <Button variant="outline" type="button" onClick={async () => {
                       if (!id) return;
@@ -236,7 +236,7 @@ export default function EventSettings() {
                       } catch (err: any) {
                         toast({ title: "Checkout failed", description: String(err?.message || err) });
                       }
-                    }}>Subscribe</Button>
+                    }}>Pay Now</Button>
                   </div>
                 </CardContent>
               </Card>
