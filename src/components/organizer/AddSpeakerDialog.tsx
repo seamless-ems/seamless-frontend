@@ -7,9 +7,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { createSpeaker, emailSpeaker, checkSpeakerExistsForEvent } from "@/lib/api";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
-import { Check, Copy, Plus } from "lucide-react";
+import { Check, Copy, Mail, Plus, ClipboardList } from "lucide-react";
 
-type Step = "add" | "email";
+type Step = "choose" | "add" | "email";
 
 type Props = {
   eventId?: string;
@@ -92,7 +92,7 @@ export default function AddSpeakerDialog({ eventId, eventName = "the event", ema
     if (isControlled) controlledOnOpenChange?.(val);
     else setInternalOpen(val);
   };
-  const [step, setStep] = useState<Step>("add");
+  const [step, setStep] = useState<Step>("choose");
   const [creating, setCreating] = useState(false);
   const [copied, setCopied] = useState(false);
   const [createdSpeakerId, setCreatedSpeakerId] = useState<string | null>(null);
@@ -107,20 +107,19 @@ export default function AddSpeakerDialog({ eventId, eventName = "the event", ema
   const [fromEmail, setFromEmail] = useState(emailDefaults?.fromEmail || localStorage.getItem("seamless-email-from-email") || "");
   const [replyTo, setReplyTo] = useState(emailDefaults?.replyToEmail || "");
   const [emailSubject, setEmailSubject] = useState("");
-  const [ctaLabel, setCtaLabel] = useState(CTA_LABEL);
+  const [ctaLabel] = useState(CTA_LABEL);
   const [introText, setIntroText] = useState("");
   const [closingText, setClosingText] = useState("");
 
   const intakeUrl = `${window.location.origin}/login?speakerEmail=${encodeURIComponent(fields.email)}`;
 
   const reset = () => {
-    setStep("add");
+    setStep("choose");
     setFields({ firstName: "", lastName: "", email: "" });
     setFromName(emailDefaults?.fromName || localStorage.getItem("seamless-email-from-name") || "");
     setFromEmail(emailDefaults?.fromEmail || localStorage.getItem("seamless-email-from-email") || "");
     setReplyTo(emailDefaults?.replyToEmail || "");
     setEmailSubject("");
-    setCtaLabel(CTA_LABEL);
     setIntroText("");
     setClosingText("");
     setCreatedSpeakerId(null);
@@ -225,22 +224,6 @@ export default function AddSpeakerDialog({ eventId, eventName = "the event", ema
     }
   };
 
-  const handleFillMyself = async () => {
-    setCreating(true);
-    try {
-      const speakerId = await doCreate();
-      if (!speakerId) return;
-      toast({ title: "Speaker added" });
-      setOpen(false);
-      reset();
-      navigate(`/organizer/event/${eventId}/speakers/${speakerId}`, { state: { openEdit: true } });
-    } catch (err: any) {
-      toast({ title: "Failed to add speaker", description: String(err?.message || err) });
-    } finally {
-      setCreating(false);
-    }
-  };
-
   const handleCopyEmail = async () => {
     const { headerMeta, html } = buildHtml(
       fields.firstName, introText, closingText, intakeUrl, ctaLabel,
@@ -296,11 +279,12 @@ export default function AddSpeakerDialog({ eventId, eventName = "the event", ema
     }
   };
 
-const isStep1Valid = fields.firstName.trim() && fields.lastName.trim() && fields.email.trim();
+  const isStep1Valid = fields.firstName.trim() && fields.lastName.trim() && fields.email.trim();
 
-  // Inline field style for Gmail-style header rows
   const headerRowCls = "flex items-center gap-3 border-b border-border/50 py-2";
   const headerLabelCls = "text-xs font-medium text-muted-foreground w-16 shrink-0";
+
+  const dialogWidth = step === "email" ? "sm:max-w-3xl" : step === "add" ? "sm:max-w-2xl" : "sm:max-w-2xl";
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -311,11 +295,62 @@ const isStep1Valid = fields.firstName.trim() && fields.lastName.trim() && fields
         </Button>
       </DialogTrigger>
 
-      <DialogContent className={step === "email" ? "sm:max-w-3xl" : "sm:max-w-lg"}>
-        {step === "add" && (
+      <DialogContent className={dialogWidth}>
+
+        {/* Step 1: Choose route */}
+        {step === "choose" && (
           <>
             <DialogHeader className="pb-2">
               <DialogTitle>Add Speaker</DialogTitle>
+            </DialogHeader>
+
+            <div className="grid grid-cols-2 gap-3 pt-1">
+              {/* Send to Speaker */}
+              <button
+                onClick={() => setStep("add")}
+                className="flex flex-col items-start gap-3 rounded-lg border border-border bg-card p-5 text-left hover:border-primary hover:shadow-sm transition-all"
+              >
+                <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10">
+                  <Mail className="h-4.5 w-4.5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-foreground mb-1">Send to Speaker</p>
+                  <span className="text-[10px] font-semibold uppercase tracking-wide text-primary bg-primary/10 px-1.5 py-0.5 rounded inline-block mb-2">Recommended</span>
+                  <p className="text-xs text-muted-foreground leading-snug">
+                    Speaker logs in or creates a free account to submit or edit their details, access their speaker and social cards, and upload their content.
+                  </p>
+                </div>
+              </button>
+
+              {/* Fill in myself */}
+              <button
+                onClick={() => {
+                  setOpen(false);
+                  reset();
+                  navigate(`/speaker-intake/${eventId}`);
+                }}
+                className="flex flex-col items-start gap-3 rounded-lg border border-border bg-card p-5 text-left hover:border-primary hover:shadow-sm transition-all"
+              >
+                <div className="flex h-9 w-9 items-center justify-center rounded-md bg-muted">
+                  <ClipboardList className="h-4.5 w-4.5 text-muted-foreground" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-foreground mb-1">Fill in myself</p>
+                  <span className="text-[10px] font-semibold uppercase tracking-wide text-transparent bg-transparent px-1.5 py-0.5 rounded inline-block mb-2">Placeholder</span>
+                  <p className="text-xs text-muted-foreground leading-snug">
+                    Complete the speaker intake form on their behalf. You manage their profile and can add or upload content.
+                  </p>
+                </div>
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* Step 2: Name / email entry (send-to-speaker path) */}
+        {step === "add" && (
+          <>
+            <DialogHeader className="pb-2">
+              <DialogTitle>Send to Speaker</DialogTitle>
             </DialogHeader>
 
             <div className="space-y-5 pt-2">
@@ -373,39 +408,23 @@ const isStep1Valid = fields.firstName.trim() && fields.lastName.trim() && fields
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-4 pt-2">
-                {/* Send Intake Form — primary, left */}
-                <div className="space-y-2">
-                  <Button
-                    className="w-full h-10"
-                    disabled={!isStep1Valid || creating || isCheckingExistingEmail || emailExistsForEvent}
-                    onClick={handleSendForm}
-                  >
-                    {creating ? "Adding…" : "Send Intake Form"}
-                  </Button>
-                  <p className="text-[11px] text-slate-400 text-center leading-snug px-1">
-                    <span className="font-semibold text-slate-500">Recommended.</span> Speaker logs in or creates a free account to submit their details and access their cards.
-                  </p>
-                </div>
-                {/* Fill in myself — secondary, right */}
-                <div className="space-y-2">
-                  <Button
-                    variant="outline"
-                    className="w-full h-10"
-                    disabled={!isStep1Valid || creating || isCheckingExistingEmail || emailExistsForEvent}
-                    onClick={handleFillMyself}
-                  >
-                    {creating ? "Adding…" : "Fill in myself"}
-                  </Button>
-                  <p className="text-[11px] text-slate-400 text-center leading-snug px-1">
-                    You manage their profile on their behalf — no form sent to the speaker.
-                  </p>
-                </div>
+              <div className="flex gap-2 pt-1">
+                <Button variant="outline" onClick={() => setStep("choose")}>
+                  Back
+                </Button>
+                <Button
+                  className="flex-1"
+                  disabled={!isStep1Valid || creating || isCheckingExistingEmail || emailExistsForEvent}
+                  onClick={handleSendForm}
+                >
+                  {creating ? "Adding…" : "Next — Compose Email"}
+                </Button>
               </div>
             </div>
           </>
         )}
 
+        {/* Step 3: Email compose */}
         {step === "email" && (
           <>
             <DialogHeader>
@@ -413,7 +432,6 @@ const isStep1Valid = fields.firstName.trim() && fields.lastName.trim() && fields
             </DialogHeader>
 
             <div className="space-y-0 pt-1">
-              {/* Email header — Gmail-style rows */}
               <div className="rounded-t-lg border border-border bg-muted/20 px-4">
                 <div className={headerRowCls}>
                   <span className={headerLabelCls}>From</span>
@@ -455,7 +473,6 @@ const isStep1Valid = fields.firstName.trim() && fields.lastName.trim() && fields
                 </div>
               </div>
 
-              {/* Email body preview */}
               <div className="rounded-b-lg border border-t-0 border-border bg-white px-8 pt-6 pb-4 space-y-4">
                 <p className="text-sm text-gray-700">Hi {fields.firstName || "…"},</p>
 
@@ -470,7 +487,6 @@ const isStep1Valid = fields.firstName.trim() && fields.lastName.trim() && fields
                   className="text-sm resize-none overflow-hidden border border-dashed border-border/60 bg-transparent shadow-none leading-relaxed focus-visible:border-primary/40"
                 />
 
-                {/* CTA button */}
                 <div className="py-1">
                   <span
                     style={{
@@ -485,7 +501,7 @@ const isStep1Valid = fields.firstName.trim() && fields.lastName.trim() && fields
                       whiteSpace: "nowrap",
                     }}
                   >
-                    {ctaLabel || CTA_LABEL}
+                    {ctaLabel}
                   </span>
                 </div>
 
@@ -500,7 +516,6 @@ const isStep1Valid = fields.firstName.trim() && fields.lastName.trim() && fields
                   className="text-sm resize-none overflow-hidden border border-dashed border-border/60 bg-transparent shadow-none leading-relaxed focus-visible:border-primary/40"
                 />
 
-                {/* Powered by footer */}
                 <div className="border-t border-gray-100 pt-3 text-center">
                   <span className="text-[11px] text-gray-400">Powered by <span className="font-medium">Seamless Events</span></span>
                 </div>
