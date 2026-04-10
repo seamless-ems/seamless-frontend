@@ -89,29 +89,3 @@ export const LINKEDIN_PRESETS: PresetData[] = [
   },
 ];
 
-// X/Twitter (1200×675):
-//   Left:  headshot x:40, y:72, size:540 — fills most of height
-//   Right: logo y:40→175, name y:215→312, details y:325→377
-
-export const X_PRESETS: PresetData[] = [
-  {
-    name: "X / Twitter Post",
-    description: "16:9 announcement card optimised for X (Twitter) feed",
-    thumbnail: "x-post",
-    thumbnailShape: "landscape",
-    defaultBg: "#0f172a",
-    defaultTextColor: "#ffffff",
-    canvasW: 1200,
-    canvasH: 675,
-    allowedHeadshotShapes: ["circle"],
-    build: (T, bg = "#0f172a", textColor = "#ffffff", font = "Montserrat") => ({
-      headshot:    { ...T.headshot, shape: "circle", x: 40, y: 72, size: 540, zIndex: 1 },
-      eventLogo:   { ...T.eventLogo, x: 620, y: 40, width: 530, height: 135, zIndex: 6 },
-      firstName:   { ...T.firstName, x: 620, y: 215, color: textColor, fontFamily: font, fontSize: 44, fontWeight: 700, textAlign: "left", width: 530, zIndex: 10 },
-      lastName:    { ...T.lastName, x: 620, y: 268, color: textColor, fontFamily: font, fontSize: 44, fontWeight: 700, textAlign: "left", width: 530, zIndex: 10 },
-      title:       { ...T.title, x: 620, y: 325, color: textColor, fontFamily: font, fontSize: 22, fontWeight: 400, textAlign: "left", width: 530, zIndex: 9 },
-      company:     { ...T.company, x: 620, y: 357, color: textColor, fontFamily: font, fontSize: 20, fontWeight: 400, textAlign: "left", width: 530, zIndex: 8 },
-      companyLogo: { ...T.companyLogo, x: 1032, y: 538, width: 148, height: 74, zIndex: 7 },
-    }),
-  },
-];

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -199,6 +200,7 @@ function formatDate(dateStr: string | null | undefined) {
 
 export default function SpeakersTable({ speakers, isLoading, eventId, selectedTab, formConfig, websiteCardConfigured = false, promoCardConfigured = false, searchQuery, setSearchQuery, statusFilter, setStatusFilter, sortBy, setSortBy, totalCount, pendingCount }: Props) {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const eventUuid = eventId ?? "";
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -374,7 +376,7 @@ export default function SpeakersTable({ speakers, isLoading, eventId, selectedTa
                 <div className="flex items-center">
                   <div
                     className="text-sm font-semibold text-foreground cursor-pointer hover:text-primary transition-colors leading-tight"
-                    onClick={() => window.location.href = `/organizer/event/${eventId}/speakers/${speaker.id}`}
+                    onClick={() => navigate(`/organizer/event/${eventId}/speakers/${speaker.id}`)}
                   >
                     {speakerName}
                   </div>
@@ -399,7 +401,7 @@ export default function SpeakersTable({ speakers, isLoading, eventId, selectedTa
                   <Badge
                     variant="outline"
                     className={`text-xs font-medium cursor-pointer whitespace-nowrap ${status.cls}`}
-                    onClick={() => window.location.href = `/organizer/event/${eventId}/speakers/${speaker.id}`}
+                    onClick={() => navigate(`/organizer/event/${eventId}/speakers/${speaker.id}`)}
                   >
                     {status.label}
                   </Badge>

@@ -48,11 +48,27 @@ Rules for every agent that touches this file:
 ---
 
 ## Current priority
-**Promo Card Templates** — blank canvas today, needs templates and onboarding flow.
+**SpeakerPortal — 3-column dashboard** (`src/pages/organizer/SpeakerPortal.tsx`)
 
-1. Implement `PROMO_PRESETS` — social media formats: square 1080×1080, landscape 1080×608, story 608×1080.
-2. Promo onboarding flow gated behind `cardType === 'promo'`, localStorage key `seamless-card-builder-onboarding-promo-v1`.
-3. No bleed between website and promo template logic.
+Replace the 4-tab layout with a full-width 3-column dashboard for non-application speakers. Applications keep the existing simple info-only view.
+
+**Layout**:
+- Sticky `h-14` header unchanged (back button, wordmark, name, app approve/reject actions)
+- Remove tab bar for non-application speakers
+- Body: `grid grid-cols-[30%_35%_35%] gap-4 px-4 py-4`
+  - **Col 1** — Info card (existing info content + edit button) stacked above `SpeakerContentTab`
+  - **Col 2** — Speaker Card: status badge + approve/unapprove/approve+publish + share buttons, then scaled preview
+  - **Col 3** — Social Card: status badge + approve/unapprove + share buttons, then scaled preview
+
+**Card preview scaling**:
+- Wrap `SpeakerPreviews` in a `ResizeObserver`-driven container
+- Native widths: website = 600px, social = 1080px
+- `scale = containerWidth / nativeWidth` (capped at 1)
+- Outer container: `overflow: hidden`, height = `nativeWidth × scale` (assumes square; adjust if portrait/landscape)
+- Inner wrapper: `width: {nativeWidth}px`, `transform: scale({scale})`, `transformOrigin: top left`
+- No "Edit template" button anywhere on this page — editing is event-level, done from the card builder
+
+**Application speakers**: keep existing tab-based approach (info tab only, approve/reject in header).
 
 ---
 
@@ -84,6 +100,7 @@ Rules for every agent that touches this file:
 ## Known issues
 - **`nameFormat: "two-line"`** — saves correctly but embed renders single line. Backend bug (see API_GAPS.md).
 - **`company` / `companyLogo`** — not persisting after server save/reload. Backend bug (see API_GAPS.md).
+- **Event logo not appearing in embed** — `companyLogo.url` is not persisted across template switches in the website card builder (no localStorage for it, unlike `eventLogo`). Also `testEventLogo` is set in `makeApply` even when the template has no `eventLogo` element. Investigate both paths before touching.
 - **Custom field keys** — backend strips underscores (`custom_123` → `custom123`). Frontend has fallback logic.
 - **ShareDialog** — UI complete, not yet wired to backend.
 - **Card downloads** — open in new tab only; PNG export not yet available (see API_GAPS.md).

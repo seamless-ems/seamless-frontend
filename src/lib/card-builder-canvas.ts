@@ -216,8 +216,8 @@ export const createFabricCanvas = (params: CreateCanvasParams) => {
 
   let alignmentLines: fabric.Line[] = [];
   let snapClearTimer: number | null = null;
-  const SNAP_THRESHOLD = 10;
-  const SNAP_RELEASE = 16;
+  const SNAP_THRESHOLD = 16;
+  const SNAP_RELEASE = 22;
   let snapLockedX: number | null = null;
   let snapLockedY: number | null = null;
 
@@ -363,16 +363,36 @@ export const createFabricCanvas = (params: CreateCanvasParams) => {
       const updates: any = { x: obj.left || 0, y: obj.top || 0 };
 
       if (obj.type === "image") {
-        updates.actualWidth = Math.round(obj.getScaledWidth());
-        updates.actualHeight = Math.round(obj.getScaledHeight());
-        updates.scaleX = obj.scaleX || 1;
-        updates.scaleY = obj.scaleY || 1;
+        if (elementKey === "headshot") {
+          // Renderer uses cfg.size * cfg.scaleX for display size.
+          // Storing raw Fabric scaleX here causes compounding shrink on every resize
+          // (size * fabricScaleX = size * size/naturalW → far smaller each cycle).
+          // Fix: normalise to size = actual displayed width, scaleX = scaleY = 1.
+          updates.size = Math.round(obj.getScaledWidth());
+          updates.scaleX = 1;
+          updates.scaleY = 1;
+        } else {
+          // Normalise logo images same as headshot: store actual display size as
+          // width/height and reset scale to 1. This keeps fit-to-zone behaviour
+          // consistent across reloads (no compounding scale accumulation).
+          updates.width = Math.round(obj.getScaledWidth());
+          updates.height = Math.round(obj.getScaledHeight());
+          updates.scaleX = 1;
+          updates.scaleY = 1;
+        }
       }
 
       if (obj.type === "group") {
-        // position-only change; no need to rebuild canvas
         setConfig((prev: any) => {
-          const newConfig = { ...prev, [elementKey]: { ...prev[elementKey], x: obj.left || 0, y: obj.top || 0, width: Math.round(obj.getScaledWidth()), height: Math.round(obj.getScaledHeight()), scaleX: 1, scaleY: 1 } };
+          let elementUpdates: any;
+          if (elementKey === "headshot") {
+            // Renderer uses cfg.size; save size not width to prevent snap-back on re-render.
+            // Mirrors the IMAGE case fix above.
+            elementUpdates = { x: obj.left || 0, y: obj.top || 0, size: Math.round(obj.getScaledWidth()), scaleX: 1, scaleY: 1 };
+          } else {
+            elementUpdates = { x: obj.left || 0, y: obj.top || 0, width: Math.round(obj.getScaledWidth()), height: Math.round(obj.getScaledHeight()), scaleX: 1, scaleY: 1 };
+          }
+          const newConfig = { ...prev, [elementKey]: { ...prev[elementKey], ...elementUpdates } };
           setHasUnsavedChanges(true);
           addToHistory(newConfig);
           return newConfig;

@@ -18,26 +18,20 @@ export const getStorageKey = (cardType: string, eventId?: string) =>
 
 export const getPresetsForShape = (
   isPromo: boolean,
-  shape: "square" | "landscape" | "portrait",
+  shape: "square" | "landscape",
   SQUARE_PRESETS: StarterPreset[],
   LANDSCAPE_PRESETS: StarterPreset[],
-  PORTRAIT_PRESETS: StarterPreset[],
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _unused1: StarterPreset[],
   PROMO_SQUARE_PRESETS: StarterPreset[],
   PROMO_LANDSCAPE_PRESETS: StarterPreset[],
-  PROMO_PORTRAIT_PRESETS: StarterPreset[],
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _unused2: StarterPreset[],
 ) => {
   if (isPromo) {
-    return shape === "landscape"
-      ? PROMO_LANDSCAPE_PRESETS
-      : shape === "portrait"
-        ? PROMO_PORTRAIT_PRESETS
-        : PROMO_SQUARE_PRESETS;
+    return shape === "landscape" ? PROMO_LANDSCAPE_PRESETS : PROMO_SQUARE_PRESETS;
   }
-  return shape === "landscape"
-    ? LANDSCAPE_PRESETS
-    : shape === "portrait"
-      ? PORTRAIT_PRESETS
-      : SQUARE_PRESETS;
+  return shape === "landscape" ? LANDSCAPE_PRESETS : SQUARE_PRESETS;
 };
 
 export default {};
@@ -910,35 +904,10 @@ export const handleCropComplete = async (
     params.toast({ title: "Test logo uploaded" });
   } else if (params.cropMode === "event-logo") {
     params.setTestEventLogo(dataUrl);
-    if (!params.config.eventLogo) {
-      params.addElementToCanvas("eventLogo");
-    }
-    // Calculate rendered dimensions + centered position — same fit-to-zone math as the renderer
-    // so the backend gets the exact scale and the renderer uses correct x/y directly.
-    const LOGO_PAD = 10;
-    const dropW = (params.config.eventLogo?.width ?? params.config.eventLogo?.size ?? 700) as number;
-    const dropH = (params.config.eventLogo?.height ?? params.config.eventLogo?.size ?? 160) as number;
-    const dropX = (params.config.eventLogo?.x ?? 0) as number;
-    const dropY = (params.config.eventLogo?.y ?? 0) as number;
-    await new Promise<void>((resolve) => {
-      const img = new Image();
-      img.onload = () => {
-        const maxW = dropW - LOGO_PAD * 2;
-        const maxH = dropH - LOGO_PAD * 2;
-        const scale = Math.min(maxW / img.naturalWidth, maxH / img.naturalHeight);
-        const actualWidth = Math.round(img.naturalWidth * scale);
-        const actualHeight = Math.round(img.naturalHeight * scale);
-        const centeredX = Math.round(dropX + (dropW - actualWidth) / 2);
-        const centeredY = Math.round(dropY + (dropH - actualHeight) / 2);
-        params.updateElement("eventLogo", { url: dataUrl, actualWidth, actualHeight, x: centeredX, y: centeredY });
-        resolve();
-      };
-      img.onerror = () => {
-        params.updateElement("eventLogo", { url: dataUrl });
-        resolve();
-      };
-      img.src = dataUrl;
-    });
+    if (!params.config.eventLogo) params.addElementToCanvas("eventLogo");
+    // Store URL so handleSave can upload it to the server.
+    // Do NOT touch x/y/width/height or actualWidth/actualHeight — preserve any size the user set.
+    params.updateElement("eventLogo", { url: dataUrl });
     params.toast({ title: "Event logo uploaded" });
   }
 

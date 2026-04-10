@@ -95,14 +95,12 @@ import {
 import {
   SQUARE_PRESETS_DATA,
   LANDSCAPE_PRESETS_DATA,
-  PORTRAIT_PRESETS_DATA,
   STARTER_PRESETS_DATA,
 } from "@/constants/websiteCardTemplates";
 import {
   INSTAGRAM_FEED_PRESETS,
   INSTAGRAM_STORY_PRESETS,
   LINKEDIN_PRESETS,
-  X_PRESETS,
 } from "@/constants/promoCardTemplates";
 import { ImageCropDialog } from "@/components/ImageCropDialog";
 import ShadowContainer from "@/components/ShadowContainer";
@@ -263,9 +261,7 @@ export default function CardBuilder({
   const [quickBg, setQuickBg] = useState("#ffffff");
   const [quickTextColor, setQuickTextColor] = useState("#111827");
   const [quickFont, setQuickFont] = useState("Montserrat");
-  const [quickShape, setQuickShape] = useState<
-    "square" | "landscape" | "portrait"
-  >("square");
+  const [quickShape, setQuickShape] = useState<"square" | "landscape">("square");
   const [quickHeadshotShape, setQuickHeadshotShape] = useState("circle");
   const [bgGradient, setBgGradient] = useState<{
     from: string;
@@ -284,8 +280,17 @@ export default function CardBuilder({
     .map((f) => (f.includes(" ") ? `'${f}'` : f))
     .join(", ");
   const injectStylesString = `@import url('https://fonts.googleapis.com/css2?${googleFamilies}&display=swap'); :host{all:initial;display:block;font-family:${fontFamilyList}, sans-serif;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;} *{box-sizing:border-box;} canvas{display:block;} .card-root{background-color:#f5f5f5;}`;
+  const canvasTipStorageKey = `seamless-canvas-tip-dismissed-${cardType}`;
+  const canvasTipDismissedRef = useRef(() => {
+    try { return localStorage.getItem(`seamless-canvas-tip-dismissed-${cardType}`) === 'true'; } catch { return false; }
+  });
   const [showCanvasTip, setShowCanvasTip] = useState(false);
   const [canvasTipDontShow, setCanvasTipDontShow] = useState(false);
+  // Helper: only show if user hasn't permanently dismissed it
+  const tryShowCanvasTip = () => {
+    try { if (localStorage.getItem(canvasTipStorageKey) === 'true') return; } catch {}
+    setShowCanvasTip(true);
+  };
   const [showSidebarTip, setShowSidebarTip] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(144);
   const sidebarDragging = useRef(false);
@@ -372,6 +377,18 @@ export default function CardBuilder({
           headshot: { ...newConfig.headshot, shape: headshotShape },
         };
       }
+      // Preserve event logo URL across template switches.
+      // Use cached data URL from localStorage (avoids CORS issues with server URLs).
+      // Templates don't include eventLogo by default — keep the element in config if a URL exists.
+      try {
+        const cachedEventLogo = localStorage.getItem(`event-logo-${cardType}-${eventId}`);
+        if (cachedEventLogo) {
+          // Use existing element (preserves user's position/size) or fall back to template defaults.
+          const base = newConfig.eventLogo ?? ELEMENT_TEMPLATES.eventLogo;
+          newConfig = { ...newConfig, eventLogo: { ...base, url: cachedEventLogo } };
+          setTestEventLogo(cachedEventLogo);
+        }
+      } catch {}
       setBgColor(bg);
       setBgGradient(null);
       setBgGradientStyle(null);
@@ -441,34 +458,10 @@ export default function CardBuilder({
     ),
   }));
 
-  const PORTRAIT_PRESETS: StarterPreset[] = (
-    presetMetasFromData(PORTRAIT_PRESETS_DATA) as StarterPreset[]
-  ).map((m, i) => ({
-    ...m,
-    apply: makeApply(
-      (
-        bg = m.defaultBg,
-        textColor = m.defaultTextColor,
-        font = "Montserrat",
-        canvasW = m.canvasW,
-        canvasH = m.canvasH,
-      ) =>
-        PORTRAIT_PRESETS_DATA[i].build(
-          ELEMENT_TEMPLATES,
-          bg,
-          textColor,
-          font,
-          canvasW,
-          canvasH,
-        ),
-    ),
-  }));
-
   // Flat list of all website templates (used internally — website only)
   const STARTER_PRESETS: StarterPreset[] = [
     ...SQUARE_PRESETS,
     ...LANDSCAPE_PRESETS,
-    ...PORTRAIT_PRESETS,
   ];
   // ── END WEBSITE CARD TEMPLATES ─────────────────────────────────────────────────────────────
 
@@ -508,25 +501,15 @@ export default function CardBuilder({
     ),
   }));
 
-  const PROMO_X_PRESETS: StarterPreset[] = (
-    presetMetasFromData(X_PRESETS) as StarterPreset[]
-  ).map((m, i) => ({
-    ...m,
-    thumbnailShape: X_PRESETS[i].thumbnailShape,
-    apply: makeApply(
-      (bg = m.defaultBg, textColor = m.defaultTextColor, font = "Montserrat") =>
-        X_PRESETS[i].build(ELEMENT_TEMPLATES, bg, textColor, font),
-    ),
-  }));
 
   // Returns the website preset list for the currently-selected onboarding shape (website only)
-  const presetsForShape = (shape: "square" | "landscape" | "portrait") => {
+  const presetsForShape = (shape: "square" | "landscape") => {
     return getPresetsForShape(
       false, // website only — promo uses presetsForPlatform
       shape,
       SQUARE_PRESETS,
       LANDSCAPE_PRESETS,
-      PORTRAIT_PRESETS,
+      [],
       [],
       [],
       [],
@@ -1039,10 +1022,11 @@ export default function CardBuilder({
       const { migrated, changed } = migrateLoadedConfig(serverConfig);
       setConfig(migrated);
       setHasUnsavedChanges(changed);
-      // Restore event logo preview from saved URL so it renders without re-uploading
-      if (migrated.eventLogo?.url) {
-        setTestEventLogo(migrated.eventLogo.url as string);
-      }
+      // Restore event logo from localStorage (data URL) — avoids CORS issues with server URLs.
+      try {
+        const cached = localStorage.getItem(`event-logo-${cardType}-${eventId}`);
+        if (cached) setTestEventLogo(cached);
+      } catch {}
 
       if (savedWidth && savedHeight) {
         setCanvasWidth(savedWidth);
@@ -1276,8 +1260,10 @@ export default function CardBuilder({
       toast,
     });
 
-  const handleCropComplete = async (blob: Blob) =>
-    hb_handleCropComplete(blob, {
+  const eventLogoStorageKey = `event-logo-${cardType}-${eventId}`;
+
+  const handleCropComplete = async (blob: Blob) => {
+    await hb_handleCropComplete(blob, {
       cropMode,
       setTemplateUrl,
       setBgIsGenerated,
@@ -1292,6 +1278,15 @@ export default function CardBuilder({
       setCropMode,
       toast,
     });
+    // Persist event logo data URL to localStorage so it survives page reloads and template switches.
+    if (cropMode === "event-logo") {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        try { localStorage.setItem(eventLogoStorageKey, reader.result as string); } catch {}
+      };
+      reader.readAsDataURL(blob);
+    }
+  };
 
   // Export PNG at 1:1 scale (resets zoom transform temporarily)
   const handleExport = () =>
@@ -1567,13 +1562,6 @@ export default function CardBuilder({
                           ratio: "3:2",
                           w: 96,
                           h: 64,
-                        },
-                        {
-                          key: "portrait",
-                          label: "Portrait",
-                          ratio: "2:3",
-                          w: 64,
-                          h: 96,
                         },
                       ] as const
                     ).map(({ key, label, ratio, w, h }) => (
@@ -1920,7 +1908,7 @@ export default function CardBuilder({
                     setOnboardingShowTemplates(false);
                     setOnboardingQuickSetup(false);
                     setPendingPreset(null);
-                    setShowCanvasTip(true);
+                    tryShowCanvasTip();
                   }}
                   className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 transition-colors"
                 >
@@ -1998,7 +1986,6 @@ export default function CardBuilder({
                     { label: "Instagram Feed", sub: "1080 × 1080 px", preset: PROMO_INSTAGRAM_FEED_PRESETS[0], shapeW: 28, shapeH: 28 },
                     { label: "Instagram Story", sub: "1080 × 1920 px", preset: PROMO_INSTAGRAM_STORY_PRESETS[0], shapeW: 18, shapeH: 32 },
                     { label: "LinkedIn Post",   sub: "1200 × 627 px",  preset: PROMO_LINKEDIN_PRESETS[0],        shapeW: 36, shapeH: 19 },
-                    { label: "X / Twitter",     sub: "1200 × 675 px",  preset: PROMO_X_PRESETS[0],              shapeW: 36, shapeH: 20 },
                   ].map(({ label, sub, preset, shapeW, shapeH }) => (
                     <button
                       key={label}
@@ -2007,7 +1994,7 @@ export default function CardBuilder({
                         preset.apply(quickBg, quickTextColor, "Montserrat", preset.canvasW, preset.canvasH);
                         setBgColor(quickBg);
                         dismissOnboarding();
-                        setShowCanvasTip(true);
+                        tryShowCanvasTip();
                       }}
                       className="flex items-center gap-3 px-3 py-2.5 rounded-xl border-2 border-border hover:border-primary hover:bg-primary/5 transition-all text-left group"
                     >
@@ -2413,7 +2400,7 @@ export default function CardBuilder({
                     <div className="relative rounded-lg overflow-hidden border border-border bg-muted/30">
                       <img src={testEventLogo} alt="Event logo" className="w-full h-14 object-contain p-2" />
                       <button
-                        onClick={() => setTestEventLogo(null)}
+                        onClick={() => { setTestEventLogo(null); try { localStorage.removeItem(eventLogoStorageKey); } catch {} }}
                         className="absolute top-1 right-1 p-0.5 bg-background/90 rounded-full shadow text-muted-foreground hover:text-foreground"
                         title="Remove"
                       >
@@ -2430,7 +2417,15 @@ export default function CardBuilder({
                     </button>
                   )}
                   <button
-                    onClick={() => toggleElement("eventLogo")}
+                    onClick={() => {
+                      if (!config.eventLogo && testEventLogo) {
+                        // Adding: add element and immediately set URL so the backend receives it.
+                        // Both setConfig calls use functional updaters and compose safely.
+                        addElementToCanvas("eventLogo", undefined, { url: testEventLogo });
+                      } else {
+                        toggleElement("eventLogo");
+                      }
+                    }}
                     className={`w-full flex items-center justify-between px-2 py-1.5 rounded border text-xs transition-colors ${config.eventLogo ? "border-primary/40 bg-primary/5 text-primary" : "border-border hover:bg-accent text-muted-foreground"}`}
                   >
                     <span>{config.eventLogo ? "On canvas" : "Add to canvas"}</span>
@@ -2989,55 +2984,31 @@ export default function CardBuilder({
               }
             }}
           >
-            {/* Post-template tip modal — website card builder only */}
-            {showCanvasTip && cardType === "website" && (
+            {/* Post-template tip modal */}
+            {showCanvasTip && (
               <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/30 backdrop-blur-[2px]">
                 <div className="bg-card border border-border rounded-2xl shadow-2xl p-6 w-80 mx-4">
                   <h3 className="text-base font-semibold mb-1">
-                    Your template is ready
+                    Your {isPromo ? "Social Card" : "Speaker Card"} template is ready
                   </h3>
                   <div className="space-y-2.5 mb-6">
-                    <div className="flex gap-3 items-center">
-                      <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                        <span className="text-[10px] font-bold text-primary">
-                          1
-                        </span>
+                    {[
+                      "Click any element to select it, then drag to move",
+                      "Edit colours, fonts and size in the toolbar that appears",
+                      isPromo
+                        ? 'Upload your event logo using "Event Logo" in the top toolbar'
+                        : "One template applies to all speakers — names and photos fill in automatically",
+                      isPromo
+                        ? "Hit Save — speakers can then download their personalised Social Card from the Speakers table"
+                        : "Hit Save, then approve each Speaker Card individually from the Speakers tab",
+                    ].map((tip, i) => (
+                      <div key={i} className="flex gap-3 items-start">
+                        <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                          <span className="text-[10px] font-bold text-primary">{i + 1}</span>
+                        </div>
+                        <p className="text-xs">{tip}</p>
                       </div>
-                      <p className="text-xs">
-                        Click any element to select it, then drag to move
-                      </p>
-                    </div>
-                    <div className="flex gap-3 items-center">
-                      <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                        <span className="text-[10px] font-bold text-primary">
-                          2
-                        </span>
-                      </div>
-                      <p className="text-xs">
-                        Edit colours, fonts and size in the toolbar that appears
-                      </p>
-                    </div>
-                    <div className="flex gap-3 items-center">
-                      <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                        <span className="text-[10px] font-bold text-primary">
-                          3
-                        </span>
-                      </div>
-                      <p className="text-xs">
-                        Hit Save in the top bar when you're done
-                      </p>
-                    </div>
-                    <div className="flex gap-3 items-center">
-                      <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                        <span className="text-[10px] font-bold text-primary">
-                          4
-                        </span>
-                      </div>
-                      <p className="text-xs">
-                        Cards are auto-generated for speakers who've submitted —
-                        just approve each one from the Speakers tab
-                      </p>
-                    </div>
+                    ))}
                   </div>
                   <div className="flex items-center justify-between">
                     <label className="flex items-center gap-2 cursor-pointer select-none">
@@ -3053,7 +3024,9 @@ export default function CardBuilder({
                     </label>
                     <button
                       onClick={() => {
-                        // Persisting "don't show" preference handled by server-side APIs
+                        if (canvasTipDontShow) {
+                          try { localStorage.setItem(canvasTipStorageKey, 'true'); } catch {}
+                        }
                         setShowCanvasTip(false);
                       }}
                       className="px-4 py-1.5 text-xs font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
