@@ -262,33 +262,10 @@ export default function SpeakerContentTab({ eventId, speakerId, showApprovals = 
           {archivedItems.length > 0 && ` · ${archivedItems.length} archived`}
         </p>
         <div className="flex items-center gap-2">
-<<<<<<< HEAD
           {activeItems.length > 0 && (
             <Button variant="outline" size="sm" className="gap-1.5" onClick={handleDownloadAll}>
               <Download className="h-3.5 w-3.5" />Download all
             </Button>
-=======
-          {showApprovals && !readOnly && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-1.5">
-                  {shareCopied
-                    ? <><Check className="h-3.5 w-3.5" />Copied</>
-                    : <><Share2 className="h-3.5 w-3.5" />Share</>}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => copyShare('view')}>
-                  {shareCopied === 'view' ? <Check className="h-3.5 w-3.5 mr-2" /> : <Copy className="h-3.5 w-3.5 mr-2" />}
-                  View only link
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => copyShare('edit')}>
-                  {shareCopied === 'edit' ? <Check className="h-3.5 w-3.5 mr-2" /> : <Copy className="h-3.5 w-3.5 mr-2" />}
-                  Can upload link
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
->>>>>>> e800a76703172befadc57d32b5a8e6f664d368b9
           )}
           <Button size="sm" className="gap-1.5" onClick={() => { if (!readOnly) setUploadOpen(true); }} disabled={readOnly}>
             <Plus className="h-3.5 w-3.5" />Upload file
@@ -359,45 +336,6 @@ export default function SpeakerContentTab({ eventId, speakerId, showApprovals = 
                         </button>
                       </td>
                       <td className="px-5 py-3.5">
-<<<<<<< HEAD
-                        <div className="flex items-center gap-0.5">
-                          {url && (
-                            <a
-                              href={url}
-                              download
-                              className="p-1.5 rounded text-muted-foreground/40 hover:text-primary hover:bg-muted transition-colors"
-                              title="Download"
-                            >
-                              <Download className="h-4 w-4" />
-                            </a>
-                          )}
-                          <button
-                            className="p-1.5 rounded text-muted-foreground/40 hover:text-primary hover:bg-muted transition-colors"
-                            title="Replace"
-                            onClick={() => {
-                              setReplacing(item);
-                              replaceInputRef.current?.click();
-                            }}
-                          >
-                            <RefreshCw className="h-4 w-4" />
-                          </button>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <button className="p-1.5 rounded text-muted-foreground/40 hover:text-muted-foreground hover:bg-muted transition-colors">
-                                <MoreVertical className="h-4 w-4" />
-                              </button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                className="text-destructive focus:text-destructive"
-                                onClick={() => setArchiving(item)}
-                              >
-                                <Archive className="h-3.5 w-3.5 mr-2" />Archive
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-=======
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <button className="text-muted-foreground/40 hover:text-muted-foreground transition-colors p-1 rounded hover:bg-muted">
@@ -429,7 +367,6 @@ export default function SpeakerContentTab({ eventId, speakerId, showApprovals = 
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
->>>>>>> e800a76703172befadc57d32b5a8e6f664d368b9
                       </td>
                     </tr>
                     {historyOpen && (

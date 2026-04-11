@@ -563,13 +563,6 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
             />
           )}
 
-<<<<<<< HEAD
-=======
-          {activeTab === 'content' && (
-            <SpeakerContentTab eventId={id!} speakerId={spkId!} showApprovals={isOrganizerView} readOnly={isReadOnly} />
-          )}
-
->>>>>>> e800a76703172befadc57d32b5a8e6f664d368b9
         </div>
       </div>
 

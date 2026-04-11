@@ -382,16 +382,6 @@ export default function SpeakerModule() {
               </Button>
             </div>
             <div className="flex items-center gap-2">
-<<<<<<< HEAD
-=======
-              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setShareOpen(true)}>
-                <Share2 className="h-3.5 w-3.5" />Share Speaker List
-              </Button>
-              <Button variant="outline" size="sm" className="gap-1.5" onClick={handleDownloadAllAssets} disabled={isDownloadingAll || speakerList.length === 0}>
-                <Download className="h-3.5 w-3.5" />{isDownloadingAll ? "Downloading…" : "Download All Assets"}
-              </Button>
-              <ShareDialog open={shareOpen} onOpenChange={setShareOpen} />
->>>>>>> e800a76703172befadc57d32b5a8e6f664d368b9
               <HelpTip title="How speakers work" side="bottom" align="end">
                 <p>Add speakers manually or accept them from <span className="font-medium text-foreground">Applications</span>. Send each one their intake form to collect a headshot, bio, and logo.</p>
                 <p>Once submitted, approve their <span className="font-medium text-foreground">speaker card</span> and <span className="font-medium text-foreground">social card</span> from their profile, then publish them live via <span className="font-medium text-foreground">Speaker Wall</span>.</p>

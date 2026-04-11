@@ -49,73 +49,6 @@ type Props = {
   selectedSpeakerId?: string;
 };
 
-<<<<<<< HEAD
-=======
-// Download a remote image by fetching it as a blob (handles CORS-proxied URLs).
-// Falls back to opening in a new tab if fetch fails.
-async function downloadAsset(url: string, filename: string) {
-  try {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error("fetch failed");
-    const blob = await res.blob();
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(a.href);
-  } catch {
-    // No fallback — surface the error to the caller for handling/logging
-    console.error("Failed to download asset for url:", url);
-    throw new Error("Failed to download asset");
-  }
-}
-
-function AssetButton({
-  label,
-  url,
-  filename,
-  disabled,
-  disabledReason,
-  external,
-}: {
-  label: string;
-  url: string | null | undefined;
-  filename?: string;
-  disabled?: boolean;
-  disabledReason?: string;
-  external?: boolean; // open in new tab instead of download
-}) {
-  const isDisabled = disabled || !url;
-  const title = isDisabled ? (disabledReason ?? "Not available") : `Download ${label}`;
-
-  return (
-    <div className="flex flex-col items-center gap-0.5 min-w-[52px]">
-      {label && <span className="text-[10px] text-muted-foreground leading-none">{label}</span>}
-      <div title={title} className="mt-0.5">
-        <button
-          onClick={() => {
-            if (!url) return;
-            if (external) {
-              window.open(url, "_blank", "noopener");
-            } else {
-              downloadAsset(url, filename ?? label.toLowerCase().replace(/\s+/g, "-"));
-            }
-          }}
-          className={`rounded p-1.5 transition-colors ${
-            isDisabled
-              ? "text-muted-foreground/30 cursor-not-allowed pointer-events-none"
-              : "text-muted-foreground hover:text-primary hover:bg-primary/8 cursor-pointer"
-          }`}
-        >
-          {external ? <ExternalLink className="h-3.5 w-3.5" /> : <Download className="h-3.5 w-3.5" />}
-        </button>
-      </div>
-    </div>
-  );
-}
->>>>>>> e800a76703172befadc57d32b5a8e6f664d368b9
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -388,7 +321,6 @@ export default function SpeakersTable({ speakers, isLoading, eventId, selectedTa
               </HelpTip>
             </div>
           </th>
-<<<<<<< HEAD
           <th className="px-3 py-2.5 text-left text-xs font-medium text-muted-foreground w-[120px]">
             <div className="flex items-center gap-1.5">
               Social Card
@@ -409,26 +341,10 @@ export default function SpeakersTable({ speakers, isLoading, eventId, selectedTa
             </div>
           </th>
           <th className="px-3 py-2.5 w-10"> </th>
-=======
-          {showBio && <th className="px-3 py-2.5 text-center text-xs font-medium text-muted-foreground w-[52px]">Bio</th>}
-          <th className="px-3 py-2.5 text-center text-xs font-medium text-muted-foreground w-[80px]">Speaker Card</th>
-          <th className="px-3 py-2.5 text-center text-xs font-medium text-muted-foreground w-[80px]">Social Card</th>
-          <th className="px-3 py-2.5 text-center text-xs font-medium text-muted-foreground w-[72px]">Headshot</th>
-          {showLogo && <th className="px-3 py-2.5 text-center text-xs font-medium text-muted-foreground w-[72px]">Logo</th>}
-          <th className="px-5 py-2.5 text-left text-xs font-medium text-muted-foreground w-[130px]">Updated</th>
-          <th className="px-3 py-2.5 text-left text-xs font-medium text-muted-foreground w-[56px]"> </th>
->>>>>>> e800a76703172befadc57d32b5a8e6f664d368b9
         </tr>
       </thead>
       <tbody>
         {speakers.map((speaker) => {
-<<<<<<< HEAD
-=======
-          const headshotUrl = speaker.headshot || speaker.headshotUrl || speaker.headshot_url || null;
-          const headshotDownloadUrl = speaker.headshotDownloadUrl || headshotUrl;
-          const logoUrl = speaker.companyLogo || speaker.company_logo || null;
-          const logoDownloadUrl = speaker.logoDownloadUrl || logoUrl;
->>>>>>> e800a76703172befadc57d32b5a8e6f664d368b9
           const speakerName = speaker.name || `${speaker.firstName ?? ""} ${speaker.lastName ?? ""}`.trim() || speaker.email || "Speaker";
 
           // Card embed URLs — backend renders these as HTML embeds.
@@ -446,19 +362,17 @@ export default function SpeakersTable({ speakers, isLoading, eventId, selectedTa
           return (
             <tr
               key={speaker.id}
-              className={`border-b border-border transition-colors group ${
+              className={`border-b border-border transition-colors group cursor-pointer ${
                 selectedSpeakerId === speaker.id
                   ? 'bg-primary/5 hover:bg-primary/8'
                   : 'hover:bg-muted/40'
               }`}
+              onClick={() => navigate(`/organizer/event/${eventId}/speakers/${speaker.id}`)}
             >
               {/* Speaker info */}
               <td className="pl-5 pr-2 py-3 overflow-hidden">
                 <div className="flex items-center min-w-0">
-                  <div
-                    className="text-sm font-semibold text-foreground cursor-pointer hover:text-primary transition-colors leading-tight truncate"
-                    onClick={() => navigate(`/organizer/event/${eventId}/speakers/${speaker.id}`)}
-                  >
+                  <div className="text-sm font-semibold text-foreground leading-tight truncate">
                     {speakerName}
                   </div>
                   <ChevronRight className="h-4 w-4 text-muted-foreground/20 group-hover:text-muted-foreground/70 transition-colors ml-0.5 flex-shrink-0" />
@@ -480,14 +394,14 @@ export default function SpeakersTable({ speakers, isLoading, eventId, selectedTa
                 </td>
               )}
 
-<<<<<<< HEAD
               {/* Speaker Card */}
               <td className="px-3 py-3">
                 <div className="flex items-center gap-1.5" title={speakerCardStatus.tooltip}>
                   <Badge
                     variant="outline"
                     className={`text-xs font-medium cursor-pointer w-[132px] justify-center whitespace-nowrap ${speakerCardStatus.cls}`}
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       if (onBadgeClick) {
                         const view =
                           speakerCardStatus.label === 'Info Pending' ? 'info'
@@ -498,94 +412,13 @@ export default function SpeakersTable({ speakers, isLoading, eventId, selectedTa
                         navigate(`/organizer/event/${eventId}/speakers/embed`);
                       } else {
                         navigate(`/organizer/event/${eventId}/speakers/${speaker.id}/speaker-card`);
-=======
-              {/* Website Card */}
-              <td className="px-3 py-4">
-                <div className="flex justify-center">
-                  <AssetButton
-                    label=""
-                    url={websiteCardConfigured && websiteApproved ? websiteCardUrl : null}
-                    filename={`${speakerName.replace(/\s+/g, "-").toLowerCase()}-website-card.html`}
-                    disabledReason={
-                      !websiteCardConfigured
-                        ? "Configure your website card first"
-                        : !websiteApproved
-                        ? "Website card not yet approved"
-                        : undefined
-                    }
-                  />
-                </div>
-              </td>
-
-              {/* Promo Card */}
-              <td className="px-3 py-4">
-                <div className="flex justify-center">
-                  <AssetButton
-                    label=""
-                    url={promoCardConfigured && promoApproved ? promoCardUrl : null}
-                    filename={`${speakerName.replace(/\s+/g, "-").toLowerCase()}-promo-card.html`}
-                    disabledReason={
-                      !promoCardConfigured
-                        ? "Configure your promo card first"
-                        : !promoApproved
-                        ? "Promo card not yet approved"
-                        : undefined
-                    }
-                  />
-                </div>
-              </td>
-
-              {/* Headshot download button */}
-              <td className="px-3 py-4">
-                <div className="flex justify-center">
-                  <AssetButton
-                    label=""
-                    url={headshotDownloadUrl}
-                    filename={`${speakerName.replace(/\s+/g, "-").toLowerCase()}-headshot.jpg`}
-                    disabledReason="No headshot uploaded"
-                  />
-                </div>
-              </td>
-
-              {/* Company Logo */}
-              {showLogo && (
-                <td className="px-3 py-4">
-                  <div className="flex justify-center">
-                    <AssetButton
-                      label=""
-                      url={logoDownloadUrl}
-                      filename={`${(speaker.company ?? speakerName).replace(/\s+/g, "-").toLowerCase()}-logo.png`}
-                      disabledReason="No company logo uploaded"
-                    />
-                  </div>
-                </td>
-              )}
-
-              {/* Last updated — shown as plain text */}
-              <td className="px-5 py-4">
-                <span className="text-xs text-muted-foreground">
-                  {updatedDate ?? <span className="text-muted-foreground/30">—</span>}
-                </span>
-              </td>
-
-              {/* Actions: delete speaker */}
-              <td className="px-3 py-4">
-                <div className="flex items-center">
-                  <button
-                    title="Delete speaker"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (!eventId) {
-                        toast({ title: "Missing event id" });
-                        return;
->>>>>>> e800a76703172befadc57d32b5a8e6f664d368b9
                       }
                     }}
                   >
                     {speakerCardStatus.label}
                   </Badge>
                   {websiteApproved && (
-                    <a href={websiteCardUrl} target="_blank" rel="noreferrer" title="View Speaker Card" className="text-muted-foreground/30 hover:text-primary transition-colors">
+                    <a href={websiteCardUrl} target="_blank" rel="noreferrer" title="View Speaker Card" className="text-muted-foreground/30 hover:text-primary transition-colors" onClick={(e) => e.stopPropagation()}>
                       <ExternalLink className="h-3 w-3" />
                     </a>
                   )}
@@ -598,7 +431,8 @@ export default function SpeakersTable({ speakers, isLoading, eventId, selectedTa
                   <Badge
                     variant="outline"
                     className={`text-xs font-medium cursor-pointer w-[132px] justify-center whitespace-nowrap ${socialCardStatus.cls}`}
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       if (onBadgeClick) {
                         const view = socialCardStatus.label === 'Info Pending' ? 'info' : 'social-card';
                         onBadgeClick(speaker, view);
@@ -615,7 +449,7 @@ export default function SpeakersTable({ speakers, isLoading, eventId, selectedTa
               </td>
 
               {/* 3-dot menu: updated date + delete */}
-              <td className="px-3 py-3">
+              <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button className="rounded p-1 text-muted-foreground/40 hover:text-muted-foreground hover:bg-muted opacity-0 group-hover:opacity-100 transition-all">
@@ -646,11 +480,7 @@ export default function SpeakersTable({ speakers, isLoading, eventId, selectedTa
         })}
         {speakers.length === 0 && (
           <tr>
-<<<<<<< HEAD
             <td colSpan={6} className="py-12 text-center text-sm text-muted-foreground">
-=======
-            <td colSpan={9} className="py-12 text-center text-sm text-muted-foreground">
->>>>>>> e800a76703172befadc57d32b5a8e6f664d368b9
               No speakers found
             </td>
           </tr>

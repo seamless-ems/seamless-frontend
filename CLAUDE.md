@@ -51,7 +51,16 @@ Use these exact terms everywhere (UI labels, tooltips, dialogs, HelpTips, copy):
   - Body: `<div className="flex-1 overflow-y-auto">` wrapping content
   - **Never** use `ChevronLeft` for back-navigation; always `ArrowLeft`
 - **Unsaved changes:** any page/overlay where the user edits must guard navigation with `useWarnOnLeave(isDirty)` (beforeunload) and `UnsavedChangesDialog` (Save / Discard / Keep editing). `useBlocker` from react-router does NOT work — app uses `<BrowserRouter>`, not a data router.
-- **Commits:** only when explicitly instructed.
+- **Commits & pushes:** never. James handles all git operations. No `git commit`, `git push`, `git rebase --continue`, or `git status` unless explicitly asked. The only exception is `git stash` if James asks to stash local changes.
+
+---
+
+## Next up
+**EmbedBuilder layout settings** (`src/components/organizer/EmbedBuilder.tsx`)
+- Add columns-per-row control: desktop (2–4) and mobile (1–2), simple button-group toggles
+- Add background toggle: transparent vs white (affects the copied iframe snippet)
+- Settings become query params on the embed URL (`?cols=3&cols_mobile=1`)
+- **Check `openapi.json` first** — verify `/embed/:eventId` supports these params before building; log gaps to `API_GAPS.md`
 
 ---
 
