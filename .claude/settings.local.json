@@ -133,7 +133,9 @@
       "Bash(grep -r \"TODO\\\\|FIXME\\\\|STUB\\\\|XXX\\\\|HACK\" /mnt/c/Users/james/OneDrive/Documents/Seamless/seamless-frontend/src/components/CardBuilder.tsx /mnt/c/Users/james/OneDrive/Documents/Seamless/seamless-frontend/src/lib/card-builder*.ts /mnt/c/Users/james/OneDrive/Documents/Seamless/seamless-frontend/src/constants/promoCardTemplates.ts /mnt/c/Users/james/OneDrive/Documents/Seamless/seamless-frontend/src/constants/websiteCardTemplates.ts /mnt/c/Users/james/OneDrive/Documents/Seamless/seamless-frontend/src/types/card-builder.ts)",
       "Bash(node:*)",
       "Bash(ls \"/mnt/c/Users/james/OneDrive/Documents/Seamless/seamless-frontend/\"*.html \"/mnt/c/Users/james/OneDrive/Documents/Seamless/seamless-frontend/\"*.json)",
-      "Bash(awk '/return \\\\\\(/,0' /mnt/c/Users/james/OneDrive/Documents/Seamless/seamless-frontend/src/components/SpeakerFormBuilder.tsx)"
+      "Bash(awk '/return \\\\\\(/,0' /mnt/c/Users/james/OneDrive/Documents/Seamless/seamless-frontend/src/components/SpeakerFormBuilder.tsx)",
+      "Bash(git pull:*)",
+      "Bash(git reset:*)"
     ]
   }
 }
