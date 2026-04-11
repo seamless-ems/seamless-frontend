@@ -100,9 +100,9 @@ export default function EventDashboard() {
 		<div>
 			{/* Trial ended / billing prompt */}
 			{(rawEvent?.trialEnded || rawEvent?.trial_ended) && (rawEvent?.userRole === 'organizer' || rawEvent?.user_role === 'organizer') && !(rawEvent?.paid || rawEvent?.is_paid || rawEvent?.paid_until) && (
-				<div className="mb-4 p-4 rounded-md border-l-4 border-warning bg-warning/5">
+				<div className="mb-4 p-4 rounded-md border-l-4 border-destructive/30 bg-destructive/10">
 					<div className="flex items-center justify-between">
-						<div className="text-sm text-warning">Your trial has ended for this event. Please upgrade to continue full access.</div>
+						<div className="text-sm text-destructive">Your free trial for this event has ended. Everything is now read-only.</div>
 						<Button size="sm" onClick={async () => {
 							if (!rawEvent?.id) return;
 							try {
@@ -114,7 +114,7 @@ export default function EventDashboard() {
 							} catch (err: any) {
 								toast({ title: 'Checkout failed', description: String(err?.message || err), variant: 'destructive' });
 							}
-						}}>Pay now</Button>
+						}}>Upgrade to restore access</Button>
 					</div>
 				</div>
 			)}

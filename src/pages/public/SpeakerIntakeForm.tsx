@@ -41,7 +41,7 @@ import { generateUuid } from "@/lib/utils";
 import MissingFormDialog from "@/components/MissingFormDialog";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/avif"];
 const DUPLICATE_EMAIL_MESSAGE = "A speaker with this email already exists for this event.";
 
 // Default fields for fallback when no form config exists

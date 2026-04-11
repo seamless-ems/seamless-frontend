@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, Check, Edit, X } from "lucide-react";
 import { Speaker } from "@/types/event";
 import { getJson, updateSpeaker, uploadFile, getFormConfigForEvent } from "@/lib/api";
+import { useEventAccess } from '@/contexts/EventAccessContext';
 import { ImageCropDialog } from "@/components/ImageCropDialog";
 import MissingFormDialog from "@/components/MissingFormDialog";
 import SpeakerForm from "@/components/SpeakerForm";
@@ -91,6 +92,8 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
     customFields: (speaker as any).customFields ?? (speaker as any).custom_fields ?? {},
     callForSpeakersStatus: (speaker as any).call_for_speakers_status ?? (speaker as any).callForSpeakersStatus ?? 'pending',
   } : null;
+
+  const { isReadOnly } = useEventAccess(id);
 
   const infoStatus = s?.intakeFormStatus || 'pending';
   const headshotUrl = s?.headshot ?? null;
@@ -335,10 +338,11 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
             );
 
             const makeFileHandler = (type: 'headshot' | 'logo') => (e: React.ChangeEvent<HTMLInputElement>) => {
+              if (isReadOnly) return;
               const file = e.target.files?.[0];
               if (!file) return;
-              if (!['image/png', 'image/jpeg'].includes(file.type)) {
-                toast({ title: 'Must be PNG or JPEG', variant: 'destructive' });
+              if (!['image/png', 'image/jpeg', 'image/avif'].includes(file.type)) {
+                toast({ title: 'Must be PNG, JPEG, or AVIF', variant: 'destructive' });
                 e.currentTarget.value = '';
                 return;
               }
@@ -357,9 +361,10 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
               <div className="rounded-lg border border-border overflow-hidden">
                 <div className="px-6 py-4 bg-muted/30 border-b border-border flex items-center justify-between">
                   <p className="text-sm font-medium text-foreground">{isApplication ? 'Application Details' : 'Speaker Information'}</p>
-                  <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs" onClick={() => setEditOpen(true)}>
+                      <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs" onClick={() => setEditOpen(true)} disabled={isReadOnly}>
                     <Edit className="h-3.5 w-3.5" />Edit
                   </Button>
+                  
                 </div>
 
                 <div className="flex gap-0 divide-x divide-border">
@@ -419,12 +424,12 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
                       </div>
                       <button
                         className="text-xs text-muted-foreground hover:text-primary transition-colors"
-                        onClick={() => headshotInputRef.current?.click()}
-                        disabled={uploadingHeadshot}
+                        onClick={() => { if (!isReadOnly) headshotInputRef.current?.click(); }}
+                        disabled={uploadingHeadshot || isReadOnly}
                       >
                         {uploadingHeadshot ? 'Uploading…' : headshotUrl ? 'Replace' : 'Upload'}
                       </button>
-                      <input ref={headshotInputRef} type="file" accept="image/png,image/jpeg" className="hidden" onChange={makeFileHandler('headshot')} />
+                      <input ref={headshotInputRef} type="file" accept="image/png,image/jpeg,image/avif" className="hidden" onChange={makeFileHandler('headshot')} />
                     </div>
                     )}
 
@@ -439,12 +444,12 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
                       </div>
                       <button
                         className="text-xs text-muted-foreground hover:text-primary transition-colors"
-                        onClick={() => logoInputRef.current?.click()}
-                        disabled={uploadingLogo}
+                        onClick={() => { if (!isReadOnly) logoInputRef.current?.click(); }}
+                        disabled={uploadingLogo || isReadOnly}
                       >
                         {uploadingLogo ? 'Uploading…' : s?.companyLogo ? 'Replace' : 'Upload'}
                       </button>
-                      <input ref={logoInputRef} type="file" accept="image/png,image/jpeg" className="hidden" onChange={makeFileHandler('logo')} />
+                      <input ref={logoInputRef} type="file" accept="image/png,image/jpeg,image/avif" className="hidden" onChange={makeFileHandler('logo')} />
                     </div>
                     )}
                   </div>
@@ -463,6 +468,7 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
               onToggleApproval={handleWebsiteApproval}
               onApproveAndPublish={!websiteApproved ? handleWebsiteApprovalAndPublish : undefined}
               showApprovals={isOrganizerView}
+              readOnly={isReadOnly}
             />
           )}
 
@@ -474,11 +480,12 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
               canApprove={canApprove}
               onToggleApproval={handlePromoApproval}
               showApprovals={isOrganizerView}
+              readOnly={isReadOnly}
             />
           )}
 
           {activeTab === 'content' && (
-            <SpeakerContentTab eventId={id!} speakerId={spkId!} showApprovals={isOrganizerView} />
+            <SpeakerContentTab eventId={id!} speakerId={spkId!} showApprovals={isOrganizerView} readOnly={isReadOnly} />
           )}
 
         </div>

@@ -55,7 +55,9 @@ async function downloadAsset(url: string, filename: string) {
     document.body.removeChild(a);
     URL.revokeObjectURL(a.href);
   } catch {
-    window.open(url, "_blank", "noopener");
+    // No fallback — surface the error to the caller for handling/logging
+    console.error("Failed to download asset for url:", url);
+    throw new Error("Failed to download asset");
   }
 }
 
@@ -323,6 +325,7 @@ export default function SpeakersTable({ speakers, isLoading, eventId, selectedTa
           {showBio && <th className="px-3 py-2.5 text-center text-xs font-medium text-muted-foreground w-[52px]">Bio</th>}
           <th className="px-3 py-2.5 text-center text-xs font-medium text-muted-foreground w-[80px]">Speaker Card</th>
           <th className="px-3 py-2.5 text-center text-xs font-medium text-muted-foreground w-[80px]">Social Card</th>
+          <th className="px-3 py-2.5 text-center text-xs font-medium text-muted-foreground w-[72px]">Headshot</th>
           {showLogo && <th className="px-3 py-2.5 text-center text-xs font-medium text-muted-foreground w-[72px]">Logo</th>}
           <th className="px-5 py-2.5 text-left text-xs font-medium text-muted-foreground w-[130px]">Updated</th>
           <th className="px-3 py-2.5 text-left text-xs font-medium text-muted-foreground w-[56px]"> </th>
@@ -331,7 +334,9 @@ export default function SpeakersTable({ speakers, isLoading, eventId, selectedTa
       <tbody>
         {speakers.map((speaker) => {
           const headshotUrl = speaker.headshot || speaker.headshotUrl || speaker.headshot_url || null;
+          const headshotDownloadUrl = speaker.headshotDownloadUrl || headshotUrl;
           const logoUrl = speaker.companyLogo || speaker.company_logo || null;
+          const logoDownloadUrl = speaker.logoDownloadUrl || logoUrl;
           const speakerName = speaker.name || `${speaker.firstName ?? ""} ${speaker.lastName ?? ""}`.trim() || speaker.email || "Speaker";
           const initials = speakerName.split(" ").map((p: string) => p?.[0]).filter(Boolean).slice(0, 2).join("");
 
@@ -453,13 +458,25 @@ export default function SpeakersTable({ speakers, isLoading, eventId, selectedTa
                 </div>
               </td>
 
+              {/* Headshot download button */}
+              <td className="px-3 py-4">
+                <div className="flex justify-center">
+                  <AssetButton
+                    label=""
+                    url={headshotDownloadUrl}
+                    filename={`${speakerName.replace(/\s+/g, "-").toLowerCase()}-headshot.jpg`}
+                    disabledReason="No headshot uploaded"
+                  />
+                </div>
+              </td>
+
               {/* Company Logo */}
               {showLogo && (
                 <td className="px-3 py-4">
                   <div className="flex justify-center">
                     <AssetButton
                       label=""
-                      url={logoUrl}
+                      url={logoDownloadUrl}
                       filename={`${(speaker.company ?? speakerName).replace(/\s+/g, "-").toLowerCase()}-logo.png`}
                       disabledReason="No company logo uploaded"
                     />
@@ -499,7 +516,7 @@ export default function SpeakersTable({ speakers, isLoading, eventId, selectedTa
         })}
         {speakers.length === 0 && (
           <tr>
-            <td colSpan={8} className="py-12 text-center text-sm text-muted-foreground">
+            <td colSpan={9} className="py-12 text-center text-sm text-muted-foreground">
               No speakers found
             </td>
           </tr>

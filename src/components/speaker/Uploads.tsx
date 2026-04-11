@@ -19,6 +19,7 @@ type Props = {
   // custom file handlers
   customFilePreviews?: Record<string, string | null>;
   onCustomFileSelected?: (fieldId: string, file: File) => void;
+  readOnly?: boolean;
 };
 
 export default function Uploads(props: Props) {
@@ -63,14 +64,15 @@ export default function Uploads(props: Props) {
             <input
               ref={headshotInputRef}
               type="file"
-              accept="image/png,image/jpeg"
+              accept="image/png,image/jpeg,image/avif"
               className="hidden"
               onChange={(e) => {
+                if (props.readOnly) { e.currentTarget.value = ''; return; }
                 const file = e.target.files?.[0];
                 if (!file) return;
-                const allowed = ["image/png", "image/jpeg"];
+                const allowed = ["image/png", "image/jpeg", "image/avif"];
                 if (!allowed.includes(file.type)) {
-                  toast({ title: "Invalid file type", description: "Please upload a PNG or JPEG for headshot", variant: "destructive" });
+                  toast({ title: "Invalid file type", description: "Please upload a PNG, JPEG, or AVIF for headshot", variant: "destructive" });
                   e.currentTarget.value = '';
                   return;
                 }
@@ -87,8 +89,8 @@ export default function Uploads(props: Props) {
               type="button"
               variant="outline"
               className="w-full"
-              onClick={() => headshotInputRef.current?.click()}
-              disabled={uploadingHeadshot}
+              onClick={() => { if (!props.readOnly) headshotInputRef.current?.click(); }}
+              disabled={uploadingHeadshot || props.readOnly}
             >
               {uploadingHeadshot ? "Uploading..." : headshotPreview ? "Replace" : "Upload"}
             </Button>
@@ -117,14 +119,15 @@ export default function Uploads(props: Props) {
             <input
               ref={logoInputRef}
               type="file"
-              accept="image/png,image/jpeg"
+              accept="image/png,image/jpeg,image/avif"
               className="hidden"
               onChange={(e) => {
+                if (props.readOnly) { e.currentTarget.value = ''; return; }
                 const file = e.target.files?.[0];
                 if (!file) return;
-                const allowed = ["image/png", "image/jpeg"];
+                const allowed = ["image/png", "image/jpeg", "image/avif"];
                 if (!allowed.includes(file.type)) {
-                  toast({ title: "Invalid file type", description: "Please upload a PNG or JPEG for logo", variant: "destructive" });
+                  toast({ title: "Invalid file type", description: "Please upload a PNG, JPEG, or AVIF for logo", variant: "destructive" });
                   e.currentTarget.value = '';
                   return;
                 }
@@ -141,8 +144,8 @@ export default function Uploads(props: Props) {
               type="button"
               variant="outline"
               className="w-full"
-              onClick={() => logoInputRef.current?.click()}
-              disabled={uploadingLogo}
+              onClick={() => { if (!props.readOnly) logoInputRef.current?.click(); }}
+              disabled={uploadingLogo || props.readOnly}
             >
               {uploadingLogo ? "Uploading..." : companyLogoPreview ? "Replace" : "Upload"}
             </Button>
@@ -180,15 +183,16 @@ export default function Uploads(props: Props) {
 
               <input
                 type="file"
-                accept="image/png,image/jpeg"
+                accept="image/png,image/jpeg,image/avif"
                 className="hidden"
                 id={`custom-file-${field.id}`}
                 onChange={(e) => {
+                  if (props.readOnly) { (e.target as HTMLInputElement).value = ''; return; }
                   const file = e.target.files?.[0];
                   if (!file) return;
-                  const allowed = ["image/png", "image/jpeg"];
+                  const allowed = ["image/png", "image/jpeg", "image/avif"];
                   if (!allowed.includes(file.type)) {
-                    toast({ title: "Invalid file type", description: "Please upload a PNG or JPEG image", variant: "destructive" });
+                    toast({ title: "Invalid file type", description: "Please upload a PNG, JPEG, or AVIF image", variant: "destructive" });
                     (e.target as HTMLInputElement).value = '';
                     return;
                   }
@@ -201,9 +205,11 @@ export default function Uploads(props: Props) {
                 variant="outline"
                 className="w-full"
                 onClick={() => {
+                  if (props.readOnly) return;
                   const el = document.getElementById(`custom-file-${field.id}`) as HTMLInputElement | null;
                   el?.click();
                 }}
+                disabled={props.readOnly}
               >
                 {customFilePreviews && customFilePreviews[field.id] ? "Replace" : "Upload"}
               </Button>

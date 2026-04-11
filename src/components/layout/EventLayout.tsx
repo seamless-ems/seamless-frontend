@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Settings, ChevronDown, Users, CreditCard, ChevronRight } from 'lucide-react';
 import { getMe, getTeam, getJson } from '@/lib/api';
+import TrialOverlay from '@/components/TrialOverlay';
 import { clearTokenAndNotify } from '@/lib/session';
 import { signOut as firebaseSignOut } from '@/lib/firebase';
 
@@ -147,6 +148,7 @@ export default function EventLayout({ children }: { children: ReactNode }) {
       {/* Main content */}
       <main className={`flex-1 bg-background ${isCardBuilder ? 'p-0 overflow-hidden' : 'p-6'}`}>
         {children}
+        <TrialOverlay />
       </main>
     </div>
   );

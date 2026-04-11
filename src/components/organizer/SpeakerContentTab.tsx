@@ -103,15 +103,15 @@ function HistorySection({ speakerId, documentId, currentVersion, itemName, onRes
                 </a>
               )}
               {!isCurrent && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 text-xs px-2"
-                  onClick={() => onRestore({ version: v, documentId, itemName })}
-                >
-                  <RotateCcw className="h-3 w-3 mr-1" />Restore
-                </Button>
-              )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 text-xs px-2"
+                    onClick={() => onRestore({ version: v, documentId, itemName })}
+                  >
+                    <RotateCcw className="h-3 w-3 mr-1" />Restore
+                  </Button>
+                )}
             </div>
           </div>
         );
@@ -120,7 +120,7 @@ function HistorySection({ speakerId, documentId, currentVersion, itemName, onRes
   );
 }
 
-export default function SpeakerContentTab({ eventId, speakerId, showApprovals = true }: { eventId: string; speakerId: string; showApprovals?: boolean }) {
+export default function SpeakerContentTab({ eventId, speakerId, showApprovals = true, readOnly = false }: { eventId: string; speakerId: string; showApprovals?: boolean; readOnly?: boolean }) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const currentUserName = user?.name || user?.email || undefined;
@@ -257,7 +257,7 @@ export default function SpeakerContentTab({ eventId, speakerId, showApprovals = 
           {archivedItems.length > 0 && ` · ${archivedItems.length} archived`}
         </p>
         <div className="flex items-center gap-2">
-          {showApprovals && (
+          {showApprovals && !readOnly && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="gap-1.5">
@@ -278,7 +278,7 @@ export default function SpeakerContentTab({ eventId, speakerId, showApprovals = 
               </DropdownMenuContent>
             </DropdownMenu>
           )}
-          <Button size="sm" className="gap-1.5" onClick={() => setUploadOpen(true)}>
+          <Button size="sm" className="gap-1.5" onClick={() => { if (!readOnly) setUploadOpen(true); }} disabled={readOnly}>
             <Plus className="h-3.5 w-3.5" />Upload file
           </Button>
         </div>
@@ -362,15 +362,17 @@ export default function SpeakerContentTab({ eventId, speakerId, showApprovals = 
                               </DropdownMenuItem>
                             )}
                             <DropdownMenuItem onClick={() => {
+                              if (readOnly) return;
                               setReplacing(item);
                               replaceInputRef.current?.click();
-                            }}>
+                            }} disabled={readOnly}>
                               <Upload className="h-3.5 w-3.5 mr-2" />Replace
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                               className="text-destructive focus:text-destructive"
-                              onClick={() => setArchiving(item)}
+                              onClick={() => { if (!readOnly) setArchiving(item); }}
+                              disabled={readOnly}
                             >
                               <Archive className="h-3.5 w-3.5 mr-2" />Archive
                             </DropdownMenuItem>
@@ -483,7 +485,7 @@ export default function SpeakerContentTab({ eventId, speakerId, showApprovals = 
             <Button variant="outline" onClick={() => { setUploadOpen(false); setUploadName(''); setUploadFileObj(null); }}>
               Cancel
             </Button>
-            <Button disabled={!uploadFileObj || !uploadName.trim() || uploading} onClick={handleUpload}>
+            <Button disabled={readOnly || !uploadFileObj || !uploadName.trim() || uploading} onClick={handleUpload}>
               {uploading ? 'Uploading…' : 'Upload'}
             </Button>
           </div>
@@ -501,9 +503,9 @@ export default function SpeakerContentTab({ eventId, speakerId, showApprovals = 
               The current version of <strong>{replacing?.name ?? 'this file'}</strong> will be saved in history and can be restored at any time. The file name stays the same.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
+            <AlertDialogFooter>
             <AlertDialogCancel onClick={() => { setReplaceFile(null); setReplacing(null); }}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleReplaceConfirm} disabled={uploading}>
+            <AlertDialogAction onClick={handleReplaceConfirm} disabled={uploading || readOnly}>
               {uploading ? 'Replacing…' : 'Yes, replace'}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -521,7 +523,7 @@ export default function SpeakerContentTab({ eventId, speakerId, showApprovals = 
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleArchiveConfirm}>Yes, archive</AlertDialogAction>
+            <AlertDialogAction onClick={handleArchiveConfirm} disabled={readOnly}>Yes, archive</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -537,7 +539,7 @@ export default function SpeakerContentTab({ eventId, speakerId, showApprovals = 
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleRestoreConfirm} disabled={uploading}>
+            <AlertDialogAction onClick={handleRestoreConfirm} disabled={uploading || readOnly}>
               {uploading ? 'Restoring…' : 'Yes, restore'}
             </AlertDialogAction>
           </AlertDialogFooter>

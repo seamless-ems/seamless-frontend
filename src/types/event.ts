@@ -28,17 +28,31 @@ export interface EventModule {
 
 export interface Speaker {
   id: string;
-  name: string;
+  firstName: string;
+  lastName: string;
   email: string;
-  company: string;
-  headshot?: string;
-  companyLogo?: string;
+  userId?: string | null;
+  companyName?: string;
+  companyRole?: string;
   linkedin?: string;
   bio?: string;
-  intakeFormStatus: 'pending' | 'submitted' | 'approved';
+  headshot?: string;
+  companyLogo?: string;
+  talkTopic?: string | null;
+  sampleContent?: string | null;
+  formType?: string;
+  speakerInformationStatus?: 'info_pending' | 'info_approved' | 'info_rejected';
+  callForSpeakersStatus?: 'submitted' | 'accepted' | 'rejected';
+  customFields?: Record<string, any>;
   websiteCardApproved: boolean;
   promoCardApproved: boolean;
-  registeredAt: string;
+  embedEnabled: boolean;
+  internalNotes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  headshotDownloadUrl?: string;
+  logoDownloadUrl?: string;
+
 }
 
 export interface TeamMember {
