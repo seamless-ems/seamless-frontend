@@ -13,9 +13,9 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Archive, Check, ChevronDown, ChevronRight, Copy, Download, MoreVertical, Plus, RotateCcw, Share2, Upload } from 'lucide-react';
+import { Archive, ChevronDown, ChevronRight, Download, MoreVertical, Plus, RefreshCw, RotateCcw, Upload } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { archiveContent } from '@/lib/api';
 
@@ -145,9 +145,6 @@ export default function SpeakerContentTab({ eventId, speakerId, showApprovals = 
   // Expanded history rows
   const [expandedHistory, setExpandedHistory] = useState<Set<string>>(new Set());
 
-  // Share
-  const [shareCopied, setShareCopied] = useState<'view' | 'edit' | null>(null);
-
   const { data: contentItems, isLoading } = useQuery<any[]>({
     queryKey: ['content', speakerId],
     queryFn: () => getSpeakerContent(speakerId),
@@ -158,10 +155,18 @@ export default function SpeakerContentTab({ eventId, speakerId, showApprovals = 
   const activeItems = items.filter(i => !i.archived);
   const archivedItems = items.filter(i => i.archived);
 
-  const copyShare = (mode: 'view' | 'edit') => {
-    navigator.clipboard.writeText(window.location.href);
-    setShareCopied(mode);
-    setTimeout(() => setShareCopied(null), 2000);
+  const handleDownloadAll = () => {
+    activeItems.forEach((item: any) => {
+      const url = item.content ?? item.url ?? item.publicUrl ?? item.public_url ?? '';
+      if (!url) return;
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = item.name ?? getFilename(url);
+      a.target = '_blank';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    });
   };
 
   const toggleHistory = (docId: string) => {
@@ -257,26 +262,10 @@ export default function SpeakerContentTab({ eventId, speakerId, showApprovals = 
           {archivedItems.length > 0 && ` · ${archivedItems.length} archived`}
         </p>
         <div className="flex items-center gap-2">
-          {showApprovals && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-1.5">
-                  {shareCopied
-                    ? <><Check className="h-3.5 w-3.5" />Copied</>
-                    : <><Share2 className="h-3.5 w-3.5" />Share</>}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => copyShare('view')}>
-                  {shareCopied === 'view' ? <Check className="h-3.5 w-3.5 mr-2" /> : <Copy className="h-3.5 w-3.5 mr-2" />}
-                  View only link
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => copyShare('edit')}>
-                  {shareCopied === 'edit' ? <Check className="h-3.5 w-3.5 mr-2" /> : <Copy className="h-3.5 w-3.5 mr-2" />}
-                  Can upload link
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+          {activeItems.length > 0 && (
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={handleDownloadAll}>
+              <Download className="h-3.5 w-3.5" />Download all
+            </Button>
           )}
           <Button size="sm" className="gap-1.5" onClick={() => setUploadOpen(true)}>
             <Plus className="h-3.5 w-3.5" />Upload file
@@ -304,7 +293,7 @@ export default function SpeakerContentTab({ eventId, speakerId, showApprovals = 
                 <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground w-12">Ver.</th>
                 <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground w-36">Uploaded</th>
                 <th className="px-3 py-3 text-center text-xs font-medium text-muted-foreground w-12">History</th>
-                <th className="px-5 py-3 w-10"></th>
+                <th className="px-5 py-3 w-24"></th>
               </tr>
             </thead>
             <tbody>
@@ -347,35 +336,43 @@ export default function SpeakerContentTab({ eventId, speakerId, showApprovals = 
                         </button>
                       </td>
                       <td className="px-5 py-3.5">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <button className="text-muted-foreground/40 hover:text-muted-foreground transition-colors p-1 rounded hover:bg-muted">
-                              <MoreVertical className="h-4 w-4" />
-                            </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            {url && (
-                              <DropdownMenuItem asChild>
-                                <a href={url} download>
-                                  <Download className="h-3.5 w-3.5 mr-2" />Download
-                                </a>
-                              </DropdownMenuItem>
-                            )}
-                            <DropdownMenuItem onClick={() => {
+                        <div className="flex items-center gap-0.5">
+                          {url && (
+                            <a
+                              href={url}
+                              download
+                              className="p-1.5 rounded text-muted-foreground/40 hover:text-primary hover:bg-muted transition-colors"
+                              title="Download"
+                            >
+                              <Download className="h-4 w-4" />
+                            </a>
+                          )}
+                          <button
+                            className="p-1.5 rounded text-muted-foreground/40 hover:text-primary hover:bg-muted transition-colors"
+                            title="Replace"
+                            onClick={() => {
                               setReplacing(item);
                               replaceInputRef.current?.click();
-                            }}>
-                              <Upload className="h-3.5 w-3.5 mr-2" />Replace
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              className="text-destructive focus:text-destructive"
-                              onClick={() => setArchiving(item)}
-                            >
-                              <Archive className="h-3.5 w-3.5 mr-2" />Archive
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                            }}
+                          >
+                            <RefreshCw className="h-4 w-4" />
+                          </button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button className="p-1.5 rounded text-muted-foreground/40 hover:text-muted-foreground hover:bg-muted transition-colors">
+                                <MoreVertical className="h-4 w-4" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                onClick={() => setArchiving(item)}
+                              >
+                                <Archive className="h-3.5 w-3.5 mr-2" />Archive
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </td>
                     </tr>
                     {historyOpen && (

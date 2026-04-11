@@ -6,6 +6,7 @@ import { getJson, getFormConfigForEvent, getPromoConfigForEvent } from "@/lib/ap
 import { ArrowLeft, Check, Copy, FileEdit, Share2 } from "lucide-react";
 import AddSpeakerDialog from "@/components/organizer/AddSpeakerDialog";
 import ShareDialog from "@/components/organizer/ShareDialog";
+import SpeakerQuickPanel, { type PanelView } from "@/components/organizer/SpeakerQuickPanel";
 import SpeakersTable from "@/components/organizer/SpeakersTable";
 import EmbedBuilder from "@/components/organizer/EmbedBuilder";
 import ApplicationsTab from "@/components/organizer/ApplicationsTab";
@@ -26,6 +27,8 @@ export default function SpeakerModule() {
   const [sortBy, setSortBy] = useState("newest");
   const [shareOpen, setShareOpen] = useState(false);
   const [addSpeakerOpen, setAddSpeakerOpen] = useState(false);
+  const [selectedSpeaker, setSelectedSpeaker] = useState<any | null>(null);
+  const [panelView, setPanelView] = useState<PanelView | null>(null);
   const [editingForm, setEditingForm] = useState<"speaker-info" | "call-for-speakers" | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
   const [confirmFormLeave, setConfirmFormLeave] = useState(false);
@@ -214,17 +217,24 @@ export default function SpeakerModule() {
           ? (speaker.callForSpeakersStatus ?? speaker.call_for_speakers_status)
           : (speaker.speakerInformationStatus ?? speaker.speaker_information_status ?? speaker.intakeFormStatus ?? speaker.intake_form_status);
 
-        if (statusFilter === 'published') {
-          matchesStatus = speaker.embedEnabled ?? speaker.embed_enabled ?? false;
-        } else if (statusFilter === 'cards_approved') {
-          const ws = speaker.websiteCardApproved ?? speaker.website_card_approved ?? false;
-          const promo = speaker.promoCardApproved ?? speaker.promo_card_approved ?? false;
-          const embedded = speaker.embedEnabled ?? speaker.embed_enabled ?? false;
-          matchesStatus = ws && promo && !embedded;
+        // Derive card-column statuses to match what the table shows
+        const headshot = speaker.headshot ?? speaker.headshot_url ?? speaker.avatarUrl ?? null;
+        const infoComplete = effectiveStatus !== 'pending' && !!headshot;
+        const ws = speaker.websiteCardApproved ?? speaker.website_card_approved ?? false;
+        const promo = speaker.promoCardApproved ?? speaker.promo_card_approved ?? false;
+        const embedded = speaker.embedEnabled ?? speaker.embed_enabled ?? false;
+
+        if (statusFilter === 'pending') {
+          // Info Pending: either intake form not submitted or headshot missing
+          matchesStatus = !infoComplete;
         } else if (statusFilter === 'submitted') {
-          const ws = speaker.websiteCardApproved ?? speaker.website_card_approved ?? false;
-          const promo = speaker.promoCardApproved ?? speaker.promo_card_approved ?? false;
-          matchesStatus = ['submitted', 'approved'].includes(effectiveStatus) && !(ws && promo);
+          // Pending Approval: info complete but either card not yet approved
+          matchesStatus = infoComplete && (!ws || !promo);
+        } else if (statusFilter === 'cards_approved') {
+          // Ready to Publish: speaker card approved, not yet live
+          matchesStatus = infoComplete && ws && !embedded;
+        } else if (statusFilter === 'published') {
+          matchesStatus = embedded;
         } else {
           matchesStatus = effectiveStatus === statusFilter;
         }
@@ -264,6 +274,16 @@ export default function SpeakerModule() {
 
   const isCardBuilder = activeTab === "promo-card-builder" || activeTab === "website-card-builder";
 
+  // Always derive the panel speaker from the live list so it reflects approval changes immediately
+  const panelSpeaker = selectedSpeaker
+    ? speakerList.find(s => s.id === selectedSpeaker.id) ?? selectedSpeaker
+    : null;
+
+  const handleBadgeClick = (speaker: any, view: PanelView) => {
+    setSelectedSpeaker(speaker);
+    setPanelView(view);
+  };
+
   return (
     <div className="space-y-0">
       {/* Tabs Navigation — hidden when card builder is active */}
@@ -296,7 +316,7 @@ export default function SpeakerModule() {
 
       {/* Speakers Tab Content */}
       {activeTab === "speakers" && (
-        <div className="space-y-6 pt-6">
+        <div className="space-y-4 pt-6">
           {id && (
             <GettingStartedChecklist
               eventId={id}
@@ -316,34 +336,61 @@ export default function SpeakerModule() {
               </Button>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setShareOpen(true)}>
-                <Share2 className="h-3.5 w-3.5" />Share Speaker List
-              </Button>
-              <ShareDialog open={shareOpen} onOpenChange={setShareOpen} />
               <HelpTip title="How speakers work" side="bottom" align="end">
-                <p>Add speakers manually or move them in from <span className="font-medium text-foreground">Applications</span>. Send each one the intake form link so they can submit their headshot, bio, and logo.</p>
-                <p>Once submitted, open their profile to approve their <span className="font-medium text-foreground">speaker card</span> and <span className="font-medium text-foreground">social card</span>, then toggle them live in <span className="font-medium text-foreground">Embed</span>.</p>
+                <p>Add speakers manually or accept them from <span className="font-medium text-foreground">Applications</span>. Send each one their intake form to collect a headshot, bio, and logo.</p>
+                <p>Once submitted, approve their <span className="font-medium text-foreground">speaker card</span> and <span className="font-medium text-foreground">social card</span> from their profile, then publish them live via <span className="font-medium text-foreground">Speaker Wall</span>.</p>
               </HelpTip>
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setShareOpen(true)}>
+                <Share2 className="h-3.5 w-3.5" />Share All Speakers
+              </Button>
+              <ShareDialog
+                open={shareOpen}
+                onOpenChange={setShareOpen}
+                title="Share All Speakers"
+                description="Give teammates access to view or manage speakers for this event."
+              />
             </div>
           </div>
-          <div className="rounded-lg border border-border overflow-hidden">
-            <SpeakersTable
-              speakers={filteredSpeakers}
-              isLoading={isLoading}
-              eventId={id}
-              selectedTab={activeTab}
-              formConfig={formConfig}
-              websiteCardConfigured={!!websiteCardConfig}
-              promoCardConfigured={!!promoCardConfig}
-              searchQuery={searchQuery}
-              setSearchQuery={setSearchQuery}
-              statusFilter={statusFilter}
-              setStatusFilter={setStatusFilter}
-              sortBy={sortBy}
-              setSortBy={setSortBy}
-              totalCount={totalCount}
-              pendingCount={pendingCount}
-            />
+
+          {/* Split layout: table + persistent quick panel */}
+          <div className="flex gap-4 items-start">
+            <div className="flex-1 min-w-0 rounded-lg border border-border overflow-hidden">
+              <SpeakersTable
+                speakers={filteredSpeakers}
+                isLoading={isLoading}
+                eventId={id}
+                selectedTab={activeTab}
+                formConfig={formConfig}
+                websiteCardConfigured={!!websiteCardConfig}
+                promoCardConfigured={!!promoCardConfig}
+                searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
+                statusFilter={statusFilter}
+                setStatusFilter={setStatusFilter}
+                sortBy={sortBy}
+                setSortBy={setSortBy}
+                totalCount={totalCount}
+                pendingCount={pendingCount}
+                onBadgeClick={handleBadgeClick}
+                selectedSpeakerId={selectedSpeaker?.id}
+              />
+            </div>
+
+            {/* Quick panel — always visible, blank until a badge is clicked */}
+            <div className="w-[600px] shrink-0 rounded-lg border border-border overflow-hidden sticky top-4 max-h-[calc(100vh-140px)]">
+              {panelSpeaker && panelView ? (
+                <SpeakerQuickPanel
+                  speaker={panelSpeaker}
+                  eventId={id!}
+                  view={panelView}
+                  onClose={() => { setSelectedSpeaker(null); setPanelView(null); }}
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center p-10 text-center min-h-[200px]">
+                  <p className="text-sm text-muted-foreground">Click a status badge to quick-view a speaker</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

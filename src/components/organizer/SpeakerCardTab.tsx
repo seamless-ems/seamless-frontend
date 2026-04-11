@@ -78,6 +78,13 @@ export default function SpeakerCardTab({ type, s, isApproved, canApprove, onTogg
 
   return (
     <div className="space-y-5">
+      {/* Descriptor */}
+      <p className="text-sm text-muted-foreground">
+        {type === 'website'
+          ? 'The branded card shown on your Speaker Wall. Approve it here, then publish the speaker from the Speaker Wall view.'
+          : 'A branded social image for this speaker. Approve it to enable download.'}
+      </p>
+
       {/* Actions row */}
       <div className="flex items-center justify-between">
           <div>
@@ -151,7 +158,7 @@ export default function SpeakerCardTab({ type, s, isApproved, canApprove, onTogg
                 </AlertDialogAction>
                 {onApproveAndPublish && (
                   <AlertDialogAction onClick={handleConfirmAndPublish} disabled={loading}>
-                    Approve & Publish to Wall
+                    Approve & Publish to Speaker Wall
                   </AlertDialogAction>
                 )}
               </>

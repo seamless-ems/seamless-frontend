@@ -13,7 +13,7 @@ type Props = {
   uploadingHeadshot: boolean;
   uploadingLogo: boolean;
   setCropImageUrl: (url: string | null) => void;
-  setCropType: (t: "headshot" | "logo" | null) => void;
+  setCropType: (t: string | null) => void;
   customFilePreviews?: Record<string, string | null>;
   onCustomFileSelected?: (fieldId: string, file: File) => void;
 };
@@ -94,7 +94,7 @@ export default function Uploads(props: Props) {
     onCustomFileSelected,
   } = props;
 
-  const makeImageHandler = (type: "headshot" | "logo") => (e: React.ChangeEvent<HTMLInputElement>) => {
+  const makeImageHandler = (type: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!["image/png", "image/jpeg"].includes(file.type)) {
@@ -109,6 +109,9 @@ export default function Uploads(props: Props) {
     };
     reader.readAsDataURL(file);
   };
+
+  // Fields that should go through the crop dialog (logos and headshots)
+  const CROP_FIELD_IDS = new Set(["headshot", "company_logo", "company_logo_white"]);
 
   const hasHeadshot = fileFields.some(f => f.id === "headshot");
   const hasLogo = fileFields.some(f => f.id === "company_logo");
@@ -168,6 +171,7 @@ export default function Uploads(props: Props) {
           const preview = customFilePreviews?.[field.id] ?? null;
           const isImagePreview = preview?.startsWith("data:image") || false;
           const configField = formConfig.find(f => f.id === field.id);
+          const usesCropper = CROP_FIELD_IDS.has(field.id);
           return (
             <UploadRow
               key={field.id}
@@ -190,7 +194,7 @@ export default function Uploads(props: Props) {
                     accept="image/png,image/jpeg"
                     className="hidden"
                     id={`custom-file-${field.id}`}
-                    onChange={(e) => {
+                    onChange={usesCropper ? makeImageHandler(field.id) : (e) => {
                       const file = e.target.files?.[0];
                       if (!file) return;
                       if (!["image/png", "image/jpeg"].includes(file.type)) {

@@ -22,6 +22,14 @@ Rules for every agent that touches this file:
 
 ---
 
+## Language consistency — canonical terms
+Use these exact terms everywhere (UI labels, tooltips, dialogs, HelpTips, copy):
+- **Speaker Wall** — not "Embed", not "Wall", not "Speaker Wall Embed" (the tab, the feature, the published output)
+- **Speaker Card** — the website embed card
+- **Social Card** — the downloadable social image
+- **Speaker Wall embed** — only when referring specifically to the embed code/snippet itself
+- **TODO: full language sweep pending** — "Embed" still appears in various tooltips, dialog copy, and comments. Do not fix ad-hoc; sweep all at once when instructed.
+
 ## Working rules
 - **CardBuilder:** frontend and backend rendering must match exactly. No frontend-only visual styles (e.g. text stroke) unless also in the backend HTML renderer. See `example-speaker-website-card.html` and `corresponding-config-speaker-website-card.json`.
 - **Frontend-only:** no backend changes. Flag gaps verbally and ask the user — only James writes to `API_GAPS.md`.

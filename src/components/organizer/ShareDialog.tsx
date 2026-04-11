@@ -32,10 +32,14 @@ const ROLE_LABELS: Record<Role, string> = {
 export default function ShareDialog({
   open,
   onOpenChange,
-  eventName,
+  title = "Share",
+  description = "Give teammates access to view or manage this content.",
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  eventName?: string;
+  title?: string;
+  description?: string;
 }) {
   const [emailInput, setEmailInput] = useState("");
   const [pendingRole, setPendingRole] = useState<Role>("viewer");
@@ -71,8 +75,8 @@ export default function ShareDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px] p-0 gap-0 overflow-hidden">
         <DialogHeader className="px-6 pt-6 pb-4 border-b border-border">
-          <DialogTitle className="text-base font-semibold">Share this page</DialogTitle>
-          <p className="text-xs text-muted-foreground mt-0.5">Speakers list only — no access to other parts of the event.</p>
+          <DialogTitle className="text-base font-semibold">{title}</DialogTitle>
+          <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
         </DialogHeader>
 
         <div className="px-6 py-5 space-y-5">
@@ -99,7 +103,7 @@ export default function ShareDialog({
                 </SelectContent>
               </Select>
               <Button size="sm" onClick={addShare} disabled={!emailInput.trim().includes("@")}>
-                Invite
+                Add
               </Button>
             </div>
           </div>
@@ -140,6 +144,8 @@ export default function ShareDialog({
           )}
 
           {/* General access */}
+          <div className="space-y-1.5">
+          <p className="text-xs text-muted-foreground">General access</p>
           <div className="flex items-center gap-3 rounded-lg border border-border px-4 py-3">
             {linkAccess === "anyone"
               ? <Globe className="h-4 w-4 text-primary shrink-0" />
@@ -173,6 +179,7 @@ export default function ShareDialog({
                 </>
               )}
             </div>
+          </div>
           </div>
         </div>
 

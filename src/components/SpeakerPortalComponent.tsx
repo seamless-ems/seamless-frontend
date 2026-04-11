@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Check, Edit, X } from "lucide-react";
+import { ArrowLeft, Check, Edit, Share2, X } from "lucide-react";
+import ShareDialog from "@/components/organizer/ShareDialog";
 import { Speaker } from "@/types/event";
 import { getJson, updateSpeaker, uploadFile, getFormConfigForEvent } from "@/lib/api";
 import { ImageCropDialog } from "@/components/ImageCropDialog";
@@ -36,7 +37,6 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
 
   const activeTab = location.pathname.endsWith('/speaker-card') ? 'speaker-card'
     : location.pathname.endsWith('/social-card') ? 'social-card'
-    : location.pathname.endsWith('/content') ? 'content'
     : 'info';
 
   const { data: speaker, isLoading } = useQuery<Speaker | null>({
@@ -121,6 +121,7 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
   const [uploadingHeadshot, setUploadingHeadshot] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [updatingAppStatus, setUpdatingAppStatus] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const headshotInputRef = useRef<HTMLInputElement | null>(null);
   const logoInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -270,6 +271,20 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
           </>
         )}
         <div className="flex-1" />
+        {isOrganizerView && (
+          <>
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setShareOpen(true)}>
+              <Share2 className="h-3.5 w-3.5" />
+              Share Speaker
+            </Button>
+            <ShareDialog
+              open={shareOpen}
+              onOpenChange={setShareOpen}
+              title="Share Speaker"
+              description="Give teammates access to view or manage this speaker's profile and files."
+            />
+          </>
+        )}
         {isOrganizerView && isApplication && s?.callForSpeakersStatus !== 'approved' && (
           <div className="flex items-center gap-2">
             {s?.callForSpeakersStatus === 'rejected' ? (
@@ -298,7 +313,7 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
       <div className="border-b border-border bg-card/50 px-6 shrink-0">
         <div className="flex gap-6">
           <button onClick={() => navigate(baseSpeakerPath, { replace: true })} className={tabClass('info')}>
-            {isApplication ? 'Application' : 'Info'}
+            {isApplication ? 'Application' : 'Info & Content'}
           </button>
           {!isApplication && (
             <>
@@ -308,16 +323,13 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
               <button onClick={() => navigate(`${baseSpeakerPath}/social-card`, { replace: true })} className={tabClass('social-card')}>
                 Social Card
               </button>
-              <button onClick={() => navigate(`${baseSpeakerPath}/content`, { replace: true })} className={tabClass('content')}>
-                Content
-              </button>
             </>
           )}
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto">
-        <div className="max-w-5xl mx-auto px-6 py-6">
+      <div className={`flex-1 overflow-auto${activeTab === 'speaker-card' || activeTab === 'social-card' ? ' bg-white' : ''}`}>
+        <div className={activeTab === 'speaker-card' || activeTab === 'social-card' ? 'px-6 py-6' : 'max-w-7xl mx-auto px-6 py-6'}>
 
           {activeTab === 'info' && (() => {
             const fieldEnabled = (id: string) =>
@@ -347,13 +359,21 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
               reader.readAsDataURL(file);
             };
 
-            const customTextFields = configFields.filter(f => f.custom && f.enabled && f.type !== 'file');
+            // All enabled fields not in the hardcoded core set
+            const CORE_IDS = new Set(['first_name', 'last_name', 'company_role', 'company_name', 'email', 'linkedin', 'bio', 'headshot', 'company_logo']);
+            // Inline: text/url/email/radio/checkbox fields shown in the 2-col grid
+            const extraInlineFields = configFields.filter(f => f.enabled && !CORE_IDS.has(f.id) && f.type !== 'file' && f.type !== 'textarea');
+            // Block: textarea fields shown as full-width blocks (like bio)
+            const extraBlockFields = configFields.filter(f => f.enabled && !CORE_IDS.has(f.id) && f.type === 'textarea');
+            // Extra file fields — images (logo white) shown in right column, others as download links
+            const extraFileFields = configFields.filter(f => f.enabled && f.type === 'file' && !CORE_IDS.has(f.id));
             const getCustomValue = (field: any) => {
               const cf = s?.customFields || {};
               return cf[field.id] || cf[field.id.replace(/_/g, '')] || null;
             };
 
             return (
+              <div className={!isApplication ? 'grid grid-cols-[55%_45%] gap-6 items-start' : ''}>
               <div className="rounded-lg border border-border overflow-hidden">
                 <div className="px-6 py-4 bg-muted/30 border-b border-border flex items-center justify-between">
                   <p className="text-sm font-medium text-foreground">{isApplication ? 'Application Details' : 'Speaker Information'}</p>
@@ -371,8 +391,13 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
                       {fieldEnabled('company_name') && <Field label="Company" value={s?.companyName} />}
                       {fieldEnabled('email') && <Field label="Email" value={s?.email} href={s?.email ? `mailto:${s.email}` : undefined} />}
                       {fieldEnabled('linkedin') && s?.linkedin && <Field label="LinkedIn" value={s.linkedin} href={s.linkedin} />}
-                      {customTextFields.map(field => (
-                        <Field key={field.id} label={field.label} value={getCustomValue(field)} />
+                      {extraInlineFields.map(field => (
+                        <Field
+                          key={field.id}
+                          label={field.label}
+                          value={getCustomValue(field)}
+                          href={field.type === 'url' ? getCustomValue(field) ?? undefined : undefined}
+                        />
                       ))}
                     </div>
 
@@ -390,9 +415,22 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
                       </div>
                     )}
 
+                    {extraBlockFields.map(field => {
+                      const val = getCustomValue(field);
+                      return (
+                        <div key={field.id} className="pt-4 border-t border-border">
+                          <p className="text-xs font-medium text-muted-foreground mb-1.5">{field.label}</p>
+                          <p className="text-sm text-foreground leading-relaxed">
+                            {val || <span className="text-muted-foreground/40">—</span>}
+                          </p>
+                        </div>
+                      );
+                    })}
+
+                    {isOrganizerView && (
                     <div className="pt-4 border-t border-border">
                       <div className="flex items-center justify-between mb-1.5">
-                        <p className="text-xs font-medium text-muted-foreground">Internal Notes</p>
+                        <p className="text-xs font-medium text-muted-foreground">Internal Notes <span className="font-normal opacity-60">(not visible to speaker)</span></p>
                         <button
                           className="text-xs text-primary hover:underline"
                           onClick={() => { setInternalNotes(s?.internalNotes || ''); setNotesOpen(true); }}
@@ -404,9 +442,10 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
                         {s?.internalNotes || <span className="text-muted-foreground/40">No notes added</span>}
                       </p>
                     </div>
+                    )}
                   </div>
 
-                  {(fieldEnabled('headshot') || fieldEnabled('company_logo')) && (
+                  {(fieldEnabled('headshot') || fieldEnabled('company_logo') || extraFileFields.length > 0) && (
                   <div className="w-[200px] shrink-0 px-6 py-6 flex flex-col items-center gap-6">
                     {fieldEnabled('headshot') && (
                     <div className="flex flex-col items-center gap-1.5 w-full">
@@ -447,9 +486,49 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
                       <input ref={logoInputRef} type="file" accept="image/png,image/jpeg" className="hidden" onChange={makeFileHandler('logo')} />
                     </div>
                     )}
+
+                    {extraFileFields.map(field => {
+                      const val = getCustomValue(field);
+                      const isImage = field.id === 'company_logo_white' || (val && /\.(png|jpg|jpeg|gif|webp|svg)(\?|$)/i.test(val));
+                      const isDarkBg = field.id === 'company_logo_white';
+                      return (
+                        <div key={field.id} className="flex flex-col items-center gap-1.5 w-full">
+                          <p className="text-xs font-medium text-muted-foreground self-start mb-1">{field.label}</p>
+                          {isImage ? (
+                            <div
+                              className="w-full h-[64px] rounded-lg border border-border flex items-center justify-center p-2.5"
+                              style={{ background: isDarkBg ? '#1f2937' : undefined }}
+                            >
+                              {val
+                                ? <img src={val} alt={field.label} className="max-w-full max-h-full object-contain" />
+                                : <span className="text-xs text-muted-foreground/50 text-center leading-tight">Not uploaded</span>
+                              }
+                            </div>
+                          ) : (
+                            <div className="w-full rounded-lg border border-border bg-muted/20 px-3 py-2">
+                              {val
+                                ? <a href={val} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">Download file</a>
+                                : <span className="text-xs text-muted-foreground/50">Not uploaded</span>
+                              }
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                   )}
                 </div>
+              </div>
+              {!isApplication && (
+                <div className="rounded-lg border border-border overflow-hidden">
+                  <div className="px-6 py-4 bg-muted/30 border-b border-border">
+                    <p className="text-sm font-medium text-foreground">Speaker Files</p>
+                  </div>
+                  <div className="px-6 py-5">
+                    <SpeakerContentTab eventId={id!} speakerId={spkId!} showApprovals={isOrganizerView} />
+                  </div>
+                </div>
+              )}
               </div>
             );
           })()}
@@ -475,10 +554,6 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
               onToggleApproval={handlePromoApproval}
               showApprovals={isOrganizerView}
             />
-          )}
-
-          {activeTab === 'content' && (
-            <SpeakerContentTab eventId={id!} speakerId={spkId!} showApprovals={isOrganizerView} />
           )}
 
         </div>

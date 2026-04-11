@@ -27,10 +27,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  MapPin,
-  CheckCircle,
-} from "lucide-react";
+import { MapPin } from "lucide-react";
 import { useState } from "react";
 import React from "react";
 import Uploads from "@/components/speaker/Uploads";
@@ -92,7 +89,10 @@ function buildDynamicSchema(fields: FormFieldConfig[]): z.ZodSchema {
     shape[field.id] = fieldSchema;
   });
 
-  return z.object(shape);
+  // passthrough preserves fields that aren't in the initial schema (e.g. talk_title,
+  // talk_description) — the form config loads async so useForm initialises before
+  // those fields are enabled, and Zod's default behaviour strips unknown keys.
+  return z.object(shape).passthrough();
 }
 
 export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intake" | "call-for-speakers" } = {}) {
@@ -106,14 +106,13 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
   const [customFiles, setCustomFiles] = useState<Record<string, File | null>>({});
   const [customFilePreviews, setCustomFilePreviews] = useState<Record<string, string | null>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSubmitted, setIsSubmitted] = useState(false);
   const [formConfig, setFormConfig] = useState<FormFieldConfig[]>(DEFAULT_FIELDS);
   const [formTitle, setFormTitle] = useState<string | null>(null);
   const [formSubtitle, setFormSubtitle] = useState<string | null>(null);
   const [showFormTitle, setShowFormTitle] = useState<boolean>(true);
   const [missingFormDialogOpen, setMissingFormDialogOpen] = useState<boolean>(false);
   const [cropImageUrl, setCropImageUrl] = useState<string | null>(null);
-  const [cropType, setCropType] = useState<"headshot" | "logo" | null>(null);
+  const [cropType, setCropType] = useState<string | null>(null);
   const [formName, setFormName] = useState<string>("Speaker Information");
   const [uploadingHeadshot, setUploadingHeadshot] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
@@ -312,18 +311,22 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
   const handleCropComplete = async (croppedBlob: Blob) => {
     try {
       const isHeadshot = cropType === "headshot";
-      
+      const isLogo = cropType === "logo";
+
       // Convert blob to file and preserve original mime/extension when possible
       const mime = (croppedBlob as Blob & { type?: string }).type || "image/jpeg";
       const rawExt = mime.includes("/") ? mime.split("/")[1] : "jpeg";
       const ext = rawExt.split("+")[0] === "jpeg" ? "jpg" : rawExt.split("+")[0];
       const fileName = `${cropType}.${ext}`;
       const file = new File([croppedBlob], fileName, { type: mime });
-      
+
       if (isHeadshot) {
         setHeadshot(file);
-      } else {
+      } else if (isLogo) {
         setCompanyLogo(file);
+      } else if (cropType) {
+        // Custom image field (e.g. company_logo_white)
+        setCustomFiles((prev) => ({ ...prev, [cropType]: file }));
       }
 
       // Create preview
@@ -331,15 +334,18 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
       reader.onloadend = () => {
         if (isHeadshot) {
           setHeadshotPreview(reader.result as string);
-        } else {
+        } else if (isLogo) {
           setCompanyLogoPreview(reader.result as string);
+        } else if (cropType) {
+          setCustomFilePreviews((prev) => ({ ...prev, [cropType]: reader.result as string }));
         }
-        toast.success(`${isHeadshot ? "Headshot" : "Company logo"} ready to submit`);
+        const label = isHeadshot ? "Headshot" : isLogo ? "Company logo" : formConfig.find(f => f.id === cropType)?.label ?? "Image";
+        toast.success(`${label} ready to submit`);
       };
       reader.readAsDataURL(file);
 
     } catch (err: any) {
-      toast.error(`Failed to process ${cropType}`);
+      toast.error(`Failed to process image`);
     } finally {
       setCropImageUrl(null);
       setCropType(null);
@@ -483,11 +489,11 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
       if (isEditing && speakerId) {
         await updateSpeaker(eventId, speakerId, payload);
         toast.success("Speaker updated successfully!");
-        navigate(`/organizer/event/${eventId}/speakers`);
       } else {
         await createSpeakerIntake(eventId, payload);
-        setIsSubmitted(true);
+        toast.success("Submission received successfully.");
       }
+      navigate(`/organizer/event/${eventId}/speakers`);
     } catch (e) {
       
       toast.error(String(e));
@@ -523,31 +529,7 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
               {formSubtitle && <p className="text-sm text-muted-foreground">{formSubtitle}</p>}
             </div>
           )}
-          {/* Success Screen */}
-          {isSubmitted ? (
-            <div className="flex flex-col items-center justify-center min-h-screen bg-background px-4">
-              <div className="w-full max-w-md space-y-6 text-center">
-                <div className="flex justify-center">
-                  <div className="h-20 w-20 rounded-full bg-green-100 dark:bg-green-950 flex items-center justify-center">
-                    <CheckCircle className="h-10 w-10 text-green-600 dark:text-green-400" />
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  <h2 className="text-3xl font-bold text-foreground">
-                    Thank You!
-                  </h2>
-                  <p className="text-base text-muted-foreground leading-relaxed">
-                    Your information has been successfully submitted.
-                  </p>
-                </div>
-                <div className="pt-6">
-                  <p className="text-xs text-muted-foreground">Powered by Seamless Events</p>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="bg-card rounded-lg border border-border p-8 space-y-6">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="bg-card rounded-lg border border-border p-8 space-y-6">
                 <Form {...form}>
                   {/* Personal Details */}
                   {personalFields.length > 0 && (
@@ -743,7 +725,7 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
                     imageUrl={cropImageUrl}
                     aspectRatio={cropType === "headshot" ? 1 : NaN}
                     onCropComplete={handleCropComplete}
-                    title={cropType === "headshot" ? "Crop Headshot" : "Crop Company Logo"}
+                    title={cropType === "headshot" ? "Crop Headshot" : `Crop ${formConfig.find(f => f.id === cropType)?.label ?? "Logo"}`}
                     cropShape={(() => {
                       // Default fallbacks
                       if (cropType === "headshot") {
@@ -768,8 +750,6 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
               </form>
 
               <p className="text-xs text-muted-foreground text-center">Powered by Seamless Events</p>
-            </>
-          )}
         </div>
       </div>
 

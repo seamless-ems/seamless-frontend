@@ -76,19 +76,26 @@ export default function EmbedBuilder({ eventId }: { eventId: string | undefined 
   return (
     <div className="space-y-4 pt-6">
       {/* Info banner */}
-      <div className="rounded-lg border border-secondary/60 bg-secondary/30 px-5 py-4 flex items-start gap-4">
+      <div className="rounded-lg border border-secondary/60 bg-secondary/30 px-5 py-4 flex items-center gap-4">
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-foreground mb-0.5">Speaker wall for your website</p>
+          <p className="text-sm font-medium text-foreground mb-0.5">Embed your Speaker Wall</p>
           <p className="text-sm text-muted-foreground">
-            Paste the embed code into your site once — toggle speakers on or off any time and it updates live.{" "}
-            Speakers appear here once their cards are approved in the{" "}
-            <Link to={`/organizer/event/${eventId}/speakers`} className="text-foreground underline underline-offset-2 hover:text-primary transition-colors">Speakers</Link> tab.
+            Paste the code into your website once — toggle speakers on or off here and it updates live.{" "}
+            Only speakers with an approved <strong className="text-foreground font-medium">Speaker Card</strong> appear in this list.
           </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0 pt-0.5">
+        <div className="flex items-center gap-2 shrink-0">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 h-8"
+            onClick={() => window.open(embedUrl, "_blank", "noopener")}
+          >
+            <ExternalLink className="h-3.5 w-3.5" />Preview
+          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-1.5 h-8">
+              <Button size="sm" className="gap-1.5 h-8">
                 {copiedEmbed
                   ? <><Check className="h-3.5 w-3.5" />Copied</>
                   : <><Copy className="h-3.5 w-3.5" />Copy Embed Code</>}
@@ -105,16 +112,9 @@ export default function EmbedBuilder({ eventId }: { eventId: string | undefined 
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-1.5 h-8"
-            onClick={() => window.open(embedUrl, "_blank", "noopener")}
-          >
-            <ExternalLink className="h-3.5 w-3.5" />Preview
-          </Button>
-          <HelpTip title="Speaker wall embed" side="bottom" align="end">
-            <p>Paste the code once — then toggle speakers on or off here and your site updates instantly. Only speakers with approved cards appear in this list.</p>
+          <HelpTip title="How Speaker Wall works" side="bottom" align="end">
+            <p>Toggle speakers on or off — your embedded wall updates instantly, no code changes needed.</p>
+            <p>Only speakers with an approved <span className="font-medium text-foreground">Speaker Card</span> appear in this list — Social Card approval is not required.</p>
           </HelpTip>
         </div>
       </div>

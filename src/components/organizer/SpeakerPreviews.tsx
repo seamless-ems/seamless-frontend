@@ -17,6 +17,7 @@ export default function SpeakerPreviews({ s, type }: Props) {
   const [userZoom, setUserZoom] = useState(1.0);
 
   const outerRef = useRef<HTMLDivElement | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
   const scaleRef = useRef<HTMLDivElement | null>(null); // always in DOM — iframe appended here
   const controllerRef = useRef<AbortController | null>(null);
   const appendedIframes = useRef<HTMLIFrameElement[]>([]);
@@ -126,8 +127,36 @@ export default function SpeakerPreviews({ s, type }: Props) {
   const displayHeight = Math.round(cardH * scale);
   const scalePct = Math.round(scale * 100);
 
+  // When zoomed wider than the container, centre the scroll position
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || displayWidth <= containerWidth) return;
+    el.scrollLeft = (displayWidth - containerWidth) / 2;
+  }, [displayWidth, containerWidth]);
+
   return (
-    <div ref={outerRef} className="w-full rounded-lg border border-border bg-white">
+    <div ref={outerRef} className="w-full">
+      {/* Zoom controls — top bar */}
+      {!loading && !error && cardDims && (
+        <div className="flex items-center justify-end gap-1 pb-3">
+          <button
+            onClick={() => setUserZoom(z => Math.max(+(z - 0.25).toFixed(2), 0.25))}
+            className="h-7 w-7 flex items-center justify-center rounded hover:bg-muted transition-colors"
+            title="Zoom out"
+          >
+            <ZoomOut className="h-3.5 w-3.5 text-muted-foreground" />
+          </button>
+          <span className="text-xs text-muted-foreground w-10 text-center tabular-nums">{scalePct}%</span>
+          <button
+            onClick={() => setUserZoom(z => Math.min(+(z + 0.25).toFixed(2), 3))}
+            className="h-7 w-7 flex items-center justify-center rounded hover:bg-muted transition-colors"
+            title="Zoom in"
+          >
+            <ZoomIn className="h-3.5 w-3.5 text-muted-foreground" />
+          </button>
+        </div>
+      )}
+
       {loading && (
         <div className="p-8 flex items-center justify-center min-h-[200px]">
           <p className="text-sm text-muted-foreground">Loading preview…</p>
@@ -140,21 +169,19 @@ export default function SpeakerPreviews({ s, type }: Props) {
       )}
 
       {/*
-        Scale wrapper — always in DOM so scaleRef is never null when the effect runs.
-        Hidden via display:none while loading/error so the ref stays attached.
-
-        Sizing: the wrapper is (displayWidth × displayHeight) — the VISUAL size of the
-        scaled card. scaleRef is positioned absolutely at native card dimensions and
-        scaled down. Because the transform origin is top-left and the wrapper clips at
-        exactly the visual extent of the content, nothing gets cut off.
+        Scroll wrapper — overflow-x:auto so the card can be scrolled when zoomed
+        beyond the container width. scrollRef lets us centre the scroll position.
+        Scale wrapper inside is always in DOM so scaleRef is never null.
       */}
+      <div ref={scrollRef} style={{ overflowX: 'auto', display: loading || error ? 'none' : 'block' }}>
       <div
         style={{
-          display: loading || error ? 'none' : 'block',
           width: displayWidth,
           height: displayHeight,
           overflow: 'hidden',
           position: 'relative',
+          marginLeft: 'auto',
+          marginRight: 'auto',
         }}
       >
         <div
@@ -170,27 +197,7 @@ export default function SpeakerPreviews({ s, type }: Props) {
           }}
         />
       </div>
-
-      {/* Zoom controls — only shown once card is measured */}
-      {!loading && !error && cardDims && (
-        <div className="flex items-center justify-end gap-1 px-3 py-2 border-t border-border">
-          <button
-            onClick={() => setUserZoom(z => Math.max(+(z - 0.25).toFixed(2), 0.25))}
-            className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted transition-colors"
-            title="Zoom out"
-          >
-            <ZoomOut className="h-3.5 w-3.5 text-muted-foreground" />
-          </button>
-          <span className="text-xs text-muted-foreground w-10 text-center tabular-nums">{scalePct}%</span>
-          <button
-            onClick={() => setUserZoom(z => Math.min(+(z + 0.25).toFixed(2), 3))}
-            className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted transition-colors"
-            title="Zoom in"
-          >
-            <ZoomIn className="h-3.5 w-3.5 text-muted-foreground" />
-          </button>
-        </div>
-      )}
+      </div>
     </div>
   );
 }
