@@ -19,9 +19,10 @@ type Props = {
   onToggleApproval: () => Promise<void>;
   onApproveAndPublish?: () => Promise<void>;
   showApprovals?: boolean;
+  readOnly?: boolean;
 };
 
-export default function SpeakerCardTab({ type, s, isApproved, canApprove, onToggleApproval, onApproveAndPublish, showApprovals = true }: Props) {
+export default function SpeakerCardTab({ type, s, isApproved, canApprove, onToggleApproval, onApproveAndPublish, showApprovals = true, readOnly = false }: Props) {
   const { id: eventId } = useParams();
   const [downloading, setDownloading] = useState(false);
 
@@ -111,7 +112,7 @@ export default function SpeakerCardTab({ type, s, isApproved, canApprove, onTogg
               <Button
                 size="sm"
                 variant={isApproved ? 'outline' : 'default'}
-                disabled={!canApprove || loading}
+                disabled={!canApprove || loading || readOnly}
                 onClick={() => setConfirmOpen(true)}
               >
                 <CheckCircle className="h-3.5 w-3.5 mr-1.5" />

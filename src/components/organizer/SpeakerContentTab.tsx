@@ -103,15 +103,15 @@ function HistorySection({ speakerId, documentId, currentVersion, itemName, onRes
                 </a>
               )}
               {!isCurrent && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 text-xs px-2"
-                  onClick={() => onRestore({ version: v, documentId, itemName })}
-                >
-                  <RotateCcw className="h-3 w-3 mr-1" />Restore
-                </Button>
-              )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 text-xs px-2"
+                    onClick={() => onRestore({ version: v, documentId, itemName })}
+                  >
+                    <RotateCcw className="h-3 w-3 mr-1" />Restore
+                  </Button>
+                )}
             </div>
           </div>
         );
@@ -120,7 +120,7 @@ function HistorySection({ speakerId, documentId, currentVersion, itemName, onRes
   );
 }
 
-export default function SpeakerContentTab({ eventId, speakerId, showApprovals = true }: { eventId: string; speakerId: string; showApprovals?: boolean }) {
+export default function SpeakerContentTab({ eventId, speakerId, showApprovals = true, readOnly = false }: { eventId: string; speakerId: string; showApprovals?: boolean; readOnly?: boolean }) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const currentUserName = user?.name || user?.email || undefined;
@@ -262,12 +262,35 @@ export default function SpeakerContentTab({ eventId, speakerId, showApprovals = 
           {archivedItems.length > 0 && ` · ${archivedItems.length} archived`}
         </p>
         <div className="flex items-center gap-2">
+<<<<<<< HEAD
           {activeItems.length > 0 && (
             <Button variant="outline" size="sm" className="gap-1.5" onClick={handleDownloadAll}>
               <Download className="h-3.5 w-3.5" />Download all
             </Button>
+=======
+          {showApprovals && !readOnly && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-1.5">
+                  {shareCopied
+                    ? <><Check className="h-3.5 w-3.5" />Copied</>
+                    : <><Share2 className="h-3.5 w-3.5" />Share</>}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => copyShare('view')}>
+                  {shareCopied === 'view' ? <Check className="h-3.5 w-3.5 mr-2" /> : <Copy className="h-3.5 w-3.5 mr-2" />}
+                  View only link
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => copyShare('edit')}>
+                  {shareCopied === 'edit' ? <Check className="h-3.5 w-3.5 mr-2" /> : <Copy className="h-3.5 w-3.5 mr-2" />}
+                  Can upload link
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+>>>>>>> e800a76703172befadc57d32b5a8e6f664d368b9
           )}
-          <Button size="sm" className="gap-1.5" onClick={() => setUploadOpen(true)}>
+          <Button size="sm" className="gap-1.5" onClick={() => { if (!readOnly) setUploadOpen(true); }} disabled={readOnly}>
             <Plus className="h-3.5 w-3.5" />Upload file
           </Button>
         </div>
@@ -336,6 +359,7 @@ export default function SpeakerContentTab({ eventId, speakerId, showApprovals = 
                         </button>
                       </td>
                       <td className="px-5 py-3.5">
+<<<<<<< HEAD
                         <div className="flex items-center gap-0.5">
                           {url && (
                             <a
@@ -373,6 +397,39 @@ export default function SpeakerContentTab({ eventId, speakerId, showApprovals = 
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
+=======
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button className="text-muted-foreground/40 hover:text-muted-foreground transition-colors p-1 rounded hover:bg-muted">
+                              <MoreVertical className="h-4 w-4" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            {url && (
+                              <DropdownMenuItem asChild>
+                                <a href={url} download>
+                                  <Download className="h-3.5 w-3.5 mr-2" />Download
+                                </a>
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuItem onClick={() => {
+                              if (readOnly) return;
+                              setReplacing(item);
+                              replaceInputRef.current?.click();
+                            }} disabled={readOnly}>
+                              <Upload className="h-3.5 w-3.5 mr-2" />Replace
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              onClick={() => { if (!readOnly) setArchiving(item); }}
+                              disabled={readOnly}
+                            >
+                              <Archive className="h-3.5 w-3.5 mr-2" />Archive
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+>>>>>>> e800a76703172befadc57d32b5a8e6f664d368b9
                       </td>
                     </tr>
                     {historyOpen && (
@@ -480,7 +537,7 @@ export default function SpeakerContentTab({ eventId, speakerId, showApprovals = 
             <Button variant="outline" onClick={() => { setUploadOpen(false); setUploadName(''); setUploadFileObj(null); }}>
               Cancel
             </Button>
-            <Button disabled={!uploadFileObj || !uploadName.trim() || uploading} onClick={handleUpload}>
+            <Button disabled={readOnly || !uploadFileObj || !uploadName.trim() || uploading} onClick={handleUpload}>
               {uploading ? 'Uploading…' : 'Upload'}
             </Button>
           </div>
@@ -498,9 +555,9 @@ export default function SpeakerContentTab({ eventId, speakerId, showApprovals = 
               The current version of <strong>{replacing?.name ?? 'this file'}</strong> will be saved in history and can be restored at any time. The file name stays the same.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
+            <AlertDialogFooter>
             <AlertDialogCancel onClick={() => { setReplaceFile(null); setReplacing(null); }}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleReplaceConfirm} disabled={uploading}>
+            <AlertDialogAction onClick={handleReplaceConfirm} disabled={uploading || readOnly}>
               {uploading ? 'Replacing…' : 'Yes, replace'}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -518,7 +575,7 @@ export default function SpeakerContentTab({ eventId, speakerId, showApprovals = 
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleArchiveConfirm}>Yes, archive</AlertDialogAction>
+            <AlertDialogAction onClick={handleArchiveConfirm} disabled={readOnly}>Yes, archive</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -534,7 +591,7 @@ export default function SpeakerContentTab({ eventId, speakerId, showApprovals = 
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleRestoreConfirm} disabled={uploading}>
+            <AlertDialogAction onClick={handleRestoreConfirm} disabled={uploading || readOnly}>
               {uploading ? 'Restoring…' : 'Yes, restore'}
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -207,11 +207,11 @@ export function EventCard({ event, index = 0, onDelete }: EventCardProps) {
       </div>
 
           {trialEnded && isOrganizer && !paid && (
-        <div className="mb-4 p-3 rounded-md border-l-4 border-warning bg-warning/5">
+        <div className="mb-4 p-3 rounded-md border-l-4 border-destructive/30 bg-destructive/10">
           <div className="flex items-center justify-between">
-            <div className="text-sm text-warning">Your trial has ended for this event. Upgrade to continue full access.</div>
+            <div className="text-sm text-destructive">Your free trial for this event has ended. Everything is now read-only.</div>
             <Button size="sm" onClick={handlePayNow} disabled={creatingCheckout}>
-              {creatingCheckout ? 'Processing…' : 'Pay now'}
+              {creatingCheckout ? 'Processing…' : 'Upgrade to restore access'}
             </Button>
           </div>
         </div>

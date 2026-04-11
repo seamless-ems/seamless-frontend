@@ -106,6 +106,7 @@ import { ImageCropDialog } from "@/components/ImageCropDialog";
 import ShadowContainer from "@/components/ShadowContainer";
 import { toast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
+import useEventAccess from "@/contexts/EventAccessContext";
 import MissingFormDialog from "@/components/MissingFormDialog";
 import {
   API_BASE,
@@ -222,6 +223,8 @@ export default function CardBuilder({
 
   const [canvasWidth, setCanvasWidth] = useState(600);
   const [canvasHeight, setCanvasHeight] = useState(600);
+
+  const { isReadOnly } = useEventAccess(eventId);
 
   // Test images — preview only, never saved to server
   const [testHeadshot, setTestHeadshot] = useState<string | null>(null);
@@ -807,6 +810,7 @@ export default function CardBuilder({
       // Delete/Backspace: Remove selected element
       if ((e.key === "Delete" || e.key === "Backspace") && selectedElement) {
         e.preventDefault();
+        if (isReadOnly) { toast({ title: "Event is read-only", variant: "destructive" }); return; }
         setConfig((prev) => {
           const newConfig = { ...prev };
           delete newConfig[selectedElement];
@@ -911,6 +915,10 @@ export default function CardBuilder({
   // Save handler — use shared helper to avoid duplication
   const handleSave = useCallback(
     async (silent = false) => {
+      if (isReadOnly) {
+        toast({ title: "Event is read-only", variant: "destructive" });
+        return;
+      }
       // Warn if event logo element is on canvas but no image uploaded
       if (!silent && !skipLogoWarningRef.current && config.eventLogo && !testEventLogo && !config.eventLogo?.url) {
         setMissingLogoDialogOpen(true);
@@ -1079,8 +1087,9 @@ export default function CardBuilder({
   const handleDragStart = (e: React.DragEvent, elementKey: string) =>
     hb_handleDragStart(e, elementKey);
   const handleDragOver = (e: React.DragEvent) => hb_handleDragOver(e);
-  const handleDrop = (e: React.DragEvent) =>
-    hb_handleDrop(e, {
+  const handleDrop = (e: React.DragEvent) => {
+    if (isReadOnly) { toast({ title: "Event is read-only", variant: "destructive" }); return; }
+    return hb_handleDrop(e, {
       ELEMENT_TEMPLATES,
       cardBuilderFields,
       createDynamicElementTemplate,
@@ -1096,13 +1105,15 @@ export default function CardBuilder({
         hb_addToHistory(cfg, { historyIndexRef, setHistory, setHistoryIndex }),
       toast,
     });
+  };
 
   const addElementToCanvas = (
     elementKey: string,
     customPos?: { x: number; y: number },
     customProps?: Record<string, unknown>,
-  ) =>
-    hb_addElementToCanvas(elementKey, {
+  ) => {
+    if (isReadOnly) { toast({ title: "Event is read-only", variant: "destructive" }); return; }
+    return hb_addElementToCanvas(elementKey, {
       ELEMENT_TEMPLATES,
       customPos,
       customProps,
@@ -1118,18 +1129,22 @@ export default function CardBuilder({
         hb_addToHistory(cfg, { historyIndexRef, setHistory, setHistoryIndex }),
       toast,
     });
+  };
 
-  const toggleElement = (elementKey: string) =>
-    hb_toggleElement(elementKey, {
+  const toggleElement = (elementKey: string) => {
+    if (isReadOnly) { toast({ title: "Event is read-only", variant: "destructive" }); return; }
+    return hb_toggleElement(elementKey, {
       config,
       setHasUnsavedChanges,
       setConfig,
       addElementToCanvas,
       toast,
     });
+  };
 
-  const updateElement = (elementKey: string, updates: Partial<ElementConfig>) =>
-    hb_updateElement(elementKey, updates, {
+  const updateElement = (elementKey: string, updates: Partial<ElementConfig>) => {
+    if (isReadOnly) { toast({ title: "Event is read-only", variant: "destructive" }); return; }
+    return hb_updateElement(elementKey, updates, {
       setHasUnsavedChanges,
       setConfig,
       elementRefs,
@@ -1137,6 +1152,7 @@ export default function CardBuilder({
       addToHistory: (cfg: CardConfig) =>
         hb_addToHistory(cfg, { historyIndexRef, setHistory, setHistoryIndex }),
     });
+  };
 
   const applyZoom = (newZoom: number) =>
     hb_applyZoom(newZoom, {
@@ -1226,43 +1242,56 @@ export default function CardBuilder({
   const handleBackgroundUpload = async (
     e: React.ChangeEvent<HTMLInputElement>,
   ) =>
-    hb_handleBackgroundUpload(e, {
-      loadImagePromise,
-      fabricCanvasRef,
-      setCanvasWidth,
-      setCanvasHeight,
-      setZoom,
-      setTemplateUrl,
-      toast,
-    });
+    {
+      if (isReadOnly) { toast({ title: "Event is read-only", variant: "destructive" }); return; }
+      hb_handleBackgroundUpload(e, {
+        loadImagePromise,
+        fabricCanvasRef,
+        setCanvasWidth,
+        setCanvasHeight,
+        setZoom,
+        setTemplateUrl,
+        toast,
+      });
+    }
 
   const handleHeadshotUpload = (e: React.ChangeEvent<HTMLInputElement>) =>
-    hb_handleHeadshotUpload(e, {
-      setCropImageUrl,
-      setCropMode,
-      setCropDialogOpen,
-      toast,
-    });
+    {
+      if (isReadOnly) { toast({ title: "Event is read-only", variant: "destructive" }); return; }
+      hb_handleHeadshotUpload(e, {
+        setCropImageUrl,
+        setCropMode,
+        setCropDialogOpen,
+        toast,
+      });
+    }
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) =>
-    hb_handleLogoUpload(e, {
-      setCropImageUrl,
-      setCropMode,
-      setCropDialogOpen,
-      toast,
-    });
+    {
+      if (isReadOnly) { toast({ title: "Event is read-only", variant: "destructive" }); return; }
+      hb_handleLogoUpload(e, {
+        setCropImageUrl,
+        setCropMode,
+        setCropDialogOpen,
+        toast,
+      });
+    }
 
   const handleEventLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) =>
-    hb_handleEventLogoUpload(e, {
-      setCropImageUrl,
-      setCropMode,
-      setCropDialogOpen,
-      toast,
-    });
+    {
+      if (isReadOnly) { toast({ title: "Event is read-only", variant: "destructive" }); return; }
+      hb_handleEventLogoUpload(e, {
+        setCropImageUrl,
+        setCropMode,
+        setCropDialogOpen,
+        toast,
+      });
+    }
 
   const eventLogoStorageKey = `event-logo-${cardType}-${eventId}`;
 
   const handleCropComplete = async (blob: Blob) => {
+    if (isReadOnly) { toast({ title: "Event is read-only", variant: "destructive" }); return; }
     await hb_handleCropComplete(blob, {
       cropMode,
       setTemplateUrl,
@@ -1290,37 +1319,43 @@ export default function CardBuilder({
 
   // Export PNG at 1:1 scale (resets zoom transform temporarily)
   const handleExport = () =>
-    hb_handleExport({
-      fabricCanvasRef,
-      canvasWidth,
-      canvasHeight,
-      cardType,
-      toast,
-    });
+    {
+      if (isReadOnly) { toast({ title: "Event is read-only", variant: "destructive" }); return; }
+      hb_handleExport({
+        fabricCanvasRef,
+        canvasWidth,
+        canvasHeight,
+        cardType,
+        toast,
+      });
+    }
 
   const handleReset = () =>
-    hb_handleReset({
-      setConfig,
-      setTemplateUrl,
-      setTestHeadshot,
-      setTestLogo,
-      setSelectedElement,
-      setCanvasWidth,
-      setCanvasHeight,
-      setBgColor,
-      setBgGradient,
-      setBgGradientStyle,
-      setBgIsGenerated,
-      setHistory,
-      historyIndexRef,
-      setHistoryIndex,
-      setHasUnsavedChanges,
-      fabricCanvasRef,
-      fileInputRef,
-      headshotInputRef,
-      logoInputRef,
-      toast,
-    });
+    {
+      if (isReadOnly) { toast({ title: "Event is read-only", variant: "destructive" }); return; }
+      hb_handleReset({
+        setConfig,
+        setTemplateUrl,
+        setTestHeadshot,
+        setTestLogo,
+        setSelectedElement,
+        setCanvasWidth,
+        setCanvasHeight,
+        setBgColor,
+        setBgGradient,
+        setBgGradientStyle,
+        setBgIsGenerated,
+        setHistory,
+        historyIndexRef,
+        setHistoryIndex,
+        setHasUnsavedChanges,
+        fabricCanvasRef,
+        fileInputRef,
+        headshotInputRef,
+        logoInputRef,
+        toast,
+      });
+    }
 
   // Reset zoom to 1:1 (toolbar zoom-reset button)
   const handleZoomReset = () => {
@@ -1420,6 +1455,7 @@ export default function CardBuilder({
               </Button>
               <Button
                 onClick={() => {
+                  if (isReadOnly) { toast({ title: "Event is read-only", variant: "destructive" }); return; }
                   setMissingLogoDialogOpen(false);
                   setTimeout(() => eventLogoInputRef.current?.click(), 50);
                 }}
@@ -2232,6 +2268,7 @@ export default function CardBuilder({
               <div className="h-5 w-px bg-border mx-0.5" />
               <Button
                 onClick={() => handleSave()}
+                disabled={isReadOnly}
                 size="sm"
                 variant="outline"
                 className={`relative h-7 text-xs font-semibold ${hasUnsavedChanges ? "border-primary text-primary hover:bg-primary/5" : ""}`}
@@ -2244,6 +2281,7 @@ export default function CardBuilder({
               </Button>
               <Button
                 onClick={handleExport}
+                disabled={isReadOnly}
                 size="sm"
                 variant="default"
                 className="h-7 text-xs"
@@ -2312,7 +2350,7 @@ export default function CardBuilder({
                   <div>
                     <div className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Background image</div>
                     <button
-                      onClick={() => fileInputRef.current?.click()}
+                      onClick={() => { if (isReadOnly) { toast({ title: "Event is read-only", variant: "destructive" }); return; } fileInputRef.current?.click(); }}
                       className={`w-full flex items-center gap-1.5 px-2 py-1.5 rounded border text-xs transition-colors ${templateUrl ? "border-primary/40 bg-primary/5 text-primary" : "border-border hover:bg-accent"}`}
                     >
                       <Upload className="h-3 w-3 shrink-0" />
@@ -3129,7 +3167,7 @@ export default function CardBuilder({
                 </div>
               ) : (
                 <button
-                  onClick={() => headshotInputRef.current?.click()}
+                  onClick={() => { if (isReadOnly) { toast({ title: "Event is read-only", variant: "destructive" }); return; } headshotInputRef.current?.click(); }}
                   className="w-full h-20 flex flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-border hover:border-primary/50 hover:bg-primary/5 transition-colors text-muted-foreground hover:text-primary"
                 >
                   <Upload className="h-4 w-4" />
@@ -3275,6 +3313,7 @@ export default function CardBuilder({
                   <button
                     className={CTX_MENU_BTN}
                     onClick={() => {
+                      if (isReadOnly) { toast({ title: "Event is read-only", variant: "destructive" }); setContextMenu(null); return; }
                       headshotInputRef.current?.click();
                       setContextMenu(null);
                     }}
@@ -3290,6 +3329,7 @@ export default function CardBuilder({
                   <button
                     className={CTX_MENU_BTN}
                     onClick={() => {
+                      if (isReadOnly) { toast({ title: "Event is read-only", variant: "destructive" }); setContextMenu(null); return; }
                       logoInputRef.current?.click();
                       setContextMenu(null);
                     }}

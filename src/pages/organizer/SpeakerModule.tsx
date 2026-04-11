@@ -3,7 +3,8 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { getJson, getFormConfigForEvent, getPromoConfigForEvent } from "@/lib/api";
-import { ArrowLeft, Check, Copy, FileEdit, Share2 } from "lucide-react";
+import { ArrowLeft, Check, Copy, FileEdit, Share2, Download } from "lucide-react";
+import JSZip from "jszip";
 import AddSpeakerDialog from "@/components/organizer/AddSpeakerDialog";
 import ShareDialog from "@/components/organizer/ShareDialog";
 import SpeakerQuickPanel, { type PanelView } from "@/components/organizer/SpeakerQuickPanel";
@@ -32,8 +33,53 @@ export default function SpeakerModule() {
   const [editingForm, setEditingForm] = useState<"speaker-info" | "call-for-speakers" | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
   const [confirmFormLeave, setConfirmFormLeave] = useState(false);
+  const [isDownloadingAll, setIsDownloadingAll] = useState(false);
   const formBuilderRef = useRef<SpeakerFormBuilderHandle>(null);
   
+
+  async function handleDownloadAllAssets() {
+    const assets: { url: string; filename: string }[] = [];
+    for (const speaker of speakerList) {
+      const name = (speaker.name || speaker.email || "speaker").replace(/\s+/g, "-").toLowerCase();
+      const headshotUrl = speaker.headshotDownloadUrl || speaker.headshot || speaker.headshotUrl || speaker.headshot_url || null;
+      const logoUrl = speaker.logoDownloadUrl || speaker.companyLogo || speaker.company_logo || null;
+      if (headshotUrl) assets.push({ url: headshotUrl, filename: `${name}-headshot.jpg` });
+      if (logoUrl) assets.push({ url: logoUrl, filename: `${name}-logo.png` });
+    }
+    if (assets.length === 0) {
+      toast({ title: "No assets to download", description: "None of your speakers have uploaded a headshot or logo yet." });
+      return;
+    }
+    setIsDownloadingAll(true);
+    const zip = new JSZip();
+    let failed = 0;
+    await Promise.all(
+      assets.map(async (asset) => {
+        try {
+          const res = await fetch(asset.url);
+          if (!res.ok) throw new Error("fetch failed");
+          const blob = await res.blob();
+          zip.file(asset.filename, blob);
+        } catch {
+          failed++;
+        }
+      })
+    );
+    const zipBlob = await zip.generateAsync({ type: "blob" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(zipBlob);
+    a.download = `${eventName.replace(/\s+/g, "-").toLowerCase() || "speakers"}-assets.zip`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
+    setIsDownloadingAll(false);
+    if (failed === 0) {
+      toast({ title: `Zipped ${assets.length} asset${assets.length !== 1 ? "s" : ""}` });
+    } else {
+      toast({ title: `Zipped ${assets.length - failed} of ${assets.length} assets`, description: `${failed} failed — check CORS settings.`, variant: "destructive" });
+    }
+  }
 
   // Derive active tab from URL path
   const pathname = location.pathname;
@@ -336,6 +382,16 @@ export default function SpeakerModule() {
               </Button>
             </div>
             <div className="flex items-center gap-2">
+<<<<<<< HEAD
+=======
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setShareOpen(true)}>
+                <Share2 className="h-3.5 w-3.5" />Share Speaker List
+              </Button>
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={handleDownloadAllAssets} disabled={isDownloadingAll || speakerList.length === 0}>
+                <Download className="h-3.5 w-3.5" />{isDownloadingAll ? "Downloading…" : "Download All Assets"}
+              </Button>
+              <ShareDialog open={shareOpen} onOpenChange={setShareOpen} />
+>>>>>>> e800a76703172befadc57d32b5a8e6f664d368b9
               <HelpTip title="How speakers work" side="bottom" align="end">
                 <p>Add speakers manually or accept them from <span className="font-medium text-foreground">Applications</span>. Send each one their intake form to collect a headshot, bio, and logo.</p>
                 <p>Once submitted, approve their <span className="font-medium text-foreground">speaker card</span> and <span className="font-medium text-foreground">social card</span> from their profile, then publish them live via <span className="font-medium text-foreground">Speaker Wall</span>.</p>

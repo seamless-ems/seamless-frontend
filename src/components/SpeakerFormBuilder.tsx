@@ -56,6 +56,7 @@ interface SpeakerFormBuilderProps {
   eventName?: string;
   onBack?: () => void;
   onSave?: (config: FormFieldConfig[]) => void;
+  readOnly?: boolean;
 }
 
 export interface SpeakerFormBuilderHandle {
@@ -121,6 +122,7 @@ const SpeakerFormBuilder = forwardRef<SpeakerFormBuilderHandle, SpeakerFormBuild
   eventName,
   onBack,
   onSave,
+  readOnly = false,
 }, ref) {
   const queryClient = useQueryClient();
   const STALE_TITLES = ["Speaker Information", "Speaker Applications"];
@@ -224,6 +226,7 @@ const SpeakerFormBuilder = forwardRef<SpeakerFormBuilderHandle, SpeakerFormBuild
   const markDirty = () => { if (initializedRef.current) setIsDirty(true); };
 
   const toggleField = (fieldId: string) => {
+    if (readOnly) { toast({ title: 'Event is read-only', variant: 'destructive' }); return; }
     setFields((prev) =>
       prev.map((f) => {
         if (f.id === fieldId) {
@@ -242,6 +245,7 @@ const SpeakerFormBuilder = forwardRef<SpeakerFormBuilderHandle, SpeakerFormBuild
   };
 
   const toggleRequired = (fieldId: string) => {
+    if (readOnly) { toast({ title: 'Event is read-only', variant: 'destructive' }); return; }
     setFields((prev) =>
       prev.map((f) => (f.id === fieldId ? { ...f, required: !f.required } : f)),
     );
@@ -249,6 +253,7 @@ const SpeakerFormBuilder = forwardRef<SpeakerFormBuilderHandle, SpeakerFormBuild
   };
 
   const toggleCardBuilder = (fieldId: string) => {
+    if (readOnly) { toast({ title: 'Event is read-only', variant: 'destructive' }); return; }
     setFields((prev) =>
       prev.map((f) =>
         f.id === fieldId
@@ -260,6 +265,7 @@ const SpeakerFormBuilder = forwardRef<SpeakerFormBuilderHandle, SpeakerFormBuild
   };
 
   const addCustomField = () => {
+    if (readOnly) { toast({ title: 'Event is read-only', variant: 'destructive' }); return; }
     if (!newCustomField.label.trim()) {
       toast({ title: "Label is required", variant: "destructive" });
       return;
@@ -292,12 +298,14 @@ const SpeakerFormBuilder = forwardRef<SpeakerFormBuilderHandle, SpeakerFormBuild
   };
 
   const removeCustomField = (fieldId: string) => {
+    if (readOnly) { toast({ title: 'Event is read-only', variant: 'destructive' }); return; }
     setFields((prev) => prev.filter((f) => f.id !== fieldId));
     toast({ title: "Field removed" });
     markDirty();
   };
 
   const moveField = (index: number, direction: "up" | "down") => {
+    if (readOnly) { toast({ title: 'Event is read-only', variant: 'destructive' }); return; }
     if (
       (direction === "up" && index === 0) ||
       (direction === "down" && index === fields.length - 1)

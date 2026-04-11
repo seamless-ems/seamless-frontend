@@ -10,9 +10,10 @@ type Props = {
   uploadingHeadshot: boolean;
   uploadingLogo: boolean;
   onSelectFile: (fileType: 'headshot' | 'logo', dataUrl: string, file?: File) => void;
+  readOnly?: boolean;
 };
 
-export default function SpeakerAssets({ s, headshotInputRef, logoInputRef, uploadingHeadshot, uploadingLogo, onSelectFile }: Props) {
+export default function SpeakerAssets({ s, headshotInputRef, logoInputRef, uploadingHeadshot, uploadingLogo, onSelectFile, readOnly }: Props) {
   return (
     <>
       <div className="text-center" style={{ minWidth: '150px' }}>
@@ -35,6 +36,7 @@ export default function SpeakerAssets({ s, headshotInputRef, logoInputRef, uploa
           accept="image/png,image/jpeg"
           className="hidden"
           onChange={(e) => {
+            if (readOnly) { e.currentTarget.value = ''; return; }
             const file = e.target.files?.[0];
             if (!file) return;
             const allowed = ["image/png", "image/jpeg"];
@@ -52,8 +54,8 @@ export default function SpeakerAssets({ s, headshotInputRef, logoInputRef, uploa
           variant="outline"
           size="sm"
           className="w-full"
-          onClick={() => headshotInputRef.current?.click()}
-          disabled={uploadingHeadshot}
+          onClick={() => { if (!readOnly) headshotInputRef.current?.click(); }}
+          disabled={uploadingHeadshot || readOnly}
         >
           {uploadingHeadshot ? "Uploading..." : "Replace"}
         </Button>
@@ -79,6 +81,7 @@ export default function SpeakerAssets({ s, headshotInputRef, logoInputRef, uploa
           accept="image/png,image/jpeg"
           className="hidden"
           onChange={(e) => {
+            if (readOnly) { e.currentTarget.value = ''; return; }
             const file = e.target.files?.[0];
             if (!file) return;
             const allowed = ["image/png", "image/jpeg"];
@@ -96,8 +99,8 @@ export default function SpeakerAssets({ s, headshotInputRef, logoInputRef, uploa
           variant="outline"
           size="sm"
           className="w-full"
-          onClick={() => logoInputRef.current?.click()}
-          disabled={uploadingLogo}
+          onClick={() => { if (!readOnly) logoInputRef.current?.click(); }}
+          disabled={uploadingLogo || readOnly}
         >
           {uploadingLogo ? "Uploading..." : "Replace"}
         </Button>

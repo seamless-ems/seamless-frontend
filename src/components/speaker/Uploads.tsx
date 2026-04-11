@@ -16,6 +16,7 @@ type Props = {
   setCropType: (t: string | null) => void;
   customFilePreviews?: Record<string, string | null>;
   onCustomFileSelected?: (fieldId: string, file: File) => void;
+  readOnly?: boolean;
 };
 
 type UploadRowProps = {
