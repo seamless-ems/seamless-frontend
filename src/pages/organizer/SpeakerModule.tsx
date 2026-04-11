@@ -358,10 +358,7 @@ export default function SpeakerModule() {
             <div className="flex items-center gap-2">
               <AddSpeakerDialog eventId={id} eventName={eventName} emailDefaults={emailDefaults} open={addSpeakerOpen} onOpenChange={setAddSpeakerOpen} />
               <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setEditingForm("speaker-info") }>
-                <FileEdit className="h-3.5 w-3.5" />Edit Intake Form
-              </Button>
-              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => handleCopyFormLink('speaker-info')} title="Copy intake form link">
-                <Copy className="h-3.5 w-3.5" />Copy Form Link
+                <FileEdit className="h-3.5 w-3.5" />Edit Speaker Intake Form
               </Button>
             </div>
             <div className="flex items-center gap-2">

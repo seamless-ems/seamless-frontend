@@ -116,13 +116,6 @@ export default function FormsTab({ eventId }: { eventId: string | undefined }) {
             </>
           )}
           <div className="ml-auto flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handleCopyFormLink}>
-              {copiedHeader ? (
-                <><Check className="h-3.5 w-3.5 mr-1.5" />Copied</>
-              ) : (
-                <><Copy className="h-3.5 w-3.5 mr-1.5" />Copy Link</>
-              )}
-            </Button>
             <Button size="sm" onClick={() => formBuilderRef.current?.save()}>
               Save Changes
             </Button>

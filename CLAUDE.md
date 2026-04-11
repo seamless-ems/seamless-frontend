@@ -24,7 +24,7 @@ Rules for every agent that touches this file:
 
 ## Working rules
 - **CardBuilder:** frontend and backend rendering must match exactly. No frontend-only visual styles (e.g. text stroke) unless also in the backend HTML renderer. See `example-speaker-website-card.html` and `corresponding-config-speaker-website-card.json`.
-- **Frontend-only:** no backend changes. Document gaps in `API_GAPS.md` and ask the user.
+- **Frontend-only:** no backend changes. Flag gaps verbally and ask the user — only James writes to `API_GAPS.md`.
 - **Mock data:** only with explicit approval; mark with `// TODO: Replace with API data`.
 - **No completion docs:** never create summary/review/completed files. Update this file in place. Report results verbally.
 - **CSS consistency:**
@@ -164,7 +164,12 @@ Event routes use `:id` (bare UUID). All API calls use this directly.
 ---
 
 ## Mandatory agent check
-Before any API-related changes, read `openapi.json` and verify endpoints, shapes, and flags. Missing fields go in `API_GAPS.md`.
+Before any API-related changes, read `openapi.json` and verify endpoints, shapes, and flags. Report missing fields verbally — only James writes to `API_GAPS.md`.
+
+---
+
+## Screenshots
+When James says "see screenshot", always read: `Screenshot/Screenshot.png` in the project root. No path needed in the message.
 
 ---
 

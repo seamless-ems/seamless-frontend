@@ -33,8 +33,8 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import React from "react";
-const Uploads = React.lazy(() => import("@/components/speaker/Uploads"));
-import type { FormFieldConfig } from "@/components/SpeakerFormBuilder";
+import Uploads from "@/components/speaker/Uploads";
+import { type FormFieldConfig, DEFAULT_FIELDS, mergeWithDefaults } from "@/components/SpeakerFormBuilder";
 import { ImageCropDialog } from "@/components/ImageCropDialog";
 import { useRef } from "react";
 import { generateUuid } from "@/lib/utils";
@@ -44,18 +44,6 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/avif"];
 const DUPLICATE_EMAIL_MESSAGE = "A speaker with this email already exists for this event.";
 
-// Default fields for fallback when no form config exists
-const DEFAULT_FORM_FIELDS: FormFieldConfig[] = [
-  { id: "first_name", label: "First Name", type: "text", required: true, enabled: true },
-  { id: "last_name", label: "Last Name", type: "text", required: true, enabled: true },
-  { id: "email", label: "Email", type: "email", required: true, enabled: true },
-  { id: "company_name", label: "Company Name", type: "text", required: false, enabled: false },
-  { id: "company_role", label: "Role/Title", type: "text", required: false, enabled: false },
-  { id: "bio", label: "Bio", type: "textarea", required: false, enabled: false },
-  { id: "linkedin", label: "LinkedIn URL", type: "text", required: false, enabled: false },
-  { id: "headshot", label: "Headshot", type: "file", required: false, enabled: false },
-  { id: "company_logo", label: "Company Logo", type: "file", required: false, enabled: false },
-];
 
 // Build dynamic Zod schema based on enabled fields from form config
 function buildDynamicSchema(fields: FormFieldConfig[]): z.ZodSchema {
@@ -119,7 +107,7 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
   const [customFilePreviews, setCustomFilePreviews] = useState<Record<string, string | null>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [formConfig, setFormConfig] = useState<FormFieldConfig[]>(DEFAULT_FORM_FIELDS);
+  const [formConfig, setFormConfig] = useState<FormFieldConfig[]>(DEFAULT_FIELDS);
   const [formTitle, setFormTitle] = useState<string | null>(null);
   const [formSubtitle, setFormSubtitle] = useState<string | null>(null);
   const [showFormTitle, setShowFormTitle] = useState<boolean>(true);
@@ -158,13 +146,13 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
         .then((res: any) => {
           if (!mounted) return;
           if (!res || !res.config) {
-            setFormConfig(DEFAULT_FORM_FIELDS);
+            setFormConfig(DEFAULT_FIELDS);
             return;
           }
           try {
             // support legacy array shape or new object shape { fields, metadata }
             if (Array.isArray(res.config)) {
-              setFormConfig(res.config as FormFieldConfig[]);
+              setFormConfig(mergeWithDefaults(res.config as FormFieldConfig[]));
               // read optional metadata from top-level
               setFormTitle((res.title as string) || null);
               setFormSubtitle((res.subtitle as string) || null);
@@ -172,26 +160,26 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
               setShowFormTitle(Boolean(show));
             } else if (typeof res.config === 'object') {
               const cfg = res.config as any;
-              const fieldsFromCfg = Array.isArray(cfg.fields) ? cfg.fields : DEFAULT_FORM_FIELDS;
-              setFormConfig(fieldsFromCfg as FormFieldConfig[]);
+              const fieldsFromCfg = Array.isArray(cfg.fields) ? cfg.fields : DEFAULT_FIELDS;
+              setFormConfig(mergeWithDefaults(fieldsFromCfg as FormFieldConfig[]));
               setFormTitle((cfg.metadata?.title as string) || null);
               setFormSubtitle((cfg.metadata?.subtitle as string) || null);
               setShowFormTitle(typeof cfg.metadata?.showTitle === 'boolean' ? cfg.metadata.showTitle : true);
             } else {
-              setFormConfig(DEFAULT_FORM_FIELDS);
+              setFormConfig(DEFAULT_FIELDS);
             }
           } catch (e) {
-            setFormConfig(DEFAULT_FORM_FIELDS);
+            setFormConfig(DEFAULT_FIELDS);
           }
         })
         .catch((err) => {
           if (err && (err.status === 404 || err?.status === 404)) {
             setMissingFormDialogOpen(true);
           }
-          setFormConfig(DEFAULT_FORM_FIELDS);
+          setFormConfig(DEFAULT_FIELDS);
         });
     }).catch((err) => {
-      setFormConfig(DEFAULT_FORM_FIELDS);
+      setFormConfig(DEFAULT_FIELDS);
     });
 
     return () => { mounted = false; };
@@ -582,6 +570,7 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
                                     <Input className="text-sm" placeholder={field.placeholder ?? `Enter ${field.label.toLowerCase()}`} {...formField} />
                                   </FormControl>
                                   <FormMessage />
+                                  {field.helpText && <p className="text-xs text-muted-foreground whitespace-pre-wrap">{field.helpText}</p>}
                                 </FormItem>
                               )}
                             />
@@ -611,6 +600,7 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
                                   <Input className="text-sm" placeholder={field.placeholder ?? `Enter ${field.label.toLowerCase()}`} {...formField} />
                                 </FormControl>
                                 <FormMessage />
+                                {field.helpText && <p className="text-xs text-muted-foreground whitespace-pre-wrap">{field.helpText}</p>}
                               </FormItem>
                             )}
                           />
@@ -637,6 +627,7 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
                                 <Textarea className="text-sm" placeholder={field.placeholder ?? `Enter ${field.label.toLowerCase()}`} rows={4} {...formField} />
                               </FormControl>
                               <FormMessage />
+                              {field.helpText && <p className="text-xs text-muted-foreground whitespace-pre-wrap">{field.helpText}</p>}
                             </FormItem>
                           )}
                         />
@@ -712,6 +703,7 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
                                             )}
                                 </FormControl>
                                 <FormMessage />
+                                {field.helpText && <p className="text-xs text-muted-foreground whitespace-pre-wrap">{field.helpText}</p>}
                               </FormItem>
                             )}
                           />
@@ -722,27 +714,20 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
 
                   {/* Uploads */}
                   {fileFields.length > 0 && (
-                    <>
-                      {/* Lazy-loaded upload component to keep file smaller */}
-                      <React.Suspense fallback={<div>Loading uploads…</div>}>
-                        {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
-                        {/* @ts-ignore-next-line */}
-                        <Uploads
-                          fileFields={fileFields}
-                          formConfig={formConfig}
-                          headshotPreview={headshotPreview}
-                          companyLogoPreview={companyLogoPreview}
-                          headshotInputRef={headshotInputRef}
-                          logoInputRef={logoInputRef}
-                          uploadingHeadshot={uploadingHeadshot}
-                          uploadingLogo={uploadingLogo}
-                          setCropImageUrl={setCropImageUrl}
-                          setCropType={setCropType}
-                          customFilePreviews={customFilePreviews}
-                          onCustomFileSelected={handleCustomFileSelected}
-                        />
-                      </React.Suspense>
-                    </>
+                    <Uploads
+                      fileFields={fileFields}
+                      formConfig={formConfig}
+                      headshotPreview={headshotPreview}
+                      companyLogoPreview={companyLogoPreview}
+                      headshotInputRef={headshotInputRef}
+                      logoInputRef={logoInputRef}
+                      uploadingHeadshot={uploadingHeadshot}
+                      uploadingLogo={uploadingLogo}
+                      setCropImageUrl={setCropImageUrl}
+                      setCropType={setCropType}
+                      customFilePreviews={customFilePreviews}
+                      onCustomFileSelected={handleCustomFileSelected}
+                    />
                   )}
                 </Form>
                 {/* Crop Dialog */}
