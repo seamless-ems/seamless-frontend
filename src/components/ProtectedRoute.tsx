@@ -17,7 +17,7 @@ export default function ProtectedRoute({ children }: Props) {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/signup" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   // If user hasn't completed onboarding and is not already on the onboarding page, redirect

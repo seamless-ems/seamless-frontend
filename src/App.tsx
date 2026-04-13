@@ -20,7 +20,7 @@ import EventSettings from "./pages/organizer/EventSettings";
 import Support from "./pages/Support";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
-import ResetPassword from "./pages/ResetPassword";
+import FinishSignUp from "./pages/FinishSignUp";
 import ProtectedRoute from "./components/ProtectedRoute";
 import PromoEmbed from "./pages/public/PromoEmbed";
 import PromoCardBuilderPage from "./pages/organizer/PromoCardBuilderPage";
@@ -63,8 +63,9 @@ const App = () => {
               }
             />
             <Route path="/login" element={<Auth />} />
-            <Route path="/signup" element={<Auth />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/signup" element={<Navigate to="/login" replace />} />
+            <Route path="/finish-signup" element={<FinishSignUp />} />
+            {/* Password reset removed: using magic link flow instead */}
             <Route path="/onboarding" element={
               <ProtectedRoute>
                 <Onboarding />

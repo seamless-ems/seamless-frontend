@@ -343,8 +343,16 @@ export function checkFirebaseEmail(body: { email: string }): Promise<{ exists: b
 }
 
 // Trigger password reset email via Firebase-backed endpoint
-export function resetFirebasePassword(body: { email: string }): Promise<any> {
-  return postJson<typeof body, any>(`/auth/firebase/reset-password`, body);
+// Password reset endpoint removed from frontend flow (magic links used instead)
+// export function resetFirebasePassword(body: { email: string }): Promise<any> {
+//   return postJson<typeof body, any>(`/auth/firebase/reset-password`, body);
+// }
+
+// Send a Firebase email sign-in link (magic link). Backend should implement
+// POST /auth/firebase/send-link and accept { email, url } where `url` is the
+// landing page the link should redirect to (e.g. https://app.example.com/finish-signup)
+export function sendFirebaseSignInLink(body: { email: string; url?: string }): Promise<any> {
+  return postJson<typeof body, any>(`/auth/firebase/send-magic-link`, body);
 }
 
 // Integrations

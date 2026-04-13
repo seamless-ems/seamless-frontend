@@ -52,21 +52,29 @@ export default function TrialOverlay() {
 
   const title = trialEnded ? 'Free trial ended' : daysLeft !== null ? `${daysLeft} day${daysLeft === 1 ? '' : 's'} left` : 'Free trial';
   const subtitle = trialEnded
-    ? 'Your free trial for this event has ended. Everything is now read-only.'
+    ? ''
     : daysLeft !== null
       ? 'Upgrade now to keep full access.'
       : 'Upgrade to unlock full features.';
 
   return (
-    <div style={{ zIndex: 9999 }} className="fixed left-6 bottom-6 max-w-sm w-full">
-      <div className={`rounded-lg border p-4 shadow-lg ${trialEnded ? 'bg-destructive/10 border-destructive/30' : 'bg-card border-border'}`}>
+    <div style={{ zIndex: 9999 }} className="fixed right-6 bottom-6 max-w-sm w-full">
+      <div className={`rounded-lg border p-4 shadow-lg ${trialEnded ? 'bg-destructive border-destructive/30' : 'bg-card border-border'}`}>
         <div className="flex items-start gap-4">
           <div className="flex-1">
-            <div className={`text-sm font-semibold ${trialEnded ? 'text-destructive' : 'text-foreground'}`}>{title}</div>
-            <div className={`text-xs mt-1 ${trialEnded ? 'text-destructive/90' : 'text-muted-foreground'}`}>{subtitle}</div>
+            <div className={`text-sm font-semibold ${trialEnded ? 'text-white' : 'text-foreground'}`}>{title}</div>
+            {!trialEnded && (
+              <div className="text-xs mt-1 text-muted-foreground">{subtitle}</div>
+            )}
           </div>
           <div className="flex items-center gap-2">
-            <Button size="sm" onClick={handleUpgrade}>{trialEnded ? 'Upgrade to restore access' : 'Upgrade'}</Button>
+            <Button
+              size="sm"
+              onClick={handleUpgrade}
+              className={trialEnded ? 'bg-white border border-destructive text-destructive hover:bg-white' : undefined}
+            >
+              {trialEnded ? 'Upgrade to restore access' : 'Upgrade'}
+            </Button>
           </div>
         </div>
       </div>

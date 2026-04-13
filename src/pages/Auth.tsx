@@ -5,23 +5,19 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { checkFirebaseEmail, resetFirebasePassword } from "@/lib/api";
+import { checkFirebaseEmail, sendFirebaseSignInLink } from "@/lib/api";
 import { toast } from "sonner";
-import { useLogin, useSignup } from "@/hooks/useAuth";
 import { signInWithGooglePopup } from "@/lib/firebase";
+import { auth } from "@/lib/firebase";
+import { isSignInWithEmailLink, signInWithEmailLink } from "firebase/auth";
 import { isOnboardingCompleted } from "@/lib/onboarding";
 import { useAuth } from "@/contexts/AuthContext";
 
 const loginSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(1),
 });
 
-const signupSchema = z.object({
-  name: z.string().min(1).optional(),
-  email: z.string().email(),
-  password: z.string().min(6),
-});
+// Signup uses same magic-link flow as login; no separate schema required
 
 function GoogleIcon() {
   return (
@@ -35,22 +31,12 @@ function GoogleIcon() {
 }
 
 type LoginValues = z.infer<typeof loginSchema>;
-type SignupValues = z.infer<typeof signupSchema>;
+// SignupValues removed; email-only flow uses LoginValues
 
 function LoginForm({ onSuccess, onEmailChange, initialEmail }: { onSuccess: () => void; onEmailChange?: (email: string) => void; initialEmail?: string }) {
-  const loginMutation = useLogin({
-    onSuccess: () => {
-      toast.success("Signed in");
-      onSuccess();
-    },
-    onError: (err) => {
-      toast.error(String(err));
-    },
-  });
-
   const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: initialEmail || "", password: "" },
+    defaultValues: { email: initialEmail || "" },
   });
 
   const watchedEmail = form.watch("email");
@@ -58,88 +44,42 @@ function LoginForm({ onSuccess, onEmailChange, initialEmail }: { onSuccess: () =
     if (onEmailChange) onEmailChange(String(watchedEmail || ""));
   }, [watchedEmail, onEmailChange]);
 
-  const onSubmit = async (data: LoginValues) => {
+  const handleSend = async (email?: string) => {
+    const e = email || String(form.getValues().email || "").trim();
+    if (!e || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) {
+      toast.error('Enter a valid email to receive a sign-in link');
+      return;
+    }
     try {
-      await loginMutation.mutateAsync({ email: data.email, password: data.password });
-    } catch (err) {}
+      try { window.localStorage.setItem('emailForSignIn', e); } catch (err) {}
+      const url = `${window.location.origin}/finish-signup`;
+      await sendFirebaseSignInLink({ email: e, url });
+      toast.success('Magic link sent — check your email');
+    } catch (err: any) {
+      toast.error(String(err?.message || err || 'Failed to send magic link'));
+    }
   };
 
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+    <form onSubmit={(ev) => { ev.preventDefault(); void handleSend(); }} className="space-y-4">
       <div className="space-y-2">
         <label className="text-sm font-medium">Email</label>
         <Input {...form.register("email")} type="email" placeholder="you@example.com" className="h-12" />
       </div>
 
-      <div className="space-y-2">
-        <label className="text-sm font-medium">Password</label>
-        <Input {...form.register("password")} type="password" placeholder="Enter password" className="h-12" />
-      </div>
-
-      <div className="text-right">
-        <a href="/reset-password" className="text-sm text-primary hover:underline">
-          Forgot password?
-        </a>
-      </div>
-
-      <Button type="submit" variant="outline" className="w-full h-12 border-[1.5px] font-medium" disabled={loginMutation.status === "pending"}>
-        Sign in
+      <Button type="submit" variant="outline" className="w-full h-12 border-[1.5px] font-medium">
+        Send magic link
       </Button>
     </form>
   );
 }
 
-function SignupForm({ onSuccess, onEmailChange, initialEmail }: { onSuccess: () => void; onEmailChange?: (email: string) => void; initialEmail?: string }) {
-  const signupMutation = useSignup({
-    onSuccess: () => {
-      toast.success("Account created");
-      onSuccess();
-    },
-    onError: (err) => {
-      toast.error(String(err));
-    },
-  });
-
-  const form = useForm<SignupValues>({ resolver: zodResolver(signupSchema), defaultValues: { name: "", email: initialEmail || "", password: "" } });
-
-  const watchedEmail = form.watch("email");
-  React.useEffect(() => {
-    if (onEmailChange) onEmailChange(String(watchedEmail || ""));
-  }, [watchedEmail, onEmailChange]);
-
-  const onSubmit = async (data: SignupValues) => {
-    try {
-      await signupMutation.mutateAsync({ email: data.email, password: data.password, name: data.name });
-    } catch (err) {}
-  };
-
-  return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-      <div className="space-y-2">
-        <label className="text-sm font-medium">Name</label>
-        <Input {...form.register("name")} type="text" placeholder="Name" className="h-12" />
-      </div>
-
-      <div className="space-y-2">
-        <label className="text-sm font-medium">Email</label>
-        <Input {...form.register("email")} type="email" placeholder="you@example.com" className="h-12" />
-      </div>
-
-      <div className="space-y-2">
-        <label className="text-sm font-medium">Password</label>
-        <Input {...form.register("password")} type="password" placeholder="Enter password" className="h-12" />
-      </div>
-
-      <Button type="submit" variant="outline" className="w-full h-12 border-[1.5px] font-medium" disabled={signupMutation.status === "pending"}>
-        Create account
-      </Button>
-    </form>
-  );
-}
+// SignupForm removed; signup uses same email-only magic link flow as login
 
 const Auth: React.FC = () => {
   const location = useLocation();
-  const mode = location.pathname === "/signup" ? "signup" : "login";
+  // Single email-only flow: always show login (magic link)
+  const mode = "login";
   const navigate = useNavigate();
 
   const { isAuthenticated, isLoading } = useAuth();
@@ -194,6 +134,37 @@ const Auth: React.FC = () => {
     }
   }, [isAuthenticated, isLoading, mode, navigate]);
 
+  // Handle Firebase email link (magic link) sign-in flow
+  React.useEffect(() => {
+    try {
+      if (typeof window !== "undefined" && isSignInWithEmailLink(auth, window.location.href)) {
+        let email = window.localStorage.getItem('emailForSignIn') || '';
+        if (!email) {
+          // Fallback: ask user to provide the email they used to sign in
+          // This mirrors Firebase's recommended approach for clients that cannot
+          // persist the email in localStorage.
+          // eslint-disable-next-line no-alert
+          email = window.prompt('Please provide your email for confirmation') || '';
+        }
+        if (!email) {
+          toast.error('Email required to complete sign-in with magic link');
+          return;
+        }
+        signInWithEmailLink(auth, email, window.location.href)
+          .then(() => {
+            try { window.localStorage.removeItem('emailForSignIn'); } catch (e) {}
+            toast.success('Signed in with magic link');
+            // Auth state listener will handle backend token exchange and redirect
+          })
+          .catch((err) => {
+            toast.error(String(err?.message || err || 'Failed to sign in with magic link'));
+          });
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, []);
+
   return (
     <div
       className="min-h-screen flex items-center justify-center relative"
@@ -213,16 +184,19 @@ const Auth: React.FC = () => {
           </div>
         </div>
 
-        <div key={mode} className="space-y-4">
+        <div className="space-y-4">
           {(() => {
             const searchParams = new URLSearchParams(location.search);
             const speakerEmail = searchParams.get("speakerEmail") || undefined;
-            return mode === "signup" ? (
-              <SignupForm onSuccess={() => {}} onEmailChange={onEmailChange} initialEmail={speakerEmail} />
-            ) : (
-              <LoginForm onSuccess={() => {}} onEmailChange={onEmailChange} initialEmail={speakerEmail} />
-            );
+            return <LoginForm onSuccess={() => {}} onEmailChange={onEmailChange} initialEmail={speakerEmail} />;
           })()}
+
+          {emailCheck && emailCheck.exists === false && (
+            <div className="mt-3 p-3 rounded border border-border bg-secondary/30">
+              <div className="font-medium">Welcome to Seamless</div>
+              <div className="text-sm text-muted-foreground">We didn't find an account for this email — click "Send magic link" to create one instantly.</div>
+            </div>
+          )}
 
           {emailCheck?.exists && emailCheck.providers?.includes("google.com") && (
             <div className="mt-3 p-3 rounded border border-border bg-primary/5">
@@ -256,7 +230,7 @@ const Auth: React.FC = () => {
               <div className="flex flex-col gap-3">
                 <div>
                   <div className="font-medium">Account exists</div>
-                  <div className="text-sm text-muted-foreground">This email already has an account but it has no password — set your password to continue.</div>
+                  <div className="text-sm text-muted-foreground">This email already has an account — send a magic link to sign in.</div>
                 </div>
                 <div>
                   <Button
@@ -265,14 +239,16 @@ const Auth: React.FC = () => {
                       const email = String(lastCheckedEmailRef.current || "").trim();
                       if (!email) return;
                       try {
-                        await resetFirebasePassword({ email });
-                        toast.success("Password reset email sent");
+                        try { window.localStorage.setItem('emailForSignIn', email); } catch (e) {}
+                        const url = `${window.location.origin}/finish-signup`;
+                        await sendFirebaseSignInLink({ email, url });
+                        toast.success('Magic link sent — check your email');
                       } catch (err: any) {
-                        toast.error(String(err?.message || err || "Failed to send reset email"));
+                        toast.error(String(err?.message || err || 'Failed to send magic link'));
                       }
                     }}
                   >
-                    Receive password reset email
+                    Send magic link
                   </Button>
                 </div>
               </div>
@@ -280,17 +256,11 @@ const Auth: React.FC = () => {
           )}
         </div>
 
-        <div className="text-center mt-6 mb-6 text-sm text-muted-foreground">
-          {mode === "login" ? (
-            <span>
-              New here? <Link to="/signup" className="text-primary hover:underline">Create account</Link>
-            </span>
-          ) : (
-            <span>
-              Already have an account? <Link to="/login" className="text-primary hover:underline">Sign in</Link>
-            </span>
-          )}
-        </div>
+        {! (emailCheck?.exists === false) && (
+          <div className="text-center mt-6 mb-6 text-sm text-muted-foreground">
+            Enter your email and we'll send a magic link to sign in or create your account.
+          </div>
+        )}
 
         <div className="flex items-center my-6">
           <div className="flex-1 h-px bg-border" />
