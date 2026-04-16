@@ -267,15 +267,14 @@ export default function SpeakerModule() {
         const headshot = speaker.headshot ?? speaker.headshot_url ?? speaker.avatarUrl ?? null;
         const infoComplete = effectiveStatus !== 'pending' && !!headshot;
         const ws = speaker.websiteCardApproved ?? speaker.website_card_approved ?? false;
-        const promo = speaker.promoCardApproved ?? speaker.promo_card_approved ?? false;
         const embedded = speaker.embedEnabled ?? speaker.embed_enabled ?? false;
 
         if (statusFilter === 'pending') {
           // Info Pending: either intake form not submitted or headshot missing
           matchesStatus = !infoComplete;
         } else if (statusFilter === 'submitted') {
-          // Pending Approval: info complete but either card not yet approved
-          matchesStatus = infoComplete && (!ws || !promo);
+          // Pending Approval: info complete but speaker card not yet approved
+          matchesStatus = infoComplete && !ws;
         } else if (statusFilter === 'cards_approved') {
           // Ready to Publish: speaker card approved, not yet live
           matchesStatus = infoComplete && ws && !embedded;

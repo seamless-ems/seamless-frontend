@@ -40,8 +40,8 @@ export default function EmbedBuilder({ eventId }: { eventId: string | undefined 
     }));
   })();
 
-  // Only speakers with cards approved are eligible for the embed
-  const eligibleSpeakers = allSpeakers.filter(s => s.websiteCardApproved && s.promoCardApproved);
+  // Only speakers whose Speaker Card is approved are eligible for the embed
+  const eligibleSpeakers = allSpeakers.filter(s => s.websiteCardApproved);
   const liveSpeakers = eligibleSpeakers.filter(s => s.embedEnabled);
 
   const embedUrl = `${API_BASE}/embed/${eventId}`;
