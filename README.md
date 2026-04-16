@@ -70,4 +70,6 @@ TODO:
 - Update speaker/SpeakerDashboard.tsx to use the `SpeakerPortal.tsx` component. We will need to slightly modify this as at the moment it is nesting the navbars
 - For file upload in the applications form we only allow image file formats atm (need to allow other file types) but we still force jpeg, jpg, png for the headshot and logo uploads
 - For custom field file upload toggle on all these: `pdf, doc, docx, xls, xlsx, csv, txt, rtf, html, zip, mp3, wma, mpg, flv, avi, jpg, jpeg, png, gif` (3 columns)
+- 
 
+James Note: Speaker dasboard = SpeakerPortalComponent.tsx 

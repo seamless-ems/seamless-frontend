@@ -34,6 +34,7 @@ Use these exact terms everywhere (UI labels, tooltips, dialogs, HelpTips, copy):
 - **CardBuilder:** frontend and backend rendering must match exactly. No frontend-only visual styles (e.g. text stroke) unless also in the backend HTML renderer. See `example-speaker-website-card.html` and `corresponding-config-speaker-website-card.json`.
 - **Frontend-only:** no backend changes. Flag gaps verbally and ask the user — only James writes to `API_GAPS.md`.
 - **Mock data:** only with explicit approval; mark with `// TODO: Replace with API data`.
+- **Commits & pushes:** James handles all git operations. Never run `git commit`, `git push`, `git rebase`, or `git stash` unless explicitly asked.
 - **No completion docs:** never create summary/review/completed files. Update this file in place. Report results verbally.
 - **CSS consistency:**
   - Cards: `bg-card border border-border hover:shadow-sm hover:border-primary`
@@ -128,7 +129,7 @@ Replace the 4-tab layout with a full-width 3-column dashboard for non-applicatio
 ---
 
 ## Where to look first
-- `src/components/CardBuilder.tsx` — Fabric.js card builder (all card types)
+- `src/components/CardBuilder.tsx` — Fabric.js card builder (all card types) — **read `CardBuilder_Directory.md` first before editing**
 - `src/components/organizer/SpeakersTable.tsx` — asset hub table (downloads, copy, status)
 - `src/components/organizer/ShareDialog.tsx` — share modal (UI only)
 - `src/components/organizer/SpeakerPreviews.tsx` — fetches and embeds card HTML from API (white bg, no scroll, expands to card size)

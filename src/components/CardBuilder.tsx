@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 import { useWarnOnLeave } from "@/hooks/useWarnOnLeave";
 import { UnsavedChangesDialog } from "@/components/ui/UnsavedChangesDialog";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -89,8 +89,6 @@ import {
   applyGradientStyle as hb_applyGradientStyle,
   clearGradient as hb_clearGradient,
   dismissOnboarding as hb_dismissOnboarding,
-  applyPresetAndDismiss as hb_applyPresetAndDismiss,
-  
 } from "@/lib/card-builder-helpers";
 import {
   SQUARE_PRESETS_DATA,
@@ -246,25 +244,21 @@ export default function CardBuilder({
 
   const [bgIsGenerated, setBgIsGenerated] = useState(false);
   const [bgPanelOpen, setBgPanelOpen] = useState(false);
+  const [textColorPanelOpen, setTextColorPanelOpen] = useState(false);
   const [eventLogoPanelOpen, setEventLogoPanelOpen] = useState(false);
 
   // Onboarding — controlled by API or default off (no localStorage)
   const [showOnboarding, setShowOnboarding] = useState<boolean>(false);
-  const [onboardingShowShapePicker, setOnboardingShowShapePicker] =
-    useState(false);
   const [onboardingShowTemplates, setOnboardingShowTemplates] = useState(false);
   const [onboardingQuickSetup, setOnboardingQuickSetup] = useState(false);
 
   // Promo-specific onboarding steps (separate from website shape/template flow)
-  const [onboardingBrandSetup, setOnboardingBrandSetup] = useState(false);
-  const [onboardingPlatformPicker, setOnboardingPlatformPicker] = useState(false);
   const [pendingPreset, setPendingPreset] = useState<StarterPreset | null>(
     null,
   );
   const [quickBg, setQuickBg] = useState("#ffffff");
   const [quickTextColor, setQuickTextColor] = useState("#111827");
   const [quickFont, setQuickFont] = useState("Montserrat");
-  const [quickShape, setQuickShape] = useState<"square" | "landscape">("square");
   const [quickHeadshotShape, setQuickHeadshotShape] = useState("circle");
   const [bgGradient, setBgGradient] = useState<{
     from: string;
@@ -302,6 +296,7 @@ export default function CardBuilder({
 
   const [missingFormDialogOpen, setMissingFormDialogOpen] = useState(false);
   const [missingLogoDialogOpen, setMissingLogoDialogOpen] = useState(false);
+  const [blankCanvasConfirmOpen, setBlankCanvasConfirmOpen] = useState(false);
   const skipLogoWarningRef = useRef(false);
 
   const { data: formConfig } = useQuery<{ config: FormFieldConfig[] }>({
@@ -380,15 +375,12 @@ export default function CardBuilder({
           headshot: { ...newConfig.headshot, shape: headshotShape },
         };
       }
-      // Preserve event logo URL across template switches.
-      // Use cached data URL from localStorage (avoids CORS issues with server URLs).
-      // Templates don't include eventLogo by default — keep the element in config if a URL exists.
+      // Restore event logo preview so the Event Logo panel shows the image and
+      // "Add to canvas" toggle is available — but do NOT add it to the config.
+      // User opts in explicitly via the Event Logo panel; templates never force it onto the canvas.
       try {
         const cachedEventLogo = localStorage.getItem(`event-logo-${cardType}-${eventId}`);
         if (cachedEventLogo) {
-          // Use existing element (preserves user's position/size) or fall back to template defaults.
-          const base = newConfig.eventLogo ?? ELEMENT_TEMPLATES.eventLogo;
-          newConfig = { ...newConfig, eventLogo: { ...base, url: cachedEventLogo } };
           setTestEventLogo(cachedEventLogo);
         }
       } catch {}
@@ -798,6 +790,10 @@ export default function CardBuilder({
       // ESC: Deselect (clear selection)
       if (e.key === "Escape") {
         e.preventDefault();
+        setBgPanelOpen(false);
+        setTextColorPanelOpen(false);
+        setEventLogoPanelOpen(false);
+        setShapePopupOpen(false);
         const canvas = fabricCanvasRef.current;
         if (canvas) {
           canvas.discardActiveObject();
@@ -814,6 +810,7 @@ export default function CardBuilder({
         setConfig((prev) => {
           const newConfig = { ...prev };
           delete newConfig[selectedElement];
+          addToHistory(newConfig);
           return newConfig;
         });
         setSelectedElement(null);
@@ -898,19 +895,22 @@ export default function CardBuilder({
     addToHistory,
   ]);
 
-  // Close shape popup when clicking outside (Templates/BG are inline, no close-outside needed)
+  // Close shape popup and Row 2 panels when clicking outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (shapePopupOpen) {
-        const target = e.target as HTMLElement;
-        if (!target.closest("[data-popover]")) {
-          setShapePopupOpen(false);
-        }
+      const target = e.target as HTMLElement;
+      if (shapePopupOpen && !target.closest("[data-popover]")) {
+        setShapePopupOpen(false);
+      }
+      if ((bgPanelOpen || textColorPanelOpen || eventLogoPanelOpen) && !target.closest("[data-row2panel]")) {
+        setBgPanelOpen(false);
+        setTextColorPanelOpen(false);
+        setEventLogoPanelOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [shapePopupOpen]);
+  }, [shapePopupOpen, bgPanelOpen, textColorPanelOpen, eventLogoPanelOpen]);
 
   // Save handler — use shared helper to avoid duplication
   const handleSave = useCallback(
@@ -1138,6 +1138,7 @@ export default function CardBuilder({
       setHasUnsavedChanges,
       setConfig,
       addElementToCanvas,
+      addToHistory,
       toast,
     });
   };
@@ -1386,13 +1387,21 @@ export default function CardBuilder({
   const dismissOnboarding = () => {
     hb_dismissOnboarding({
       setShowOnboarding,
-      setOnboardingShowShapePicker,
+      setOnboardingShowShapePicker: () => {},
       setOnboardingShowTemplates,
       setOnboardingQuickSetup,
       setPendingPreset,
     });
-    setOnboardingBrandSetup(false);
-    setOnboardingPlatformPicker(false);
+  };
+
+  // "Blank canvas" in onboarding — resets if canvas already has content, otherwise just dismisses.
+  const handleBlankCanvas = () => {
+    if (Object.keys(config).length > 0 || templateUrl) {
+      setBlankCanvasConfirmOpen(true);
+    } else {
+      handleReset();
+      dismissOnboarding();
+    }
   };
 
   const getFieldLabel = (elementKey: string, fallback: string): string => {
@@ -1411,12 +1420,6 @@ export default function CardBuilder({
     }
     return fallback;
   };
-
-  const applyPresetAndDismiss = (preset: StarterPreset) =>
-    hb_applyPresetAndDismiss(preset, {
-      presetApply: preset.apply,
-      dismissOnboarding: (p: unknown) => dismissOnboarding(),
-    });
 
   return (
     <>
@@ -1467,6 +1470,22 @@ export default function CardBuilder({
         </DialogContent>
       </Dialog>
 
+      {/* Blank canvas confirmation — warns that resetting will clear any saved design */}
+      <Dialog open={blankCanvasConfirmOpen} onOpenChange={setBlankCanvasConfirmOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Start with a blank canvas?</DialogTitle>
+            <DialogDescription>
+              This will clear your current design. Any unsaved changes will be lost, and your saved design will be overwritten the next time you save.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setBlankCanvasConfirmOpen(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={() => { setBlankCanvasConfirmOpen(false); handleReset(); dismissOnboarding(); }}>Clear canvas</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <ImageCropDialog
         open={cropDialogOpen}
         onOpenChange={(open) => {
@@ -1482,19 +1501,12 @@ export default function CardBuilder({
           cropMode === "logo" || cropMode === "event-logo"
             ? NaN // Free-form: logos come in all shapes
             : cropMode === "headshot"
-              ? config.headshot?.shape === "vertical"
-                ? 3 / 4
-                : config.headshot?.shape === "horizontal"
-                  ? 4 / 3
-                  : config.headshot?.shape === "full-bleed"
-                    ? canvasWidth / canvasHeight
-                    : 1
+              ? 1
               : undefined
         }
         cropShape={
           cropMode === "headshot"
-            ? config.headshot?.shape === "rounded" ||
-              config.headshot?.shape === "full-bleed"
+            ? config.headshot?.shape === "rounded"
               ? "square"
               : config.headshot?.shape || "circle"
             : "square"
@@ -1512,14 +1524,11 @@ export default function CardBuilder({
       {showOnboarding && (cardType === "website" || cardType === "promo") && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div
-            className={`bg-card border border-border rounded-2xl shadow-2xl w-full mx-4 overflow-hidden transition-all ${onboardingShowTemplates && !onboardingQuickSetup ? "max-w-2xl" : "max-w-lg"}`}
+            className={`bg-card border border-border rounded-2xl shadow-2xl w-full mx-4 overflow-hidden transition-all ${onboardingShowTemplates && !onboardingQuickSetup ? "max-w-3xl" : "max-w-lg"}`}
           >
             {/* Step 1: Welcome / choice */}
-            {!onboardingShowShapePicker &&
-              !onboardingShowTemplates &&
-              !onboardingQuickSetup &&
-              !onboardingBrandSetup &&
-              !onboardingPlatformPicker && (
+            {!onboardingShowTemplates &&
+              !onboardingQuickSetup && (
                 <div className="relative p-8">
                   <button
                     onClick={dismissOnboarding}
@@ -1532,7 +1541,7 @@ export default function CardBuilder({
                   </p>
                   <div className="grid grid-cols-2 gap-3">
                     <button
-                      onClick={() => isPromo ? setOnboardingBrandSetup(true) : setOnboardingShowShapePicker(true)}
+                      onClick={() => setOnboardingShowTemplates(true)}
                       className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-border hover:border-primary hover:bg-primary/5 transition-all group"
                     >
                       <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
@@ -1543,7 +1552,7 @@ export default function CardBuilder({
                       </span>
                     </button>
                     <button
-                      onClick={dismissOnboarding}
+                      onClick={handleBlankCanvas}
                       className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-border hover:border-border/80 hover:bg-muted/30 transition-all group"
                     >
                       <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center group-hover:bg-muted/80 transition-colors">
@@ -1557,131 +1566,38 @@ export default function CardBuilder({
                 </div>
               )}
 
-            {/* Step 2: Canvas shape picker */}
-            {onboardingShowShapePicker &&
-              !onboardingShowTemplates &&
-              !onboardingQuickSetup && (
-                <div className="p-8">
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setOnboardingShowShapePicker(false)}
-                        className="p-1.5 rounded hover:bg-accent text-muted-foreground"
-                      >
-                        <ChevronLeft className="h-4 w-4" />
-                      </button>
-                      <span className="font-semibold text-sm">Card shape</span>
-                    </div>
-                    <button
-                      onClick={() => {
-                        setOnboardingShowShapePicker(false);
-                        dismissOnboarding();
-                      }}
-                      className="p-1.5 rounded hover:bg-accent text-muted-foreground"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-3 gap-3 mb-6">
-                    {(
-                      [
-                        {
-                          key: "square",
-                          label: "Square",
-                          ratio: "1:1",
-                          w: 80,
-                          h: 80,
-                        },
-                        {
-                          key: "landscape",
-                          label: "Landscape",
-                          ratio: "3:2",
-                          w: 96,
-                          h: 64,
-                        },
-                      ] as const
-                    ).map(({ key, label, ratio, w, h }) => (
-                      <button
-                        key={key}
-                        type="button"
-                        onClick={() => {
-                          setQuickShape(key);
-                          setOnboardingShowShapePicker(false);
-                          setOnboardingShowTemplates(true);
-                        }}
-                        className="flex flex-col items-center gap-3 py-5 px-3 rounded-xl border-2 border-border hover:border-primary hover:bg-primary/5 transition-all group"
-                      >
-                        <div
-                          className="flex items-center justify-center"
-                          style={{ width: 96, height: 96 }}
-                        >
-                          <div
-                            className="rounded-lg border-2 border-muted-foreground/40 group-hover:border-primary bg-muted/30 group-hover:bg-primary/5 transition-colors"
-                            style={{ width: w, height: h }}
-                          />
-                        </div>
-                        <div className="text-center">
-                          <div className="font-semibold text-sm">{label}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {ratio}
-                          </div>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                  <div className="text-center">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setOnboardingShowShapePicker(false);
-                        dismissOnboarding();
-                      }}
-                      className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
-                    >
-                      Blank canvas
-                    </button>
-                  </div>
-                </div>
-              )}
-
-            {/* Step 3: Template picker — layouts for the selected shape */}
+            {/* Step 2: All templates — shape/platform labelled above each thumbnail */}
             {onboardingShowTemplates && !onboardingQuickSetup && (
               <div className="p-8">
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => {
-                        setOnboardingShowTemplates(false);
-                        setOnboardingShowShapePicker(true);
-                      }}
+                      onClick={() => setOnboardingShowTemplates(false)}
                       className="p-1.5 rounded hover:bg-accent text-muted-foreground"
                     >
                       <ChevronLeft className="h-4 w-4" />
                     </button>
-                    <span className="font-semibold text-sm capitalize">
-                      {quickShape}
+                    <span className="font-semibold text-sm">
+                      {isPromo ? "Choose a platform" : "Choose a template"}
                     </span>
                   </div>
                   <button
-                    onClick={() => {
-                      setOnboardingShowTemplates(false);
-                      dismissOnboarding();
-                    }}
+                    onClick={dismissOnboarding}
                     className="p-1.5 rounded hover:bg-accent text-muted-foreground"
                   >
                     <X className="h-4 w-4" />
                   </button>
                 </div>
                 <div className="grid grid-cols-3 gap-5 mb-6">
-                  {presetsForShape(quickShape).map((preset) => {
-                    const aspectClass =
-                      preset.thumbnailShape === "landscape"
-                        ? "aspect-[3/2]"
-                        : preset.thumbnailShape === "portrait"
-                          ? "aspect-[2/3]"
-                          : "aspect-square";
+                  {(isPromo
+                    ? [...PROMO_INSTAGRAM_FEED_PRESETS, ...PROMO_INSTAGRAM_STORY_PRESETS, ...PROMO_LINKEDIN_PRESETS]
+                    : STARTER_PRESETS
+                  ).map((preset) => {
+                    const aspectClass = preset.thumbnailShape === "landscape" ? "aspect-[3/2]" : preset.thumbnailShape === "portrait" ? "aspect-[3/4]" : "aspect-square";
+                    const shapeLabel = preset.thumbnailShape === "landscape" ? "Landscape" : preset.thumbnailShape === "portrait" ? "Portrait" : "Square";
                     return (
-                      <div key={preset.name} className="flex flex-col gap-2">
+                      <div key={preset.name} className="flex flex-col gap-1.5">
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">{shapeLabel}</span>
                         <button
                           type="button"
                           onClick={() => {
@@ -1689,18 +1605,14 @@ export default function CardBuilder({
                             setQuickBg(preset.defaultBg);
                             setQuickTextColor(preset.defaultTextColor);
                             setQuickFont("Montserrat");
-                            setQuickHeadshotShape(
-                              preset.allowedHeadshotShapes[0] ?? "circle",
-                            );
+                            setQuickHeadshotShape(preset.allowedHeadshotShapes[0] ?? "circle");
                             setOnboardingQuickSetup(true);
                           }}
                           className={`${aspectClass} w-full rounded-xl border-2 border-border hover:border-primary hover:shadow-lg transition-all overflow-hidden focus:outline-none focus:ring-2 focus:ring-primary`}
                         >
                           <TemplateThumbnail type={preset.thumbnail} />
                         </button>
-                        <span className="text-xs font-semibold">
-                          {preset.name}
-                        </span>
+                        <span className="text-xs font-semibold">{preset.name}</span>
                       </div>
                     );
                   })}
@@ -1708,10 +1620,10 @@ export default function CardBuilder({
                 <div className="text-center">
                   <button
                     type="button"
-                    onClick={dismissOnboarding}
-                    className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
+                    onClick={handleBlankCanvas}
+                    className="text-xs text-muted-foreground hover:text-foreground border border-border rounded-lg px-4 py-1.5 hover:bg-muted/30 transition-colors"
                   >
-                    Blank canvas
+                    Start with blank canvas
                   </button>
                 </div>
               </div>
@@ -1902,10 +1814,7 @@ export default function CardBuilder({
                     <div className="flex gap-2 flex-wrap">
                       {pendingPreset.allowedHeadshotShapes.map((shape) => {
                         const isActive = quickHeadshotShape === shape;
-                        const label =
-                          shape === "full-bleed"
-                            ? "Full bleed"
-                            : shape.charAt(0).toUpperCase() + shape.slice(1);
+                        const label = shape.charAt(0).toUpperCase() + shape.slice(1);
                         return (
                           <button
                             key={shape}
@@ -1940,7 +1849,6 @@ export default function CardBuilder({
                       hs,
                     );
                     setShowOnboarding(false);
-                    setOnboardingShowShapePicker(false);
                     setOnboardingShowTemplates(false);
                     setOnboardingQuickSetup(false);
                     setPendingPreset(null);
@@ -1953,106 +1861,6 @@ export default function CardBuilder({
               </div>
             )}
 
-            {/* ── PROMO Step 2: Brand setup — event logo + colours ── */}
-            {isPromo && onboardingBrandSetup && !onboardingPlatformPicker && (
-              <div className="p-8">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setOnboardingBrandSetup(false)}
-                      className="p-1.5 rounded hover:bg-accent text-muted-foreground"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </button>
-                    <span className="font-semibold text-sm">Brand setup</span>
-                  </div>
-                  <button onClick={dismissOnboarding} className="p-1.5 rounded hover:bg-accent text-muted-foreground">
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-
-                {/* Brand colour + text colour */}
-                <div className="grid grid-cols-2 gap-4 mb-6">
-                  <div>
-                    <label className="text-xs font-medium mb-2 block">Brand colour</label>
-                    <div className="flex items-center gap-1.5">
-                      <QuickColorPicker value={quickBg} onChange={setQuickBg} label="Brand colour" />
-                      <HexColorInput value={quickBg} onChange={setQuickBg} className="flex-1 h-7 text-xs font-mono px-1.5 rounded border border-border bg-background min-w-0" />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium mb-2 block">Text colour</label>
-                    <div className="flex items-center gap-1.5">
-                      <QuickColorPicker value={quickTextColor} onChange={setQuickTextColor} label="Text colour" />
-                      <HexColorInput value={quickTextColor} onChange={setQuickTextColor} className="flex-1 h-7 text-xs font-mono px-1.5 rounded border border-border bg-background min-w-0" />
-                    </div>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setOnboardingPlatformPicker(true)}
-                  className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 transition-colors"
-                >
-                  Choose platform
-                </button>
-              </div>
-            )}
-
-            {/* ── PROMO Step 3: Platform picker ── */}
-            {isPromo && onboardingPlatformPicker && (
-              <div className="p-8">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setOnboardingPlatformPicker(false)}
-                      className="p-1.5 rounded hover:bg-accent text-muted-foreground"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </button>
-                    <span className="font-semibold text-sm">Choose platform</span>
-                  </div>
-                  <button onClick={dismissOnboarding} className="p-1.5 rounded hover:bg-accent text-muted-foreground">
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  {[
-                    { label: "Instagram Feed", sub: "1080 × 1080 px", preset: PROMO_INSTAGRAM_FEED_PRESETS[0], shapeW: 28, shapeH: 28 },
-                    { label: "Instagram Story", sub: "1080 × 1920 px", preset: PROMO_INSTAGRAM_STORY_PRESETS[0], shapeW: 18, shapeH: 32 },
-                    { label: "LinkedIn Post",   sub: "1200 × 627 px",  preset: PROMO_LINKEDIN_PRESETS[0],        shapeW: 36, shapeH: 19 },
-                  ].map(({ label, sub, preset, shapeW, shapeH }) => (
-                    <button
-                      key={label}
-                      type="button"
-                      onClick={() => {
-                        preset.apply(quickBg, quickTextColor, "Montserrat", preset.canvasW, preset.canvasH);
-                        setBgColor(quickBg);
-                        dismissOnboarding();
-                        tryShowCanvasTip();
-                      }}
-                      className="flex items-center gap-3 px-3 py-2.5 rounded-xl border-2 border-border hover:border-primary hover:bg-primary/5 transition-all text-left group"
-                    >
-                      <div
-                        className="shrink-0 rounded border-2 border-muted-foreground/30 group-hover:border-primary/60 bg-muted/30 transition-colors"
-                        style={{ width: shapeW, height: shapeH }}
-                      />
-                      <div className="min-w-0">
-                        <div className="text-sm font-semibold leading-tight">{label}</div>
-                        <div className="text-xs text-muted-foreground">{sub}</div>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-
-                <div className="text-center mt-4">
-                  <button type="button" onClick={dismissOnboarding} className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2">
-                    Blank canvas
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       )}
@@ -2307,13 +2115,7 @@ export default function CardBuilder({
             {/* Templates */}
             <button
               onClick={() => {
-                if (isPromo) {
-                  setOnboardingBrandSetup(true);
-                  setQuickBg("#0f172a");
-                  setQuickTextColor("#ffffff");
-                } else {
-                  setOnboardingShowShapePicker(true);
-                }
+                setOnboardingShowTemplates(true);
                 setShowOnboarding(true);
               }}
               className="flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
@@ -2326,9 +2128,9 @@ export default function CardBuilder({
             <div className="h-4 w-px bg-border" />
 
             {/* Background */}
-            <div className="relative">
+            <div className="relative" data-row2panel="true">
               <button
-                onClick={() => setBgPanelOpen(!bgPanelOpen)}
+                onClick={() => { setBgPanelOpen(p => !p); setTextColorPanelOpen(false); setEventLogoPanelOpen(false); }}
                 className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium transition-colors ${bgPanelOpen ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground hover:bg-accent"}`}
                 title="Background colour or image"
               >
@@ -2420,9 +2222,9 @@ export default function CardBuilder({
             </div>
 
             {/* Event Logo */}
-            <div className="relative">
+            <div className="relative" data-row2panel="true">
               <button
-                onClick={() => setEventLogoPanelOpen(!eventLogoPanelOpen)}
+                onClick={() => { setEventLogoPanelOpen(p => !p); setBgPanelOpen(false); setTextColorPanelOpen(false); }}
                 className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium transition-colors ${eventLogoPanelOpen ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground hover:bg-accent"} ${testEventLogo || config.eventLogo ? "text-foreground" : ""}`}
                 title="Event logo"
               >
@@ -2457,8 +2259,6 @@ export default function CardBuilder({
                   <button
                     onClick={() => {
                       if (!config.eventLogo && testEventLogo) {
-                        // Adding: add element and immediately set URL so the backend receives it.
-                        // Both setConfig calls use functional updaters and compose safely.
                         addElementToCanvas("eventLogo", undefined, { url: testEventLogo });
                       } else {
                         toggleElement("eventLogo");
@@ -2475,38 +2275,80 @@ export default function CardBuilder({
 
             <div className="h-4 w-px bg-border" />
 
-            {/* + Overlay */}
-            <button
-              onClick={() => {
-                const newKey = `gradientOverlay_${Date.now()}`;
-                setConfig((prev) => {
-                  const maxZ = Math.max(0, ...Object.values(prev).map((c) => (c as any).zIndex || 0));
-                  const next = {
-                    ...prev,
-                    [newKey]: {
-                      ...ELEMENT_TEMPLATES.gradientOverlay,
-                      x: 0,
-                      y: Math.round(canvasHeight / 2),
-                      width: canvasWidth,
-                      height: Math.round(canvasHeight / 2),
-                      gradientDirection: "bottom" as const,
-                      overlayOpacity: 0.9,
-                      zIndex: maxZ + 1,
-                    },
-                  };
-                  addToHistory(next);
-                  return next;
-                });
-                setHasUnsavedChanges(true);
-              }}
-              className="flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-              title="Add a gradient overlay"
-            >
-              <Square className="h-3.5 w-3.5" />
-              + Overlay
-            </button>
+            {/* Text Colour — updates all text elements at once */}
+            <div className="relative" data-row2panel="true">
+              <button
+                onClick={() => { setTextColorPanelOpen(p => !p); setBgPanelOpen(false); setEventLogoPanelOpen(false); }}
+                className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium transition-colors ${textColorPanelOpen ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground hover:bg-accent"}`}
+                title="Change all text colour at once"
+              >
+                <div className="relative">
+                  <Type className="h-3.5 w-3.5" />
+                  <div
+                    className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-sm border border-border/80"
+                    style={{ background: (Object.values(config).find((el: any) => el?.color) as any)?.color ?? "#111827" }}
+                  />
+                </div>
+                Text Colour
+              </button>
+              {textColorPanelOpen && (
+                <div className="absolute top-full left-0 mt-1 w-52 rounded-lg border border-border bg-card shadow-xl p-3 z-50 space-y-2">
+                  <div className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Change all text colour</div>
+                  <div className="flex flex-wrap gap-1 mb-1.5">
+                    {["#111827","#ffffff","#1e293b","#374151","#1d4ed8","#dc2626","#16a34a","#d97706","#7c3aed","#db2777","#0891b2","#f9fafb"].map((c) => (
+                      <button
+                        key={c}
+                        onClick={() => {
+                          setConfig(prev => {
+                            const next = { ...prev };
+                            for (const k of Object.keys(next)) {
+                              if ((next[k] as any)?.color !== undefined) next[k] = { ...next[k], color: c } as any;
+                            }
+                            return next;
+                          });
+                          setHasUnsavedChanges(true);
+                        }}
+                        className="w-5 h-5 rounded border-2 border-border/60 transition-transform hover:scale-110"
+                        style={{ backgroundColor: c }}
+                        title={c}
+                      />
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <QuickColorPicker
+                      value={((Object.values(config).find((el: any) => el?.color) as any)?.color as string) ?? "#111827"}
+                      onChange={(hex) => {
+                        setConfig(prev => {
+                          const next = { ...prev };
+                          for (const k of Object.keys(next)) {
+                            if ((next[k] as any)?.color !== undefined) next[k] = { ...next[k], color: hex } as any;
+                          }
+                          return next;
+                        });
+                        setHasUnsavedChanges(true);
+                      }}
+                      label="All text colour"
+                    />
+                    <HexColorInput
+                      value={((Object.values(config).find((el: any) => el?.color) as any)?.color as string) ?? "#111827"}
+                      onChange={(hex) => {
+                        setConfig(prev => {
+                          const next = { ...prev };
+                          for (const k of Object.keys(next)) {
+                            if ((next[k] as any)?.color !== undefined) next[k] = { ...next[k], color: hex } as any;
+                          }
+                          return next;
+                        });
+                        setHasUnsavedChanges(true);
+                      }}
+                      className="flex-1 h-6 text-xs font-mono px-1 rounded border border-border bg-background min-w-0"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
 
-            {/* + Text */}
+            {/* + Text Box */}
             <button
               onClick={() => {
                 const newKey = `dynamic_text_${Date.now()}`;
@@ -2541,7 +2383,40 @@ export default function CardBuilder({
               title="Add a text box"
             >
               <Type className="h-3.5 w-3.5" />
-              + Text
+              + Text Box
+            </button>
+
+            <div className="h-4 w-px bg-border" />
+
+            {/* + Overlay */}
+            <button
+              onClick={() => {
+                const newKey = `gradientOverlay_${Date.now()}`;
+                setConfig((prev) => {
+                  const maxZ = Math.max(0, ...Object.values(prev).map((c) => (c as any).zIndex || 0));
+                  const next = {
+                    ...prev,
+                    [newKey]: {
+                      ...ELEMENT_TEMPLATES.gradientOverlay,
+                      x: 0,
+                      y: Math.round(canvasHeight / 2),
+                      width: canvasWidth,
+                      height: Math.round(canvasHeight / 2),
+                      gradientDirection: "bottom" as const,
+                      overlayOpacity: 0.9,
+                      zIndex: maxZ + 1,
+                    },
+                  };
+                  addToHistory(next);
+                  return next;
+                });
+                setHasUnsavedChanges(true);
+              }}
+              className="flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              title="Add a gradient overlay"
+            >
+              <Square className="h-3.5 w-3.5" />
+              + Overlay
             </button>
           </div>
 
@@ -2567,6 +2442,27 @@ export default function CardBuilder({
                 <PositionInput value={config[selectedElement].x || 0} onChange={(v) => { skipRerenderRef.current = true; const obj = elementRefs.current[selectedElement]; if (obj) { obj.set("left", v); obj.setCoords(); fabricCanvasRef.current?.requestRenderAll(); } updateElement(selectedElement, { x: v }); }} className="w-14 h-7 text-xs text-center px-1 rounded border border-border bg-background font-mono" />
                 <span className="text-[10px] text-muted-foreground font-mono">Y</span>
                 <PositionInput value={config[selectedElement].y || 0} onChange={(v) => { skipRerenderRef.current = true; const obj = elementRefs.current[selectedElement]; if (obj) { obj.set("top", v); obj.setCoords(); fabricCanvasRef.current?.requestRenderAll(); } updateElement(selectedElement, { y: v }); }} className="w-14 h-7 text-xs text-center px-1 rounded border border-border bg-background font-mono" />
+              </div>
+            )}
+
+            {/* Overlay controls — shown when a gradient-overlay element is selected */}
+            {selectedElement && config[selectedElement]?.type === "gradient-overlay" && (
+              <div className="flex items-center gap-2 shrink-0" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+                <div className="h-6 w-px bg-border mr-1" />
+                <span className="text-xs text-muted-foreground whitespace-nowrap">Colour</span>
+                <QuickColorPicker value={(config[selectedElement]?.gradientColor as string) || "#000000"} onChange={(hex) => updateElement(selectedElement, { gradientColor: hex })} label="Overlay colour" />
+                <HexColorInput value={(config[selectedElement]?.gradientColor as string) || "#000000"} onChange={(hex) => updateElement(selectedElement, { gradientColor: hex })} className="w-20 h-7 text-xs font-mono px-1.5 rounded border border-border bg-background" />
+                <div className="h-6 w-px bg-border mx-1" />
+                <span className="text-xs text-muted-foreground whitespace-nowrap">Opacity</span>
+                <input type="range" min={0} max={1} step={0.05} value={(config[selectedElement]?.overlayOpacity as number) ?? 0.9} onChange={(e) => updateElement(selectedElement, { overlayOpacity: parseFloat(e.target.value) })} className="w-20 h-4 accent-primary" title="Overlay opacity" />
+                <span className="text-xs w-8 tabular-nums">{Math.round(((config[selectedElement]?.overlayOpacity as number) ?? 0.9) * 100)}%</span>
+                <div className="h-6 w-px bg-border mx-1" />
+                <span className="text-xs text-muted-foreground whitespace-nowrap">Direction</span>
+                <div className="flex items-center gap-0.5 p-0.5 bg-muted/50 rounded-md">
+                  {(["top", "bottom", "left", "right"] as const).map((dir) => (
+                    <button key={dir} onClick={() => updateElement(selectedElement, { gradientDirection: dir })} className={`h-6 px-2 text-[10px] rounded transition-colors capitalize ${(config[selectedElement]?.gradientDirection as string) === dir ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`} title={`Fade from ${dir}`}>{dir}</button>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -2691,13 +2587,7 @@ export default function CardBuilder({
             <div className="w-full px-2">
               <button
                 onClick={() => {
-                  if (isPromo) {
-                    setOnboardingBrandSetup(true);
-                    setQuickBg("#0f172a");
-                    setQuickTextColor("#ffffff");
-                  } else {
-                    setOnboardingShowShapePicker(true);
-                  }
+                  setOnboardingShowTemplates(true);
                   setShowOnboarding(true);
                 }}
                 className="w-full flex flex-col items-center gap-1 p-2 rounded-lg transition-colors hover:bg-accent"
@@ -2763,30 +2653,14 @@ export default function CardBuilder({
                           icon: "w-4 h-4 rounded-full",
                         },
                         {
-                          shape: "square",
-                          label: "Square",
-                          icon: "w-4 h-4 rounded",
-                        },
-                        {
-                          shape: "vertical",
-                          label: "Vertical",
-                          icon: "w-3 h-4 rounded",
-                        },
-                        {
-                          shape: "horizontal",
-                          label: "Horizontal",
-                          icon: "w-4 h-3 rounded",
-                        },
-                        {
                           shape: "rounded",
                           label: "Rounded",
-                          icon: "w-4 h-4 rounded-xl",
+                          icon: "w-4 h-4 rounded-md",
                         },
                         {
-                          shape: "full-bleed",
-                          label: "Full Bleed",
-                          icon: "w-4 h-3",
-                          extra: { x: 0, y: 0 } as Record<string, unknown>,
+                          shape: "square",
+                          label: "Square",
+                          icon: "w-4 h-4 rounded-none",
                         },
                       ] as Array<{
                         shape: string;
@@ -3087,13 +2961,7 @@ export default function CardBuilder({
                   </p>
                   <button
                     onClick={() => {
-                      if (isPromo) {
-                        setOnboardingBrandSetup(true);
-                        setQuickBg("#0f172a");
-                        setQuickTextColor("#ffffff");
-                      } else {
-                        setOnboardingShowShapePicker(true);
-                      }
+                      setOnboardingShowTemplates(true);
                       setShowOnboarding(true);
                     }}
                     className="px-3 py-1.5 text-xs font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"

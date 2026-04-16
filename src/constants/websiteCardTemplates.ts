@@ -27,47 +27,27 @@ export const SQUARE_PRESETS_DATA: PresetData[] = [
     }),
   },
   {
-    name: "Headline",
-    description: "Full-width name and details at top, circle photo below, logo bottom-left",
-    thumbnail: "headline",
-    thumbnailShape: "square",
-    defaultBg: "#000000",
-    defaultTextColor: "#ffffff",
+    name: "Classic",
+    description: "Full-width square photo at top, bold centred name and details on a clean white band below",
+    thumbnail: "classic",
+    thumbnailShape: "portrait",
+    defaultBg: "#ffffff",
+    defaultTextColor: "#111827",
     canvasW: 600,
-    canvasH: 600,
-    allowedHeadshotShapes: ["circle", "square", "rounded"],
-    build: (T, bg = "#000000", textColor = "#ffffff", font = "Montserrat") => ({
-      firstName:   { ...T.firstName, x: 24, y: 22, color: textColor, fontFamily: font, fontSize: 55, width: 552, fontWeight: 700, zIndex: 4 },
-      lastName:    { ...T.lastName, x: 24, y: 84, color: textColor, fontFamily: font, fontSize: 55, width: 552, fontWeight: 700, zIndex: 4 },
-      title:       { ...T.title, x: 24, y: 151, color: textColor, fontFamily: font, fontSize: 28, width: 552, fontWeight: 500, zIndex: 3 },
-      company:     { ...T.company, x: 24, y: 189, color: textColor, fontFamily: font, fontSize: 28, width: 552, fontWeight: 400, zIndex: 2 },
-      headshot:    { ...T.headshot, shape: "circle", x: 200, y: 265, size: 200, zIndex: 1 },
-      companyLogo: { ...T.companyLogo, x: 20, y: 473, width: 148, height: 74, size: 70, zIndex: 5 },
+    canvasH: 900,
+    allowedHeadshotShapes: ["square", "rounded"],
+    build: (T, bg = "#ffffff", textColor = "#111827", font = "Montserrat") => ({
+      headshot:  { ...T.headshot, shape: "square", x: 0, y: 0, size: 600, zIndex: 1 },
+      firstName: { ...T.firstName, x: 36, y: 652, color: textColor, fontFamily: font, fontSize: 42, width: 528, fontWeight: 700, zIndex: 4 },
+      lastName:  { ...T.lastName,  x: 36, y: 706, color: textColor, fontFamily: font, fontSize: 42, width: 528, fontWeight: 700, zIndex: 4 },
+      // company (organisation) sits above title — name → org → role hierarchy
+      company:   { ...T.company,   x: 36, y: 772, color: textColor, fontFamily: font, fontSize: 24, width: 528, fontWeight: 500, zIndex: 3 },
+      title:     { ...T.title,     x: 36, y: 804, color: textColor, fontFamily: font, fontSize: 24, width: 528, fontWeight: 400, zIndex: 2 },
     }),
   },
 ];
 
 export const LANDSCAPE_PRESETS_DATA: PresetData[] = [
-  {
-    name: "Overlay",
-    description: "Full-bleed photo, gradient reveals text at the bottom",
-    thumbnail: "overlay",
-    thumbnailShape: "landscape",
-    defaultBg: "#000000",
-    defaultTextColor: "#ffffff",
-    canvasW: 900,
-    canvasH: 600,
-    allowedHeadshotShapes: [],
-    build: (T, bg = "#000000", textColor = "#ffffff", font = "Montserrat") => ({
-      headshot:        { ...T.headshot, shape: "full-bleed", x: 0, y: 0, size: 900, zIndex: 1 },
-      gradientOverlay: { ...T.gradientOverlay, x: 0, y: 271, width: 900, height: 329, gradientDirection: "bottom", overlayOpacity: 0.90, zIndex: 3 },
-      companyLogo:     { ...T.companyLogo, x: 732, y: 18, width: 148, height: 74, size: 70, zIndex: 6 },
-      firstName:       { ...T.firstName, x: 40, y: 321, color: textColor, fontFamily: font, fontSize: 55, width: 560, fontWeight: 700, zIndex: 10 },
-      lastName:        { ...T.lastName, x: 40, y: 383, color: textColor, fontFamily: font, fontSize: 55, width: 560, fontWeight: 700, zIndex: 10 },
-      title:           { ...T.title, x: 40, y: 450, color: textColor, fontFamily: font, fontSize: 28, width: 560, fontWeight: 500, zIndex: 8 },
-      company:         { ...T.company, x: 40, y: 488, color: textColor, fontFamily: font, fontSize: 28, width: 380, fontWeight: 400, zIndex: 7 },
-    }),
-  },
   {
     name: "Side by Side",
     description: "Large square photo left, event logo and speaker info right",
@@ -79,8 +59,8 @@ export const LANDSCAPE_PRESETS_DATA: PresetData[] = [
     canvasH: 600,
     allowedHeadshotShapes: ["square", "rounded", "circle"],
     build: (T, bg = "#000000", textColor = "#ffffff", font = "Montserrat") => ({
-      headshot:    { ...T.headshot, shape: "square", x: 36, y: 36, size: 480, zIndex: 1 },
-      companyLogo: { ...T.companyLogo, x: 556, y: 36, width: 148, height: 74, size: 70, zIndex: 5 },
+      headshot:    { ...T.headshot, shape: "rounded", x: 36, y: 36, size: 480, zIndex: 1 },
+      companyLogo: { ...T.companyLogo, x: 732, y: 36, width: 148, height: 74, size: 70, zIndex: 5 },
       // 44px names (Fabric lineHeight ≈ 51px). Names tight (4px gap), 20px break to details.
       // Vertically centred to headshot midpoint (y=276): group y:180→367 → midpoint 274.
       firstName:   { ...T.firstName, x: 556, y: 180, color: textColor, fontFamily: font, fontSize: 44, width: 308, fontWeight: 700, zIndex: 4 },

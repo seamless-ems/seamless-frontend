@@ -1,47 +1,45 @@
 import { PresetData } from "@/types/card-builder";
 
-// Promo card templates — all use circle headshots (matches how platforms display profile photos).
-//
-// Instagram Feed (1080×1080):
-//   Logo:     y:50  → y:210  (160px)
-//   Headshot: y:260 → y:840  (size:580, centred x:250) — heroic fill
-//   Gradient: y:500 → bottom (580px ramp — text zone is deep in the fade)
-//   Details:  y:785 → y:978
-
+// Instagram Feed (1080×1080) — full-bleed Overlay:
+//   Headshot: full-bleed, x:0, y:0, size:1080
+//   Gradient: y:560 → bottom (520px ramp, opacity:0.92)
+//   Event logo: top-right, 220×100
+//   Names: left-aligned, 76px bold, y:710/800
+//   Title/company: left-aligned, 38/36px, y:908/956
 export const INSTAGRAM_FEED_PRESETS: PresetData[] = [
   {
     name: "Instagram Feed",
-    description: "Square 1:1 announcement card for Instagram and Facebook feeds",
+    description: "Square 1:1 announcement — full-bleed portrait with gradient reveal",
     thumbnail: "instagram-feed",
     thumbnailShape: "square",
-    defaultBg: "#0f172a",
+    defaultBg: "#000000",
     defaultTextColor: "#ffffff",
     canvasW: 1080,
     canvasH: 1080,
-    allowedHeadshotShapes: ["circle"],
-    build: (T, bg = "#0f172a", textColor = "#ffffff", font = "Montserrat") => ({
-      eventLogo:       { ...T.eventLogo, x: 190, y: 50, width: 700, height: 160, zIndex: 6 },
-      headshot:        { ...T.headshot, shape: "circle", x: 250, y: 260, size: 580, zIndex: 1 },
-      gradientOverlay: { ...T.gradientOverlay, x: 0, y: 500, width: 1080, height: 580, gradientDirection: "bottom", overlayOpacity: 0.95, zIndex: 2 },
-      firstName:       { ...T.firstName, x: 90, y: 785, color: textColor, fontFamily: font, fontSize: 52, fontWeight: 700, textAlign: "center", width: 900, zIndex: 10 },
-      lastName:        { ...T.lastName, x: 90, y: 850, color: textColor, fontFamily: font, fontSize: 52, fontWeight: 700, textAlign: "center", width: 900, zIndex: 10 },
-      title:           { ...T.title, x: 90, y: 914, color: textColor, fontFamily: font, fontSize: 28, fontWeight: 400, textAlign: "center", width: 900, zIndex: 9 },
-      company:         { ...T.company, x: 90, y: 952, color: textColor, fontFamily: font, fontSize: 26, fontWeight: 400, textAlign: "center", width: 900, zIndex: 8 },
-      companyLogo:     { ...T.companyLogo, x: 912, y: 940, width: 148, height: 74, zIndex: 7 },
+    allowedHeadshotShapes: [],
+    build: (T, bg = "#000000", textColor = "#ffffff", font = "Montserrat") => ({
+      headshot:        { ...T.headshot, shape: "full-bleed", x: 0, y: 0, size: 1080, zIndex: 1 },
+      gradientOverlay: { ...T.gradientOverlay, x: 0, y: 560, width: 1080, height: 520, gradientDirection: "bottom", overlayOpacity: 0.92, zIndex: 3 },
+      eventLogo:       { ...T.eventLogo, x: 820, y: 30, width: 220, height: 100, zIndex: 6 },
+      firstName:       { ...T.firstName, x: 60, y: 710, color: textColor, fontFamily: font, fontSize: 76, fontWeight: 700, textAlign: "left", width: 960, zIndex: 10 },
+      lastName:        { ...T.lastName, x: 60, y: 800, color: textColor, fontFamily: font, fontSize: 76, fontWeight: 700, textAlign: "left", width: 960, zIndex: 10 },
+      title:           { ...T.title, x: 60, y: 908, color: textColor, fontFamily: font, fontSize: 38, fontWeight: 500, textAlign: "left", width: 760, zIndex: 9 },
+      company:         { ...T.company, x: 60, y: 956, color: textColor, fontFamily: font, fontSize: 36, fontWeight: 400, textAlign: "left", width: 760, zIndex: 8 },
     }),
   },
 ];
 
-// Instagram Story (1080×1920):
-//   Logo:     y:130 → y:330  (200px)
-//   Headshot: y:400 → y:1300 (size:900, centred x:90) — fills mid-card
-//   Gradient: y:980 → bottom (940px ramp)
-//   Details:  y:1390 → y:1659
-
+// Instagram Story (1080×1920) — bold circle on brand colour:
+//   Event logo: top-centre, 300×130, x:390, y:80
+//   Headshot: circle, size:840, centred (x:120), y:280 — smaller than full-width so air shows around it
+//   Names: centred, 78px bold, y:1170/1266
+//   Title/company: centred, 44/40px, y:1368/1420
+//   Company logo: centred, 260×120, y:1550 — close to text, same visual weight as event logo above
+//   No gradient — solid background reads cleaner in portrait
 export const INSTAGRAM_STORY_PRESETS: PresetData[] = [
   {
     name: "Instagram Story",
-    description: "Vertical 9:16 announcement for Stories, Reels, and TikTok",
+    description: "Vertical 9:16 announcement — bold circle portrait on brand colour",
     thumbnail: "instagram-story",
     thumbnailShape: "portrait",
     defaultBg: "#0f172a",
@@ -50,14 +48,13 @@ export const INSTAGRAM_STORY_PRESETS: PresetData[] = [
     canvasH: 1920,
     allowedHeadshotShapes: ["circle"],
     build: (T, bg = "#0f172a", textColor = "#ffffff", font = "Montserrat") => ({
-      eventLogo:       { ...T.eventLogo, x: 190, y: 130, width: 700, height: 200, zIndex: 6 },
-      headshot:        { ...T.headshot, shape: "circle", x: 90, y: 400, size: 900, zIndex: 1 },
-      gradientOverlay: { ...T.gradientOverlay, x: 0, y: 980, width: 1080, height: 940, gradientDirection: "bottom", overlayOpacity: 0.95, zIndex: 2 },
-      firstName:       { ...T.firstName, x: 90, y: 1390, color: textColor, fontFamily: font, fontSize: 70, fontWeight: 700, textAlign: "center", width: 900, zIndex: 10 },
-      lastName:        { ...T.lastName, x: 90, y: 1478, color: textColor, fontFamily: font, fontSize: 70, fontWeight: 700, textAlign: "center", width: 900, zIndex: 10 },
-      title:           { ...T.title, x: 90, y: 1562, color: textColor, fontFamily: font, fontSize: 45, fontWeight: 400, textAlign: "center", width: 900, zIndex: 9 },
-      company:         { ...T.company, x: 90, y: 1618, color: textColor, fontFamily: font, fontSize: 41, fontWeight: 400, textAlign: "center", width: 900, zIndex: 8 },
-      companyLogo:     { ...T.companyLogo, x: 912, y: 1780, width: 148, height: 74, zIndex: 7 },
+      eventLogo:       { ...T.eventLogo, x: 390, y: 80, width: 300, height: 130, zIndex: 6 },
+      headshot:        { ...T.headshot, shape: "circle", x: 120, y: 280, size: 840, zIndex: 1 },
+      firstName:       { ...T.firstName, x: 90, y: 1170, color: textColor, fontFamily: font, fontSize: 78, fontWeight: 700, textAlign: "center", width: 900, zIndex: 10 },
+      lastName:        { ...T.lastName, x: 90, y: 1266, color: textColor, fontFamily: font, fontSize: 78, fontWeight: 700, textAlign: "center", width: 900, zIndex: 10 },
+      title:           { ...T.title, x: 90, y: 1368, color: textColor, fontFamily: font, fontSize: 44, fontWeight: 500, textAlign: "center", width: 900, zIndex: 9 },
+      company:         { ...T.company, x: 90, y: 1420, color: textColor, fontFamily: font, fontSize: 40, fontWeight: 400, textAlign: "center", width: 900, zIndex: 8 },
+      companyLogo:     { ...T.companyLogo, x: 410, y: 1550, width: 260, height: 120, size: 70, zIndex: 7 },
     }),
   },
 ];
@@ -66,25 +63,30 @@ export const INSTAGRAM_STORY_PRESETS: PresetData[] = [
 //   Left:  headshot x:40, y:64, size:500 — vertically centred
 //   Right: logo y:40→180, name y:218→328, details y:332→384
 
+// LinkedIn / X (1200×627):
+//   Headshot: circle x:40, y:40, size:547 — vertically centred left column (equal 40px margins)
+//   Company logo: top right  x:1012, y:40  (148×74)
+//   Event logo:   bottom right x:1012, y:513 (148×74)
+//   Text: x:627, width:365 — centred in gap between logos
 export const LINKEDIN_PRESETS: PresetData[] = [
   {
-    name: "LinkedIn Post",
-    description: "Wide 1.91:1 announcement for LinkedIn and Facebook link previews",
+    name: "LinkedIn / X",
+    description: "Wide 1.91:1 post for LinkedIn and X — speaker photo left, event branding right",
     thumbnail: "linkedin-post",
     thumbnailShape: "landscape",
     defaultBg: "#0f172a",
     defaultTextColor: "#ffffff",
     canvasW: 1200,
     canvasH: 627,
-    allowedHeadshotShapes: ["circle"],
+    allowedHeadshotShapes: ["square", "rounded"],
     build: (T, bg = "#0f172a", textColor = "#ffffff", font = "Montserrat") => ({
-      headshot:    { ...T.headshot, shape: "circle", x: 40, y: 64, size: 500, zIndex: 1 },
-      eventLogo:   { ...T.eventLogo, x: 585, y: 40, width: 550, height: 140, zIndex: 6 },
-      firstName:   { ...T.firstName, x: 585, y: 218, color: textColor, fontFamily: font, fontSize: 46, fontWeight: 700, textAlign: "left", width: 560, zIndex: 10 },
-      lastName:    { ...T.lastName, x: 585, y: 273, color: textColor, fontFamily: font, fontSize: 46, fontWeight: 700, textAlign: "left", width: 560, zIndex: 10 },
-      title:       { ...T.title, x: 585, y: 332, color: textColor, fontFamily: font, fontSize: 22, fontWeight: 400, textAlign: "left", width: 560, zIndex: 9 },
-      company:     { ...T.company, x: 585, y: 364, color: textColor, fontFamily: font, fontSize: 20, fontWeight: 400, textAlign: "left", width: 560, zIndex: 8 },
-      companyLogo: { ...T.companyLogo, x: 1032, y: 490, width: 148, height: 74, zIndex: 7 },
+      headshot:    { ...T.headshot, shape: "rounded", x: 40, y: 40, size: 547, zIndex: 1 },
+      companyLogo: { ...T.companyLogo, x: 1012, y: 40, width: 148, height: 74, size: 70, zIndex: 5 },
+      eventLogo:   { ...T.eventLogo, x: 940, y: 477, width: 220, height: 110, zIndex: 6 },
+      firstName:   { ...T.firstName, x: 627, y: 215, color: textColor, fontFamily: font, fontSize: 50, fontWeight: 700, textAlign: "left", width: 365, zIndex: 10 },
+      lastName:    { ...T.lastName, x: 627, y: 275, color: textColor, fontFamily: font, fontSize: 50, fontWeight: 700, textAlign: "left", width: 365, zIndex: 10 },
+      title:       { ...T.title, x: 627, y: 355, color: textColor, fontFamily: font, fontSize: 24, fontWeight: 500, textAlign: "left", width: 365, zIndex: 9 },
+      company:     { ...T.company, x: 627, y: 385, color: textColor, fontFamily: font, fontSize: 22, fontWeight: 400, textAlign: "left", width: 365, zIndex: 8 },
     }),
   },
 ];

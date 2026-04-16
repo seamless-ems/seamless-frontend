@@ -144,6 +144,7 @@ export const toggleElement = (
     setHasUnsavedChanges: (v: boolean) => void;
     setConfig: (fn: any) => void;
     addElementToCanvas: (key: string, pos?: any, props?: any) => void;
+    addToHistory: (cfg: any) => void;
     toast: (opts: any) => void;
   },
 ) => {
@@ -159,6 +160,7 @@ export const toggleElement = (
       } else {
         delete newConfig[elementKey];
       }
+      params.addToHistory(newConfig);
       return newConfig;
     });
     params.toast({

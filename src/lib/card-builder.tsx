@@ -180,25 +180,16 @@ export function TemplateThumbnail({ type }: { type: string }) {
           </div>
         </div>
       );
-    case "headline":
+    case "classic":
       return (
-        <div className="relative w-full h-full bg-white overflow-hidden p-4 flex flex-col justify-end gap-2">
-          <div
-            className="absolute top-4 right-4 rounded-full"
-            style={{ width: "32%", height: "32%", background: TN_PHOTO }}
-          />
-          <div
-            className="rounded"
-            style={{ height: 10, width: "70%", background: "#111827" }}
-          />
-          <div
-            className="rounded"
-            style={{ height: 10, width: "50%", background: "#111827" }}
-          />
-          <div
-            className="rounded"
-            style={{ height: 6, width: "40%", background: "#6B7280" }}
-          />
+        <div className="relative w-full h-full bg-white overflow-hidden flex flex-col">
+          <div className="w-full shrink-0" style={{ height: "67%", background: TN_PHOTO }} />
+          <div className="flex flex-col justify-center gap-1 px-3 flex-1">
+            <div className="rounded" style={{ height: 7, width: "68%", background: "#111827" }} />
+            <div className="rounded" style={{ height: 7, width: "52%", background: "#111827" }} />
+            <div className="rounded mt-0.5" style={{ height: 4, width: "55%", background: "#6B7280" }} />
+            <div className="rounded" style={{ height: 3, width: "42%", background: "#9CA3AF" }} />
+          </div>
         </div>
       );
     case "spotlight":
@@ -307,44 +298,62 @@ export function TemplateThumbnail({ type }: { type: string }) {
       );
     case "instagram-feed":
       return (
-        <div className="relative w-full h-full bg-slate-900 overflow-hidden flex flex-col items-center">
-          <div className="absolute top-3 left-3 rounded" style={{ width: "28%", height: "10%", background: "rgba(255,255,255,0.2)" }} />
-          <div className="rounded-full mt-5" style={{ width: "46%", paddingTop: "46%", background: TN_PHOTO, opacity: 0.7 }} />
-          <div className="mt-auto pb-4 w-full px-4 space-y-1.5">
-            <div className="rounded text-center mx-auto" style={{ height: 5, width: "55%", background: "rgba(255,255,255,0.5)" }} />
-            <div className="rounded" style={{ height: 9, width: "85%", background: "#ffffff" }} />
-            <div className="rounded" style={{ height: 6, width: "60%", background: "rgba(255,255,255,0.65)" }} />
-            <div className="rounded" style={{ height: 4, width: "45%", background: "rgba(255,255,255,0.4)" }} />
+        <div className="relative w-full h-full overflow-hidden" style={{ background: TN_PHOTO }}>
+          {/* Full-bleed photo */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <PersonSilhouette size={64} className="opacity-25" />
           </div>
-          <div className="absolute bottom-0 left-0 right-0" style={{ height: "50%", background: "linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 100%)" }} />
+          {/* Gradient overlay — bottom ~52% */}
+          <div className="absolute bottom-0 left-0 right-0" style={{ height: "52%", background: "linear-gradient(to top, rgba(0,0,0,0.88) 0%, transparent 100%)" }} />
+          {/* Event logo — top right */}
+          <div className="absolute top-2 right-2 rounded" style={{ width: "26%", height: "8%", background: "rgba(255,255,255,0.3)" }} />
+          {/* Text — bottom left */}
+          <div className="absolute bottom-3 left-3 space-y-1">
+            <div className="rounded-sm" style={{ height: 8, width: 52, background: "#ffffff" }} />
+            <div className="rounded-sm" style={{ height: 8, width: 40, background: "#ffffff" }} />
+            <div className="rounded-sm" style={{ height: 4, width: 48, background: "rgba(255,255,255,0.6)" }} />
+            <div className="rounded-sm" style={{ height: 4, width: 36, background: "rgba(255,255,255,0.4)" }} />
+          </div>
         </div>
       );
     case "instagram-story":
       return (
-        <div className="relative w-full h-full bg-slate-900 overflow-hidden flex flex-col items-center">
-          <div className="rounded mx-auto mt-3" style={{ width: "40%", height: "7%", background: "rgba(255,255,255,0.2)" }} />
-          <div className="rounded-full mt-3" style={{ width: "48%", paddingTop: "48%", background: TN_PHOTO, opacity: 0.7 }} />
-          <div className="mt-auto pb-3 w-full px-3 space-y-1.5">
-            <div className="rounded mx-auto" style={{ height: 4, width: "50%", background: "rgba(255,255,255,0.5)" }} />
-            <div className="rounded mx-auto" style={{ height: 8, width: "80%", background: "#ffffff" }} />
-            <div className="rounded mx-auto" style={{ height: 5, width: "55%", background: "rgba(255,255,255,0.65)" }} />
-            <div className="rounded mx-auto" style={{ height: 4, width: "40%", background: "rgba(255,255,255,0.4)" }} />
+        <div className="relative w-full h-full bg-slate-900 overflow-hidden flex flex-col items-center" style={{ paddingTop: "5%" }}>
+          {/* Event logo — top centre */}
+          <div className="rounded shrink-0" style={{ width: "34%", height: "5%", background: "rgba(255,255,255,0.25)" }} />
+          {/* Circle headshot — slightly smaller than full width so dark bg shows around it */}
+          <div className="rounded-full mt-2 shrink-0" style={{ width: "64%", paddingTop: "64%", background: TN_PHOTO, opacity: 0.85 }} />
+          {/* Text — centred below */}
+          <div className="mt-2 w-full px-3 flex flex-col items-center gap-1.5">
+            <div className="rounded" style={{ height: 7, width: "68%", background: "#ffffff" }} />
+            <div className="rounded" style={{ height: 7, width: "54%", background: "#ffffff" }} />
+            <div className="rounded mt-0.5" style={{ height: 4, width: "50%", background: "rgba(255,255,255,0.6)" }} />
+            <div className="rounded" style={{ height: 4, width: "38%", background: "rgba(255,255,255,0.4)" }} />
           </div>
-          <div className="absolute bottom-0 left-0 right-0" style={{ height: "45%", background: "linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 100%)" }} />
+          {/* Company logo — close to text, same visual weight as event logo above */}
+          <div className="rounded mt-3 shrink-0" style={{ width: "38%", height: "5.5%", background: "rgba(255,255,255,0.2)" }} />
         </div>
       );
     case "linkedin-post":
       return (
         <div className="relative w-full h-full bg-slate-900 overflow-hidden flex">
-          <div className="h-full flex items-center justify-center" style={{ width: "42%", background: TN_PHOTO, opacity: 0.6 }}>
-            <PersonSilhouette size={40} className="opacity-30" />
+          {/* Circle headshot — left column */}
+          <div className="h-full shrink-0 flex items-center justify-center" style={{ width: "44%", background: TN_PHOTO, opacity: 0.7 }}>
+            <div className="rounded-full" style={{ width: "62%", paddingTop: "62%", background: "rgba(0,0,0,0.25)" }} />
           </div>
-          <div className="flex-1 p-3 flex flex-col justify-center gap-1.5">
-            <div className="rounded mb-1" style={{ height: "10%", width: "55%", background: "rgba(255,255,255,0.2)" }} />
-            <div className="rounded" style={{ height: 5, width: "70%", background: "rgba(255,255,255,0.5)" }} />
-            <div className="rounded" style={{ height: 9, width: "95%", background: "#ffffff" }} />
-            <div className="rounded mt-1" style={{ height: 5, width: "65%", background: "rgba(255,255,255,0.65)" }} />
-            <div className="rounded" style={{ height: 4, width: "50%", background: "rgba(255,255,255,0.4)" }} />
+          {/* Right column */}
+          <div className="flex-1 relative flex flex-col justify-center px-3 py-2">
+            {/* Company logo — top right */}
+            <div className="absolute top-2 right-2 rounded" style={{ width: "32%", height: "9%", background: "rgba(255,255,255,0.2)" }} />
+            {/* Speaker name + details */}
+            <div className="flex flex-col gap-1.5">
+              <div className="rounded" style={{ height: 8, width: "90%", background: "#ffffff" }} />
+              <div className="rounded" style={{ height: 8, width: "70%", background: "#ffffff" }} />
+              <div className="rounded mt-1" style={{ height: 4, width: "65%", background: "rgba(255,255,255,0.6)" }} />
+              <div className="rounded" style={{ height: 4, width: "50%", background: "rgba(255,255,255,0.4)" }} />
+            </div>
+            {/* Event logo — bottom right */}
+            <div className="absolute bottom-2 right-2 rounded" style={{ width: "32%", height: "9%", background: "rgba(255,255,255,0.2)" }} />
           </div>
         </div>
       );

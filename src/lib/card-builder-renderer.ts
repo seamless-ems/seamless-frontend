@@ -215,20 +215,6 @@ export async function renderAllElements(params: RenderParams) {
         } else if (shape === "square") {
           const actualWidth = cfg.size * scaleX;
           fabricImg.scaleToWidth(actualWidth);
-        } else if (shape === "vertical") {
-          const actualWidth = cfg.size * scaleX;
-          const actualHeight = ((cfg.size * 4) / 3) * scaleY;
-          fabricImg.scaleToWidth(actualWidth);
-          fabricImg.set({
-            clipPath: new fabric.Rect({ width: actualWidth / fabricImg.scaleX!, height: actualHeight / fabricImg.scaleY!, originX: "center", originY: "center" }),
-          });
-        } else if (shape === "horizontal") {
-          const actualWidth = cfg.size * scaleX;
-          const actualHeight = ((cfg.size * 3) / 4) * scaleY;
-          fabricImg.scaleToWidth(actualWidth);
-          fabricImg.set({
-            clipPath: new fabric.Rect({ width: actualWidth / fabricImg.scaleX!, height: actualHeight / fabricImg.scaleY!, originX: "center", originY: "center" }),
-          });
         } else if (shape === "rounded") {
           const actualWidth = cfg.size * scaleX;
           fabricImg.scaleToWidth(actualWidth);
@@ -261,11 +247,7 @@ export async function renderAllElements(params: RenderParams) {
         let baseWidth = cfg.size;
         let baseHeight = cfg.size;
 
-        if (shape === "vertical") {
-          baseHeight = (cfg.size * 4) / 3;
-        } else if (shape === "horizontal") {
-          baseHeight = (cfg.size * 3) / 4;
-        } else if (shape === "full-bleed") {
+        if (shape === "full-bleed") {
           baseWidth = canvasWidth;
           baseHeight = canvasHeight;
         } else if (shape === "banner") {
@@ -304,14 +286,15 @@ export async function renderAllElements(params: RenderParams) {
       if (img) {
         const fabricImg = new fabric.Image(img, { left: cfg.x, top: cfg.y, opacity: cfg.opacity ?? 1, selectable: true, hasControls: true, lockRotation: true, lockUniScaling: false, data: { elementKey: "companyLogo" } });
 
-        const LOGO_PAD = 10;
+        // No padding — scale to fill cfg.width × cfg.height exactly, centered.
+        // Padding caused compounding snap-back: object:modified stores the actual
+        // image position/size, so re-applying padding+centering on every render
+        // shifted and shrank the logo with each drag or resize.
         const dropW = cfg.width || cfg.size;
         const dropH = cfg.height || cfg.size;
         const naturalW = (fabricImg.width as number) || 1;
         const naturalH = (fabricImg.height as number) || 1;
-        const maxW = dropW - LOGO_PAD * 2;
-        const maxH = dropH - LOGO_PAD * 2;
-        const scale = Math.min(maxW / naturalW, maxH / naturalH);
+        const scale = Math.min(dropW / naturalW, dropH / naturalH);
         fabricImg.set({ scaleX: scale, scaleY: scale });
         const scaledW = naturalW * scale;
         const scaledH = naturalH * scale;
@@ -327,7 +310,7 @@ export async function renderAllElements(params: RenderParams) {
 
         const borderRect = new fabric.Rect({ left: 2, top: 2, width: width - 4, height: height - 4, fill: "transparent", stroke: "#9ca3af", strokeWidth: 1.5, strokeDashArray: [5, 5], strokeUniform: true, rx: 3, ry: 3, selectable: false, evented: false });
 
-        const text = new fabric.Text("Logo Drop Zone", { left: width / 2, top: height / 2, fontSize: cfg.fontSize ?? Math.min(Math.max(11, width / 8), 18), fill: "#6b7280", fontFamily: "Inter", originX: "center", originY: "center", selectable: false, evented: false });
+        const text = new fabric.Text(`Company Logo\nColour`, { left: width / 2, top: height / 2, fontSize: Math.min(Math.max(9, width / 12), 12), fill: "#6b7280", fontFamily: "Inter", originX: "center", originY: "center", textAlign: "center", lineHeight: 1.4, selectable: false, evented: false });
 
         const group = new fabric.Group([fillRect, borderRect, text], { left: cfg.x, top: cfg.y, selectable: true, hasControls: true, lockRotation: true, subTargetCheck: false, data: { elementKey: "companyLogo" } });
 
@@ -343,14 +326,12 @@ export async function renderAllElements(params: RenderParams) {
       if (img) {
         const fabricImg = new fabric.Image(img, { left: cfg.x, top: cfg.y, opacity: cfg.opacity ?? 1, selectable: true, hasControls: true, lockRotation: true, lockUniScaling: false, data: { elementKey: "eventLogo" } });
 
-        const LOGO_PAD = 10;
+        // Same fix as companyLogo — no padding, scale to fill exactly, centered.
         const dropW = cfg.width || cfg.size;
         const dropH = cfg.height || cfg.size;
         const naturalW = (fabricImg.width as number) || 1;
         const naturalH = (fabricImg.height as number) || 1;
-        const maxW = dropW - LOGO_PAD * 2;
-        const maxH = dropH - LOGO_PAD * 2;
-        const scale = Math.min(maxW / naturalW, maxH / naturalH);
+        const scale = Math.min(dropW / naturalW, dropH / naturalH);
         fabricImg.set({ scaleX: scale, scaleY: scale });
         const scaledW = naturalW * scale;
         const scaledH = naturalH * scale;

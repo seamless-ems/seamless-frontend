@@ -297,46 +297,52 @@ export const createFabricCanvas = (params: CreateCanvasParams) => {
       }
     }
 
-    {
-      const SAFE_ZONE_H = 50;
-      const cb = obj.getBoundingRect();
-      const clamped = clampRectToCanvas({ left: cb.left, top: cb.top, width: cb.width, height: cb.height }, cW, cH, SAFE_ZONE_H);
-      const deltaX = clamped.left - cb.left;
-      const deltaY = clamped.top - cb.top;
-      if (deltaX !== 0 || deltaY !== 0) {
-        obj.set({ left: (obj.left || 0) + deltaX, top: (obj.top || 0) + deltaY });
-        obj.setCoords();
-      }
-    }
+    // DEV NOTE 04_16_2026: Safe zone drag clamp disabled — text now auto-shrinks so
+    // overflow into the bottom 50px is no longer a risk. Kept for potential revert.
+    // Remove on cleanup if still unused 6+ months out.
+    // {
+    //   const SAFE_ZONE_H = 50;
+    //   const cb = obj.getBoundingRect();
+    //   const clamped = clampRectToCanvas({ left: cb.left, top: cb.top, width: cb.width, height: cb.height }, cW, cH, SAFE_ZONE_H);
+    //   const deltaX = clamped.left - cb.left;
+    //   const deltaY = clamped.top - cb.top;
+    //   if (deltaX !== 0 || deltaY !== 0) {
+    //     obj.set({ left: (obj.left || 0) + deltaX, top: (obj.top || 0) + deltaY });
+    //     obj.setCoords();
+    //   }
+    // }
 
     alignmentLines.forEach((l) => canvas.add(l));
     canvas.renderAll();
   });
 
-  canvas.on("after:render", () => {
-    const ctx = canvas.getContext() as CanvasRenderingContext2D | null;
-    if (!ctx) return;
-    const cH = canvas.getHeight();
-    const cW = canvas.getWidth();
-    // Use viewport zoom so the safe zone line stays fixed at the same content
-    // position (50px from the bottom of the card) regardless of zoom level.
-    const zoom = ((canvas as any).viewportTransform?.[0] as number) || 1;
-    const safeY = cH - 50 * zoom;
-    ctx.save();
-    ctx.strokeStyle = "rgba(79, 156, 251, 0.55)";
-    ctx.lineWidth = 1.5;
-    ctx.setLineDash([6, 4]);
-    ctx.beginPath();
-    ctx.moveTo(0, safeY);
-    ctx.lineTo(cW, safeY);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.font = "11px sans-serif";
-    ctx.fillStyle = "rgba(79, 156, 251, 0.7)";
-    ctx.textAlign = "right";
-    ctx.fillText("safe zone", cW - 6, safeY - 4);
-    ctx.restore();
-  });
+  // DEV NOTE 04_16_2026: Safe zone visual line disabled — text now auto-shrinks so
+  // the line is no longer meaningful. Kept for potential revert.
+  // Remove on cleanup if still unused 6+ months out.
+  // canvas.on("after:render", () => {
+  //   const ctx = canvas.getContext() as CanvasRenderingContext2D | null;
+  //   if (!ctx) return;
+  //   const cH = canvas.getHeight();
+  //   const cW = canvas.getWidth();
+  //   // Use viewport zoom so the safe zone line stays fixed at the same content
+  //   // position (50px from the bottom of the card) regardless of zoom level.
+  //   const zoom = ((canvas as any).viewportTransform?.[0] as number) || 1;
+  //   const safeY = cH - 50 * zoom;
+  //   ctx.save();
+  //   ctx.strokeStyle = "rgba(79, 156, 251, 0.55)";
+  //   ctx.lineWidth = 1.5;
+  //   ctx.setLineDash([6, 4]);
+  //   ctx.beginPath();
+  //   ctx.moveTo(0, safeY);
+  //   ctx.lineTo(cW, safeY);
+  //   ctx.stroke();
+  //   ctx.setLineDash([]);
+  //   ctx.font = "11px sans-serif";
+  //   ctx.fillStyle = "rgba(79, 156, 251, 0.7)";
+  //   ctx.textAlign = "right";
+  //   ctx.fillText("safe zone", cW - 6, safeY - 4);
+  //   ctx.restore();
+  // });
 
   canvas.on("mouse:up", () => {
     snapLockedX = null;
