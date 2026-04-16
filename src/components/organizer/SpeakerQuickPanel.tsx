@@ -4,6 +4,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { updateSpeaker } from '@/lib/api';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Switch } from '@/components/ui/switch';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { X, ArrowUpRight, CheckCircle, AlertTriangle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import SpeakerCardTab from './SpeakerCardTab';
@@ -21,6 +23,7 @@ type Props = {
 export default function SpeakerQuickPanel({ speaker, eventId, view, onClose }: Props) {
   const queryClient = useQueryClient();
   const [toggling, setToggling] = useState(false);
+  const [unpublishDialogOpen, setUnpublishDialogOpen] = useState(false);
 
   const headshotUrl = speaker.headshot || speaker.headshot_url || speaker.avatarUrl || null;
   const speakerName = speaker.name || `${speaker.firstName ?? ''} ${speaker.lastName ?? ''}`.trim() || speaker.email || 'Speaker';
@@ -91,18 +94,59 @@ export default function SpeakerQuickPanel({ speaker, eventId, view, onClose }: P
   };
 
   const handleToggleEmbed = async (value: boolean) => {
+    if (!value) {
+      // Turning off — show dialog so user can choose unpublish-only vs reset approval
+      setUnpublishDialogOpen(true);
+      return;
+    }
     setToggling(true);
     try {
-      await updateSpeaker(eventId, speaker.id, { ...base, embedEnabled: value });
+      await updateSpeaker(eventId, speaker.id, { ...base, embedEnabled: true });
       invalidate();
     } catch (err: any) {
-      toast({ title: 'Failed to update embed status', description: String(err?.message || err) });
+      toast({ title: 'Failed to publish speaker', description: String(err?.message || err) });
+    } finally {
+      setToggling(false);
+    }
+  };
+
+  const handleUnpublish = async (resetApproval: boolean) => {
+    setUnpublishDialogOpen(false);
+    setToggling(true);
+    try {
+      const patch: any = { ...base, embedEnabled: false };
+      if (resetApproval) patch.websiteCardApproved = false;
+      await updateSpeaker(eventId, speaker.id, patch);
+      invalidate();
+      toast({ title: resetApproval ? 'Speaker unpublished and approval reset' : 'Speaker removed from Speaker Wall' });
+    } catch (err: any) {
+      toast({ title: 'Failed to unpublish speaker', description: String(err?.message || err) });
     } finally {
       setToggling(false);
     }
   };
 
   return (
+    <>
+    <Dialog open={unpublishDialogOpen} onOpenChange={setUnpublishDialogOpen}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Remove from Speaker Wall?</DialogTitle>
+          <DialogDescription>{speakerName} · Speaker Card</DialogDescription>
+        </DialogHeader>
+        <div className="flex flex-col gap-2 pt-1">
+          <Button className="w-full" onClick={() => handleUnpublish(false)}>
+            Unpublish
+          </Button>
+          <Button variant="outline" className="w-full text-destructive border-destructive/30 hover:bg-destructive/5 hover:text-destructive" onClick={() => handleUnpublish(true)}>
+            Unpublish &amp; Unapprove
+          </Button>
+          <Button variant="ghost" className="w-full" onClick={() => setUnpublishDialogOpen(false)}>
+            Cancel
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-secondary/20 shrink-0">
@@ -172,6 +216,7 @@ export default function SpeakerQuickPanel({ speaker, eventId, view, onClose }: P
         )}
       </div>
     </div>
+    </>
   );
 }
 

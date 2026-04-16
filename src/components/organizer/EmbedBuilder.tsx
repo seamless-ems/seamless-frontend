@@ -13,6 +13,8 @@ export default function EmbedBuilder({ eventId }: { eventId: string | undefined 
   const queryClient = useQueryClient();
   const [copiedEmbed, setCopiedEmbed] = useState<"iframe" | "url" | null>(null);
   const [toggling, setToggling] = useState<string | null>(null);
+  const [desktopCols, setDesktopCols] = useState(2);
+  const [mobileCols, setMobileCols] = useState(1);
 
   const { data: speakersData, isLoading } = useQuery<any>({
     queryKey: ["event", eventId, "speakers", "embed"],
@@ -40,11 +42,11 @@ export default function EmbedBuilder({ eventId }: { eventId: string | undefined 
     }));
   })();
 
-  // Only speakers with cards approved are eligible for the embed
-  const eligibleSpeakers = allSpeakers.filter(s => s.websiteCardApproved && s.promoCardApproved);
+  // Only speakers whose Speaker Card is approved are eligible for the embed
+  const eligibleSpeakers = allSpeakers.filter(s => s.websiteCardApproved);
   const liveSpeakers = eligibleSpeakers.filter(s => s.embedEnabled);
 
-  const embedUrl = `${API_BASE}/embed/${eventId}`;
+  const embedUrl = `${API_BASE}/embed/${eventId}?column_amount=${desktopCols}&column_amount_mobile=${mobileCols}`;
   const iframeSnippet = `<iframe src="${embedUrl}" width="100%" height="600" frameborder="0" allowtransparency="true" style="border:none;border-radius:8px;background:transparent;"></iframe>`;
 
   const copyText = (text: string, key: "iframe" | "url") => {
@@ -117,6 +119,39 @@ export default function EmbedBuilder({ eventId }: { eventId: string | undefined 
             <p>Only speakers with an approved <span className="font-medium text-foreground">Speaker Card</span> appear in this list — Social Card approval is not required.</p>
           </HelpTip>
         </div>
+      </div>
+
+      {/* Layout settings */}
+      <div className="rounded-lg border border-border px-5 py-3.5 flex items-center gap-6">
+        <div className="flex items-center gap-3">
+          <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">Desktop columns</span>
+          <div className="flex rounded-md border border-border overflow-hidden">
+            {[2, 3, 4].map(n => (
+              <button
+                key={n}
+                onClick={() => setDesktopCols(n)}
+                className={`h-7 w-8 text-xs font-medium transition-colors border-r border-border last:border-r-0 ${desktopCols === n ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}
+              >
+                {n}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">Mobile columns</span>
+          <div className="flex rounded-md border border-border overflow-hidden">
+            {[1, 2].map(n => (
+              <button
+                key={n}
+                onClick={() => setMobileCols(n)}
+                className={`h-7 w-8 text-xs font-medium transition-colors border-r border-border last:border-r-0 ${mobileCols === n ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}
+              >
+                {n}
+              </button>
+            ))}
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground ml-auto">Changes apply to your embed URL and copied code.</p>
       </div>
 
       {/* Speaker list */}

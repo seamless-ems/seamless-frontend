@@ -86,7 +86,7 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
   const speakerStatus = (() => {
     if (infoStatus === 'pending' || !headshotUrl)
       return { label: 'Info Pending', cls: 'bg-warning/10 text-warning border-warning/30' };
-    if (!websiteApproved || !promoApproved)
+    if (!websiteApproved)
       return { label: 'Card Approval Pending', cls: 'bg-blue-500/10 text-blue-600 border-blue-500/30' };
     if (!embedEnabled)
       return { label: 'Cards Approved', cls: 'bg-success/10 text-success border-success/30' };

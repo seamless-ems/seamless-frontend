@@ -40,8 +40,8 @@ export default function SpeakerEmbed() {
   });
 
   const visibleSpeakers = speakerList.filter((s: any) => {
-    // Only show approved speakers (both website and promo cards must be approved)
-    const isApproved = (s?.website_card_approved || s?.websiteCardApproved) && (s?.promo_card_approved || s?.promoCardApproved);
+    // Only show speakers whose Speaker Card is approved
+    const isApproved = (s?.website_card_approved || s?.websiteCardApproved);
     const hasRequiredData = Boolean(s?.headshot || s?.firstName || s?.name);
     return isApproved && hasRequiredData;
   });
