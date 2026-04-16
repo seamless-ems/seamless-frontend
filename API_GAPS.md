@@ -36,3 +36,14 @@ Card Builder - social cards
 Speaker Wall 
 - we have an api gap for number of columns on mobile and desktop also doesn't seem to be working 
 - I have added the buttons on desktop front end bu they need wiring up 
+
+Magic Link Email 
+- Clean up copy, subject, etc 
+
+Onboarding FLow 
+- I got brought right into /organizer after setting up a new account and didn't see option to enter team etc and got a random team assigned 
+
+
+Forms 
+- I think we have some saving bugs on form fields (description wont go) 
+We also need to think about what happens if somebody changes a form mid flow when speakers have submitted 

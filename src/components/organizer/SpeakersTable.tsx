@@ -6,7 +6,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { useQueryClient } from "@tanstack/react-query";
 import { deleteSpeaker, updateSpeaker } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
-import { Download, ExternalLink, Copy, Check, ChevronRight, Trash, MoreVertical, ArrowUpDown, X } from "lucide-react";
+import { Download, Copy, Check, ChevronRight, Trash, MoreVertical, ArrowUpDown, X } from "lucide-react";
 import { API_BASE } from "@/lib/api";
 import { HelpTip } from "@/components/ui/HelpTip";
 import {
@@ -75,29 +75,6 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
-function BioCopyButton({ bio }: { bio: string | null | undefined }) {
-  const [copied, setCopied] = useState(false);
-  return (
-    <button
-      title={bio ? "Copy bio" : "No bio submitted"}
-      disabled={!bio}
-      onClick={() => {
-        if (!bio) return;
-        navigator.clipboard.writeText(bio).then(() => {
-          setCopied(true);
-          setTimeout(() => setCopied(false), 1500);
-        });
-      }}
-      className={`rounded p-1.5 transition-colors ${
-        bio
-          ? "text-muted-foreground hover:text-primary hover:bg-primary/8 cursor-pointer"
-          : "text-muted-foreground/30 cursor-not-allowed"
-      }`}
-    >
-      {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-    </button>
-  );
-}
 
 function getInfoStatus(speaker: any) {
   const infoStatus = speaker.speakerInformationStatus ?? speaker.speaker_information_status ?? speaker.intakeFormStatus ?? speaker.intake_form_status ?? "pending";
@@ -301,8 +278,6 @@ export default function SpeakersTable({ speakers, isLoading, eventId, selectedTa
   // If config not yet loaded, default to showing all.
   const fieldEnabled = (fieldId: string) =>
     !formConfig || formConfig.some((f) => f.id === fieldId && f.enabled);
-  const showBio = fieldEnabled("bio");
-
   const showControls = !!setSearchQuery;
 
   const approvedSocialSpeakers = speakers.filter(s => s.promoCardApproved ?? s.promo_card_approved ?? false);
@@ -394,11 +369,62 @@ export default function SpeakersTable({ speakers, isLoading, eventId, selectedTa
 
   return (
     <>
+      {showControls && !isSelectionActive && (
+        <div className="flex items-center gap-1.5 px-3 py-2 border-b border-border bg-background">
+          <Input
+            placeholder="Search…"
+            value={searchQuery ?? ""}
+            onChange={(e) => setSearchQuery?.(e.target.value)}
+            className="w-[180px] h-8 text-sm"
+          />
+          <Select value={statusFilter ?? "all"} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[150px] h-8 text-sm">
+              <SelectValue placeholder="All" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="pending">Info Pending</SelectItem>
+              <SelectItem value="submitted">Pending Approval</SelectItem>
+              <SelectItem value="cards_approved">Ready to Publish</SelectItem>
+              <SelectItem value="published">Published</SelectItem>
+              <SelectItem value="archived">Archived</SelectItem>
+            </SelectContent>
+          </Select>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                title={`Sort: ${sortBy === 'name' ? 'Name A–Z' : sortBy === 'oldest' ? 'Oldest first' : 'Newest first'}`}
+                className="h-8 w-8 flex items-center justify-center rounded-md border border-input bg-background hover:bg-muted transition-colors shrink-0"
+              >
+                <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-40">
+              <DropdownMenuItem onClick={() => setSortBy?.('newest')}>
+                {(sortBy ?? 'newest') === 'newest' ? <Check className="h-3 w-3 mr-2 text-primary" /> : <span className="h-3 w-3 mr-2 inline-block" />}
+                Newest first
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setSortBy?.('oldest')}>
+                {sortBy === 'oldest' ? <Check className="h-3 w-3 mr-2 text-primary" /> : <span className="h-3 w-3 mr-2 inline-block" />}
+                Oldest first
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setSortBy?.('name')}>
+                {sortBy === 'name' ? <Check className="h-3 w-3 mr-2 text-primary" /> : <span className="h-3 w-3 mr-2 inline-block" />}
+                Name A–Z
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {(pendingCount ?? 0) > 0 && (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-warning/10 text-warning rounded text-xs font-medium whitespace-nowrap">
+              ⚠ {pendingCount}
+            </span>
+          )}
+        </div>
+      )}
       <table className="w-full table-fixed">
       <colgroup>
         {showControls && <col style={{ width: '36px' }} />}  {/* checkbox */}
         <col />                               {/* name — absorbs remaining */}
-        {showBio && <col style={{ width: '44px' }} />}
         <col style={{ width: '148px' }} />   {/* speaker card — fixed */}
         <col style={{ width: '148px' }} />   {/* social card — fixed */}
         <col style={{ width: '36px' }} />    {/* 3-dot */}
@@ -429,28 +455,28 @@ export default function SpeakersTable({ speakers, isLoading, eventId, selectedTa
                 <button
                   onClick={() => handleBulkApprove('website')}
                   disabled={isBulkApproving}
-                  className="h-7 px-2.5 text-xs font-medium rounded-md border border-border bg-background hover:bg-muted transition-colors whitespace-nowrap disabled:opacity-50"
+                  className="h-7 px-2.5 text-xs font-medium rounded-md border border-success/40 text-foreground bg-background hover:bg-success/5 transition-colors whitespace-nowrap disabled:opacity-50"
                 >
                   Approve Speaker Cards
                 </button>
                 <button
                   onClick={() => handleBulkApprove('promo')}
                   disabled={isBulkApproving}
-                  className="h-7 px-2.5 text-xs font-medium rounded-md border border-border bg-background hover:bg-muted transition-colors whitespace-nowrap disabled:opacity-50"
+                  className="h-7 px-2.5 text-xs font-medium rounded-md border border-success/40 text-foreground bg-background hover:bg-success/5 transition-colors whitespace-nowrap disabled:opacity-50"
                 >
                   Approve Social Cards
                 </button>
                 <button
                   onClick={() => setBulkUnpublishOpen(true)}
                   disabled={isBulkApproving}
-                  className="h-7 px-2.5 text-xs font-medium rounded-md border border-destructive/40 text-destructive bg-background hover:bg-destructive/5 transition-colors whitespace-nowrap disabled:opacity-50"
+                  className="h-7 px-2.5 text-xs font-medium rounded-md border border-destructive/30 text-foreground bg-background hover:bg-destructive/5 transition-colors whitespace-nowrap disabled:opacity-50"
                 >
                   Unpublish Speaker Cards
                 </button>
                 <button
                   onClick={handleBulkUnapprovePromo}
                   disabled={isBulkApproving}
-                  className="h-7 px-2.5 text-xs font-medium rounded-md border border-destructive/40 text-destructive bg-background hover:bg-destructive/5 transition-colors whitespace-nowrap disabled:opacity-50"
+                  className="h-7 px-2.5 text-xs font-medium rounded-md border border-destructive/30 text-foreground bg-background hover:bg-destructive/5 transition-colors whitespace-nowrap disabled:opacity-50"
                 >
                   Unapprove Social Cards
                 </button>
@@ -461,60 +487,8 @@ export default function SpeakersTable({ speakers, isLoading, eventId, selectedTa
                   <X className="h-3 w-3" />Clear
                 </button>
               </div>
-            ) : showControls ? (
-              <div className="flex items-center gap-1.5">
-                <Input
-                  placeholder="Search…"
-                  value={searchQuery ?? ""}
-                  onChange={(e) => setSearchQuery?.(e.target.value)}
-                  className="w-[120px] h-8 text-sm"
-                />
-                <Select value={statusFilter ?? "all"} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-[130px] h-8 text-sm">
-                    <SelectValue placeholder="All" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All</SelectItem>
-                    <SelectItem value="pending">Info Pending</SelectItem>
-                    <SelectItem value="submitted">Pending Approval</SelectItem>
-                    <SelectItem value="cards_approved">Ready to Publish</SelectItem>
-                    <SelectItem value="published">Published</SelectItem>
-                    <SelectItem value="archived">Archived</SelectItem>
-                  </SelectContent>
-                </Select>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button
-                      title={`Sort: ${sortBy === 'name' ? 'Name A–Z' : sortBy === 'oldest' ? 'Oldest first' : 'Newest first'}`}
-                      className="h-8 w-8 flex items-center justify-center rounded-md border border-input bg-background hover:bg-muted transition-colors shrink-0"
-                    >
-                      <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-40">
-                    <DropdownMenuItem onClick={() => setSortBy?.('newest')}>
-                      {(sortBy ?? 'newest') === 'newest' ? <Check className="h-3 w-3 mr-2 text-primary" /> : <span className="h-3 w-3 mr-2 inline-block" />}
-                      Newest first
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setSortBy?.('oldest')}>
-                      {sortBy === 'oldest' ? <Check className="h-3 w-3 mr-2 text-primary" /> : <span className="h-3 w-3 mr-2 inline-block" />}
-                      Oldest first
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setSortBy?.('name')}>
-                      {sortBy === 'name' ? <Check className="h-3 w-3 mr-2 text-primary" /> : <span className="h-3 w-3 mr-2 inline-block" />}
-                      Name A–Z
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                {(pendingCount ?? 0) > 0 && (
-                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-warning/10 text-warning rounded text-xs font-medium whitespace-nowrap">
-                    ⚠ {pendingCount}
-                  </span>
-                )}
-              </div>
             ) : null}
           </th>
-          {showBio && <th className="px-3 py-2.5 text-center text-xs font-medium text-muted-foreground w-[52px]">{!isSelectionActive && 'Bio'}</th>}
           <th className="px-3 py-2.5 text-left text-xs font-medium text-muted-foreground w-[120px]">
             {!isSelectionActive && (
               <div className="flex items-center gap-1.5">
@@ -606,14 +580,6 @@ export default function SpeakersTable({ speakers, isLoading, eventId, selectedTa
                 )}
               </td>
 
-              {/* Bio */}
-              {showBio && (
-                <td className="px-3 py-3">
-                  <div className="flex justify-center">
-                    <BioCopyButton bio={speaker.bio} />
-                  </div>
-                </td>
-              )}
 
               {/* Speaker Card */}
               <td className="px-3 py-3">
@@ -638,11 +604,6 @@ export default function SpeakersTable({ speakers, isLoading, eventId, selectedTa
                   >
                     {speakerCardStatus.label}
                   </Badge>
-                  {websiteApproved && (
-                    <a href={websiteCardUrl} target="_blank" rel="noreferrer" title="View Speaker Card" className="text-muted-foreground/30 hover:text-primary transition-colors" onClick={(e) => e.stopPropagation()}>
-                      <ExternalLink className="h-3 w-3" />
-                    </a>
-                  )}
                 </div>
               </td>
 

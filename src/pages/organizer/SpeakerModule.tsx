@@ -23,6 +23,7 @@ export default function SpeakerModule() {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState("newest");
@@ -37,7 +38,11 @@ export default function SpeakerModule() {
   const [confirmFormLeave, setConfirmFormLeave] = useState(false);
   const [isDownloadingAll, setIsDownloadingAll] = useState(false);
   const formBuilderRef = useRef<SpeakerFormBuilderHandle>(null);
-  
+
+  useEffect(() => {
+    const t = setTimeout(() => setSearchQuery(searchInput), 300);
+    return () => clearTimeout(t);
+  }, [searchInput]);
 
   async function handleDownloadAllAssets() {
     const assets: { url: string; filename: string }[] = [];
@@ -198,13 +203,13 @@ export default function SpeakerModule() {
 
   const speakerQueryTab = activeTab === "applications" ? "applications" : "speakers";
   const { data: rawSpeakers, isLoading } = useQuery<any, Error>({
-    queryKey: ["event", id, "speakers", speakerQueryTab],
+    queryKey: ["event", id, "speakers", speakerQueryTab, page, pageSize, searchQuery, statusFilter, sortBy],
     queryFn: () => {
       const formType = activeTab === "applications" ? "call-for-speakers" : "speaker-info";
       const params = new URLSearchParams();
       params.set("form_type", formType);
       params.set("page", String(page));
-      params.set("pageSize", String(pageSize));
+      params.set("page_size", String(pageSize));
       if (searchQuery) params.set("q", searchQuery);
       if (statusFilter && statusFilter !== "all") params.set("status", statusFilter);
       if (sortBy) params.set("sort", sortBy);
@@ -398,8 +403,12 @@ export default function SpeakerModule() {
             </div>
             <div className="flex items-center gap-2">
               <HelpTip title="How speakers work" side="bottom" align="end">
-                <p>Add speakers manually or accept them from <span className="font-medium text-foreground">Applications</span>. Send each one their intake form to collect a headshot, bio, and logo.</p>
-                <p>Once submitted, approve their <span className="font-medium text-foreground">speaker card</span> and <span className="font-medium text-foreground">social card</span> from their profile, then publish them live via <span className="font-medium text-foreground">Speaker Wall</span>.</p>
+                <ul className="space-y-1 list-disc list-inside">
+                  <li>Add speakers manually or approve them from <span className="font-medium text-foreground">Applications</span></li>
+                  <li>Send each speaker their intake form to collect headshot, bio, and logo</li>
+                  <li>Approve their <span className="font-medium text-foreground">Speaker Card</span> and <span className="font-medium text-foreground">Social Card</span> from their profile</li>
+                  <li>Publish live via <span className="font-medium text-foreground">Speaker Wall</span></li>
+                </ul>
               </HelpTip>
               <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setShareOpen(true)}>
                 <Share2 className="h-3.5 w-3.5" />Share All Speakers
@@ -424,8 +433,8 @@ export default function SpeakerModule() {
                 formConfig={formConfig}
                 websiteCardConfigured={!!websiteCardConfig}
                 promoCardConfigured={!!promoCardConfig}
-                searchQuery={searchQuery}
-                setSearchQuery={setSearchQuery}
+                searchQuery={searchInput}
+                setSearchQuery={setSearchInput}
                 statusFilter={statusFilter}
                 setStatusFilter={setStatusFilter}
                 sortBy={sortBy}
@@ -520,9 +529,6 @@ export default function SpeakerModule() {
               {editingForm === "speaker-info" ? `Speaker Intake | ${eventName}` : `Speaker Applications | ${eventName}`}
             </span>
             <div className="ml-auto flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => handleCopyFormLink(editingForm)}>
-                {copiedLink ? <><Check className="h-3.5 w-3.5 mr-1.5" />Copied</> : <><Copy className="h-3.5 w-3.5 mr-1.5" />Copy Link</>}
-              </Button>
               <Button size="sm" onClick={() => formBuilderRef.current?.save()}>
                 Save Changes
               </Button>

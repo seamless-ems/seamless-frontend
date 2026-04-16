@@ -43,12 +43,15 @@ export function HelpTip({
           </button>
         )}
       </PopoverTrigger>
-      <PopoverContent side={side} align={align} className={cn("w-80 p-4", className)}>
-        {title && (
-          <p className="text-sm font-semibold text-foreground mb-2">{title}</p>
-        )}
-        <div className="text-sm text-muted-foreground leading-relaxed space-y-2">
-          {children}
+      <PopoverContent side={side} align={align} className={cn("w-max max-w-lg p-0 overflow-hidden border border-primary/25 shadow-lg", className)}>
+        <div className="h-1 bg-primary/50 w-full" />
+        <div className="p-4">
+          {title && (
+            <p className="text-sm font-semibold text-foreground mb-3">{title}</p>
+          )}
+          <div className="text-sm text-muted-foreground leading-relaxed space-y-2">
+            {children}
+          </div>
         </div>
       </PopoverContent>
     </Popover>

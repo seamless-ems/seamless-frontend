@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { updateSpeaker } from '@/lib/api';
@@ -6,8 +6,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { X, ArrowUpRight, CheckCircle, AlertTriangle } from 'lucide-react';
+import { X, ArrowUpRight, CheckCircle, AlertTriangle, Download } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { API_BASE } from '@/lib/api';
 import SpeakerCardTab from './SpeakerCardTab';
 import SpeakerPreviews from './SpeakerPreviews';
 
@@ -22,8 +23,12 @@ type Props = {
 
 export default function SpeakerQuickPanel({ speaker, eventId, view, onClose }: Props) {
   const queryClient = useQueryClient();
+  const [currentView, setCurrentView] = useState<PanelView>(view);
   const [toggling, setToggling] = useState(false);
   const [unpublishDialogOpen, setUnpublishDialogOpen] = useState(false);
+
+  // Sync when a badge click changes the view externally
+  useEffect(() => { setCurrentView(view); }, [view]);
 
   const headshotUrl = speaker.headshot || speaker.headshot_url || speaker.avatarUrl || null;
   const speakerName = speaker.name || `${speaker.firstName ?? ''} ${speaker.lastName ?? ''}`.trim() || speaker.email || 'Speaker';
@@ -46,13 +51,15 @@ export default function SpeakerQuickPanel({ speaker, eventId, view, onClose }: P
     queryClient.invalidateQueries({ queryKey: ['event', eventId, 'speakers'], exact: false });
 
   const handleToggleWebsite = async () => {
+    const approving = !websiteApproved;
     setToggling(true);
     try {
-      const payload: any = { ...base, websiteCardApproved: !websiteApproved };
-      if (!websiteApproved) payload.speakerInformationStatus = 'cards_approved';
+      const payload: any = { ...base, websiteCardApproved: approving };
+      if (approving) payload.speakerInformationStatus = 'cards_approved';
       await updateSpeaker(eventId, speaker.id, payload);
       invalidate();
-      toast({ title: websiteApproved ? 'Speaker card unapproved' : 'Speaker card approved' });
+      toast({ title: approving ? 'Speaker card approved' : 'Speaker card unapproved' });
+      if (approving) setCurrentView('speaker-wall');
     } catch (err: any) {
       toast({ title: 'Failed to update approval', description: String(err?.message || err) });
     } finally {
@@ -119,6 +126,7 @@ export default function SpeakerQuickPanel({ speaker, eventId, view, onClose }: P
       await updateSpeaker(eventId, speaker.id, patch);
       invalidate();
       toast({ title: resetApproval ? 'Speaker unpublished and approval reset' : 'Speaker removed from Speaker Wall' });
+      if (resetApproval) setCurrentView('speaker-card');
     } catch (err: any) {
       toast({ title: 'Failed to unpublish speaker', description: String(err?.message || err) });
     } finally {
@@ -180,13 +188,13 @@ export default function SpeakerQuickPanel({ speaker, eventId, view, onClose }: P
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-4">
-        {view === 'info' && (
+        {currentView === 'info' && (
           <InfoView
             speaker={speaker}
             eventId={eventId}
           />
         )}
-        {view === 'speaker-card' && (
+        {currentView === 'speaker-card' && (
           <SpeakerCardTab
             type="website"
             s={speaker}
@@ -196,7 +204,7 @@ export default function SpeakerQuickPanel({ speaker, eventId, view, onClose }: P
             onApproveAndPublish={handleApproveAndPublish}
           />
         )}
-        {view === 'social-card' && (
+        {currentView === 'social-card' && (
           <SpeakerCardTab
             type="promo"
             s={speaker}
@@ -205,9 +213,10 @@ export default function SpeakerQuickPanel({ speaker, eventId, view, onClose }: P
             onToggleApproval={handleTogglePromo}
           />
         )}
-        {view === 'speaker-wall' && (
+        {currentView === 'speaker-wall' && (
           <SpeakerWallView
             speaker={speaker}
+            eventId={eventId}
             embedEnabled={embedEnabled}
             websiteApproved={websiteApproved}
             toggling={toggling}
@@ -294,18 +303,37 @@ function CheckRow({ ok, label, value }: { ok: boolean; label: string; value?: st
   );
 }
 
-function SpeakerWallView({ speaker, embedEnabled, websiteApproved, toggling, onToggle }: {
+function SpeakerWallView({ speaker, eventId, embedEnabled, websiteApproved, toggling, onToggle }: {
   speaker: any;
+  eventId: string;
   embedEnabled: boolean;
   websiteApproved: boolean;
   toggling: boolean;
   onToggle: (value: boolean) => void;
 }) {
+  const speakerName = speaker.name || `${speaker.firstName ?? ''} ${speaker.lastName ?? ''}`.trim() || 'speaker';
+  const cardUrl = `${API_BASE}/embed/${eventId}/speaker/${speaker.id}`;
+
+  const downloadCard = async () => {
+    const filename = `${speakerName.replace(/\s+/g, '-').toLowerCase()}-speaker-card.html`;
+    try {
+      const resp = await fetch(cardUrl);
+      if (!resp.ok) throw new Error();
+      const blob = await resp.blob();
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(a.href);
+    } catch {
+      window.open(cardUrl, '_blank', 'noopener,noreferrer');
+    }
+  };
+
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">
-        Toggle this speaker live on your Speaker Wall embed.
-      </p>
       <div className="flex items-center justify-between rounded-lg border border-border px-4 py-3">
         <div className="flex items-center gap-2.5">
           <span className={`h-2 w-2 rounded-full shrink-0 ${embedEnabled ? 'bg-success' : 'bg-muted-foreground/30'}`} />
@@ -313,11 +341,22 @@ function SpeakerWallView({ speaker, embedEnabled, websiteApproved, toggling, onT
             {embedEnabled ? 'Live on Speaker Wall' : 'Hidden from Speaker Wall'}
           </span>
         </div>
-        <Switch
-          checked={embedEnabled}
-          disabled={toggling || !websiteApproved}
-          onCheckedChange={onToggle}
-        />
+        <div className="flex items-center gap-2">
+          {websiteApproved && (
+            <button
+              onClick={downloadCard}
+              title="Download Speaker Card"
+              className="text-muted-foreground/50 hover:text-primary transition-colors"
+            >
+              <Download className="h-4 w-4" />
+            </button>
+          )}
+          <Switch
+            checked={embedEnabled}
+            disabled={toggling || !websiteApproved}
+            onCheckedChange={onToggle}
+          />
+        </div>
       </div>
       {!websiteApproved && (
         <p className="text-xs text-muted-foreground flex items-center gap-1.5">

@@ -79,30 +79,17 @@ export default function SpeakerCardTab({ type, s, isApproved, canApprove, onTogg
 
   return (
     <div className="space-y-5">
-      {/* Descriptor */}
-      <p className="text-sm text-muted-foreground">
-        {type === 'website'
-          ? 'The branded card shown on your Speaker Wall. Approve it here, then publish the speaker from the Speaker Wall view.'
-          : 'A branded social image for this speaker. Approve it to enable download.'}
-      </p>
-
       {/* Actions row */}
       <div className="flex items-center justify-between">
-          <div>
-            {isApproved ? (
-              <Badge variant="outline" className="bg-success/10 text-success border-success/30 text-xs">
-                <CheckCircle className="h-3 w-3 mr-1" />Approved
-              </Badge>
-            ) : (
-              showApprovals ? (
-                <Badge variant="outline" className="bg-warning/10 text-warning border-warning/30 text-xs">
-                  Pending approval
-                </Badge>
-              ) : null
-            )}
-          </div>
+        <div>
+          {type === 'website' && isApproved && (
+            <Badge variant="outline" className="bg-success/10 text-success border-success/30 text-xs">
+              <CheckCircle className="h-3 w-3 mr-1" />Approved
+            </Badge>
+          )}
+        </div>
         <div className="flex items-center gap-2">
-          {showApprovals ? (
+          {showApprovals && (
             <>
               {!canApprove && (
                 <span className="text-xs text-muted-foreground flex items-center gap-1">
@@ -119,10 +106,21 @@ export default function SpeakerCardTab({ type, s, isApproved, canApprove, onTogg
                 {isApproved ? 'Unapprove' : `Approve ${label}`}
               </Button>
             </>
-          ) : null}
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={handleDownload} disabled={downloading}>
-            <Download className="h-3.5 w-3.5" />{downloading ? 'Downloading…' : 'Download'}
-          </Button>
+          )}
+          {type === 'website' && isApproved ? (
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={handleDownload} disabled={downloading}>
+              <Download className="h-3.5 w-3.5" />{downloading ? 'Downloading…' : 'Download'}
+            </Button>
+          ) : (
+            <button
+              onClick={handleDownload}
+              disabled={downloading}
+              title={downloading ? 'Downloading…' : `Download ${label}`}
+              className="text-muted-foreground/50 hover:text-primary transition-colors disabled:opacity-40"
+            >
+              <Download className="h-4 w-4" />
+            </button>
+          )}
         </div>
       </div>
 

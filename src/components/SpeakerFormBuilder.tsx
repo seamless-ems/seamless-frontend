@@ -113,8 +113,9 @@ const normalize = (s: string | undefined) => String(s || "").toLowerCase().repla
 export function mergeWithDefaults(saved: FormFieldConfig[]): FormFieldConfig[] {
   const patched = saved
     .filter((f) => {
-      // filter out any saved custom fields that match reserved ids or labels
-      if (f.custom && (RESERVED_FIELD_IDS.has(f.id) || RESERVED_FIELD_IDS.has((f as any).name))) return false;
+      // only filter out custom fields that clash with reserved ids/labels
+      if (!f.custom) return true;
+      if (RESERVED_FIELD_IDS.has(f.id) || RESERVED_FIELD_IDS.has((f as any).name)) return false;
       const nid = normalize(f.id);
       const nlabel = normalize(f.label);
       for (const rid of RESERVED_FIELD_IDS) {
