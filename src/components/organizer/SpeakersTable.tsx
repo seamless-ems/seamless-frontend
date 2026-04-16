@@ -44,6 +44,10 @@ type Props = {
   setSortBy?: (s: string) => void;
   totalCount?: number;
   pendingCount?: number;
+  page?: number;
+  pageSize?: number;
+  setPage?: (p: number) => void;
+  setPageSize?: (s: number) => void;
   // Quick panel
   onBadgeClick?: (speaker: any, view: 'info' | 'speaker-card' | 'social-card' | 'speaker-wall') => void;
   selectedSpeakerId?: string;
@@ -140,7 +144,7 @@ function formatDate(dateStr: string | null | undefined) {
   }
 }
 
-export default function SpeakersTable({ speakers, isLoading, eventId, selectedTab, formConfig, websiteCardConfigured = false, promoCardConfigured = false, searchQuery, setSearchQuery, statusFilter, setStatusFilter, sortBy, setSortBy, totalCount, pendingCount, onBadgeClick, selectedSpeakerId }: Props) {
+export default function SpeakersTable({ speakers, isLoading, eventId, selectedTab, formConfig, websiteCardConfigured = false, promoCardConfigured = false, searchQuery, setSearchQuery, statusFilter, setStatusFilter, sortBy, setSortBy, totalCount, pendingCount, page, pageSize, setPage, setPageSize, onBadgeClick, selectedSpeakerId }: Props) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const eventUuid = eventId ?? "";
@@ -487,6 +491,44 @@ export default function SpeakersTable({ speakers, isLoading, eventId, selectedTa
         )}
       </tbody>
     </table>
+    {/* Pagination footer */}
+    {typeof totalCount === 'number' && typeof page === 'number' && typeof pageSize === 'number' && (setPage || setPageSize) && (
+      <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-card/50">
+        <div className="text-sm text-muted-foreground">
+          {(() => {
+            const start = (page - 1) * pageSize + 1;
+            const end = Math.min(start + speakers.length - 1, totalCount);
+            return `Showing ${start}–${end} of ${totalCount}`;
+          })()}
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
+            <button
+              className="h-8 px-3 rounded border border-input bg-background hover:bg-muted disabled:opacity-50"
+              onClick={() => setPage && setPage(Math.max(1, page - 1))}
+              disabled={page <= 1}
+            >Prev</button>
+            <button
+              className="h-8 px-3 rounded border border-input bg-background hover:bg-muted disabled:opacity-50"
+              onClick={() => setPage && setPage(page + 1)}
+              disabled={page * pageSize >= totalCount}
+            >Next</button>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="text-sm text-muted-foreground">Per page</div>
+            <Select value={String(pageSize)} onValueChange={(v) => { const n = Number(v); setPageSize && setPageSize(n); setPage && setPage(1); }}>
+              <SelectTrigger className="w-[84px] h-8 text-sm"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="10">10</SelectItem>
+                <SelectItem value="25">25</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+                <SelectItem value="100">100</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </div>
+    )}
     {/* Danger confirmation modal for deletions */}
     <AlertDialog open={confirmOpen} onOpenChange={(open) => { if (!open) { setConfirmTarget(null); } setConfirmOpen(open); }}>
       <AlertDialogContent>

@@ -71,35 +71,17 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
     return [];
   })();
 
-  const s = speaker ? {
-    id: (speaker as any).id,
-    name: `${(speaker as any).firstName ?? (speaker as any).first_name ?? ''} ${(speaker as any).lastName ?? (speaker as any).last_name ?? ''}`.trim() || (speaker as any).name || '',
-    firstName: (speaker as any).firstName ?? (speaker as any).first_name ?? '',
-    lastName: (speaker as any).lastName ?? (speaker as any).last_name ?? '',
-    email: (speaker as any).email ?? '',
-    formType: (speaker as any).formType ?? (speaker as any).form_type ?? '',
-    companyName: (speaker as any).companyName ?? (speaker as any).company_name ?? '',
-    companyRole: (speaker as any).companyRole ?? (speaker as any).company_role ?? '',
-    headshot: (speaker as any).headshot ?? (speaker as any).headshotUrl ?? (speaker as any).headshot_url ?? null,
-    companyLogo: (speaker as any).companyLogo ?? (speaker as any).company_logo ?? null,
-    linkedin: (speaker as any).linkedin ?? null,
-    bio: (speaker as any).bio ?? '',
-    intakeFormStatus: (speaker as any).intakeFormStatus ?? (speaker as any).intake_form_status ?? '',
-    websiteCardApproved: (speaker as any).websiteCardApproved ?? (speaker as any).website_card_approved ?? false,
-    promoCardApproved: (speaker as any).promoCardApproved ?? (speaker as any).promo_card_approved ?? false,
-    embedEnabled: (speaker as any).embedEnabled ?? (speaker as any).embed_enabled ?? false,
-    internalNotes: (speaker as any).internalNotes ?? (speaker as any).internal_notes ?? '',
-    customFields: (speaker as any).customFields ?? (speaker as any).custom_fields ?? {},
-    callForSpeakersStatus: (speaker as any).call_for_speakers_status ?? (speaker as any).callForSpeakersStatus ?? 'pending',
-  } : null;
-
-  const { isReadOnly } = useEventAccess(id);
-
-  const infoStatus = s?.intakeFormStatus || 'pending';
+  // Use the canonical Speaker type and derive a few display helpers
+  const s = (speaker as Speaker) ?? null;
+  const fullName = s ? `${s.firstName ?? ''} ${s.lastName ?? ''}`.trim() || (s as any).name || '' : '';
+  const infoStatus = s ? (s.speakerInformationStatus ?? (s as any).intakeFormStatus ?? 'pending') : 'pending';
   const headshotUrl = s?.headshot ?? null;
   const websiteApproved = s?.websiteCardApproved ?? false;
   const promoApproved = s?.promoCardApproved ?? false;
   const embedEnabled = s?.embedEnabled ?? false;
+
+  const { isReadOnly } = useEventAccess(id);
+  
 
   const speakerStatus = (() => {
     if (infoStatus === 'pending' || !headshotUrl)
@@ -267,10 +249,10 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
           <span className="text-[17px] font-semibold text-primary" style={{ letterSpacing: '-0.01em' }}>Seamless</span>
           <span className="text-[13px] font-normal text-muted-foreground ml-0.5">Speakers</span>
         </div>
-        {s?.name && (
+        {fullName && (
           <>
             <span className="text-muted-foreground/40 text-sm">—</span>
-            <span className="text-sm text-muted-foreground truncate max-w-[220px]">{s.name}</span>
+            <span className="text-sm text-muted-foreground truncate max-w-[220px]">{fullName}</span>
           </>
         )}
         <div className="flex-1" />
@@ -396,6 +378,15 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
                       {fieldEnabled('company_name') && <Field label="Company" value={s?.companyName} />}
                       {fieldEnabled('email') && <Field label="Email" value={s?.email} href={s?.email ? `mailto:${s.email}` : undefined} />}
                       {fieldEnabled('linkedin') && s?.linkedin && <Field label="LinkedIn" value={s.linkedin} href={s.linkedin} />}
+                      {(fieldEnabled('talk_title') || s?.talkTitle) && (
+                        <Field label="Talk Title" value={s?.talkTitle} />
+                      )}
+                      {(fieldEnabled('talk_description') || s?.talkDescription) && (
+                        <div>
+                          <p className="text-xs font-medium text-muted-foreground mb-0.5">Talk Description</p>
+                          <p className="text-sm text-foreground">{s?.talkDescription || <span className="text-muted-foreground/40">—</span>}</p>
+                        </div>
+                      )}
                       {extraInlineFields.map(field => (
                         <Field
                           key={field.id}
@@ -457,7 +448,7 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
                       <p className="text-xs font-medium text-muted-foreground self-start mb-1">Headshot</p>
                       <div className="w-[120px] h-[120px] rounded-lg border-2 border-border overflow-hidden bg-muted flex items-center justify-center">
                         {headshotUrl
-                          ? <img src={headshotUrl} alt={s?.name ?? ''} className="w-full h-full object-cover" />
+                          ? <img src={headshotUrl} alt={fullName ?? ''} className="w-full h-full object-cover" />
                           : <span className="text-3xl font-semibold text-muted-foreground">{s?.firstName?.[0] ?? '?'}</span>
                         }
                       </div>
@@ -490,6 +481,18 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
                       </button>
                       <input ref={logoInputRef} type="file" accept="image/png,image/jpeg,image/avif" className="hidden" onChange={makeFileHandler('logo')} />
                     </div>
+                    )}
+
+                    {(fieldEnabled('company_logo_white') || s?.companyLogoWhite) && (
+                      <div className="flex flex-col items-center gap-1.5 w-full">
+                        <p className="text-xs font-medium text-muted-foreground self-start mb-1">Company Logo (white)</p>
+                        <div className="w-full h-[64px] rounded-lg border border-border flex items-center justify-center p-2.5" style={{ background: '#1f2937' }}>
+                          {s?.companyLogoWhite
+                            ? <img src={s.companyLogoWhite} alt="Logo (white)" className="max-w-full max-h-full object-contain" />
+                            : <span className="text-xs text-white/60 text-center leading-tight">Not uploaded</span>
+                          }
+                        </div>
+                      </div>
                     )}
 
                     {extraFileFields.map(field => {
@@ -626,6 +629,15 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
                   intakeFormStatus: allRequiredFilled ? 'submitted' : 'pending',
                 };
                 if (Object.keys(customFields).length > 0) payload.customFields = customFields;
+                // Move reserved keys out of customFields into top-level properties
+                if (payload.customFields) {
+                  const cf = payload.customFields as Record<string, any>;
+                  if (cf["company_logo_white"]) { payload.companyLogoWhite = cf["company_logo_white"]; delete cf["company_logo_white"]; }
+                  if (cf["companylogowhite"]) { payload.companyLogoWhite = cf["companylogowhite"]; delete cf["companylogowhite"]; }
+                  if (cf["talk_title"]) { payload.talkTitle = cf["talk_title"]; delete cf["talk_title"]; }
+                  if (cf["talk_description"]) { payload.talkDescription = cf["talk_description"]; delete cf["talk_description"]; }
+                  if (Object.keys(cf).length === 0) delete payload.customFields;
+                }
                 await updateSpeaker(id, spkId, payload);
                 queryClient.invalidateQueries({ queryKey: ['event', id, 'speaker', spkId] });
                 queryClient.invalidateQueries({ queryKey: ['event', id, 'speakers'], exact: false });
@@ -663,7 +675,16 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
             <Button onClick={async () => {
               if (!id || !spkId) return;
               try {
-                await updateSpeaker(id, spkId, { ...s, internalNotes });
+                const payload: any = { ...s, internalNotes };
+                if (payload.customFields) {
+                  const cf = payload.customFields as Record<string, any>;
+                  if (cf["company_logo_white"]) { payload.companyLogoWhite = cf["company_logo_white"]; delete cf["company_logo_white"]; }
+                  if (cf["companylogowhite"]) { payload.companyLogoWhite = cf["companylogowhite"]; delete cf["companylogowhite"]; }
+                  if (cf["talk_title"]) { payload.talkTitle = cf["talk_title"]; delete cf["talk_title"]; }
+                  if (cf["talk_description"]) { payload.talkDescription = cf["talk_description"]; delete cf["talk_description"]; }
+                  if (Object.keys(cf).length === 0) delete payload.customFields;
+                }
+                await updateSpeaker(id, spkId, payload);
                 queryClient.invalidateQueries({ queryKey: ['event', id, 'speaker', spkId] });
                 toast({ title: 'Notes saved' });
                 setNotesOpen(false);

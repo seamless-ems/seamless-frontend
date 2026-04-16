@@ -99,10 +99,30 @@ export const FIELD_MIGRATIONS: Record<string, Partial<FormFieldConfig>> = {
   "talk_title":        { sectionStart: "Talk / Session" },
 };
 
+const RESERVED_FIELD_IDS = new Set([
+  "company_logo_white",
+  "companyLogoWhite",
+  "talk_title",
+  "talkTitle",
+  "talk_description",
+  "talkDescription",
+]);
+
+const normalize = (s: string | undefined) => String(s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+
 export function mergeWithDefaults(saved: FormFieldConfig[]): FormFieldConfig[] {
-  const patched = saved.map((f) =>
-    FIELD_MIGRATIONS[f.id] ? { ...f, ...FIELD_MIGRATIONS[f.id] } : f,
-  );
+  const patched = saved
+    .filter((f) => {
+      // filter out any saved custom fields that match reserved ids or labels
+      if (f.custom && (RESERVED_FIELD_IDS.has(f.id) || RESERVED_FIELD_IDS.has((f as any).name))) return false;
+      const nid = normalize(f.id);
+      const nlabel = normalize(f.label);
+      for (const rid of RESERVED_FIELD_IDS) {
+        if (normalize(rid) === nid || normalize(rid) === nlabel) return false;
+      }
+      return true;
+    })
+    .map((f) => (FIELD_MIGRATIONS[f.id] ? { ...f, ...FIELD_MIGRATIONS[f.id] } : f));
   const savedIds = new Set(patched.map((f) => f.id));
   const newDefaults = DEFAULT_FIELDS.filter((f) => !savedIds.has(f.id));
   const merged = [...patched, ...newDefaults];
@@ -269,6 +289,15 @@ const SpeakerFormBuilder = forwardRef<SpeakerFormBuilderHandle, SpeakerFormBuild
     if (!newCustomField.label.trim()) {
       toast({ title: "Label is required", variant: "destructive" });
       return;
+    }
+
+    // Prevent creating custom fields that duplicate newly-supported speaker properties
+    const normalizedLabel = normalize(newCustomField.label);
+    for (const rid of RESERVED_FIELD_IDS) {
+      if (normalize(rid) === normalizedLabel) {
+        toast({ title: "This field is now built-in", variant: "destructive" });
+        return;
+      }
     }
 
     const customId = `custom_${Date.now()}`;

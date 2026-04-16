@@ -425,7 +425,17 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
         else if (field.id === "linkedin") payload.linkedin = val;
         else {
           // Custom (non-file) fields go into customFields
-          customFields[field.id] = val;
+          // But map newly-first-class properties (company_logo_white) to top-level keys
+          const fid = String(field.id || "").toLowerCase();
+          if (fid === "company_logo_white" || fid === "companylogowhite") {
+            payload.companyLogoWhite = val;
+          } else if (fid === "talk_title") {
+            payload.talkTitle = val;
+          } else if (fid === "talk_description") {
+            payload.talkDescription = val;
+          } else {
+            customFields[field.id] = val;
+          }
         }
       });
 
@@ -467,7 +477,17 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
               
               const res = await uploadFile(file, speakerId, eventId!, speakerDisplayName);
               const url = res?.public_url ?? res?.publicUrl ?? res?.url ?? null;
-              customFields[field.id] = url;
+              // If this file corresponds to a newly-supported top-level property, map it accordingly
+              const fid = String(field.id || "").toLowerCase();
+              if (fid === "company_logo_white" || fid === "companylogowhite") {
+                payload.companyLogoWhite = url;
+              } else if (fid === "talk_title") {
+                payload.talkTitle = url;
+              } else if (fid === "talk_description") {
+                payload.talkDescription = url;
+              } else {
+                customFields[field.id] = url;
+              }
               
             } catch (err) {
               
@@ -476,6 +496,20 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
       }
 
       // Attach customFields if any
+      // Move any remaining reserved keys out of customFields into top-level properties
+      if (customFields["company_logo_white"]) {
+        payload.companyLogoWhite = customFields["company_logo_white"];
+        delete customFields["company_logo_white"];
+      }
+      if (customFields["talk_title"]) {
+        payload.talkTitle = customFields["talk_title"];
+        delete customFields["talk_title"];
+      }
+      if (customFields["talk_description"]) {
+        payload.talkDescription = customFields["talk_description"];
+        delete customFields["talk_description"];
+      }
+
       if (Object.keys(customFields).length > 0) {
         payload.customFields = customFields;
       }

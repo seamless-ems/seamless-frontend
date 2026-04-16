@@ -26,6 +26,8 @@ export default function SpeakerModule() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState("newest");
+  const [page, setPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(25);
   const [shareOpen, setShareOpen] = useState(false);
   const [addSpeakerOpen, setAddSpeakerOpen] = useState(false);
   const [selectedSpeaker, setSelectedSpeaker] = useState<any | null>(null);
@@ -199,10 +201,18 @@ export default function SpeakerModule() {
     queryKey: ["event", id, "speakers", speakerQueryTab],
     queryFn: () => {
       const formType = activeTab === "applications" ? "call-for-speakers" : "speaker-info";
-      const qs = `?form_type=${encodeURIComponent(formType)}`;
+      const params = new URLSearchParams();
+      params.set("form_type", formType);
+      params.set("page", String(page));
+      params.set("pageSize", String(pageSize));
+      if (searchQuery) params.set("q", searchQuery);
+      if (statusFilter && statusFilter !== "all") params.set("status", statusFilter);
+      if (sortBy) params.set("sort", sortBy);
+      const qs = `?${params.toString()}`;
       return getJson<any>(`/events/${id}/speakers${qs}`);
     },
     enabled: Boolean(id) && (activeTab === "speakers" || activeTab === "applications" || activeTab === "content"),
+    keepPreviousData: true,
   });
 
   // Normalize response shapes into any[]
@@ -309,7 +319,8 @@ export default function SpeakerModule() {
       : (s.speakerInformationStatus ?? s.speaker_information_status ?? s.intakeFormStatus ?? s.intake_form_status);
     return effectiveStatus === 'pending';
   }).length;
-  const totalCount = speakerList.length;
+  // Use server-provided total when available (rawSpeakers.total), otherwise fall back to client length.
+  const totalCount = rawSpeakers && typeof rawSpeakers.total === 'number' ? rawSpeakers.total : speakerList.length;
 
   const tabClass = (tab: string) =>
     `py-3 border-b-2 transition-colors text-sm font-medium whitespace-nowrap ${
@@ -324,6 +335,11 @@ export default function SpeakerModule() {
   const panelSpeaker = selectedSpeaker
     ? speakerList.find(s => s.id === selectedSpeaker.id) ?? selectedSpeaker
     : null;
+
+  // Reset to first page when search, filter or sort changes
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, statusFilter, sortBy, activeTab]);
 
   const handleBadgeClick = (speaker: any, view: PanelView) => {
     setSelectedSpeaker(speaker);
@@ -416,6 +432,10 @@ export default function SpeakerModule() {
                 sortBy={sortBy}
                 setSortBy={setSortBy}
                 totalCount={totalCount}
+                page={page}
+                pageSize={pageSize}
+                setPage={setPage}
+                setPageSize={setPageSize}
                 pendingCount={pendingCount}
                 onBadgeClick={handleBadgeClick}
                 selectedSpeakerId={selectedSpeaker?.id}
