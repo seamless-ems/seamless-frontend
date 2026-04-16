@@ -28,3 +28,11 @@ Speaker Card Side Panel
 Embed JT Bug 
 - The colour backgrounds are not changing when we adjust them in card builder  
 - The backend renderer needs to support shape: "rounded" → border-radius on headshot images (this is a square with bevel edges) - one of the 3x shapes we now allow (circle, Square, Rounder) 
+
+
+Card Builder - social cards 
+- Event Logo not coming in 
+
+Speaker Wall 
+- we have an api gap for number of columns on mobile and desktop also doesn't seem to be working 
+- I have added the buttons on desktop front end bu they need wiring up 
