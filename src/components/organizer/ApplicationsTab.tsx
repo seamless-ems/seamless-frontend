@@ -216,7 +216,7 @@ export default function ApplicationsTab({ eventId, eventName = "", emailDefaults
         lastName: speaker.lastName,
         email: speaker.email,
         formType: "call-for-speakers",
-        call_for_speakers_status: status,
+        callForSpeakersStatus: status,
       });
       queryClient.invalidateQueries({ queryKey: ["event", eventId, "applications"] });
       queryClient.invalidateQueries({ queryKey: ["event", eventId, "speakers"] });

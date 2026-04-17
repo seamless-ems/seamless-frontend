@@ -77,30 +77,38 @@ export default function EmbedBuilder({ eventId }: { eventId: string | undefined 
 
   return (
     <div className="space-y-4 pt-6">
-      {/* Info banner */}
-      <div className="rounded-lg border border-secondary/60 bg-secondary/30 px-5 py-4 flex items-center gap-4">
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-foreground mb-0.5">Embed your Speaker Wall</p>
-          <p className="text-sm text-muted-foreground">
-            Paste the code into your website once — toggle speakers on or off here and it updates live.{" "}
-            Only speakers with an approved <strong className="text-foreground font-medium">Speaker Card</strong> appear in this list.
-          </p>
+      {/* Toolbar */}
+      <div className="flex items-center gap-4 flex-wrap">
+        <div className="flex items-center gap-3">
+          <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">Desktop</span>
+          <div className="flex rounded-md border border-border overflow-hidden">
+            {[2, 3, 4].map(n => (
+              <button key={n} onClick={() => setDesktopCols(n)}
+                className={`h-7 w-8 text-xs font-medium transition-colors border-r border-border last:border-r-0 ${desktopCols === n ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}>
+                {n}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-1.5 h-8"
-            onClick={() => window.open(embedUrl, "_blank", "noopener")}
-          >
+        <div className="flex items-center gap-3">
+          <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">Mobile</span>
+          <div className="flex rounded-md border border-border overflow-hidden">
+            {[1, 2].map(n => (
+              <button key={n} onClick={() => setMobileCols(n)}
+                className={`h-7 w-8 text-xs font-medium transition-colors border-r border-border last:border-r-0 ${mobileCols === n ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}>
+                {n}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="flex items-center gap-2 ml-auto">
+          <Button variant="outline" size="sm" className="gap-1.5 h-8" onClick={() => window.open(embedUrl, "_blank", "noopener")}>
             <ExternalLink className="h-3.5 w-3.5" />Preview
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button size="sm" className="gap-1.5 h-8">
-                {copiedEmbed
-                  ? <><Check className="h-3.5 w-3.5" />Copied</>
-                  : <><Copy className="h-3.5 w-3.5" />Copy Embed Code</>}
+                {copiedEmbed ? <><Check className="h-3.5 w-3.5" />Copied</> : <><Copy className="h-3.5 w-3.5" />Copy Embed Code</>}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -115,43 +123,13 @@ export default function EmbedBuilder({ eventId }: { eventId: string | undefined 
             </DropdownMenuContent>
           </DropdownMenu>
           <HelpTip title="How Speaker Wall works" side="bottom" align="end">
-            <p>Toggle speakers on or off — your embedded wall updates instantly, no code changes needed.</p>
-            <p>Only speakers with an approved <span className="font-medium text-foreground">Speaker Card</span> appear in this list — Social Card approval is not required.</p>
+            <ul className="space-y-1 list-disc list-inside">
+              <li>Toggle speakers on or off — your wall updates instantly</li>
+              <li>Only speakers with an approved <span className="font-medium text-foreground">Speaker Card</span> appear here</li>
+              <li>Paste the embed code into your website once — no changes needed after that</li>
+            </ul>
           </HelpTip>
         </div>
-      </div>
-
-      {/* Layout settings */}
-      <div className="rounded-lg border border-border px-5 py-3.5 flex items-center gap-6">
-        <div className="flex items-center gap-3">
-          <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">Desktop columns</span>
-          <div className="flex rounded-md border border-border overflow-hidden">
-            {[2, 3, 4].map(n => (
-              <button
-                key={n}
-                onClick={() => setDesktopCols(n)}
-                className={`h-7 w-8 text-xs font-medium transition-colors border-r border-border last:border-r-0 ${desktopCols === n ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}
-              >
-                {n}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">Mobile columns</span>
-          <div className="flex rounded-md border border-border overflow-hidden">
-            {[1, 2].map(n => (
-              <button
-                key={n}
-                onClick={() => setMobileCols(n)}
-                className={`h-7 w-8 text-xs font-medium transition-colors border-r border-border last:border-r-0 ${mobileCols === n ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}
-              >
-                {n}
-              </button>
-            ))}
-          </div>
-        </div>
-        <p className="text-xs text-muted-foreground ml-auto">Changes apply to your embed URL and copied code.</p>
       </div>
 
       {/* Speaker list */}
