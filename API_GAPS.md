@@ -1,3 +1,102 @@
+JT TO DO 
+
+Polar 
+- Force currency icon by rule e.g. $ or E
+- The curency rules = 
+Euro Zone = Euro 
+United Kingdom = GBP 
+United States = USD 
+Canada = CAD 
+
+Profile > BILLING 
+- Add in a billing section 
+- Link to polar 
+- Add seamless logo + colours etc 
+- Add 'Help' email reference if possible 
+
+Profile > Help 
+- Set up Help Form linked to Contact@ Name, email, question
+- Auto fill email 
+- Include User ID coming back to you 
+
+APPLICATION APPROVED FLOW 
+
+1/ APPLICATION APPROVED EMAIL 
+- Wire up the send as perhow we do speaker sending 
+
+2/ When application is approved, moved to speakers
+
+3/ Speaker gets email to log into their profile they do NOT get the blank form as per speaker intake 
+
+4/ The status of the speaker is pending the content we have e.g. if application includes all info requried from speaker intake they are marked as Pending Approval, otherwise - it is Info Pending
+
+DEMO SPEAKER CONTENT
+- PNGs for white and colour needed, transperant backgrounds for all 
+- Fake logos & companies only 
+
+
+
+JS TO DO 
+Magic Link Emails 
+- Provide new copy to James with fields 
+Subject 
+Username noting (noting it will come from via Seamless (from name) which is best practise not to hit spam)
+Body 
+
+
+USER PROFILE 
+- Add Edit on Name & Team 
+- Add some 'explainer copy' on how it is default name
+
+GET STARTED GUIDE 
+- Update SEt up speaker wall to Add Your First Speaker (if there is already a speaker this has the line through it that's the trigger)
+- Make sure the refreshing is working as planned 
+- Once all are complete the field goes 
+
+APPLICATION FORM 
+- Change the default on fields e.g. Headshot is not default on but Title is 
+- Rearrange the order e.g. Talk needs to be more prominent 
+- Change DEFAULT FIELDS heading 
+
+- When I hit Save on Application form for the first time, I should go back to application form 
+- Copy form / Share needs to be more prominent 
+- Get Start component is saved as a seperate component so it can sit on multiple tabs e.g. Applications / Content 
+
+- On the application form submission, talk topic should be a large field like Bio 
+- On the application form, headshot should crop to a square as a default 
+- On sample content, put in the list of content we can upload (the jotform options in the Read Me). This should be the same on all content uploads and custom field that is a file type BUT user can toggle
+
+- Talk Topic, Talk Description, Proposed Talk Topic, sample content + company logo white are now wired into API. Swap them from custom fields. Company Logo has also been renamed to Company Logo Colour so we have 2x distinct fields 
+
+
+APPLICATION LIST 
+- Match the format to the speaker list e.g. no bio, company and title below name 
+- Add a quick preview panel with all info on the right 
+- For share speaker application, we need a nice 'copy info or something' so someone can build out an email to somebody with details. MVP = text fields only 
+- Remove Share, copy is fine 
+
+SPEAKER PORTAL
+- Speaker Portal component 
+- Fix how radio / checkbox options are displayed 
+- COmpany Logo needs to be renamed to Company Logo colour 
+- On Application we have duplication company logo white, check if the bug is still there 
+
+
+
+
+
+ON ALL UPLOADS 
+- Add a loading spin
+
+ON SPEAKER LIST 
+- Give James back his stupid headshot icon beside the name but not a shitty circle 
+
+
+FORM BUILDER 
+- When adding custom fields Enter also adds them 
+
+
+
 USER JAMES ONLU UPDATES 
 
 
@@ -47,3 +146,15 @@ Onboarding FLow
 Forms 
 - I think we have some saving bugs on form fields (description wont go) 
 We also need to think about what happens if somebody changes a form mid flow when speakers have submitted 
+
+Applications 
+- Approved applicants not moving to speakers 
+
+Speaker Wall - coming in BIG 50% zoom on laptop by default when you open it 
+- Preview zoom — the embed renders at a fixed native width (likely 1200px+ for 2 columns of 600px   cards), so the browser auto-shrinks it. They need to add max-width: 100%; overflow-x: hidden; and  
+  responsive card sizing to the embed HTML.                                                            2. 
+  
+  - iframe height — the snippet we generate has height="600" hardcoded. Once the backend fixes the  
+  sizing, you'll want a taller default or auto-resizing via postMessage. I can update the snippet      whenever you're ready.
+
+  

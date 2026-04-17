@@ -40,7 +40,7 @@ export default function EventLayout({ children }: { children: ReactNode }) {
         {/* Brand */}
         <Link to="/organizer" className="flex items-baseline gap-1 leading-none shrink-0">
           <span className="text-[17px] font-semibold text-primary" style={{ letterSpacing: '-0.01em' }}>Seamless</span>
-          <span className="text-[13px] font-normal text-muted-foreground ml-0.5">Speakers</span>
+          <span className="text-[13px] font-normal text-muted-foreground ml-0.5">Events</span>
         </Link>
 
         <div className="flex-1" />
