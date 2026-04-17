@@ -10,6 +10,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { getMe, updateMe, getSettings, updateSettings, getTeam, getBillingPortal } from "@/lib/api";
+import { HELP_WIDGET_OPEN_EVENT } from "@/components/ui/HelpWidget";
 import {
   User,
   Globe,
@@ -125,10 +126,22 @@ export default function Settings() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <User className="h-5 w-5 text-primary" />
-              Profile
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <User className="h-5 w-5 text-primary" />
+                Profile
+              </CardTitle>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => window.dispatchEvent(new Event(HELP_WIDGET_OPEN_EVENT))}>
+                  <HelpCircle className="h-3.5 w-3.5 mr-1.5" />
+                  Talk to us
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => billingMut.mutate()} disabled={billingMut.isPending}>
+                  <Globe className="h-3.5 w-3.5 mr-1.5" />
+                  {billingMut.isPending ? 'Opening…' : 'Billing Portal'}
+                </Button>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm items-center">
@@ -171,16 +184,6 @@ export default function Settings() {
         </Card>
         <div id="team-section">
           <TeamSection />
-        </div>
-        <div className="flex items-center gap-3">
-          <Button variant="outline" onClick={() => window.open("mailto:support@seamlessevents.io", "_blank")}>
-            <HelpCircle className="h-4 w-4 mr-2" />
-            Get Help
-          </Button>
-          <Button variant="outline" onClick={() => billingMut.mutate()} disabled={billingMut.isPending}>
-            <Globe className="h-4 w-4 mr-2" />
-            {billingMut.isPending ? 'Opening…' : 'Billing Portal'}
-          </Button>
         </div>
         {/* Danger Zone */}
         <Card className="border-destructive/30">
