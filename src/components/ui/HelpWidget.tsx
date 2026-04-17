@@ -1,75 +1,75 @@
 import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
-import { sendHelp } from "@/lib/api";
-import { useMutation } from "@tanstack/react-query";
+import { sendHelp, getMe } from "@/lib/api";
+import { useMutation, useQuery } from "@tanstack/react-query";
 
-const STORAGE_KEY = "seamless-help-widget-dismissed";
+export const HELP_WIDGET_OPEN_EVENT = "seamless:open-help";
 
 export default function HelpWidget() {
   const [open, setOpen] = useState(false);
-  const [dismissed, setDismissed] = useState(false);
   const [message, setMessage] = useState("");
 
+  const { data: me } = useQuery<any>({ queryKey: ["me"], queryFn: () => getMe() });
+
   useEffect(() => {
-    try {
-      const v = localStorage.getItem(STORAGE_KEY);
-      setDismissed(v === "1");
-    } catch {}
+    const handler = () => setOpen(true);
+    window.addEventListener(HELP_WIDGET_OPEN_EVENT, handler);
+    return () => window.removeEventListener(HELP_WIDGET_OPEN_EVENT, handler);
   }, []);
 
   const mut = useMutation({
     mutationFn: (body: { message: string }) => sendHelp(body),
     onSuccess: () => {
-      toast({ title: "Help request sent", description: "Thanks — we will get back to you." });
+      toast({ title: "Message sent" });
       setMessage("");
       setOpen(false);
     },
     onError: (err: any) => {
-      toast({ title: "Failed to send help message", description: String(err?.message || err), variant: 'destructive' });
-    }
+      toast({ title: "Failed to send", description: String(err?.message || err), variant: "destructive" });
+    },
   });
 
-  const handleDismiss = () => {
-    try { localStorage.setItem(STORAGE_KEY, "1"); } catch {}
-    setDismissed(true);
-  };
-
-  if (dismissed) return null;
+  const handleClose = () => { setOpen(false); setMessage(""); };
 
   return (
-    <div>
-      {/* Floating action button */}
-      <div className="fixed right-4 bottom-4 z-50 flex flex-col items-end gap-2">
-        {open && (
-          <div className="w-[320px] max-w-[90vw] rounded-lg border border-border bg-card shadow-lg p-3">
-            <div className="flex items-start gap-3">
-              <div className="flex-1">
-                <Label className="text-sm">Quick help</Label>
-                <Textarea rows={4} value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Describe your issue briefly" />
-                <div className="flex items-center justify-end gap-2 mt-2">
-                  <Button variant="ghost" onClick={() => { setOpen(false); setMessage(""); }}>Close</Button>
-                  <Button
-                    onClick={() => mut.mutate({ message })}
-                    disabled={!message.trim() || mut.isLoading}
-                  >{mut.isLoading ? 'Sending…' : 'Send'}</Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+    <>
+      <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Talk to Team Seamless</DialogTitle>
+            {me?.email && (
+              <p className="text-sm text-muted-foreground">Submitting as <span className="font-medium text-foreground">{me.email}</span></p>
+            )}
+          </DialogHeader>
+          <Textarea
+            rows={10}
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder="Describe your issue…"
+            className="resize-none"
+            autoFocus
+          />
+          <DialogFooter>
+            <Button variant="ghost" onClick={handleClose}>Cancel</Button>
+            <Button onClick={() => mut.mutate({ message })} disabled={!message.trim() || mut.isPending}>
+              {mut.isPending ? "Sending…" : "Send"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-        <div className="flex items-center gap-2">
-          <Button variant="secondary" onClick={() => setOpen((v) => !v)} className="h-10 px-3">
-            Help
-          </Button>
-          <Button variant="ghost" onClick={handleDismiss} className="h-10 px-2">
-            Dismiss
-          </Button>
-        </div>
+      <div className="fixed right-4 bottom-4 z-50">
+        <button
+          onClick={() => setOpen(true)}
+          className="h-10 w-10 rounded-full bg-primary text-primary-foreground shadow-md flex items-center justify-center hover:bg-primary/90 transition-colors text-base font-semibold"
+          aria-label="Help"
+        >
+          ?
+        </button>
       </div>
-    </div>
+    </>
   );
 }

@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Settings, ChevronDown, Users, CreditCard, ChevronRight } from 'lucide-react';
+import { Settings, ChevronRight } from 'lucide-react';
 import { getMe, getTeam, getJson, createCheckout } from '@/lib/api';
 import { getLocaleAndCurrency } from '@/lib/locale';
 import { toast } from '@/hooks/use-toast';
@@ -99,84 +99,18 @@ export default function EventLayout({ children }: { children: ReactNode }) {
           {/* Account dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="flex items-center gap-2 pl-2">
-                <Users className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium">
-                  {teams?.[0]?.name ?? me?.firstName ?? me?.first_name ?? "Account"}
-                </span>
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <Settings className="h-4 w-4 text-muted-foreground" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-64">
-              <div className="px-3 py-3 border-b">
-                <div className="text-sm font-semibold">
-                  {teams?.[0]?.name ?? '—'}
-                </div>
-                <div className="text-xs text-muted-foreground mt-0.5">
-                  {me ? `${me.firstName ?? me.first_name ?? ''} ${me.lastName ?? me.last_name ?? ''}`.trim() : 'User'}
-                  {me?.role === 'admin' || me?.isAdmin ? ' (Admin)' : ' (Member)'}
-                </div>
-              </div>
-
-              {(me?.role === 'admin' || me?.isAdmin) && (
-                <>
-                  <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground">Organization</div>
-                  <DropdownMenuItem asChild>
-                    <Link to="/organizer/settings">
-                      <Settings className="h-4 w-4 mr-2" />
-                      Organization Settings
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/organizer/team">
-                      <Users className="h-4 w-4 mr-2" />
-                      Team
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/organizer/subscription">
-                      <CreditCard className="h-4 w-4 mr-2" />
-                      Billing
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                </>
-              )}
-
-              <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground">Personal</div>
+            <DropdownMenuContent align="end" className="w-44">
               <DropdownMenuItem asChild>
                 <Link to="/organizer/settings">
-                  <Users className="h-4 w-4 mr-2" />
-                  Profile
+                  <Settings className="h-4 w-4 mr-2" />
+                  Settings
                 </Link>
               </DropdownMenuItem>
-
               <DropdownMenuSeparator />
-
-              {/* {teams && teams.length > 1 && (
-                <>
-                  <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground">Switch Team</div>
-                  {teams.map((t: any) => (
-                    <DropdownMenuItem key={t.id} onSelect={() => navigate(`/team?team=${encodeURIComponent(t.id)}`)}>
-                      <Users className="h-4 w-4 mr-2 text-muted-foreground" />
-                      <span className="text-sm">{t.name}</span>
-                    </DropdownMenuItem>
-                  ))}
-                  <DropdownMenuSeparator />
-                </>
-              )} */}
-
-              {/* <DropdownMenuItem
-                onSelect={() => {
-                  if (typeof window !== 'undefined') window.localStorage.setItem('dashboardMode', 'speaker');
-                  navigate('/speaker');
-                }}
-              >
-                Switch to Speaker
-              </DropdownMenuItem> */}
-
-              <DropdownMenuSeparator />
-
               <DropdownMenuItem
                 className="text-destructive"
                 onSelect={async () => {

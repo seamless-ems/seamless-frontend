@@ -30,6 +30,10 @@ Use these exact terms everywhere (UI labels, tooltips, dialogs, HelpTips, copy):
 - **Speaker Wall embed** — only when referring specifically to the embed code/snippet itself
 - **TODO: full language sweep pending** — "Embed" still appears in various tooltips, dialog copy, and comments. Do not fix ad-hoc; sweep all at once when instructed.
 
+## No assumptions
+- **Never assume URLs, email addresses, external links, API endpoints, or any external values** that haven't been explicitly provided. Leave a `// TODO` placeholder and flag it verbally instead.
+- This applies to: support emails, help centre URLs, social links, third-party service URLs, analytics IDs, feature flags, or any value that belongs to James to decide.
+
 ## Copy rules
 - **No fluff.** Labels, headings, and buttons must speak for themselves. Never add a supporting sentence that restates the obvious (e.g. `<CardDescription>Manage your subscription and payment methods</CardDescription>` under a "Billing" heading is redundant — delete it).
 - **No descriptor sentences in cards.** If a card or section is labelled "Help", do not add body copy like "Questions? Browse our help centre or get in touch." The label is enough.
