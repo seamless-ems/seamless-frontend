@@ -157,7 +157,7 @@ export default function Settings() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium text-foreground">Billing Portal</p>
-                <p className="text-sm text-muted-foreground">Open your billing dashboard to manage invoices and payment methods.</p>
+                <p className="text-sm text-muted-foreground">Open your billing dashboard to manage invoices and your previous orders.</p>
               </div>
               <Button onClick={() => billingMut.mutate()} disabled={billingMut.isLoading}>
                 {billingMut.isLoading ? 'Opening…' : 'Open Billing Portal'}

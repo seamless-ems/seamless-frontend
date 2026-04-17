@@ -501,6 +501,11 @@ export function sendSupportMessage(body: { name?: string; email: string; subject
   return postJson<typeof body, any>(`/support/contact`, body);
 }
 
+// Send a short help message via the mail/help endpoint (OpenAPI: CreateHelpSchema)
+export function sendHelp(body: { message: string }): Promise<any> {
+  return postJson<typeof body, any>(`/mail/help`, body);
+}
+
 // --- Content endpoints (speaker-specific) ---
 export function getSpeakerContent(speakerId: string): Promise<any[]> {
   return getJson<any[]>(`/content/${encodeURIComponent(speakerId)}`);

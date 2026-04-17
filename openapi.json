@@ -3726,6 +3726,47 @@
         }
       }
     },
+    "/mail/help": {
+      "post": {
+        "tags": [
+          "Email"
+        ],
+        "summary": "Create Help",
+        "operationId": "create_help_mail_help_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateHelpSchema"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HelpSchema"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/": {
       "get": {
         "summary": "Root",
@@ -4736,6 +4777,19 @@
         ],
         "title": "CreateContentSchema"
       },
+      "CreateHelpSchema": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "title": "CreateHelpSchema"
+      },
       "EmailPayloadSchema": {
         "properties": {
           "recipientEmail": {
@@ -5500,6 +5554,52 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "HelpSchema": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "createdAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Createdat"
+          },
+          "user": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TokenDataSchema"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "title": "HelpSchema"
       },
       "InviteRequest": {
         "properties": {
