@@ -1,6 +1,6 @@
 JT TO DO 
 
-Polar 
+Polar (DONE - JT)
 - Force currency icon by rule e.g. $ or E
 - The curency rules = 
 Euro Zone = Euro 
@@ -8,12 +8,14 @@ United Kingdom = GBP
 United States = USD 
 Canada = CAD 
 
+(DONE - JT)
 Profile > BILLING 
 - Add in a billing section 
 - Link to polar 
 - Add seamless logo + colours etc 
 - Add 'Help' email reference if possible 
 
+(DONE - JT)
 Profile > Help 
 - Set up Help Form linked to Contact@ Name, email, question
 - Auto fill email 
@@ -30,7 +32,7 @@ APPLICATION APPROVED FLOW
 
 4/ The status of the speaker is pending the content we have e.g. if application includes all info requried from speaker intake they are marked as Pending Approval, otherwise - it is Info Pending
 
-DEMO SPEAKER CONTENT
+DEMO SPEAKER CONTENT (DONE - JT)
 - PNGs for white and colour needed, transperant backgrounds for all 
 - Fake logos & companies only 
 
