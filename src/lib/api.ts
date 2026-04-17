@@ -262,6 +262,12 @@ export function addPaymentMethod(body: any): Promise<any> {
   return postJson<any, any>(`/account/billing/payment-method`, body);
 }
 
+// Open the billing portal for the current account. Backend returns an object
+// with a URL to the hosted billing portal (e.g. { url: string }).
+export function getBillingPortal(): Promise<{ url?: string; portalUrl?: string }> {
+  return getJson<{ url?: string; portalUrl?: string }>(`/payments/billing-portal`);
+}
+
 // Create a checkout for a product tied to an event. Backend expects product_id and event_id as query params.
 export function createCheckout(productId: string, eventId: string): Promise<any> {
   const qs = `?product_id=${encodeURIComponent(productId)}&event_id=${encodeURIComponent(eventId)}`;

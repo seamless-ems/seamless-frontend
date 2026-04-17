@@ -1983,7 +1983,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/ContentSchema"
+                    "$ref": "#/components/schemas/ContentSchema-Output"
                   },
                   "title": "Response Get Event Content Events  Event Id  Content Get"
                 }
@@ -2277,7 +2277,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/Body_create_speaker_events__event_id__speakers_post"
+                "$ref": "#/components/schemas/SpeakerCreate"
               }
             }
           }
@@ -3095,7 +3095,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/ContentSchema"
+                    "$ref": "#/components/schemas/ContentSchema-Output"
                   },
                   "title": "Response Get Speaker Content Content  Speaker Id  Get"
                 }
@@ -3149,7 +3149,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ContentSchema"
+                  "$ref": "#/components/schemas/ContentSchema-Output"
                 }
               }
             }
@@ -3205,7 +3205,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/ContentSchema"
+                    "$ref": "#/components/schemas/ContentSchema-Output"
                   },
                   "title": "Response Get Content Versions History Content  Speaker Id   Document Id  History Get"
                 }
@@ -3271,7 +3271,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ContentSchema"
+                  "$ref": "#/components/schemas/ContentSchema-Output"
                 }
               }
             }
@@ -3325,7 +3325,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ContentSchema"
+                  "$ref": "#/components/schemas/ContentSchema-Output"
                 }
               }
             }
@@ -4337,32 +4337,6 @@
         "type": "object",
         "title": "AdminUser"
       },
-      "Body_create_speaker_events__event_id__speakers_post": {
-        "properties": {
-          "speaker": {
-            "$ref": "#/components/schemas/SpeakerCreate"
-          },
-          "content_list": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/components/schemas/CreateContentSchema"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Content List"
-          }
-        },
-        "type": "object",
-        "required": [
-          "speaker"
-        ],
-        "title": "Body_create_speaker_events__event_id__speakers_post"
-      },
       "Body_upload_file_uploads_post": {
         "properties": {
           "file": {
@@ -4421,7 +4395,164 @@
         ],
         "title": "Body_upload_file_uploads_post"
       },
-      "ContentSchema": {
+      "ContentSchema-Input": {
+        "properties": {
+          "content": {
+            "type": "string",
+            "title": "Content"
+          },
+          "contentType": {
+            "type": "string",
+            "title": "Contenttype"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "speakerId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Speakerid"
+          },
+          "documentId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Documentid"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          },
+          "isCurrent": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Iscurrent"
+          },
+          "createdBy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Createdby"
+          },
+          "createdByUser": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TokenDataSchema"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "createdAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Createdat"
+          },
+          "updatedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updatedat"
+          },
+          "archived": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archived"
+          },
+          "archivedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archivedat"
+          },
+          "archivedBy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archivedby"
+          }
+        },
+        "type": "object",
+        "required": [
+          "content",
+          "contentType",
+          "name"
+        ],
+        "title": "ContentSchema"
+      },
+      "ContentSchema-Output": {
         "properties": {
           "content": {
             "type": "string",
@@ -6014,6 +6145,20 @@
             ],
             "title": "Customfields"
           },
+          "content": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ContentSchema-Input"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content"
+          },
           "websiteCardApproved": {
             "anyOf": [
               {
@@ -6290,6 +6435,20 @@
               }
             ],
             "title": "Customfields"
+          },
+          "content": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ContentSchema-Output"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content"
           },
           "websiteCardApproved": {
             "anyOf": [
@@ -6593,6 +6752,20 @@
               }
             ],
             "title": "Customfields"
+          },
+          "content": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ContentSchema-Input"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content"
           }
         },
         "type": "object",
@@ -6802,6 +6975,20 @@
               }
             ],
             "title": "Customfields"
+          },
+          "content": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ContentSchema-Input"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content"
           },
           "websiteCardApproved": {
             "anyOf": [
@@ -7080,6 +7267,20 @@
             ],
             "title": "Customfields"
           },
+          "content": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ContentSchema-Output"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content"
+          },
           "websiteCardApproved": {
             "anyOf": [
               {
@@ -7166,7 +7367,7 @@
             "anyOf": [
               {
                 "items": {
-                  "$ref": "#/components/schemas/ContentSchema"
+                  "$ref": "#/components/schemas/ContentSchema-Output"
                 },
                 "type": "array"
               },

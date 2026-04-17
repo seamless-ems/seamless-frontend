@@ -8,7 +8,7 @@ import React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
-import { getMe, updateMe, getSettings, updateSettings, getTeam } from "@/lib/api";
+import { getMe, updateMe, getSettings, updateSettings, getTeam, getBillingPortal } from "@/lib/api";
 import {
   User,
   Bell,
@@ -74,6 +74,22 @@ export default function Settings() {
     }
   });
 
+  // Billing portal
+  const billingMut = useMutation({
+    mutationFn: () => getBillingPortal(),
+    onSuccess: (res: any) => {
+      const url = res?.url ?? res?.portalUrl ?? res?.portal_url;
+      if (url) {
+        window.open(url, '_blank', 'noopener');
+      } else {
+        toast.error('Billing portal did not return a URL');
+      }
+    },
+    onError: (err: any) => {
+      toast.error(String(err?.message || err));
+    },
+  });
+
   return (
     <div className="space-y-8">
       <div className="max-w-4xl mx-auto space-y-8">
@@ -126,6 +142,26 @@ export default function Settings() {
                 <div className="text-sm text-muted-foreground">Member since</div>
                 <div className="font-medium">{me?.createdAt ? new Date(me.createdAt).toLocaleDateString() : "—"}</div>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Globe className="h-5 w-5 text-primary" />
+              Billing
+            </CardTitle>
+            <CardDescription>Manage subscription and payment methods</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium text-foreground">Billing Portal</p>
+                <p className="text-sm text-muted-foreground">Open your billing dashboard to manage invoices and payment methods.</p>
+              </div>
+              <Button onClick={() => billingMut.mutate()} disabled={billingMut.isLoading}>
+                {billingMut.isLoading ? 'Opening…' : 'Open Billing Portal'}
+              </Button>
             </div>
           </CardContent>
         </Card>
