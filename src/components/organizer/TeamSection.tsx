@@ -1,6 +1,6 @@
 import React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getTeam, inviteTeamMember, deleteTeamMember, updateTeamMember, createTeam, deleteTeam, getOrganization, getRoles } from "@/lib/api";
+import { getTeam, inviteTeamMember, deleteTeamMember, updateTeamMember, createTeam, deleteTeam, updateTeamDetails, getOrganization, getRoles } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,13 @@ import {
     AlertDialogFooter,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Pencil, Check, X, HelpCircle } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
+function roleLabel(role: string): string {
+    const stripped = role.replace(/^[^:]+:/, "");
+    return stripped.charAt(0).toUpperCase() + stripped.slice(1);
+}
 
 export default function TeamSection() {
     const qc = useQueryClient();
@@ -31,6 +38,9 @@ export default function TeamSection() {
     const [inviteForTeam, setInviteForTeam] = React.useState<string | null>(null);
     const [inviteEmail, setInviteEmail] = React.useState("");
     const [inviteRole, setInviteRole] = React.useState("member");
+    const [editingTeamId, setEditingTeamId] = React.useState<string | null>(null);
+    const [editingTeamName, setEditingTeamName] = React.useState("");
+    const [pendingRoles, setPendingRoles] = React.useState<Record<string, string>>({});
 
     const inviteMut = useMutation({
         mutationFn: (body: any) => inviteTeamMember(body),
@@ -73,6 +83,16 @@ export default function TeamSection() {
     const roleMut = useMutation({
         mutationFn: ({ id, role }: any) => updateTeamMember(id, role),
         onSuccess: () => qc.invalidateQueries({ queryKey: ["team"] }),
+        onError: (err: any) => toast.error(String(err)),
+    });
+
+    const updateTeamMut = useMutation({
+        mutationFn: ({ id, name }: { id: string; name: string }) => updateTeamDetails(id, { name }),
+        onSuccess: () => {
+            toast.success("Team name updated");
+            qc.invalidateQueries({ queryKey: ["team"] });
+            setEditingTeamId(null);
+        },
         onError: (err: any) => toast.error(String(err)),
     });
 
@@ -147,184 +167,171 @@ export default function TeamSection() {
             <Card>
                 {/* For now we use org in background but do not allow user to edit */}
                 {/* For now we only allow a single team */}
-                {/* @CLAUDE please do not edit this section */}
-                <CardHeader>
-                    <CardTitle className="text-lg">Team</CardTitle>
-                    <CardDescription>Manage your team members</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="space-y-4">
-                        {team.length === 0 ? (
-                            <div className="text-sm text-muted-foreground">No teams found.</div>
-                        ) : isTeamList ? (
-                            <div className="space-y-4">
-                                {team.map((t: any) => {
-                                    const members = t.users || t.members || [];
-                                    return (
-                                        <div key={t.id} className="border rounded-lg p-4 space-y-3">
-                                            <div className="flex items-center justify-between">
-                                                <div>
-                                                    <div className="font-medium">{t.name ?? t.id}</div>
-                                                    {t.description && <div className="text-sm text-muted-foreground">{t.description}</div>}
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <Button size="sm" variant="outline" onClick={() => {
-                                                        setInviteForTeam(t.id);
-                                                        setInviteEmail("");
-                                                        if (roles && roles.length > 0) setInviteRole(roles[0].id || roles[0]);
-                                                        else setInviteRole("member");
-                                                    }}>
-                                                        Add Member
+                {team.length === 0 ? (
+                    <>
+                        <CardHeader><CardTitle className="text-lg">Team</CardTitle></CardHeader>
+                        <CardContent><p className="text-sm text-muted-foreground">No teams found.</p></CardContent>
+                    </>
+                ) : isTeamList ? (
+                    team.map((t: any) => {
+                        const members = t.users || t.members || [];
+                        return (
+                            <React.Fragment key={t.id}>
+                                <CardHeader className="pb-3">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <CardTitle className="text-lg">Team</CardTitle>
+                                            <span className="text-muted-foreground">|</span>
+                                            {editingTeamId === t.id ? (
+                                                <>
+                                                    <Input
+                                                        autoFocus
+                                                        value={editingTeamName}
+                                                        onChange={(e) => setEditingTeamName(e.target.value)}
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === "Enter") updateTeamMut.mutate({ id: t.id, name: editingTeamName });
+                                                            if (e.key === "Escape") setEditingTeamId(null);
+                                                        }}
+                                                        className="h-7 w-48"
+                                                    />
+                                                    <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={() => updateTeamMut.mutate({ id: t.id, name: editingTeamName })} disabled={updateTeamMut.isPending}>
+                                                        <Check className="h-3.5 w-3.5 text-success" />
                                                     </Button>
-                                                    {/* <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => {
-                                                        setConfirmDeleteTeamName(t.name ?? t.id);
-                                                        setConfirmDeleteTeamId(t.id);
-                                                    }}>
-                                                        Delete
-                                                    </Button> */}
-                                                </div>
-                                            </div>
-
-                                            <div className="space-y-2">
-                                                {members.length === 0 ? (
-                                                    <div className="text-sm text-muted-foreground">No members</div>
-                                                ) : (
-                                                    members.map((m: any) => (
-                                                        <div key={m.id} className="flex items-center justify-between py-1">
-                                                            <div>
-                                                                <div className="font-medium text-sm">{m.name ?? m.email}</div>
-                                                                <div className="text-xs text-muted-foreground">{m.email}</div>
-                                                            </div>
-                                                            <div className="flex items-center gap-2">
-                                                                <select
-                                                                    value={m.role}
-                                                                    onChange={(e) => roleMut.mutate({ id: m.id, role: e.target.value })}
-                                                                    className="border rounded px-2 py-1 text-sm"
-                                                                >
-                                                                    {roles && roles.length > 0 ? (
-                                                                        roles.map((r: any) => (
-                                                                            <option key={r.id || r} value={r.id || r}>{r.id || r}</option>
-                                                                        ))
-                                                                    ) : (
-                                                                        <>
-                                                                            <option value="owner">Owner</option>
-                                                                            <option value="admin">Admin</option>
-                                                                            <option value="member">Member</option>
-                                                                        </>
-                                                                    )}
-                                                                </select>
-                                                                <Button
-                                                                    variant="destructive"
-                                                                    size="sm"
-                                                                    onClick={() => {
-                                                                        setConfirmRemoveMemberName(m.name ?? m.email ?? "this member");
-                                                                        setConfirmRemoveMemberId(m.id);
-                                                                    }}
-                                                                >
-                                                                    Remove
-                                                                </Button>
-                                                            </div>
-                                                        </div>
-                                                    ))
-                                                )}
-                                            </div>
-
-                                            {inviteForTeam === t.id && (
-                                                <div className="pt-2 border-t">
-                                                    <div className="grid sm:grid-cols-3 gap-2 items-end">
-                                                        <div className="sm:col-span-2">
-                                                            <Label htmlFor={`invite-email-${t.id}`}>Invite by email</Label>
-                                                            <Input id={`invite-email-${t.id}`} type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} />
-                                                        </div>
-                                                        <div className="flex items-center gap-2">
-                                                            <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value)} className="border rounded px-2 py-1 text-sm">
-                                                                {roles && roles.length > 0 ? (
-                                                                    roles.map((r: any) => (
-                                                                        <option key={r.id || r} value={r.id || r}>{r.id || r}</option>
-                                                                    ))
-                                                                ) : (
-                                                                    <>
-                                                                        <option value="owner">Owner</option>
-                                                                        <option value="admin">Admin</option>
-                                                                        <option value="member">Member</option>
-                                                                    </>
-                                                                )}
-                                                            </select>
-                                                            <Button size="sm" onClick={async () => {
-                                                                if (!inviteEmail) return;
-                                                                try {
-                                                                    await inviteMut.mutateAsync({ email: inviteEmail, role: inviteRole, teamId: t.id });
-                                                                    setInviteForTeam(null);
-                                                                } catch {}
-                                                            }}>Send</Button>
-                                                            <Button size="sm" variant="ghost" onClick={() => setInviteForTeam(null)}>Cancel</Button>
-                                                        </div>
-                                                    </div>
-                                                </div>
+                                                    <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={() => setEditingTeamId(null)}>
+                                                        <X className="h-3.5 w-3.5 text-muted-foreground" />
+                                                    </Button>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <span className="text-base font-medium text-muted-foreground">{t.name ?? t.id}</span>
+                                                    <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => { setEditingTeamId(t.id); setEditingTeamName(t.name ?? ""); }}>
+                                                        <Pencil className="h-3 w-3 text-muted-foreground" />
+                                                    </Button>
+                                                </>
                                             )}
                                         </div>
-                                    );
-                                })}
-                            </div>
-                        ) : (
-                            // Flat list of members (non-grouped response shape)
-                            <div className="space-y-2">
+                                        <Button size="sm" variant="outline" onClick={() => {
+                                            setInviteForTeam(t.id);
+                                            setInviteEmail("");
+                                            setInviteRole(roles?.[0]?.id ?? roles?.[0] ?? "member");
+                                        }}>
+                                            Add Teammate
+                                        </Button>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="pt-0">
+                                    <div className="space-y-1">
+                                        {members.length === 0 ? (
+                                            <p className="text-sm text-muted-foreground">No members</p>
+                                        ) : (
+                                            members.map((m: any) => (
+                                                <div key={m.id} className="flex items-center justify-between py-1.5">
+                                                    <div>
+                                                        <div className="font-medium text-sm">{m.name ?? m.email}</div>
+                                                        <div className="text-xs text-muted-foreground">{m.email}</div>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <select
+                                                            value={pendingRoles[m.id] ?? m.role}
+                                                            onChange={(e) => setPendingRoles(prev => ({ ...prev, [m.id]: e.target.value }))}
+                                                            className="border rounded px-2 py-1 text-sm"
+                                                        >
+                                                            <option value="team:admin">Admin</option>
+                                                            <option value="team:member">Member</option>
+                                                            <option value="team:viewer">Viewer</option>
+                                                        </select>
+                                                        {pendingRoles[m.id] && pendingRoles[m.id] !== m.role ? (
+                                                            <Button size="sm" variant="outline" onClick={() => {
+                                                                roleMut.mutate({ id: m.id, role: pendingRoles[m.id] });
+                                                                setPendingRoles(prev => { const n = { ...prev }; delete n[m.id]; return n; });
+                                                            }}>
+                                                                Update Role
+                                                            </Button>
+                                                        ) : (
+                                                            <Button variant="destructive" size="sm" onClick={() => {
+                                                                setConfirmRemoveMemberName(m.name ?? m.email ?? "this member");
+                                                                setConfirmRemoveMemberId(m.id);
+                                                            }}>
+                                                                Remove
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
+                                        {inviteForTeam === t.id && (
+                                            <div className="pt-3 border-t mt-2">
+                                                <div className="grid sm:grid-cols-3 gap-2 items-end">
+                                                    <div className="sm:col-span-2">
+                                                        <Label htmlFor={`invite-email-${t.id}`}>Invite by email</Label>
+                                                        <Input id={`invite-email-${t.id}`} type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} />
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value)} className="border rounded px-2 py-1 text-sm">
+                                                            <option value="team:admin">Admin</option>
+                                                            <option value="team:member">Member</option>
+                                                            <option value="team:viewer">Viewer</option>
+                                                        </select>
+                                                        <TooltipProvider delayDuration={100}>
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-pointer shrink-0" />
+                                                                </TooltipTrigger>
+                                                                <TooltipContent side="top" className="w-72 text-xs space-y-2">
+                                                                    <p><strong>Admin</strong> — can do everything within the team.</p>
+                                                                    <p><strong>Member</strong> — can do everything except delete the team and manage team members.</p>
+                                                                    <p><strong>Viewer</strong> — can only view team and event information.</p>
+                                                                </TooltipContent>
+                                                            </Tooltip>
+                                                        </TooltipProvider>
+                                                        <Button size="sm" onClick={async () => {
+                                                            if (!inviteEmail) return;
+                                                            try {
+                                                                await inviteMut.mutateAsync({ email: inviteEmail, role: inviteRole, teamId: t.id });
+                                                                setInviteForTeam(null);
+                                                            } catch {}
+                                                        }}>Send</Button>
+                                                        <Button size="sm" variant="ghost" onClick={() => setInviteForTeam(null)}>Cancel</Button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </CardContent>
+                            </React.Fragment>
+                        );
+                    })
+                ) : (
+                    // Flat list of members (non-grouped response shape)
+                    <>
+                        <CardHeader><CardTitle className="text-lg">Team</CardTitle></CardHeader>
+                        <CardContent>
+                            <div className="space-y-1">
                                 {team.map((m: any) => (
-                                    <div key={m.id} className="flex items-center justify-between py-1">
+                                    <div key={m.id} className="flex items-center justify-between py-1.5">
                                         <div>
                                             <div className="font-medium text-sm">{m.name ?? m.email}</div>
                                             <div className="text-xs text-muted-foreground">{m.email}</div>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <select
-                                                value={m.role}
-                                                onChange={(e) => roleMut.mutate({ id: m.id, role: e.target.value })}
-                                                className="border rounded px-2 py-1 text-sm"
-                                            >
-                                                <option value="owner">Owner</option>
-                                                <option value="admin">Admin</option>
-                                                <option value="member">Member</option>
+                                            <select value={m.role} onChange={(e) => roleMut.mutate({ id: m.id, role: e.target.value })} className="border rounded px-2 py-1 text-sm">
+                                                <option value="team:admin">Admin</option>
+                                                <option value="team:member">Member</option>
+                                                <option value="team:viewer">Viewer</option>
                                             </select>
-                                            <Button
-                                                variant="destructive"
-                                                size="sm"
-                                                onClick={() => {
-                                                    setConfirmRemoveMemberName(m.name ?? m.email ?? "this member");
-                                                    setConfirmRemoveMemberId(m.id);
-                                                }}
-                                            >
+                                            <Button variant="destructive" size="sm" onClick={() => {
+                                                setConfirmRemoveMemberName(m.name ?? m.email ?? "this member");
+                                                setConfirmRemoveMemberId(m.id);
+                                            }}>
                                                 Remove
                                             </Button>
                                         </div>
                                     </div>
                                 ))}
                             </div>
-                        )}
-
-                        {/* <div className="pt-2 border-t">
-                            {creatingTeam ? (
-                                <form onSubmit={teamForm.handleSubmit((vals) => {
-                                    const orgId = orgs?.[0]?.id ?? "";
-                                    createTeamMut.mutate({ name: vals.name, organizationId: orgId });
-                                })} className="grid gap-2">
-                                    <div>
-                                        <Label htmlFor="team-name">Team Name</Label>
-                                        <Input id="team-name" {...teamForm.register("name", { required: true })} />
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <Button type="submit" disabled={createTeamMut.status === "pending"}>Create Team</Button>
-                                        <Button type="button" variant="ghost" onClick={() => setCreatingTeam(false)}>Cancel</Button>
-                                    </div>
-                                </form>
-                            ) : (
-                                <div className="flex items-center justify-between">
-                                    <p className="text-sm text-muted-foreground">Create a new team for this account.</p>
-                                    <Button size="sm" variant="outline" onClick={() => setCreatingTeam(true)}>Create Team</Button>
-                                </div>
-                            )}
-                        </div> */}
-                    </div>
-                </CardContent>
+                        </CardContent>
+                    </>
+                )}
             </Card>
         </>
     );

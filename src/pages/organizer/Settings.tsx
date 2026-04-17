@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
@@ -11,12 +12,11 @@ import { toast } from "sonner";
 import { getMe, updateMe, getSettings, updateSettings, getTeam, getBillingPortal } from "@/lib/api";
 import {
   User,
-  Bell,
-  Shield,
-  Palette,
-  Upload,
-  Mail,
   Globe,
+  HelpCircle,
+  Pencil,
+  Check,
+  X,
 } from "lucide-react";
 import TeamSection from "@/components/organizer/TeamSection";
 
@@ -26,11 +26,20 @@ export default function Settings() {
   const { data: me } = useQuery<any, Error>({ queryKey: ["me"], queryFn: () => getMe() });
   const { data: settings } = useQuery<any, Error>({ queryKey: ["settings"], queryFn: () => getSettings(), enabled: !!me });
   const { data: teams } = useQuery<any[]>({ queryKey: ["teams"], queryFn: () => getTeam(), enabled: !!me });
+
+  const [editingName, setEditingName] = React.useState(false);
+  const [nameValue, setNameValue] = React.useState("");
+
+  React.useEffect(() => {
+    if (me?.name) setNameValue(me.name);
+  }, [me?.name]);
+
   const updateMeMut = useMutation({
     mutationFn: (body: any) => updateMe(body),
     onSuccess: () => {
       toast.success("Profile updated");
       qc.invalidateQueries({ queryKey: ["me"] });
+      setEditingName(false);
     },
     onError: (err: any) => {
       toast.error(String(err));
@@ -67,7 +76,7 @@ export default function Settings() {
 
   const onSave = form.handleSubmit(async (vals) => {
     try {
-      await updateMeMut.mutateAsync(  { name: vals.name, email: vals.email });
+      await updateMeMut.mutateAsync({ name: vals.name, email: vals.email });
       await updateSettingsMut.mutateAsync(vals.notifications ?? settings ?? {});
     } catch (e) {
       // handled by mutation onError
@@ -93,12 +102,6 @@ export default function Settings() {
   return (
     <div className="space-y-8">
       <div className="max-w-4xl mx-auto space-y-8">
-        {/* Header */}
-        <div>
-          <h1 className="font-display text-3xl font-bold text-foreground">Settings</h1>
-          <p className="text-muted-foreground mt-1">Manage your account preferences</p>
-        </div>
-
         {/* Warning when user has no teams */}
         {Array.isArray(teams) && teams.length === 0 && (
           <Card className="border-destructive/30">
@@ -126,47 +129,58 @@ export default function Settings() {
               <User className="h-5 w-5 text-primary" />
               Profile
             </CardTitle>
-            <CardDescription>Your personal information and preferences</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              <div>
-                <div className="text-sm text-muted-foreground">Name</div>
-                <div className="font-medium">{me?.name ?? "—"}</div>
+            <div className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm items-center">
+              <span className="text-muted-foreground">Name</span>
+              <div className="flex items-center gap-1.5">
+                {editingName ? (
+                  <>
+                    <Input
+                      autoFocus
+                      value={nameValue}
+                      onChange={(e) => setNameValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") updateMeMut.mutate({ name: nameValue });
+                        if (e.key === "Escape") { setNameValue(me?.name ?? ""); setEditingName(false); }
+                      }}
+                      className="h-7 w-56"
+                    />
+                    <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={() => updateMeMut.mutate({ name: nameValue })} disabled={updateMeMut.isPending}>
+                      <Check className="h-3.5 w-3.5 text-success" />
+                    </Button>
+                    <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={() => { setNameValue(me?.name ?? ""); setEditingName(false); }}>
+                      <X className="h-3.5 w-3.5 text-muted-foreground" />
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <span className="font-medium">{me?.name ?? "—"}</span>
+                    <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setEditingName(true)}>
+                      <Pencil className="h-3 w-3 text-muted-foreground" />
+                    </Button>
+                  </>
+                )}
               </div>
-              <div>
-                <div className="text-sm text-muted-foreground">Email</div>
-                <div className="font-medium">{me?.email ?? "—"}</div>
-              </div>
-              <div>
-                <div className="text-sm text-muted-foreground">Member since</div>
-                <div className="font-medium">{me?.createdAt ? new Date(me.createdAt).toLocaleDateString() : "—"}</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Globe className="h-5 w-5 text-primary" />
-              Billing
-            </CardTitle>
-            <CardDescription>Manage subscription and payment methods</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium text-foreground">Billing Portal</p>
-                <p className="text-sm text-muted-foreground">Open your billing dashboard to manage invoices and your previous orders.</p>
-              </div>
-              <Button onClick={() => billingMut.mutate()} disabled={billingMut.isLoading}>
-                {billingMut.isLoading ? 'Opening…' : 'Open Billing Portal'}
-              </Button>
+              <span className="text-muted-foreground">Email</span>
+              <span className="font-medium">{me?.email ?? "—"}</span>
+              <span className="text-muted-foreground">Member since</span>
+              <span className="font-medium">{me?.createdAt ? new Date(me.createdAt).toLocaleDateString() : "—"}</span>
             </div>
           </CardContent>
         </Card>
         <div id="team-section">
           <TeamSection />
+        </div>
+        <div className="flex items-center gap-3">
+          <Button variant="outline" onClick={() => window.open("mailto:support@seamlessevents.io", "_blank")}>
+            <HelpCircle className="h-4 w-4 mr-2" />
+            Get Help
+          </Button>
+          <Button variant="outline" onClick={() => billingMut.mutate()} disabled={billingMut.isPending}>
+            <Globe className="h-4 w-4 mr-2" />
+            {billingMut.isPending ? 'Opening…' : 'Billing Portal'}
+          </Button>
         </div>
         {/* Danger Zone */}
         <Card className="border-destructive/30">

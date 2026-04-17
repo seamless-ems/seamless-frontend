@@ -175,68 +175,15 @@ export function DashboardLayout({ children, eventId, mode: propMode }: Dashboard
           })()}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                className="flex items-center gap-2 pl-2"
-              >
-                <Users className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium">
-                  {teams?.[0]?.name ?? me?.firstName ?? me?.first_name ?? "Account"}
-                </span>
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <Settings className="h-4 w-4 text-muted-foreground" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-64">
-              {/* Header: Team + User */}
-              <div className="px-3 py-3 border-b">
-                <div className="text-sm font-semibold text-foreground">
-                  {teams?.[0]?.name ?? "—"}
-                </div>
-                <Link
-                  to="/organizer/settings"
-                  className="text-xs text-muted-foreground hover:text-foreground transition-colors mt-0.5 block"
-                >
-                  {me ? `${me.firstName ?? me.first_name ?? ""} ${me.lastName ?? me.last_name ?? ""}`.trim() : "User"}
-                  {me?.role === "admin" || me?.isAdmin ? " (Admin)" : " (Member)"}
-                </Link>
-              </div>
-
-              {/* Organization Section (Admin only) */}
-              {(me?.role === "admin" || me?.isAdmin) && (
-                <>
-                  <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground">
-                    Organization
-                  </div>
-                  <DropdownMenuItem asChild>
-                    <Link to="/organizer/settings">
-                      <Settings className="h-4 w-4 mr-2" />
-                      Organization Settings
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/organizer/team">
-                      <Users className="h-4 w-4 mr-2" />
-                      Team
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/organizer/subscription">
-                      <CreditCard className="h-4 w-4 mr-2" />
-                      Billing
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                </>
-              )}
-
-              {/* Personal Section */}
-              <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground">
-                Personal
-              </div>
+            <DropdownMenuContent align="end" className="w-44">
               <DropdownMenuItem asChild>
                 <Link to="/organizer/settings">
-                  <Users className="h-4 w-4 mr-2" />
-                  Profile
+                  <Settings className="h-4 w-4 mr-2" />
+                  Settings
                 </Link>
               </DropdownMenuItem>
 
