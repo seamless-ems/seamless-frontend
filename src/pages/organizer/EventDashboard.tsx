@@ -1,6 +1,7 @@
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { getJson } from "@/lib/api";
+import { getLocaleAndCurrency } from '@/lib/locale';
 import { Button } from "@/components/ui/button";
 import { createCheckout } from '@/lib/api';
 import React, { useState } from 'react';
@@ -107,7 +108,8 @@ export default function EventDashboard() {
 							if (!rawEvent?.id) return;
 							try {
 								// trigger checkout for the speaker product by default
-								const res = await createCheckout('speaker', String(rawEvent.id));
+								const { locale, currency } = getLocaleAndCurrency();
+								const res = await createCheckout('speaker', String(rawEvent.id), { currency, locale });
 								const url = res?.url || res?.checkout_url || res?.redirect_url || res?.checkoutUrl || (typeof res === 'string' ? res : undefined) || res?.data?.url;
 								if (url) window.open(url, '_blank', 'noopener,noreferrer');
 								else toast({ title: 'Checkout created', description: 'No redirect URL returned; please check your billing dashboard.' });

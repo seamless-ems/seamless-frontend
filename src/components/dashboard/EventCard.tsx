@@ -23,6 +23,7 @@ import { toast } from "@/hooks/use-toast";
 import React from "react";
 import { Event } from "@/types/event";
 import { createCheckout } from '@/lib/api';
+import { getLocaleAndCurrency } from '@/lib/locale';
 import { useState } from 'react';
 
 interface EventCardProps {
@@ -78,7 +79,8 @@ export function EventCard({ event, index = 0, onDelete }: EventCardProps) {
     if (!event?.id) return;
     setCreatingCheckout(true);
     try {
-      const res = await createCheckout('speaker', String(event.id));
+      const { locale, currency } = getLocaleAndCurrency();
+      const res = await createCheckout('speaker', String(event.id), { currency, locale });
       const url = res?.url || res?.checkout_url || res?.redirect_url || res?.checkoutUrl || (typeof res === 'string' ? res : undefined) || res?.data?.url;
       if (url) {
         window.open(url, '_blank', 'noopener,noreferrer');

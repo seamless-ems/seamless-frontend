@@ -4,6 +4,7 @@ import { useWarnOnLeave } from "@/hooks/useWarnOnLeave";
 import { UnsavedChangesDialog } from "@/components/ui/UnsavedChangesDialog";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getJson, updateEvent, getTeam, createCheckout } from "@/lib/api";
+import { getLocaleAndCurrency } from '@/lib/locale';
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -226,7 +227,8 @@ export default function EventSettings() {
                     <Button variant="outline" type="button" onClick={async () => {
                       if (!id) return;
                       try {
-                        const res = await createCheckout("speaker", id);
+                        const { locale, currency } = getLocaleAndCurrency();
+                        const res = await createCheckout("speaker", id, { currency, locale });
                         const url = res?.url || res?.checkout_url || res?.redirect_url || res?.checkoutUrl || (typeof res === "string" ? res : undefined) || res?.data?.url;
                         if (url) {
                           window.location.href = url;

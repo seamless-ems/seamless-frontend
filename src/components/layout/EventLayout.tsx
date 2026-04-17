@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Settings, ChevronDown, Users, CreditCard, ChevronRight } from 'lucide-react';
 import { getMe, getTeam, getJson, createCheckout } from '@/lib/api';
+import { getLocaleAndCurrency } from '@/lib/locale';
 import { toast } from '@/hooks/use-toast';
 import { clearTokenAndNotify } from '@/lib/session';
 import { signOut as firebaseSignOut } from '@/lib/firebase';
@@ -71,7 +72,8 @@ export default function EventLayout({ children }: { children: ReactNode }) {
 
             const handleUpgrade = async () => {
               try {
-                const res = await createCheckout('speaker', String(eventData?.id ?? eventData?.event_id ?? eventData?.uuid ?? id));
+                const { locale, currency } = getLocaleAndCurrency();
+                const res = await createCheckout('speaker', String(eventData?.id ?? eventData?.event_id ?? eventData?.uuid ?? id), { currency, locale });
                 const url = res?.url || res?.checkout_url || res?.redirect_url || res?.checkoutUrl || (typeof res === 'string' ? res : undefined) || res?.data?.url;
                 if (url) window.open(url, '_blank', 'noopener,noreferrer');
                 else toast({ title: 'Checkout created', description: 'No redirect URL returned; check billing dashboard.' });
