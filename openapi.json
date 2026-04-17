@@ -433,6 +433,50 @@
             }
           }
         }
+      },
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Create Speakers Bulk",
+        "operationId": "create_speakers_bulk_admin_speakers_post",
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Event Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AdminSpeaker"
+                  },
+                  "title": "Response Create Speakers Bulk Admin Speakers Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/admin/speakers/{speaker_id}": {
@@ -792,6 +836,47 @@
         }
       }
     },
+    "/auth/firebase/send-magic-link": {
+      "post": {
+        "tags": [
+          "Oauth 2"
+        ],
+        "summary": "Send Magic Link Endpoint",
+        "operationId": "send_magic_link_endpoint_auth_firebase_send_magic_link_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FirebaseEmailCheckRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/account/organization": {
       "get": {
         "tags": [
@@ -822,7 +907,7 @@
           "account"
         ],
         "summary": "Create Organization",
-        "description": "Create a new organization (placeholder implementation).",
+        "description": "Create a new organization.",
         "operationId": "create_organization_account_organization_post",
         "requestBody": {
           "content": {
@@ -1205,155 +1290,6 @@
         }
       }
     },
-    "/account/subscription": {
-      "get": {
-        "tags": [
-          "account"
-        ],
-        "summary": "Get Subscription",
-        "operationId": "get_subscription_account_subscription_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/account/subscription/change": {
-      "post": {
-        "tags": [
-          "account"
-        ],
-        "summary": "Change Subscription",
-        "operationId": "change_subscription_account_subscription_change_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "additionalProperties": true,
-                "type": "object",
-                "title": "Body"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/account/billing/invoices": {
-      "get": {
-        "tags": [
-          "account"
-        ],
-        "summary": "List Invoices",
-        "operationId": "list_invoices_account_billing_invoices_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/account/billing/payment-method": {
-      "post": {
-        "tags": [
-          "account"
-        ],
-        "summary": "Add Payment Method",
-        "operationId": "add_payment_method_account_billing_payment_method_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "additionalProperties": true,
-                "type": "object",
-                "title": "Body"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/account/subscription/cancel": {
-      "post": {
-        "tags": [
-          "account"
-        ],
-        "summary": "Cancel Subscription",
-        "operationId": "cancel_subscription_account_subscription_cancel_post",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/account/me": {
       "get": {
         "tags": [
@@ -1621,7 +1557,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/SpeakerBase"
+                "$ref": "#/components/schemas/SpeakerBase-Input"
               }
             }
           }
@@ -1632,7 +1568,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SpeakerBase"
+                  "$ref": "#/components/schemas/SpeakerBase-Output"
                 }
               }
             }
@@ -1762,7 +1698,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/EventSchema"
+                "$ref": "#/components/schemas/EventSchema-Input"
               }
             }
           }
@@ -1773,7 +1709,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/EventSchema"
+                  "$ref": "#/components/schemas/EventSchema-Output"
                 }
               }
             }
@@ -1815,7 +1751,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/EventSchema"
+                  "$ref": "#/components/schemas/EventSchema-Output"
                 }
               }
             }
@@ -1854,7 +1790,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/EventSchema"
+                "$ref": "#/components/schemas/EventSchema-Input"
               }
             }
           }
@@ -1865,7 +1801,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/EventSchema"
+                  "$ref": "#/components/schemas/EventSchema-Output"
                 }
               }
             }
@@ -2341,7 +2277,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/SpeakerCreate"
+                "$ref": "#/components/schemas/Body_create_speaker_events__event_id__speakers_post"
               }
             }
           }
@@ -2352,7 +2288,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SpeakerBase"
+                  "$ref": "#/components/schemas/SpeakerBase-Output"
                 }
               }
             }
@@ -2481,7 +2417,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SpeakerBase"
+                  "$ref": "#/components/schemas/SpeakerBase-Output"
                 }
               }
             }
@@ -2540,7 +2476,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SpeakerBase"
+                  "$ref": "#/components/schemas/SpeakerBase-Output"
                 }
               }
             }
@@ -4191,6 +4127,50 @@
             ],
             "title": "Companyrole"
           },
+          "linkedin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Linkedin"
+          },
+          "bio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bio"
+          },
+          "headshot": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Headshot"
+          },
+          "companyLogo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Companylogo"
+          },
           "registeredAt": {
             "anyOf": [
               {
@@ -4356,6 +4336,32 @@
         },
         "type": "object",
         "title": "AdminUser"
+      },
+      "Body_create_speaker_events__event_id__speakers_post": {
+        "properties": {
+          "speaker": {
+            "$ref": "#/components/schemas/SpeakerCreate"
+          },
+          "content_list": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/CreateContentSchema"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content List"
+          }
+        },
+        "type": "object",
+        "required": [
+          "speaker"
+        ],
+        "title": "Body_create_speaker_events__event_id__speakers_post"
       },
       "Body_upload_file_uploads_post": {
         "properties": {
@@ -4639,7 +4645,7 @@
         ],
         "title": "EmailPayloadSchema"
       },
-      "EventSchema": {
+      "EventSchema-Input": {
         "properties": {
           "id": {
             "type": "string",
@@ -4801,7 +4807,7 @@
             "anyOf": [
               {
                 "items": {
-                  "$ref": "#/components/schemas/SpeakerBase"
+                  "$ref": "#/components/schemas/SpeakerBase-Input"
                 },
                 "type": "array"
               },
@@ -4827,6 +4833,264 @@
               }
             ],
             "title": "Userrole"
+          },
+          "speakerId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Speakerid"
+          },
+          "trialEnded": {
+            "type": "boolean",
+            "title": "Trialended",
+            "default": false
+          },
+          "trialEndsAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trialendsat"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "startDate",
+          "endDate",
+          "location"
+        ],
+        "title": "EventSchema"
+      },
+      "EventSchema-Output": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Startdate"
+          },
+          "endDate": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enddate"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          },
+          "modules": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Modules",
+            "default": {
+              "speaker": false,
+              "schedule": false,
+              "content": false,
+              "attendee": false
+            }
+          },
+          "fromEmail": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "email"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fromemail"
+          },
+          "replyToEmail": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "email"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Replytoemail"
+          },
+          "emailSignature": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Emailsignature"
+          },
+          "googleDriveConnected": {
+            "type": "boolean",
+            "title": "Googledriveconnected",
+            "default": false
+          },
+          "rootFolder": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rootfolder"
+          },
+          "integrationId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Integrationid",
+            "description": "The internal UUID of the linked integration (e.g. Google Drive) for this event, if applicable."
+          },
+          "teamId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Teamid"
+          },
+          "eventImage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eventimage"
+          },
+          "website": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Website"
+          },
+          "speakers": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/SpeakerBase-Output"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Speakers",
+            "default": []
+          },
+          "paid": {
+            "type": "boolean",
+            "title": "Paid",
+            "default": false
+          },
+          "userRole": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Userrole"
+          },
+          "speakerId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Speakerid"
+          },
+          "trialEnded": {
+            "type": "boolean",
+            "title": "Trialended",
+            "default": false
+          },
+          "trialEndsAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trialendsat"
           }
         },
         "type": "object",
@@ -5308,7 +5572,7 @@
         "properties": {
           "items": {
             "items": {
-              "$ref": "#/components/schemas/EventSchema"
+              "$ref": "#/components/schemas/EventSchema-Output"
             },
             "type": "array",
             "title": "Items"
@@ -5339,7 +5603,7 @@
         "properties": {
           "items": {
             "items": {
-              "$ref": "#/components/schemas/SpeakerBase"
+              "$ref": "#/components/schemas/SpeakerBase-Output"
             },
             "type": "array",
             "title": "Items"
@@ -5552,7 +5816,7 @@
         ],
         "title": "ReplaceContentSchema"
       },
-      "SpeakerBase": {
+      "SpeakerBase-Input": {
         "properties": {
           "id": {
             "type": "string",
@@ -5640,7 +5904,7 @@
             ],
             "title": "Headshot"
           },
-          "companyLogo": {
+          "companyLogoColour": {
             "anyOf": [
               {
                 "type": "string",
@@ -5651,9 +5915,22 @@
                 "type": "null"
               }
             ],
-            "title": "Companylogo"
+            "title": "Companylogocolour"
           },
-          "talkTopic": {
+          "companyLogoWhite": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "format": "uri"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Companylogowhite"
+          },
+          "talkTitle": {
             "anyOf": [
               {
                 "type": "string"
@@ -5662,7 +5939,29 @@
                 "type": "null"
               }
             ],
-            "title": "Talktopic"
+            "title": "Talktitle"
+          },
+          "talkDescription": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Talkdescription"
+          },
+          "proposedTalkTopic": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proposedtalktopic"
           },
           "sampleContent": {
             "anyOf": [
@@ -5794,6 +6093,309 @@
         ],
         "title": "SpeakerBase"
       },
+      "SpeakerBase-Output": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "firstName": {
+            "type": "string",
+            "title": "Firstname"
+          },
+          "lastName": {
+            "type": "string",
+            "title": "Lastname"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "userId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Userid"
+          },
+          "companyName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Companyname"
+          },
+          "companyRole": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Companyrole"
+          },
+          "linkedin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Linkedin"
+          },
+          "bio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bio"
+          },
+          "headshot": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "format": "uri"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Headshot"
+          },
+          "companyLogoColour": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "format": "uri"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Companylogocolour"
+          },
+          "companyLogoWhite": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "format": "uri"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Companylogowhite"
+          },
+          "talkTitle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Talktitle"
+          },
+          "talkDescription": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Talkdescription"
+          },
+          "talkTopic": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Talktopic"
+          },
+          "sampleContent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Samplecontent"
+          },
+          "formType": {
+            "type": "string",
+            "title": "Formtype"
+          },
+          "speakerInformationStatus": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Speakerinformationstatus",
+            "default": "info_pending"
+          },
+          "callForSpeakersStatus": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callforspeakersstatus",
+            "default": "submitted"
+          },
+          "customFields": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customfields"
+          },
+          "websiteCardApproved": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Websitecardapproved"
+          },
+          "promoCardApproved": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Promocardapproved"
+          },
+          "embedEnabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Embedenabled"
+          },
+          "internalNotes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Internalnotes"
+          },
+          "createdAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Createdat"
+          },
+          "updatedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updatedat"
+          },
+          "headshotDownloadUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Headshotdownloadurl",
+            "readOnly": true
+          },
+          "logoDownloadUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logodownloadurl",
+            "readOnly": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "firstName",
+          "lastName",
+          "email",
+          "formType",
+          "headshotDownloadUrl",
+          "logoDownloadUrl"
+        ],
+        "title": "SpeakerBase"
+      },
       "SpeakerCreate": {
         "properties": {
           "id": {
@@ -5882,7 +6484,7 @@
             ],
             "title": "Headshot"
           },
-          "companyLogo": {
+          "companyLogoColour": {
             "anyOf": [
               {
                 "type": "string",
@@ -5893,9 +6495,22 @@
                 "type": "null"
               }
             ],
-            "title": "Companylogo"
+            "title": "Companylogocolour"
           },
-          "talkTopic": {
+          "companyLogoWhite": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "format": "uri"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Companylogowhite"
+          },
+          "talkTitle": {
             "anyOf": [
               {
                 "type": "string"
@@ -5904,7 +6519,29 @@
                 "type": "null"
               }
             ],
-            "title": "Talktopic"
+            "title": "Talktitle"
+          },
+          "talkDescription": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Talkdescription"
+          },
+          "proposedTalkTopic": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proposedtalktopic"
           },
           "sampleContent": {
             "anyOf": [
@@ -6056,7 +6693,7 @@
             ],
             "title": "Headshot"
           },
-          "companyLogo": {
+          "companyLogoColour": {
             "anyOf": [
               {
                 "type": "string",
@@ -6067,9 +6704,22 @@
                 "type": "null"
               }
             ],
-            "title": "Companylogo"
+            "title": "Companylogocolour"
           },
-          "talkTopic": {
+          "companyLogoWhite": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "format": "uri"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Companylogowhite"
+          },
+          "talkTitle": {
             "anyOf": [
               {
                 "type": "string"
@@ -6078,7 +6728,29 @@
                 "type": "null"
               }
             ],
-            "title": "Talktopic"
+            "title": "Talktitle"
+          },
+          "talkDescription": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Talkdescription"
+          },
+          "proposedTalkTopic": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proposedtalktopic"
           },
           "sampleContent": {
             "anyOf": [
@@ -6298,7 +6970,7 @@
             ],
             "title": "Headshot"
           },
-          "companyLogo": {
+          "companyLogoColour": {
             "anyOf": [
               {
                 "type": "string",
@@ -6309,7 +6981,42 @@
                 "type": "null"
               }
             ],
-            "title": "Companylogo"
+            "title": "Companylogocolour"
+          },
+          "companyLogoWhite": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "format": "uri"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Companylogowhite"
+          },
+          "talkTitle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Talktitle"
+          },
+          "talkDescription": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Talkdescription"
           },
           "talkTopic": {
             "anyOf": [
@@ -6468,6 +7175,30 @@
               }
             ],
             "title": "Contentitems"
+          },
+          "headshotDownloadUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Headshotdownloadurl",
+            "readOnly": true
+          },
+          "logoDownloadUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logodownloadurl",
+            "readOnly": true
           }
         },
         "type": "object",
@@ -6476,7 +7207,9 @@
           "firstName",
           "lastName",
           "email",
-          "formType"
+          "formType",
+          "headshotDownloadUrl",
+          "logoDownloadUrl"
         ],
         "title": "SpeakerWithEvents"
       },

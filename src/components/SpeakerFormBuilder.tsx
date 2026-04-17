@@ -14,6 +14,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import MissingFormDialog from "@/components/MissingFormDialog";
+import ContentUploads from "@/components/speaker/ContentUploads";
 import {
   Select,
   SelectContent,
@@ -376,6 +377,9 @@ const SpeakerFormBuilder = forwardRef<SpeakerFormBuilderHandle, SpeakerFormBuild
     f => (f.id === "talk_title" || f.id === "talk_description") && f.enabled
   );
 
+  const contentFieldIndex = fields.findIndex(f => f.id === 'sample_content');
+  const contentUploadsEnabled = contentFieldIndex >= 0 ? Boolean(fields[contentFieldIndex].enabled) : false;
+
   const handleCopyLink = () => {
     const url = `${window.location.origin}/speaker-intake/${eventId}`;
     navigator.clipboard.writeText(url);
@@ -572,6 +576,30 @@ const SpeakerFormBuilder = forwardRef<SpeakerFormBuilderHandle, SpeakerFormBuild
                 Content files are uploaded by speakers via the Content tab.
               </p>
             )}
+            {/* Toggle to explicitly enable speaker content uploads for this form */}
+            <div className="mt-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">Allow speaker content uploads</p>
+                  <p className="text-xs text-muted-foreground">Enable an optional multi-file content upload for speakers (slides, video, etc.)</p>
+                </div>
+                <div>
+                  <Switch
+                    checked={contentUploadsEnabled}
+                    onCheckedChange={(val) => {
+                      setFields(prev => prev.map(f => {
+                        if (f.id !== 'sample_content') return f;
+                        // When enabling from the builder, remove formTypes so it shows on this form
+                        if (val) return { ...f, enabled: true, formTypes: undefined };
+                        // When disabling, restore default call-for-speakers restriction
+                        return { ...f, enabled: false, formTypes: ["call-for-speakers"] };
+                      }));
+                      markDirty();
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
           </Card>
 
           {/* Custom Fields */}
@@ -830,78 +858,74 @@ const SpeakerFormBuilder = forwardRef<SpeakerFormBuilderHandle, SpeakerFormBuild
         <div className="lg:col-span-2 space-y-4 lg:sticky lg:top-4 lg:self-start">
           <Card className="p-6 bg-white">
             <div className="space-y-6">
-              {enabledFields.map((field) => (
-                <div key={field.id} className="space-y-2">
-                  <Label>
-                    {field.label}
-                    {field.required && (
-                      <span className="text-destructive ml-1">*</span>
-                    )}
-                  </Label>
-                  {field.type === "textarea" ? (
-                    <Textarea
-                      placeholder={
-                        field.placeholder ??
-                        `Enter ${field.label.toLowerCase()}`
-                      }
-                      disabled
-                      rows={4}
-                    />
-                  ) : field.type === "file" ? (
-                    <div className="space-y-1.5">
-                      <div className="w-full flex items-center gap-4 rounded-lg border border-dashed border-border bg-muted/30 px-4 py-3">
-                        <div className={`shrink-0 flex items-center justify-center bg-background border border-border ${field.id === "headshot" ? "w-12 h-12 rounded-full" : "w-16 h-10 rounded-md"}`}>
-                          <svg className="h-4 w-4 text-muted-foreground/40" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-foreground">Click to upload</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">PNG or JPG</p>
-                        </div>
+              {enabledFields.map((field) => {
+                const isSample = field.id === 'sample_content';
+                return (
+                  <div key={field.id} className="space-y-2">
+                    {isSample ? (
+                      <div>
+                        <Label>
+                          {field.label}
+                          {field.required && <span className="text-destructive ml-1">*</span>}
+                        </Label>
+                        <ContentUploads items={[{ id: 'preview-1', name: 'Example slide deck', preview: null, contentType: 'application/pdf' }]} setItems={() => {}} readOnly />
+                        {field.helpText && <p className="text-xs text-muted-foreground whitespace-pre-wrap">{field.helpText}</p>}
                       </div>
-                      <p className="text-xs text-muted-foreground/60">+ Add a note</p>
-                    </div>
-                  ) : field.type === 'radio' ? (
-                    <div className="space-y-2">
-                      {((field as any).options || []).map((opt: string) => (
-                        <label key={opt} className="flex items-center gap-2 text-sm">
-                          <input type="radio" name={field.id} checked={false} disabled />
-                          <span>{opt}</span>
-                        </label>
-                      ))}
-                    </div>
-                  ) : field.type === 'checkbox' ? (
-                    <div className="space-y-2">
-                      {((field as any).options || []).length > 0 ? (
-                        ((field as any).options || []).map((opt: string) => (
-                          <label key={opt} className="flex items-center gap-2 text-sm">
-                            <input type="checkbox" checked={false} disabled />
-                            <span>{opt}</span>
-                          </label>
-                        ))
-                      ) : (
-                        <label className="flex items-center gap-2 text-sm">
-                          <input type="checkbox" checked={false} disabled />
-                          <span>{field.label}</span>
-                        </label>
-                      )}
-                    </div>
-                  ) : (
-                    <Input
-                      type={field.type === "email" ? "email" : "text"}
-                      placeholder={
-                        field.placeholder ??
-                        `Enter ${field.label.toLowerCase()}`
-                      }
-                      disabled
-                    />
-                  )}
-                  {field.helpText && (
-                    <p className="text-xs text-muted-foreground whitespace-pre-wrap">
-                      {field.helpText}
-                    </p>
-                  )}
-                </div>
-              ))}
+                    ) : (
+                      <>
+                        <Label>
+                          {field.label}
+                          {field.required && <span className="text-destructive ml-1">*</span>}
+                        </Label>
+                        {field.type === "textarea" ? (
+                          <Textarea placeholder={field.placeholder ?? `Enter ${field.label.toLowerCase()}`} disabled rows={4} />
+                        ) : field.type === "file" ? (
+                          <div className="space-y-1.5">
+                            <div className="w-full flex items-center gap-4 rounded-lg border border-dashed border-border bg-muted/30 px-4 py-3">
+                              <div className={`shrink-0 flex items-center justify-center bg-background border border-border ${field.id === "headshot" ? "w-12 h-12 rounded-full" : "w-16 h-10 rounded-md"}`}>
+                                <svg className="h-4 w-4 text-muted-foreground/40" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium text-foreground">Click to upload</p>
+                                <p className="text-xs text-muted-foreground mt-0.5">PNG or JPG</p>
+                              </div>
+                            </div>
+                            <p className="text-xs text-muted-foreground/60">+ Add a note</p>
+                          </div>
+                        ) : field.type === 'radio' ? (
+                          <div className="space-y-2">
+                            {((field as any).options || []).map((opt: string) => (
+                              <label key={opt} className="flex items-center gap-2 text-sm">
+                                <input type="radio" name={field.id} checked={false} disabled />
+                                <span>{opt}</span>
+                              </label>
+                            ))}
+                          </div>
+                        ) : field.type === 'checkbox' ? (
+                          <div className="space-y-2">
+                            {((field as any).options || []).length > 0 ? (
+                              ((field as any).options || []).map((opt: string) => (
+                                <label key={opt} className="flex items-center gap-2 text-sm">
+                                  <input type="checkbox" checked={false} disabled />
+                                  <span>{opt}</span>
+                                </label>
+                              ))
+                            ) : (
+                              <label className="flex items-center gap-2 text-sm">
+                                <input type="checkbox" checked={false} disabled />
+                                <span>{field.label}</span>
+                              </label>
+                            )}
+                          </div>
+                        ) : (
+                          <Input type={field.type === "email" ? "email" : "text"} placeholder={field.placeholder ?? `Enter ${field.label.toLowerCase()}`} disabled />
+                        )}
+                        {field.helpText && <p className="text-xs text-muted-foreground whitespace-pre-wrap">{field.helpText}</p>}
+                      </>
+                    )}
+                  </div>
+                );
+              })}
 
               {enabledFields.length === 0 && (
                 <p

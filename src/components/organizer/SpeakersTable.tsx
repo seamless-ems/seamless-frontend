@@ -422,13 +422,11 @@ export default function SpeakersTable({ speakers, isLoading, eventId, selectedTa
         </div>
       )}
       <table className="w-full table-fixed">
-      <colgroup>
-        {showControls && <col style={{ width: '36px' }} />}  {/* checkbox */}
-        <col />                               {/* name — absorbs remaining */}
-        <col style={{ width: '148px' }} />   {/* speaker card — fixed */}
-        <col style={{ width: '148px' }} />   {/* social card — fixed */}
-        <col style={{ width: '36px' }} />    {/* 3-dot */}
-      </colgroup>
+      <colgroup>{[...(showControls ? [<col key="select" style={{ width: '36px' }} />] : []),
+        <col key="name" />,
+        <col key="website" style={{ width: '148px' }} />,
+        <col key="promo" style={{ width: '148px' }} />,
+        <col key="actions" style={{ width: '36px' }} />]}</colgroup>
       <thead className="bg-secondary/30 border-b border-border">
         <tr>
           {showControls && (

@@ -31,6 +31,7 @@ import { MapPin } from "lucide-react";
 import { useState } from "react";
 import React from "react";
 import Uploads from "@/components/speaker/Uploads";
+import ContentUploads from "@/components/speaker/ContentUploads";
 import { type FormFieldConfig, DEFAULT_FIELDS, mergeWithDefaults } from "@/components/SpeakerFormBuilder";
 import { ImageCropDialog } from "@/components/ImageCropDialog";
 import { useRef } from "react";
@@ -105,6 +106,7 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
   const [companyLogoPreview, setCompanyLogoPreview] = useState<string | null>(null);
   const [customFiles, setCustomFiles] = useState<Record<string, File | null>>({});
   const [customFilePreviews, setCustomFilePreviews] = useState<Record<string, string | null>>({});
+  const [contentItems, setContentItems] = useState<any[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formConfig, setFormConfig] = useState<FormFieldConfig[]>(DEFAULT_FIELDS);
   const [formTitle, setFormTitle] = useState<string | null>(null);
@@ -469,7 +471,7 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
       }
 
       // Upload any custom file fields (not headshot/company_logo) and attach to customFields
-      const otherFileFields = formConfig.filter(f => f.enabled && f.type === "file" && f.id !== "headshot" && f.id !== "company_logo");
+      const otherFileFields = formConfig.filter(f => f.enabled && f.type === "file" && f.id !== "headshot" && f.id !== "company_logo" && f.id !== 'sample_content');
       for (const field of otherFileFields) {
         const file = customFiles[field.id];
         if (file) {
@@ -493,6 +495,23 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
               
             }
         }
+
+            // Handle contentItems (CreateContentSchema array)
+            if (contentItems && contentItems.length > 0) {
+              payload.content = payload.content || [];
+              for (const it of contentItems) {
+                if (it.file) {
+                  try {
+                    const res = await uploadFile(it.file, speakerId, eventId!, speakerDisplayName);
+                    const url = res?.public_url ?? res?.publicUrl ?? res?.url ?? null;
+                    if (!url) continue;
+                    payload.content.push({ content: url, contentType: it.contentType || it.file.type || 'application/octet-stream', name: it.name || it.file.name });
+                  } catch (err) {
+                    // ignore individual content upload failures
+                  }
+                }
+              }
+            }
       }
 
       // Attach customFields if any
@@ -744,6 +763,10 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
                       customFilePreviews={customFilePreviews}
                       onCustomFileSelected={handleCustomFileSelected}
                     />
+                  )}
+                  {/* Speaker content uploads (multiple) */}
+                  {formConfig.some(f => f.enabled && f.id === 'sample_content') && (
+                    <ContentUploads items={contentItems} setItems={setContentItems} readOnly={false} />
                   )}
                 </Form>
                 {/* Crop Dialog */}

@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { Archive, ChevronDown, ChevronRight, Download, MoreVertical, Plus, RefreshCw, RotateCcw, Upload } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';

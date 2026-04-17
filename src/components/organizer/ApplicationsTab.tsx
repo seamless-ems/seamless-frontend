@@ -215,7 +215,8 @@ export default function ApplicationsTab({ eventId, eventName = "", emailDefaults
         firstName: speaker.firstName,
         lastName: speaker.lastName,
         email: speaker.email,
-        formType: "call-for-speakers",
+        // move to speaker-info on approval so they show up in Speakers tab; keep as call-for-speakers on rejection so they stay in Applications with their status
+        formType: status === "approved" ? "speaker-info" : "call-for-speakers",
         callForSpeakersStatus: status,
       });
       queryClient.invalidateQueries({ queryKey: ["event", eventId, "applications"] });

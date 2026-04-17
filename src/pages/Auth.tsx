@@ -28,7 +28,7 @@ function GoogleIcon() {
 
 type LoginValues = z.infer<typeof loginSchema>;
 
-function LoginForm({ onEmailChange, initialEmail, onSent }: { onEmailChange?: (email: string) => void; initialEmail?: string; onSent?: (email: string) => void }) {
+function LoginForm({ onEmailChange, initialEmail, onSent, isCheckingEmail }: { onEmailChange?: (email: string) => void; initialEmail?: string; onSent?: (email: string) => void; isCheckingEmail?: boolean }) {
   const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: initialEmail || "" },
@@ -61,8 +61,8 @@ function LoginForm({ onEmailChange, initialEmail, onSent }: { onEmailChange?: (e
         <label className="text-sm font-medium">Email</label>
         <Input {...form.register("email")} type="email" placeholder="you@example.com" className="h-12" />
       </div>
-      <Button type="submit" variant="outline" className="w-full h-12 border-[1.5px] font-medium">
-        Continue with email
+      <Button type="submit" variant="outline" className="w-full h-12 border-[1.5px] font-medium" disabled={Boolean(isCheckingEmail)}>
+        {isCheckingEmail ? 'Checking…' : 'Continue with email'}
       </Button>
     </form>
   );
@@ -77,6 +77,7 @@ const Auth: React.FC = () => {
   const [sentTo, setSentTo] = React.useState<string | null>(null);
 
   const [emailCheck, setEmailCheck] = React.useState<{ exists: boolean; providers: string[] } | null>(null);
+  const [checkingEmail, setCheckingEmail] = React.useState(false);
   const checkTimeoutRef = React.useRef<number | null>(null);
   const lastCheckedEmailRef = React.useRef<string>("");
 
@@ -87,12 +88,15 @@ const Auth: React.FC = () => {
       return;
     }
     lastCheckedEmailRef.current = clean;
+    setCheckingEmail(true);
     try {
       const res = await checkFirebaseEmail({ email: clean });
       if (lastCheckedEmailRef.current !== clean) return;
       setEmailCheck(res ?? null);
     } catch (e) {
       setEmailCheck(null);
+    } finally {
+      setCheckingEmail(false);
     }
   }, []);
 
@@ -156,7 +160,7 @@ const Auth: React.FC = () => {
   return cardShell(
     <>
       <div className="space-y-4">
-        <LoginForm onEmailChange={onEmailChange} initialEmail={speakerEmail} onSent={setSentTo} />
+        <LoginForm onEmailChange={onEmailChange} initialEmail={speakerEmail} onSent={setSentTo} isCheckingEmail={checkingEmail} />
 
         {emailCheck?.exists && emailCheck.providers?.includes("google.com") && (
           <div className="p-3 rounded border border-border bg-primary/5">
