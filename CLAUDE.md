@@ -30,6 +30,12 @@ Use these exact terms everywhere (UI labels, tooltips, dialogs, HelpTips, copy):
 - **Speaker Wall embed** — only when referring specifically to the embed code/snippet itself
 - **TODO: full language sweep pending** — "Embed" still appears in various tooltips, dialog copy, and comments. Do not fix ad-hoc; sweep all at once when instructed.
 
+## Copy rules
+- **No fluff.** Labels, headings, and buttons must speak for themselves. Never add a supporting sentence that restates the obvious (e.g. `<CardDescription>Manage your subscription and payment methods</CardDescription>` under a "Billing" heading is redundant — delete it).
+- **No descriptor sentences in cards.** If a card or section is labelled "Help", do not add body copy like "Questions? Browse our help centre or get in touch." The label is enough.
+- **Buttons:** use the shortest accurate label. "Open Billing Portal" is fine; "Click here to open your billing portal" is not.
+- **CardDescriptions:** only add one if the heading is genuinely ambiguous without it.
+
 ## Working rules
 - **CardBuilder:** frontend and backend rendering must match exactly. No frontend-only visual styles (e.g. text stroke) unless also in the backend HTML renderer. See `example-speaker-website-card.html` and `corresponding-config-speaker-website-card.json`.
 - **Frontend-only:** no backend changes. Flag gaps verbally and ask the user — only James writes to `API_GAPS.md`.
