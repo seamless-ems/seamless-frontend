@@ -30,11 +30,7 @@ import {
 import { MapPin } from "lucide-react";
 import { useState } from "react";
 import React from "react";
-<<<<<<< HEAD
-=======
 import { CircleLoader } from 'react-spinners';
-import Uploads from "@/components/speaker/Uploads";
->>>>>>> 1278e191c75c93cf2c8ae9c6570109890753b67b
 import ContentUploads from "@/components/speaker/ContentUploads";
 import { type FormFieldConfig, DEFAULT_FIELDS, mergeWithDefaults } from "@/components/SpeakerFormBuilder";
 import { ImageCropDialog } from "@/components/ImageCropDialog";
