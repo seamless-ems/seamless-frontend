@@ -4,7 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import HelpWidget from "@/components/ui/HelpWidget";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import Index from "./pages/Index";
 import Events from "./pages/organizer/Events";
 import SpeakerModule from "./pages/organizer/SpeakerModule";
@@ -46,13 +46,20 @@ function EventLayoutWrapper({ children }: { children: React.ReactNode }) {
 const queryClient = new QueryClient();
 
 const App = () => {
+  const ConditionalHelp = () => {
+    const { pathname } = useLocation();
+    const hidePaths = ['/login', '/signup', '/finish-signup'];
+    if (hidePaths.includes(pathname)) return null;
+    return <HelpWidget />;
+  };
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <HelpWidget />
         <BrowserRouter>
+          <ConditionalHelp />
           <Routes>
             <Route
               path="/"

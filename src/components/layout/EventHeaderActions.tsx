@@ -57,7 +57,7 @@ export default function EventHeaderActions({ eventData, id }: Props) {
     const title = trialEnded ? 'Free trial ended' : daysLeft !== null ? `${daysLeft} day${daysLeft === 1 ? '' : 's'} left` : 'Free trial';
 
     return (
-      <div className="flex items-center gap-3 mr-2">
+      <div className="h-14 flex items-center gap-3 pr-2">
         <Button
           size="sm"
           onClick={handleUpgrade}
@@ -70,7 +70,7 @@ export default function EventHeaderActions({ eventData, id }: Props) {
   })();
 
   return (
-    <div className="flex items-center gap-1 shrink-0">
+    <div className="flex items-center gap-1 shrink-0 h-14">
       {trialBadge}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>

@@ -21,17 +21,16 @@ export default function EventLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <header
-        className={`sticky top-0 z-30 flex items-center gap-3 border-b border-border bg-card/95 pl-4 pr-6 ${(isCardBuilder || isOnSpeakerModule) ? 'hidden' : ''}`}
-        style={{ height: '56px', minHeight: '56px' }}
+        className={`sticky top-0 z-30 h-14 flex items-center gap-3 border-b border-border bg-card/95 px-4 shrink-0 ${(isCardBuilder || isOnSpeakerModule) ? 'hidden' : ''}`}
       >
-        <Link to="/organizer" className="flex items-baseline gap-1 leading-none shrink-0">
+        <Link to="/organizer" className="flex items-center gap-2 leading-none shrink-0">
           <span className="text-[17px] font-semibold text-primary" style={{ letterSpacing: '-0.01em' }}>Seamless</span>
-          <span className="text-[13px] font-normal text-muted-foreground ml-0.5">Events</span>
+          <span className="text-xs font-normal text-muted-foreground ml-2">Events</span>
         </Link>
 
-        <div className="flex-1" />
-
-        <EventHeaderActions eventData={eventData} id={id} />
+        <div className="ml-auto">
+          <EventHeaderActions eventData={eventData} id={id} />
+        </div>
       </header>
 
       <main className={`flex-1 bg-background ${isCardBuilder ? 'p-0 overflow-hidden' : isOnSpeakerModule ? 'p-0' : 'p-6'}`}>
