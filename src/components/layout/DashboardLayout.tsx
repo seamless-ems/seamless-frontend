@@ -125,6 +125,38 @@ export function DashboardLayout({ children, eventId, mode: propMode }: Dashboard
           )}
         </div>
 
+        <div className="ml-auto flex items-center gap-2">
+          <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-8 w-8">
+            <Settings className="h-4 w-4 text-muted-foreground" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-44">
+          <DropdownMenuItem asChild>
+            <Link to="/organizer/settings">
+              <Settings className="h-4 w-4 mr-2" />
+              Settings
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            className="text-destructive"
+            onSelect={async () => {
+              try {
+                await firebaseSignOut();
+              } catch (e) {
+                try { clearTokenAndNotify(); } catch {}
+              }
+              navigate('/login');
+            }}
+          >
+            Sign Out
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+        </div>
+
       </header>
     );
   }
