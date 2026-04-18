@@ -289,8 +289,8 @@ export default function AddSpeakerDialog({ eventId, eventName = "the event", ema
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button size="sm">
-          <Plus className="h-4 w-4 mr-1.5" />
+        <Button size="sm" variant="outline" className="gap-1.5 bg-muted/50 hover:bg-muted text-foreground hover:text-foreground">
+          <Plus className="h-4 w-4" />
           Add Speaker
         </Button>
       </DialogTrigger>
@@ -317,7 +317,7 @@ export default function AddSpeakerDialog({ eventId, eventName = "the event", ema
                   <p className="text-sm font-semibold text-foreground mb-1">Send to Speaker</p>
                   <span className="text-[10px] font-semibold uppercase tracking-wide text-primary bg-primary/10 px-1.5 py-0.5 rounded inline-block mb-2">Recommended</span>
                   <p className="text-xs text-muted-foreground leading-snug">
-                    Speaker logs in or creates a free account to submit or edit their details, access their speaker and social cards, and upload their content.
+                    Share the form link. When they submit, an account is created automatically so they can log in to edit their profile and upload content.
                   </p>
                 </div>
               </button>
@@ -338,7 +338,7 @@ export default function AddSpeakerDialog({ eventId, eventName = "the event", ema
                   <p className="text-sm font-semibold text-foreground mb-1">Fill in myself</p>
                   <span className="text-[10px] font-semibold uppercase tracking-wide text-transparent bg-transparent px-1.5 py-0.5 rounded inline-block mb-2">Placeholder</span>
                   <p className="text-xs text-muted-foreground leading-snug">
-                    Complete the speaker intake form on their behalf. You manage their profile and can add or upload content.
+                    Fill in their intake form on their behalf.
                   </p>
                 </div>
               </button>

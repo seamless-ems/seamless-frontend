@@ -140,21 +140,21 @@ function SpeakerContentRow({ speaker, items, eventId, defaultExpanded = false }:
             className={`h-4 w-4 text-muted-foreground transition-transform duration-150 ${expanded ? "rotate-90" : ""}`}
           />
         </td>
-        <td className="px-3 py-3 w-8">
-          {speaker.headshot ? (
-            <img
-              src={speaker.headshot}
-              alt={speaker.name}
-              className="h-8 w-8 rounded-full object-cover"
-            />
-          ) : (
-            <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs text-muted-foreground">
-              {speaker.name ? speaker.name[0].toUpperCase() : "S"}
-            </div>
-          )}
-        </td>
-        <td className="px-3 py-3">
-          <span className="text-sm font-medium text-foreground">{speaker.name}</span>
+        <td className="px-3 py-3" colSpan={2}>
+          <div className="flex items-center gap-2">
+            {speaker.headshot ? (
+              <img
+                src={speaker.headshot}
+                alt={speaker.name}
+                className="h-7 w-7 rounded-md object-cover shrink-0"
+              />
+            ) : (
+              <div className="h-7 w-7 rounded-md bg-muted flex items-center justify-center text-xs font-medium text-muted-foreground shrink-0">
+                {speaker.name ? speaker.name[0].toUpperCase() : "S"}
+              </div>
+            )}
+            <span className="text-sm font-medium text-foreground">{speaker.name}</span>
+          </div>
         </td>
         <td className="px-5 py-3 text-sm text-muted-foreground">
           {items.length > 0 ? `${items.length} file${items.length !== 1 ? "s" : ""}` : "No content yet"}
@@ -416,8 +416,8 @@ export default function EventContentTab({ eventId }: Props) {
             : isFetching ? "Loading…" : "No speakers yet"}
         </p>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setUploadOpen(true)} disabled={speakers.length === 0}>
-            <Upload className="h-3.5 w-3.5" />Upload Content
+          <Button variant="outline" size="sm" title="Upload content" onClick={() => setUploadOpen(true)} disabled={speakers.length === 0}>
+            <Upload className="h-4 w-4" />
           </Button>
           <Button
             variant="outline"
@@ -437,8 +437,7 @@ export default function EventContentTab({ eventId }: Props) {
           <thead className="bg-secondary/30 border-b border-border">
             <tr>
               <th className="w-8" />
-              <th className="px-3 py-2.5 text-left text-xs font-medium text-muted-foreground"></th>
-              <th className="px-3 py-2.5 text-left text-xs font-medium text-muted-foreground">Name</th>
+              <th className="px-3 py-2.5 text-left text-xs font-medium text-muted-foreground" colSpan={2}>Name</th>
               <th className="px-5 py-2.5 text-left text-xs font-medium text-muted-foreground">Content</th>
               <th className="px-5 py-2.5 w-[80px]" />
             </tr>

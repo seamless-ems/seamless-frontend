@@ -25,11 +25,8 @@ import {
 import {
   Plus,
   X,
-  Copy,
-  Check,
-  ChevronUp,
-  ChevronDown,
   Lock,
+  GripVertical,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
@@ -75,17 +72,17 @@ export const DEFAULT_FIELDS: FormFieldConfig[] = [
   { id: "company_logo",       label: "Company Logo — Colour",  type: "file", required: true, enabled: true, helpText: "Please submit on a transparent background." },
   { id: "company_logo_white", label: "Company Logo — White",   type: "file", required: true, enabled: true, helpText: "Please submit on a transparent background." },
   // --- Profile (on by default) ---
-  { id: "company_role", label: "Role/Title",   type: "text",     required: false, enabled: true },
+  { id: "company_role", label: "Title",   type: "text",     required: false, enabled: true },
   { id: "company_name", label: "Company Name", type: "text",     required: false, enabled: true },
   // --- Off by default ---
   { id: "linkedin", label: "LinkedIn URL", type: "text",     required: false, enabled: false },
   { id: "bio",      label: "Bio",          type: "textarea", required: false, enabled: false },
   // --- Talk / Session (off by default) ---
-  { id: "talk_title",       label: "Talk/Session Title",       type: "text",     required: false, enabled: false, formTypes: ["speaker-info"], sectionStart: "Talk / Session" },
-  { id: "talk_description", label: "Talk/Session Description", type: "textarea", required: false, enabled: false, formTypes: ["speaker-info"] },
+  { id: "talk_title",       label: "Talk / Session Title",       type: "text",     required: false, enabled: false, formTypes: ["speaker-info"], sectionStart: "Talk / Session" },
+  { id: "talk_description", label: "Talk / Session Description", type: "textarea", required: false, enabled: false, formTypes: ["speaker-info"] },
   // --- Call for Speakers only ---
-  { id: "talk_topic",    label: "Proposed Talk Topic",                       type: "text", required: false, enabled: false, formTypes: ["call-for-speakers"], sectionStart: "Talk / Session" },
-  { id: "sample_content", label: "Sample Content (e.g., Slide Deck, Video, etc.)", type: "file", required: false, enabled: false, formTypes: ["call-for-speakers"] },
+  { id: "talk_topic",    label: "Talk / Session Topic",                      type: "text", required: false, enabled: false, formTypes: ["call-for-speakers"], sectionStart: "Talk / Session" },
+  { id: "sample_content", label: "Sample Content", type: "file", required: false, enabled: false, formTypes: ["call-for-speakers"] },
 ];
 
 export const FIELD_MIGRATIONS: Record<string, Partial<FormFieldConfig>> = {
@@ -95,8 +92,8 @@ export const FIELD_MIGRATIONS: Record<string, Partial<FormFieldConfig>> = {
   "headshot":          { required: true },
   "company_logo":      { label: "Company Logo — Colour", helpText: "Please submit on a transparent background.", required: true },
   "company_logo_white":{ helpText: "Please submit on a transparent background.", required: true },
-  "talk_topic":        { formTypes: ["call-for-speakers"], sectionStart: "Talk / Session" },
-  "sample_content":    { formTypes: ["call-for-speakers"] },
+  "talk_topic":        { formTypes: ["call-for-speakers"], sectionStart: "Talk / Session", label: "Talk / Session Topic" },
+  "sample_content":    { formTypes: ["call-for-speakers"], label: "Sample Content" },
   "talk_title":        { sectionStart: "Talk / Session" },
 };
 
@@ -127,14 +124,43 @@ export function mergeWithDefaults(saved: FormFieldConfig[]): FormFieldConfig[] {
     .map((f) => (FIELD_MIGRATIONS[f.id] ? { ...f, ...FIELD_MIGRATIONS[f.id] } : f));
   const savedIds = new Set(patched.map((f) => f.id));
   const newDefaults = DEFAULT_FIELDS.filter((f) => !savedIds.has(f.id));
-  const merged = [...patched, ...newDefaults];
-  const defaultOrder = new Map(DEFAULT_FIELDS.map((f, i) => [f.id, i]));
-  const nonCustom = merged
-    .filter((f) => !f.custom)
-    .sort((a, b) => (defaultOrder.get(a.id) ?? 999) - (defaultOrder.get(b.id) ?? 999));
-  const custom = merged.filter((f) => f.custom);
-  return [...nonCustom, ...custom];
+  return [...patched, ...newDefaults];
 }
+
+const CFS_OVERRIDES: Record<string, Partial<FormFieldConfig>> = {
+  talk_topic:        { enabled: true,  required: true  },
+  sample_content:    { enabled: true,  required: true  },
+  company_role:      { enabled: true,  required: true  },
+  company_name:      { enabled: true,  required: true  },
+  headshot:          { enabled: false               },
+  company_logo:      { enabled: false               },
+  company_logo_white:{ enabled: false               },
+};
+
+function applyFormTypeOverrides(fields: FormFieldConfig[], ft: string): FormFieldConfig[] {
+  if (ft !== "call-for-speakers") return fields;
+  return fields.map(f =>
+    Object.prototype.hasOwnProperty.call(CFS_OVERRIDES, f.id)
+      ? { ...f, ...CFS_OVERRIDES[f.id] }
+      : f
+  );
+}
+
+function getDefaultsForFormType(ft: string): FormFieldConfig[] {
+  return applyFormTypeOverrides(DEFAULT_FIELDS, ft);
+}
+
+const FORM_SECTIONS: Record<string, { id: string; label: string | null; fieldIds: string[] }[]> = {
+  "call-for-speakers": [
+    { id: "info",  label: null,              fieldIds: ["first_name", "last_name", "email", "company_role", "company_name"] },
+    { id: "talk",  label: "Talk / Session",  fieldIds: ["talk_topic", "sample_content"] },
+    { id: "media", label: null,              fieldIds: ["headshot", "company_logo", "company_logo_white", "linkedin", "bio"] },
+  ],
+  "speaker-info": [
+    { id: "info",  label: null,              fieldIds: ["first_name", "last_name", "email", "company_role", "company_name", "headshot", "company_logo", "company_logo_white", "linkedin", "bio"] },
+    { id: "talk",  label: "Talk / Session",  fieldIds: ["talk_title", "talk_description"] },
+  ],
+};
 
 const SpeakerFormBuilder = forwardRef<SpeakerFormBuilderHandle, SpeakerFormBuilderProps>(function SpeakerFormBuilder({
   eventId,
@@ -155,7 +181,7 @@ const SpeakerFormBuilder = forwardRef<SpeakerFormBuilderHandle, SpeakerFormBuild
     saved && !STALE_TITLES.includes(saved) ? saved : defaultTitle;
 
   const [fields, setFields] = useState<FormFieldConfig[]>(
-    initialConfig ?? DEFAULT_FIELDS,
+    initialConfig ?? getDefaultsForFormType(formType ?? "speaker-info"),
   );
   const [isDirty, setIsDirty] = useState(false);
   const initializedRef = useRef(false);
@@ -187,7 +213,7 @@ const SpeakerFormBuilder = forwardRef<SpeakerFormBuilderHandle, SpeakerFormBuild
         .then((res: any) => {
           if (!mounted) return;
           if (!res || !res.config) {
-            setFields(DEFAULT_FIELDS);
+            setFields(getDefaultsForFormType(formType ?? "speaker-info"));
             return;
           }
 
@@ -196,7 +222,7 @@ const SpeakerFormBuilder = forwardRef<SpeakerFormBuilderHandle, SpeakerFormBuild
             // - legacy: config is an array of field objects
             // - new: config is an object { fields: [...], metadata: { title, subtitle, showTitle } }
             if (Array.isArray(res.config)) {
-              setFields(mergeWithDefaults(res.config as FormFieldConfig[]));
+              setFields(applyFormTypeOverrides(mergeWithDefaults(res.config as FormFieldConfig[]), formType ?? "speaker-info"));
               // backward-compatible metadata may live at top-level or in res.metadata
               setFormTitle(
                 resolveTitle((res.title as string) || (res.metadata?.title as string)),
@@ -212,8 +238,8 @@ const SpeakerFormBuilder = forwardRef<SpeakerFormBuilderHandle, SpeakerFormBuild
               const cfg = res.config as any;
               const fieldsFromCfg = Array.isArray(cfg.fields)
                 ? cfg.fields
-                : DEFAULT_FIELDS;
-              setFields(mergeWithDefaults(fieldsFromCfg as FormFieldConfig[]));
+                : getDefaultsForFormType(formType ?? "speaker-info");
+              setFields(applyFormTypeOverrides(mergeWithDefaults(fieldsFromCfg as FormFieldConfig[]), formType ?? "speaker-info"));
               setFormTitle(resolveTitle(cfg.metadata?.title as string));
               setFormSubtitle((cfg.metadata?.subtitle as string) || "");
               setShowFormTitle(
@@ -222,10 +248,10 @@ const SpeakerFormBuilder = forwardRef<SpeakerFormBuilderHandle, SpeakerFormBuild
                   : true,
               );
             } else {
-              setFields(DEFAULT_FIELDS);
+              setFields(getDefaultsForFormType(formType ?? "speaker-info"));
             }
           } catch (e) {
-            setFields(DEFAULT_FIELDS);
+            setFields(getDefaultsForFormType(formType ?? "speaker-info"));
           }
         })
         .catch((err: any) => {
@@ -233,7 +259,7 @@ const SpeakerFormBuilder = forwardRef<SpeakerFormBuilderHandle, SpeakerFormBuild
           if (err && (err.status === 404 || err?.status === 404)) {
             setMissingFormDialogOpen(true);
           }
-          setFields(DEFAULT_FIELDS);
+          setFields(getDefaultsForFormType(formType ?? "speaker-info"));
         })
         .finally(() => {
           if (mounted) setTimeout(() => { initializedRef.current = true; }, 0);
@@ -373,9 +399,7 @@ const SpeakerFormBuilder = forwardRef<SpeakerFormBuilderHandle, SpeakerFormBuild
   const visibleFields = fields.filter(
     f => !f.formTypes || f.formTypes.includes(formType ?? "speaker-info")
   );
-  const talkFieldsEnabled = fields.some(
-    f => (f.id === "talk_title" || f.id === "talk_description") && f.enabled
-  );
+  const sections = FORM_SECTIONS[formType ?? "speaker-info"] ?? FORM_SECTIONS["speaker-info"];
 
   const contentFieldIndex = fields.findIndex(f => f.id === 'sample_content');
   const contentUploadsEnabled = contentFieldIndex >= 0 ? Boolean(fields[contentFieldIndex].enabled) : false;
@@ -442,14 +466,19 @@ const SpeakerFormBuilder = forwardRef<SpeakerFormBuilderHandle, SpeakerFormBuild
     <div className="space-y-6">
       {/* Compact form header config */}
       <div className="flex flex-wrap items-end gap-4 rounded-lg border border-border bg-muted/20 p-4">
-        <div className="flex-1 min-w-[180px]">
-          <Label className="text-xs mb-1.5 block">Form Title</Label>
+        <Switch
+          checked={showFormTitle}
+          onCheckedChange={(v) => { setShowFormTitle(Boolean(v)); markDirty(); }}
+          className="shrink-0 self-center"
+        />
+        <div className={`flex-1 min-w-[180px] transition-opacity ${showFormTitle ? "" : "opacity-40 pointer-events-none"}`}>
+          <Label className="text-xs mb-1.5 block">Title</Label>
           <Input
             value={formTitle}
             onChange={(e) => { setFormTitle(e.target.value); markDirty(); }}
           />
         </div>
-        <div className="flex-1 min-w-[180px]">
+        <div className={`flex-1 min-w-[180px] transition-opacity ${showFormTitle ? "" : "opacity-40 pointer-events-none"}`}>
           <Label className="text-xs mb-1.5 block">Subtitle <span className="text-muted-foreground font-normal">(optional)</span></Label>
           <Input
             value={formSubtitle}
@@ -457,149 +486,130 @@ const SpeakerFormBuilder = forwardRef<SpeakerFormBuilderHandle, SpeakerFormBuild
             placeholder="e.g. Please complete all fields"
           />
         </div>
-        <div className="flex items-center gap-2 pb-0.5">
-          <Switch
-            checked={showFormTitle}
-            onCheckedChange={(v) => { setShowFormTitle(Boolean(v)); markDirty(); }}
-          />
-          <Label className="text-xs whitespace-nowrap">Show title</Label>
-        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
         {/* Left Panel: Form Builder (titles removed - parent shows main heading) */}
         <div className="lg:col-span-3 space-y-4">
-          {/* Default Fields */}
+          {/* Fields by section */}
           <Card className="p-4">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">Default Fields</h3>
-            <div className="space-y-2">
-              {visibleFields
-                .filter((f) => !f.custom)
-                .map((field) => {
-                  const globalIndex = fields.findIndex(f => f.id === field.id);
-                  const visibleNonCustom = visibleFields.filter(f => !f.custom);
-                  const visibleIndex = visibleNonCustom.findIndex(f => f.id === field.id);
-                  const isFirst = visibleIndex === 0;
-                  const isLast = visibleIndex === visibleNonCustom.length - 1;
-                  const isDraggingOver = dragOverIndex === globalIndex;
-                  const active = field.enabled || field.locked;
+            <div className="space-y-1">
+              {sections.map((section, sIdx) => {
+                const sectionIdSet = new Set(section.fieldIds);
+                const sectionFields = visibleFields.filter(f => !f.custom && sectionIdSet.has(f.id));
 
-                  return (
-                    <div
-                      key={field.id}
-                      draggable={!field.locked}
-                      onDragStart={() => !field.locked && setDragIndex(globalIndex)}
-                      onDragOver={(e) => { e.preventDefault(); setDragOverIndex(globalIndex); }}
-                      onDragLeave={() => setDragOverIndex(null)}
-                      onDrop={() => handleDrop(globalIndex)}
-                      onDragEnd={() => { setDragIndex(null); setDragOverIndex(null); }}
-                      className={`rounded transition-colors ${!field.locked ? "cursor-grab active:cursor-grabbing" : ""} ${isDraggingOver ? "bg-primary/10 ring-1 ring-primary/30" : ""}`}
-                    >
-                      {field.sectionStart && (
-                        <div className="pt-4 pb-2 px-2">
-                          <div className="flex items-center gap-2">
-                            <div className="h-px flex-1 bg-border" />
-                            <span className="text-xs font-medium text-muted-foreground">{field.sectionStart}</span>
-                            <div className="h-px flex-1 bg-border" />
-                          </div>
-                          <p className="text-xs text-muted-foreground/60 text-center mt-1.5">
-                            Optional — speakers can complete this after submission if not marked required
-                          </p>
-                        </div>
-                      )}
-                      <div className={`group flex items-center gap-2 py-1.5 px-2 rounded ${!isDraggingOver ? "hover:bg-muted/50" : ""}`}>
-                        {field.locked ? (
-                          <Lock className="h-3.5 w-3.5 text-muted-foreground/40 shrink-0" />
-                        ) : (
-                          <Switch
-                            checked={field.enabled}
-                            onCheckedChange={() => toggleField(field.id)}
-                            className="shrink-0 scale-90"
-                          />
-                        )}
-                        <Input
-                          value={field.label}
-                          onChange={(e) => setFields((prev) => prev.map((f) => f.id === field.id ? { ...f, label: e.target.value } : f))}
-                          className="flex-1 min-w-0 h-7 text-sm border-transparent bg-transparent shadow-none px-1.5 py-0 hover:border-border focus:bg-background focus-visible:ring-0 transition-colors"
-                        />
-                        {active && (
-                          <div className="flex items-center gap-1 shrink-0">
+                if (sectionFields.length === 0) return null;
+
+                return (
+                  <React.Fragment key={section.id}>
+                    {section.label && (
+                      <div className={`flex items-center gap-2 ${sIdx > 0 ? "pt-3" : ""} pb-1`}>
+                        <div className="h-px flex-1 bg-border" />
+                        <span className="text-xs font-medium text-muted-foreground">{section.label}</span>
+                        <div className="h-px flex-1 bg-border" />
+                      </div>
+                    )}
+                    {sectionFields.map((field) => {
+                      const globalIndex = fields.findIndex(f => f.id === field.id);
+                      const isDraggingOver = dragOverIndex === globalIndex;
+                      const active = field.enabled || field.locked;
+
+                      return (
+                        <div
+                          key={field.id}
+                          draggable={!field.locked}
+                          onDragStart={() => !field.locked && setDragIndex(globalIndex)}
+                          onDragOver={(e) => { e.preventDefault(); setDragOverIndex(globalIndex); }}
+                          onDragLeave={() => setDragOverIndex(null)}
+                          onDrop={() => handleDrop(globalIndex)}
+                          onDragEnd={() => { setDragIndex(null); setDragOverIndex(null); }}
+                          className={`rounded transition-colors ${isDraggingOver ? "bg-primary/10 ring-1 ring-primary/30" : ""}`}
+                        >
+                          <div className={`group flex items-center gap-2 py-1.5 px-2 rounded ${!isDraggingOver ? "hover:bg-muted/50" : ""}`}>
                             {field.locked ? (
-                              <span className="text-xs text-muted-foreground/50 px-1.5">Required</span>
+                              <Lock className="h-3.5 w-3.5 text-muted-foreground/30 shrink-0" />
                             ) : (
-                              <button type="button" onClick={() => toggleRequired(field.id)}
-                                className={`text-xs px-1.5 py-0.5 rounded transition-colors ${field.required ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted"}`}
-                              >
-                                {field.required ? "Required" : "Optional"}
-                              </button>
+                              <GripVertical className="h-3.5 w-3.5 text-muted-foreground/30 shrink-0 cursor-grab active:cursor-grabbing" />
+                            )}
+                            <Input
+                              value={field.label}
+                              onChange={(e) => setFields(prev => prev.map(f => f.id === field.id ? { ...f, label: e.target.value } : f))}
+                              className="flex-1 min-w-0 h-7 text-sm border-transparent bg-transparent shadow-none px-1.5 py-0 hover:border-border focus:bg-background focus-visible:ring-0 transition-colors"
+                            />
+                            {active && (
+                              field.locked ? (
+                                <span className="text-xs text-muted-foreground/40 shrink-0 px-1.5">Required</span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => toggleRequired(field.id)}
+                                  className={`text-xs px-1.5 py-0.5 rounded shrink-0 transition-colors ${field.required ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted"}`}
+                                >
+                                  {field.required ? "Required" : "Optional"}
+                                </button>
+                              )
+                            )}
+                            {!field.locked && (
+                              <Switch
+                                checked={field.enabled}
+                                onCheckedChange={() => toggleField(field.id)}
+                                className="shrink-0 scale-90"
+                              />
                             )}
                           </div>
-                        )}
-                        {!field.locked && (
-                          <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button size="sm" variant="ghost" className="h-5 w-5 p-0" onClick={() => moveField(globalIndex, "up")} disabled={isFirst}>
-                              <ChevronUp className="h-3 w-3" />
-                            </Button>
-                            <Button size="sm" variant="ghost" className="h-5 w-5 p-0" onClick={() => moveField(globalIndex, "down")} disabled={isLast}>
-                              <ChevronDown className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                      {active && (
-                        <div className="pl-9 pr-2 pb-1">
-                          {field.helpText !== undefined ? (
-                            <Textarea
-                              value={field.helpText}
-                              onChange={(e) => setFields(prev => prev.map(f => f.id === field.id ? { ...f, helpText: e.target.value } : f))}
-                              onBlur={() => { if (!field.helpText?.trim()) setFields(prev => prev.map(f => f.id === field.id ? { ...f, helpText: undefined } : f)); }}
-                              onInput={(e) => { const el = e.currentTarget; el.style.height = "auto"; el.style.height = `${el.scrollHeight}px`; }}
-                              placeholder="Add a note for speakers…"
-                              rows={1}
-                              className="text-xs resize-none overflow-hidden min-h-0"
-                              ref={(el) => { if (el) { el.style.height = "auto"; el.style.height = `${el.scrollHeight}px`; } }}
-                              autoFocus
-                            />
-                          ) : (
-                            <button type="button" onClick={() => setFields(prev => prev.map(f => f.id === field.id ? { ...f, helpText: "" } : f))} className="text-xs text-muted-foreground hover:text-primary transition-colors">
-                              + Add a note
-                            </button>
+                          {active && (
+                            <div className="pl-6 pr-2 pb-1">
+                              {field.helpText !== undefined ? (
+                                <Textarea
+                                  value={field.helpText}
+                                  onChange={(e) => setFields(prev => prev.map(f => f.id === field.id ? { ...f, helpText: e.target.value } : f))}
+                                  onBlur={() => { if (!field.helpText?.trim()) setFields(prev => prev.map(f => f.id === field.id ? { ...f, helpText: undefined } : f)); }}
+                                  onInput={(e) => { const el = e.currentTarget; el.style.height = "auto"; el.style.height = `${el.scrollHeight}px`; }}
+                                  placeholder="Add a note for speakers…"
+                                  rows={1}
+                                  className="text-xs resize-none overflow-hidden min-h-0"
+                                  ref={(el) => { if (el) { el.style.height = "auto"; el.style.height = `${el.scrollHeight}px`; } }}
+                                  autoFocus
+                                />
+                              ) : (
+                                <button type="button" onClick={() => setFields(prev => prev.map(f => f.id === field.id ? { ...f, helpText: "" } : f))} className="text-xs text-muted-foreground hover:text-primary transition-colors">
+                                  + Add a note
+                                </button>
+                              )}
+                            </div>
                           )}
                         </div>
-                      )}
-                    </div>
-                  );
-                })}
+                      );
+                    })}
+                  </React.Fragment>
+                );
+              })}
             </div>
-            {talkFieldsEnabled && (
-              <p className="text-xs text-muted-foreground mt-3 pt-3 border-t border-border">
-                Content files are uploaded by speakers via the Content tab.
-              </p>
-            )}
-            {/* Toggle to explicitly enable speaker content uploads for this form */}
-            <div className="mt-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium">Allow speaker content uploads</p>
-                  <p className="text-xs text-muted-foreground">Enable an optional multi-file content upload for speakers (slides, video, etc.)</p>
-                </div>
-                <div>
-                  <Switch
-                    checked={contentUploadsEnabled}
-                    onCheckedChange={(val) => {
-                      setFields(prev => prev.map(f => {
-                        if (f.id !== 'sample_content') return f;
-                        // When enabling from the builder, remove formTypes so it shows on this form
-                        if (val) return { ...f, enabled: true, formTypes: undefined };
-                        // When disabling, restore default call-for-speakers restriction
-                        return { ...f, enabled: false, formTypes: ["call-for-speakers"] };
-                      }));
-                      markDirty();
-                    }}
-                  />
+
+            {/* Speaker content uploads toggle — speaker-info only */}
+            {formType !== "call-for-speakers" && (
+              <div className="mt-3 pt-3 border-t border-border">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium">Talk / Session Content</p>
+                    <p className="text-xs text-muted-foreground">Ask speakers to upload their materials — slides, video, or any file format.</p>
+                  </div>
+                  <div>
+                    <Switch
+                      checked={contentUploadsEnabled}
+                      onCheckedChange={(val) => {
+                        setFields(prev => prev.map(f => {
+                          if (f.id !== 'sample_content') return f;
+                          if (val) return { ...f, enabled: true, formTypes: undefined };
+                          return { ...f, enabled: false, formTypes: ["call-for-speakers"] };
+                        }));
+                        markDirty();
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </Card>
 
           {/* Custom Fields */}
@@ -620,7 +630,7 @@ const SpeakerFormBuilder = forwardRef<SpeakerFormBuilderHandle, SpeakerFormBuild
                   <DialogHeader>
                     <DialogTitle>Add Custom Field</DialogTitle>
                   </DialogHeader>
-                  <div className="space-y-4 mt-4">
+                  <form onSubmit={(e) => { e.preventDefault(); addCustomField(); }} className="space-y-4 mt-4">
                     <div className="space-y-2">
                       <Label>Field Label</Label>
                       <Input
@@ -680,6 +690,14 @@ const SpeakerFormBuilder = forwardRef<SpeakerFormBuilderHandle, SpeakerFormBuild
                               placeholder="e.g., Vegetarian"
                               value={(newCustomField as any).newOption}
                               onChange={(e) => setNewCustomField((prev) => ({ ...prev, newOption: e.target.value }))}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  const opt = (newCustomField as any).newOption?.trim();
+                                  if (!opt) return;
+                                  setNewCustomField((prev) => ({ ...prev, options: [...prev.options, opt], newOption: "" }));
+                                }
+                              }}
                             />
                             <Button size="sm" variant="outline" onClick={() => {
                               const opt = (newCustomField as any).newOption?.trim();
@@ -717,14 +735,15 @@ const SpeakerFormBuilder = forwardRef<SpeakerFormBuilderHandle, SpeakerFormBuild
 
                     <div className="flex justify-end gap-2">
                       <Button
+                        type="button"
                         variant="outline"
                         onClick={() => setCustomFieldDialog(false)}
                       >
                         Cancel
                       </Button>
-                      <Button onClick={addCustomField}>Add Field</Button>
+                      <Button type="submit">Save</Button>
                     </div>
-                  </div>
+                  </form>
                 </DialogContent>
               </Dialog>
             </div>
@@ -740,13 +759,10 @@ const SpeakerFormBuilder = forwardRef<SpeakerFormBuilderHandle, SpeakerFormBuild
               <div className="space-y-2">
                 {fields
                   .filter((f) => f.custom)
-                  .map((field, customIndex) => {
+                  .map((field) => {
                     const allFieldIndex = fields.findIndex(
                       (f) => f.id === field.id,
                     );
-                    const customFields = fields.filter((f) => f.custom);
-                    const isFirst = customIndex === 0;
-                    const isLast = customIndex === customFields.length - 1;
 
                     const isDraggingOver = dragOverIndex === allFieldIndex;
                     return (
@@ -758,76 +774,38 @@ const SpeakerFormBuilder = forwardRef<SpeakerFormBuilderHandle, SpeakerFormBuild
                         onDragLeave={() => setDragOverIndex(null)}
                         onDrop={() => handleDrop(allFieldIndex)}
                         onDragEnd={() => { setDragIndex(null); setDragOverIndex(null); }}
-                        className={`rounded transition-colors cursor-grab active:cursor-grabbing ${isDraggingOver ? "bg-primary/10 ring-1 ring-primary/30" : ""}`}
+                        className={`rounded transition-colors ${isDraggingOver ? "bg-primary/10 ring-1 ring-primary/30" : ""}`}
                       >
                         <div className={`group flex items-center gap-2 py-1.5 px-2 rounded ${!isDraggingOver ? "hover:bg-muted/50" : ""}`}>
-                          <Switch
-                            checked={field.enabled}
-                            onCheckedChange={() => toggleField(field.id)}
-                            className="shrink-0 scale-90"
-                          />
+                          <GripVertical className="h-3.5 w-3.5 text-muted-foreground/30 shrink-0 cursor-grab active:cursor-grabbing" />
                           <Input
                             value={field.label}
                             onChange={(e) => setFields((prev) => prev.map((f) => f.id === field.id ? { ...f, label: e.target.value } : f))}
                             className="flex-1 min-w-0 h-7 text-sm border-transparent bg-transparent shadow-none px-1.5 py-0 hover:border-border focus:bg-background focus-visible:ring-0 transition-colors"
                           />
                           {field.enabled && (
-                            <div className="flex items-center gap-2 shrink-0">
-                              <button type="button" onClick={() => toggleRequired(field.id)}
-                                className={`text-xs px-1.5 py-0.5 rounded transition-colors ${field.required ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted"}`}
-                              >
-                                {field.required ? "Required" : "Optional"}
-                              </button>
-                              {formType !== "call-for-speakers" && field.type !== "file" && (
-                                <button type="button" onClick={() => toggleCardBuilder(field.id)}
-                                  className="flex items-center gap-1 text-xs transition-colors hover:text-foreground"
-                                >
-                                  {field.showInCardBuilder ? (
-                                    <>
-                                      <Check className="h-3 w-3 text-primary shrink-0" />
-                                      <span className="text-primary">Card Builder</span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <div className="h-3 w-3 rounded-sm border border-muted-foreground/40 shrink-0" />
-                                      <span className="text-muted-foreground">Card Builder</span>
-                                    </>
-                                  )}
-                                </button>
-                              )}
-                            </div>
+                            <button type="button" onClick={() => toggleRequired(field.id)}
+                              className={`text-xs px-1.5 py-0.5 rounded shrink-0 transition-colors ${field.required ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted"}`}
+                            >
+                              {field.required ? "Required" : "Optional"}
+                            </button>
                           )}
-                          <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Switch
+                            checked={field.enabled}
+                            onCheckedChange={() => toggleField(field.id)}
+                            className="shrink-0 scale-90"
+                          />
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="h-6 w-6 p-0"
-                            onClick={() => moveField(allFieldIndex, "up")}
-                            disabled={isFirst}
-                          >
-                            <ChevronUp className="h-3 w-3" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-6 w-6 p-0"
-                            onClick={() => moveField(allFieldIndex, "down")}
-                            disabled={isLast}
-                          >
-                            <ChevronDown className="h-3 w-3" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-6 w-6 p-0"
+                            className="h-6 w-6 p-0 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
                             onClick={() => removeCustomField(field.id)}
                           >
                             <X className="h-3.5 w-3.5" />
                           </Button>
-                          </div>
                         </div>
                         {field.enabled && (
-                          <div className="pl-9 pr-2 pb-1">
+                          <div className="pl-6 pr-2 pb-1">
                             {field.helpText !== undefined ? (
                               <Textarea
                                 value={field.helpText}
@@ -861,38 +839,38 @@ const SpeakerFormBuilder = forwardRef<SpeakerFormBuilderHandle, SpeakerFormBuild
               {enabledFields.map((field) => {
                 const isSample = field.id === 'sample_content';
                 return (
-                  <div key={field.id} className="space-y-2">
+                  <div key={field.id} className={field.type === 'file' ? "space-y-1" : "space-y-2"}>
                     {isSample ? (
                       <div>
                         <Label>
                           {field.label}
                           {field.required && <span className="text-destructive ml-1">*</span>}
                         </Label>
-                        <ContentUploads items={[{ id: 'preview-1', name: 'Example slide deck', preview: null, contentType: 'application/pdf' }]} setItems={() => {}} readOnly />
+                        <ContentUploads items={[{ id: 'preview-1', name: '', preview: null, contentType: null }]} setItems={() => {}} readOnly />
                         {field.helpText && <p className="text-xs text-muted-foreground whitespace-pre-wrap">{field.helpText}</p>}
                       </div>
                     ) : (
                       <>
+                        {field.type === "file" ? (
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium leading-none">
+                              {field.label}
+                              {field.required && <span className="text-destructive ml-1">*</span>}
+                            </span>
+                            <div className="inline-flex items-center justify-center text-muted-foreground/60 border border-border rounded p-1 bg-muted/30">
+                              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                            </div>
+                          </div>
+                        ) : (
                         <Label>
                           {field.label}
                           {field.required && <span className="text-destructive ml-1">*</span>}
                         </Label>
+                        )}
                         {field.type === "textarea" ? (
-                          <Textarea placeholder={field.placeholder ?? `Enter ${field.label.toLowerCase()}`} disabled rows={4} />
-                        ) : field.type === "file" ? (
-                          <div className="space-y-1.5">
-                            <div className="w-full flex items-center gap-4 rounded-lg border border-dashed border-border bg-muted/30 px-4 py-3">
-                              <div className={`shrink-0 flex items-center justify-center bg-background border border-border ${field.id === "headshot" ? "w-12 h-12 rounded-full" : "w-16 h-10 rounded-md"}`}>
-                                <svg className="h-4 w-4 text-muted-foreground/40" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
-                              </div>
-                              <div>
-                                <p className="text-sm font-medium text-foreground">Click to upload</p>
-                                <p className="text-xs text-muted-foreground mt-0.5">PNG or JPG</p>
-                              </div>
-                            </div>
-                            <p className="text-xs text-muted-foreground/60">+ Add a note</p>
-                          </div>
-                        ) : field.type === 'radio' ? (
+                          <Textarea placeholder={field.placeholder} disabled rows={4} />
+                        ) : field.type === "file" ? null
+                        : field.type === 'radio' ? (
                           <div className="space-y-2">
                             {((field as any).options || []).map((opt: string) => (
                               <label key={opt} className="flex items-center gap-2 text-sm">
@@ -918,7 +896,7 @@ const SpeakerFormBuilder = forwardRef<SpeakerFormBuilderHandle, SpeakerFormBuild
                             )}
                           </div>
                         ) : (
-                          <Input type={field.type === "email" ? "email" : "text"} placeholder={field.placeholder ?? `Enter ${field.label.toLowerCase()}`} disabled />
+                          <Input type={field.type === "email" ? "email" : "text"} placeholder={field.placeholder} disabled />
                         )}
                         {field.helpText && <p className="text-xs text-muted-foreground whitespace-pre-wrap">{field.helpText}</p>}
                       </>

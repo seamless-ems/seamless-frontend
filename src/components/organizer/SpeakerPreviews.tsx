@@ -1,15 +1,18 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { API_BASE } from '@/lib/api';
-import { ZoomIn, ZoomOut } from 'lucide-react';
+import { ZoomIn, ZoomOut, ImageOff } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 type Props = {
   s: any;
   type: 'website' | 'promo';
+  onNotFound?: (notFound: boolean) => void;
 };
 
-export default function SpeakerPreviews({ s, type }: Props) {
+export default function SpeakerPreviews({ s, type, onNotFound }: Props) {
   const { id: eventId } = useParams();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [containerWidth, setContainerWidth] = useState(0);
@@ -79,6 +82,7 @@ export default function SpeakerPreviews({ s, type }: Props) {
 
         const serialized = doc.documentElement?.outerHTML || text;
 
+        if (mounted) onNotFound?.(false);
         container.innerHTML = '';
         const iframe = document.createElement('iframe');
         iframe.setAttribute('title', 'Speaker preview');
@@ -99,7 +103,11 @@ export default function SpeakerPreviews({ s, type }: Props) {
         appendedIframes.current.push(iframe);
       } catch (err: any) {
         if (!(err instanceof DOMException && err.name === 'AbortError')) {
-          if (mounted) setError(err?.message || String(err));
+          const msg = err?.message || String(err);
+          if (mounted) {
+            setError(msg);
+            onNotFound?.(msg.startsWith('404'));
+          }
         }
       } finally {
         if (mounted) setLoading(false);
@@ -163,8 +171,27 @@ export default function SpeakerPreviews({ s, type }: Props) {
         </div>
       )}
       {!loading && error && (
-        <div className="p-8 flex items-center justify-center min-h-[200px]">
-          <p className="text-sm text-destructive">{error}</p>
+        <div className="flex flex-col items-center justify-center gap-4 py-16 text-center min-h-[200px]">
+          {error.startsWith('404') ? (
+            <>
+              <ImageOff className="h-8 w-8 text-muted-foreground/40" />
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-foreground">
+                  {type === 'website' ? 'Speaker Card not set up' : 'Social Card not set up'}
+                </p>
+                <p className="text-xs text-muted-foreground">Build the card template to generate previews.</p>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => navigate(`/organizer/event/${eventId}/${type === 'website' ? 'website' : 'promo'}-card-builder`)}
+              >
+                Let's Go
+              </Button>
+            </>
+          ) : (
+            <p className="text-sm text-destructive">{error}</p>
+          )}
         </div>
       )}
 

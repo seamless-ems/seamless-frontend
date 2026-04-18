@@ -316,21 +316,13 @@ export default function SpeakersTable({ speakers, isLoading, eventId, selectedTa
     return <div className="py-12 text-center text-sm text-muted-foreground">No speakers found</div>;
   }
 
-  // When controls are shown but there are no speakers, render controls + empty state (no column headers)
   if (showControls && speakers.length === 0) {
     return (
       <div>
-        <div className="bg-secondary/30 border-b border-border px-5 py-2.5 flex items-center gap-1.5">
-          <Input
-            placeholder="Search…"
-            value={searchQuery ?? ""}
-            onChange={(e) => setSearchQuery?.(e.target.value)}
-            className="w-[130px] h-8 text-sm"
-          />
+        <div className="border-b border-border px-4 py-2 flex items-center gap-1.5">
+          <Input placeholder="Search…" value={searchQuery ?? ""} onChange={(e) => setSearchQuery?.(e.target.value)} className="w-[160px] h-8 text-sm" />
           <Select value={statusFilter ?? "all"} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[130px] h-8 text-sm">
-              <SelectValue placeholder="All" />
-            </SelectTrigger>
+            <SelectTrigger className="w-[140px] h-8 text-sm"><SelectValue placeholder="All" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All</SelectItem>
               <SelectItem value="pending">Info Pending</SelectItem>
@@ -342,108 +334,45 @@ export default function SpeakersTable({ speakers, isLoading, eventId, selectedTa
           </Select>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="h-8 w-8 flex items-center justify-center rounded-md border border-input bg-background hover:bg-muted transition-colors shrink-0">
+              <button title={`Sort: ${sortBy === 'name' ? 'Name A–Z' : sortBy === 'oldest' ? 'Oldest first' : 'Newest first'}`} className="h-8 w-8 flex items-center justify-center rounded-md border border-input bg-background hover:bg-muted transition-colors shrink-0">
                 <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-40">
-              <DropdownMenuItem onClick={() => setSortBy?.('newest')}>
-                {(sortBy ?? 'newest') === 'newest' ? <Check className="h-3 w-3 mr-2 text-primary" /> : <span className="h-3 w-3 mr-2 inline-block" />}
-                Newest first
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setSortBy?.('oldest')}>
-                {sortBy === 'oldest' ? <Check className="h-3 w-3 mr-2 text-primary" /> : <span className="h-3 w-3 mr-2 inline-block" />}
-                Oldest first
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setSortBy?.('name')}>
-                {sortBy === 'name' ? <Check className="h-3 w-3 mr-2 text-primary" /> : <span className="h-3 w-3 mr-2 inline-block" />}
-                Name A–Z
-              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setSortBy?.('newest')}>{(sortBy ?? 'newest') === 'newest' ? <Check className="h-3 w-3 mr-2 text-primary" /> : <span className="h-3 w-3 mr-2 inline-block" />}Newest first</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setSortBy?.('oldest')}>{sortBy === 'oldest' ? <Check className="h-3 w-3 mr-2 text-primary" /> : <span className="h-3 w-3 mr-2 inline-block" />}Oldest first</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setSortBy?.('name')}>{sortBy === 'name' ? <Check className="h-3 w-3 mr-2 text-primary" /> : <span className="h-3 w-3 mr-2 inline-block" />}Name A–Z</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-        <div className="py-12 text-center text-sm text-muted-foreground">No speakers yet — add your first one above.</div>
+        <div className="py-12 text-center text-sm text-muted-foreground">No speakers match your search.</div>
       </div>
     );
   }
 
   return (
     <>
-      {showControls && !isSelectionActive && (
-        <div className="flex items-center gap-1.5 px-3 py-2 border-b border-border bg-background">
-          <Input
-            placeholder="Search…"
-            value={searchQuery ?? ""}
-            onChange={(e) => setSearchQuery?.(e.target.value)}
-            className="w-[180px] h-8 text-sm"
-          />
-          <Select value={statusFilter ?? "all"} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[150px] h-8 text-sm">
-              <SelectValue placeholder="All" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              <SelectItem value="pending">Info Pending</SelectItem>
-              <SelectItem value="submitted">Pending Approval</SelectItem>
-              <SelectItem value="cards_approved">Ready to Publish</SelectItem>
-              <SelectItem value="published">Published</SelectItem>
-              <SelectItem value="archived">Archived</SelectItem>
-            </SelectContent>
-          </Select>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                title={`Sort: ${sortBy === 'name' ? 'Name A–Z' : sortBy === 'oldest' ? 'Oldest first' : 'Newest first'}`}
-                className="h-8 w-8 flex items-center justify-center rounded-md border border-input bg-background hover:bg-muted transition-colors shrink-0"
-              >
-                <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-40">
-              <DropdownMenuItem onClick={() => setSortBy?.('newest')}>
-                {(sortBy ?? 'newest') === 'newest' ? <Check className="h-3 w-3 mr-2 text-primary" /> : <span className="h-3 w-3 mr-2 inline-block" />}
-                Newest first
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setSortBy?.('oldest')}>
-                {sortBy === 'oldest' ? <Check className="h-3 w-3 mr-2 text-primary" /> : <span className="h-3 w-3 mr-2 inline-block" />}
-                Oldest first
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setSortBy?.('name')}>
-                {sortBy === 'name' ? <Check className="h-3 w-3 mr-2 text-primary" /> : <span className="h-3 w-3 mr-2 inline-block" />}
-                Name A–Z
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          {(pendingCount ?? 0) > 0 && (
-            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-warning/10 text-warning rounded text-xs font-medium whitespace-nowrap">
-              ⚠ {pendingCount}
-            </span>
-          )}
-        </div>
-      )}
       <table className="w-full table-fixed">
-      <colgroup>{[...(showControls ? [<col key="select" style={{ width: '36px' }} />] : []),
+      <colgroup>{[<col key="select" style={{ width: '36px' }} />,
         <col key="name" />,
         <col key="website" style={{ width: '148px' }} />,
         <col key="promo" style={{ width: '148px' }} />,
         <col key="actions" style={{ width: '36px' }} />]}</colgroup>
-      <thead className="bg-secondary/30 border-b border-border">
+      <thead className="border-b border-border">
         <tr>
-          {showControls && (
-            <th className="pl-4 py-2.5 w-9" onClick={(e) => e.stopPropagation()}>
-              {isSelectionActive && (
-                <input
-                  ref={selectAllRef}
-                  type="checkbox"
-                  checked={selectedIds.size === speakers.length}
-                  onChange={() => {}}
-                  onClick={toggleSelectAll}
-                  className="h-3.5 w-3.5 rounded accent-primary cursor-pointer"
-                />
-              )}
-            </th>
-          )}
-          <th className="px-5 py-2.5">
+          <th className="pl-4 py-2 w-9" onClick={(e) => e.stopPropagation()}>
+            {isSelectionActive && (
+              <input
+                ref={selectAllRef}
+                type="checkbox"
+                checked={selectedIds.size === speakers.length}
+                onChange={() => {}}
+                onClick={toggleSelectAll}
+                className="h-3.5 w-3.5 rounded accent-primary cursor-pointer"
+              />
+            )}
+          </th>
+          <th className="px-4 py-2">
             {isSelectionActive ? (
               <div className="flex items-center gap-2.5">
                 <span className="text-xs font-medium text-foreground whitespace-nowrap">
@@ -487,43 +416,25 @@ export default function SpeakersTable({ speakers, isLoading, eventId, selectedTa
               </div>
             ) : null}
           </th>
-          <th className="px-3 py-2.5 text-left text-xs font-medium text-muted-foreground w-[120px]">
-            {!isSelectionActive && (
-              <div className="flex items-center gap-1.5">
-                Speaker Card
-                <HelpTip title="Speaker Card status" side="bottom" align="start" compact>
-                  <p><span className="font-medium text-foreground">Info Pending</span> — awaiting intake form.</p>
-                  <p><span className="font-medium text-foreground">Pending Approval</span> — review and approve.</p>
-                  <p><span className="font-medium text-foreground">Ready to Publish</span> — toggle live in Speaker Wall.</p>
-                  <p><span className="font-medium text-foreground">Published</span> — live on your Speaker Wall.</p>
-                </HelpTip>
-              </div>
-            )}
+          <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground w-[148px]">
+            {!isSelectionActive && <span>Speaker Card</span>}
           </th>
-          <th className="px-3 py-2.5 text-left text-xs font-medium text-muted-foreground w-[120px]">
+          <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground w-[148px]">
             {!isSelectionActive && (
               <div className="flex items-center gap-1.5">
-                Social Card
+                <span>Social Card</span>
                 {approvedSocialSpeakers.length > 0 && (
-                  <button
-                    onClick={handleDownloadAllSocialCards}
-                    title={`Download all ${approvedSocialSpeakers.length} social cards`}
-                    className="text-muted-foreground/40 hover:text-primary transition-colors"
-                  >
+                  <button onClick={handleDownloadAllSocialCards} title={`Download all ${approvedSocialSpeakers.length} social cards`} className="text-muted-foreground/40 hover:text-primary transition-colors">
                     <Download className="h-3 w-3" />
                   </button>
                 )}
-                <HelpTip title="Social Card status" side="bottom" align="start" compact>
-                  <p><span className="font-medium text-foreground">Info Pending</span> — awaiting intake form.</p>
-                  <p><span className="font-medium text-foreground">Pending Approval</span> — review and approve.</p>
-                  <p><span className="font-medium text-foreground">Ready to Download</span> — click the badge to download.</p>
-                </HelpTip>
               </div>
             )}
           </th>
-          <th className="px-3 py-2.5 w-10"> </th>
+          <th className="w-10" />
         </tr>
       </thead>
+
       <tbody>
         {speakers.map((speaker) => {
           const speakerName = speaker.name || `${speaker.firstName ?? ""} ${speaker.lastName ?? ""}`.trim() || speaker.email || "Speaker";
@@ -551,31 +462,40 @@ export default function SpeakersTable({ speakers, isLoading, eventId, selectedTa
               onClick={() => navigate(`/organizer/event/${eventId}/speakers/${speaker.id}`)}
             >
               {/* Checkbox */}
-              {showControls && (
-                <td className="pl-4 py-3 w-9" onClick={(e) => e.stopPropagation()}>
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.has(speaker.id)}
-                    onChange={() => {}}
-                    onClick={(e) => toggleSelect(e, speaker.id)}
-                    className={`h-3.5 w-3.5 rounded accent-primary cursor-pointer transition-opacity ${isSelectionActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
-                  />
-                </td>
-              )}
+              <td className="pl-4 py-3 w-9" onClick={(e) => e.stopPropagation()}>
+                <input
+                  type="checkbox"
+                  checked={selectedIds.has(speaker.id)}
+                  onChange={() => {}}
+                  onClick={(e) => toggleSelect(e, speaker.id)}
+                  className={`h-3.5 w-3.5 rounded accent-primary cursor-pointer transition-opacity ${isSelectionActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+                />
+              </td>
               {/* Speaker info */}
               <td className="pl-3 pr-2 py-3 overflow-hidden">
-                <div className="flex items-center min-w-0">
-                  <div className="text-sm font-semibold text-foreground leading-tight truncate">
-                    {speakerName}
+                <div className="flex items-center gap-2 min-w-0">
+                  {speaker.avatarUrl ? (
+                    <img src={speaker.avatarUrl} alt="" className="h-7 w-7 rounded-md object-cover shrink-0" />
+                  ) : (
+                    <div className="h-7 w-7 rounded-md bg-muted flex items-center justify-center text-xs font-medium text-muted-foreground shrink-0">
+                      {(speaker.name || "S")[0].toUpperCase()}
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <div className="flex items-center">
+                      <div className="text-sm font-semibold text-foreground leading-tight truncate">
+                        {speakerName}
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground/20 group-hover:text-muted-foreground/70 transition-colors ml-0.5 flex-shrink-0" />
+                      <CopyButton text={[speakerName, speaker.companyRole, speaker.company].filter(Boolean).join("\n")} />
+                    </div>
+                    {(speaker.companyRole || speaker.company) && (
+                      <div className="text-xs text-muted-foreground mt-0.5 leading-tight truncate">
+                        {[speaker.companyRole, speaker.company].filter(Boolean).join(' · ')}
+                      </div>
+                    )}
                   </div>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground/20 group-hover:text-muted-foreground/70 transition-colors ml-0.5 flex-shrink-0" />
-                  <CopyButton text={[speakerName, speaker.companyRole, speaker.company].filter(Boolean).join("\n")} />
                 </div>
-                {(speaker.companyRole || speaker.company) && (
-                  <div className="text-xs text-muted-foreground mt-0.5 leading-tight truncate">
-                    {[speaker.companyRole, speaker.company].filter(Boolean).join(' · ')}
-                  </div>
-                )}
               </td>
 
 
@@ -705,7 +625,7 @@ export default function SpeakersTable({ speakers, isLoading, eventId, selectedTa
     </Dialog>
 
     {/* Pagination footer */}
-    {typeof totalCount === 'number' && typeof page === 'number' && typeof pageSize === 'number' && (setPage || setPageSize) && (
+    {typeof totalCount === 'number' && typeof page === 'number' && typeof pageSize === 'number' && totalCount > pageSize && (setPage || setPageSize) && (
       <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-card/50">
         <div className="text-sm text-muted-foreground">
           {(() => {
@@ -727,18 +647,18 @@ export default function SpeakersTable({ speakers, isLoading, eventId, selectedTa
               disabled={page * pageSize >= totalCount}
             >Next</button>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="text-sm text-muted-foreground">Per page</div>
-            <Select value={String(pageSize)} onValueChange={(v) => { const n = Number(v); setPageSize && setPageSize(n); setPage && setPage(1); }}>
-              <SelectTrigger className="w-[84px] h-8 text-sm"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="10">10</SelectItem>
-                <SelectItem value="25">25</SelectItem>
-                <SelectItem value="50">50</SelectItem>
-                <SelectItem value="100">100</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {totalCount > 50 && (
+            <div className="flex items-center gap-2">
+              <div className="text-sm text-muted-foreground">Per page</div>
+              <Select value={String(pageSize)} onValueChange={(v) => { const n = Number(v); setPageSize && setPageSize(n); setPage && setPage(1); }}>
+                <SelectTrigger className="w-[84px] h-8 text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="50">50</SelectItem>
+                  <SelectItem value="100">100</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
       </div>
     )}

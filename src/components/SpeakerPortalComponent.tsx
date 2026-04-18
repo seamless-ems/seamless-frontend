@@ -314,7 +314,7 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
       </div>
 
       <div className={`flex-1 overflow-auto${activeTab === 'speaker-card' || activeTab === 'social-card' ? ' bg-white' : ''}`}>
-        <div className={activeTab === 'speaker-card' || activeTab === 'social-card' ? 'px-6 py-6' : 'max-w-7xl mx-auto px-6 py-6'}>
+        <div className="px-6 py-6">
 
           {activeTab === 'info' && (() => {
             const fieldEnabled = (id: string) =>
@@ -359,7 +359,7 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
             };
 
             return (
-              <div className={!isApplication ? 'grid grid-cols-[55%_45%] gap-6 items-start' : ''}>
+              <div className={!isApplication ? 'grid grid-cols-2 gap-6 items-start' : ''}>
               <div className="rounded-lg border border-border overflow-hidden">
                 <div className="px-6 py-4 bg-muted/30 border-b border-border flex items-center justify-between">
                   <p className="text-sm font-medium text-foreground">{isApplication ? 'Application Details' : 'Speaker Information'}</p>
@@ -442,7 +442,7 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
                   </div>
 
                   {(fieldEnabled('headshot') || fieldEnabled('company_logo') || extraFileFields.length > 0) && (
-                  <div className="w-[200px] shrink-0 px-6 py-6 flex flex-col items-center gap-6">
+                  <div className="w-[260px] shrink-0 px-6 py-6 flex flex-col items-center gap-6">
                     {fieldEnabled('headshot') && (
                     <div className="flex flex-col items-center gap-1.5 w-full">
                       <p className="text-xs font-medium text-muted-foreground self-start mb-1">Headshot</p>

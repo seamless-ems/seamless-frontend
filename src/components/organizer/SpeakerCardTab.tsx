@@ -50,6 +50,7 @@ export default function SpeakerCardTab({ type, s, isApproved, canApprove, onTogg
   };
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [cardNotFound, setCardNotFound] = useState<boolean | null>(null);
 
   const label = type === 'website' ? 'Speaker Card' : 'Social Card';
 
@@ -79,8 +80,8 @@ export default function SpeakerCardTab({ type, s, isApproved, canApprove, onTogg
 
   return (
     <div className="space-y-5">
-      {/* Actions row */}
-      <div className="flex items-center justify-between">
+      {/* Actions row — only shown once we know the card exists */}
+      {cardNotFound === false && <div className="flex items-center justify-between">
         <div>
           {type === 'website' && isApproved && (
             <Badge variant="outline" className="bg-success/10 text-success border-success/30 text-xs">
@@ -100,7 +101,7 @@ export default function SpeakerCardTab({ type, s, isApproved, canApprove, onTogg
                 size="sm"
                 variant={isApproved ? 'outline' : 'default'}
                 disabled={!canApprove || loading || readOnly}
-                onClick={() => setConfirmOpen(true)}
+                onClick={() => (type === 'promo' && !isApproved) ? handleConfirm() : setConfirmOpen(true)}
               >
                 <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
                 {isApproved ? 'Unapprove' : `Approve ${label}`}
@@ -122,10 +123,10 @@ export default function SpeakerCardTab({ type, s, isApproved, canApprove, onTogg
             </button>
           )}
         </div>
-      </div>
+      </div>}
 
       {/* Preview */}
-      {s && <SpeakerPreviews s={s} type={type} />}
+      {s && <SpeakerPreviews s={s} type={type} onNotFound={setCardNotFound} />}
 
       {/* Confirmation */}
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useWarnOnLeave } from "@/hooks/useWarnOnLeave";
 import { UnsavedChangesDialog } from "@/components/ui/UnsavedChangesDialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -179,6 +179,8 @@ export default function CardBuilder({
   onBack,
 }: CardBuilderProps) {
   const location = useLocation();
+  const navigate = useNavigate();
+  const [postSavedOpen, setPostSavedOpen] = useState(false);
   const [cardType, setCardType] = useState<CardType>(() =>
     deriveInitialCardType(location?.pathname),
   );
@@ -940,6 +942,7 @@ export default function CardBuilder({
         setHasUnsavedChanges,
         toast,
       });
+      if (!silent) setPostSavedOpen(true);
     },
     [
       config,
@@ -1430,6 +1433,43 @@ export default function CardBuilder({
         onCancel={() => setShowLeaveDialog(false)}
       />
 
+      {/* Post-save next-step dialog */}
+      <Dialog open={postSavedOpen} onOpenChange={setPostSavedOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              {cardType === "website" ? "Speaker Card Template saved" : "Social Card Template saved"}
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            {cardType === "website"
+              ? "Next up: build your Social Card template for downloadable social graphics."
+              : "Both card templates are ready. Next up: set up your Speaker Wall."}
+          </p>
+          <div className="flex gap-2 pt-1">
+            {cardType === "website" ? (
+              <>
+                <Button
+                  onClick={() => { setPostSavedOpen(false); navigate(`/organizer/event/${eventId}/promo-card-builder`); }}
+                >
+                  Build Social Card Template
+                </Button>
+                <Button variant="outline" onClick={() => setPostSavedOpen(false)}>Done</Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  onClick={() => { setPostSavedOpen(false); navigate(`/organizer/event/${eventId}/speakers/embed`); }}
+                >
+                  Set Up Speaker Wall
+                </Button>
+                <Button variant="outline" onClick={() => setPostSavedOpen(false)}>Done</Button>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <MissingFormDialog
         open={missingFormDialogOpen}
         onOpenChange={setMissingFormDialogOpen}
@@ -1472,7 +1512,7 @@ export default function CardBuilder({
 
       {/* Blank canvas confirmation — warns that resetting will clear any saved design */}
       <Dialog open={blankCanvasConfirmOpen} onOpenChange={setBlankCanvasConfirmOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Start with a blank canvas?</DialogTitle>
             <DialogDescription>
@@ -1887,14 +1927,9 @@ export default function CardBuilder({
                   <div className="h-5 w-px bg-border mx-0.5" />
                 </>
               )}
-              <div className="flex items-baseline gap-1 leading-none select-none">
-                <span
-                  className="text-sm font-semibold text-primary"
-                  style={{ letterSpacing: "-0.01em" }}
-                >
-                  Seamless
-                </span>
-                <span className="text-xs font-normal text-muted-foreground">
+              <div className="flex items-center gap-1.5 select-none">
+                <span className="text-sm font-semibold text-primary" style={{ letterSpacing: "-0.01em" }}>Seamless</span>
+                <span className="text-sm font-normal text-muted-foreground">
                   {cardType === "promo" ? "Social Card Builder" : "Speaker Card Builder"}
                 </span>
               </div>

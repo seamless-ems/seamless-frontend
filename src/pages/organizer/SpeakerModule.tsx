@@ -1,12 +1,15 @@
 import { useState, useRef, useEffect } from "react";
-import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import EventHeaderActions from "@/components/layout/EventHeaderActions";
 import { useQuery } from "@tanstack/react-query";
 import { getJson, getFormConfigForEvent, getPromoConfigForEvent } from "@/lib/api";
-import { ArrowLeft, Check, Copy, FileEdit, Share2, Download } from "lucide-react";
+import { ArrowLeft, Check, Copy, FileEdit, Download, ArrowUpDown, Mic2, Plus } from "lucide-react";
 import JSZip from "jszip";
 import AddSpeakerDialog from "@/components/organizer/AddSpeakerDialog";
-import ShareDialog from "@/components/organizer/ShareDialog";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import SpeakerQuickPanel, { type PanelView } from "@/components/organizer/SpeakerQuickPanel";
 import SpeakersTable from "@/components/organizer/SpeakersTable";
 import EmbedBuilder from "@/components/organizer/EmbedBuilder";
@@ -15,6 +18,7 @@ import CardBuilder from "@/components/CardBuilder";
 import SpeakerFormBuilder, { type SpeakerFormBuilderHandle } from "@/components/SpeakerFormBuilder";
 import GettingStartedChecklist from "@/components/organizer/GettingStartedChecklist";
 import EventContentTab from "@/components/organizer/EventContentTab";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 import { HelpTip } from "@/components/ui/HelpTip";
 import { UnsavedChangesDialog } from "@/components/ui/UnsavedChangesDialog";
@@ -28,13 +32,14 @@ export default function SpeakerModule() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState("newest");
   const [page, setPage] = useState<number>(1);
-  const [pageSize, setPageSize] = useState<number>(25);
-  const [shareOpen, setShareOpen] = useState(false);
+  const [pageSize, setPageSize] = useState<number>(50);
   const [addSpeakerOpen, setAddSpeakerOpen] = useState(false);
   const [selectedSpeaker, setSelectedSpeaker] = useState<any | null>(null);
   const [panelView, setPanelView] = useState<PanelView | null>(null);
   const [editingForm, setEditingForm] = useState<"speaker-info" | "call-for-speakers" | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [formSaved, setFormSaved] = useState(false);
+  const [copiedFormLink, setCopiedFormLink] = useState(false);
   const [confirmFormLeave, setConfirmFormLeave] = useState(false);
   const [isDownloadingAll, setIsDownloadingAll] = useState(false);
   const formBuilderRef = useRef<SpeakerFormBuilderHandle>(null);
@@ -129,20 +134,6 @@ export default function SpeakerModule() {
     toast({ title: "Link copied to clipboard" });
     setTimeout(() => setCopiedLink(false), 2000);
   };
-
-  const handleCopyForm = async () => {
-    if (!formConfig) {
-      toast({ title: "No form configured to copy", variant: "destructive" });
-      return;
-    }
-    try {
-      await navigator.clipboard.writeText(JSON.stringify(formConfig, null, 2));
-      toast({ title: "Form JSON copied to clipboard" });
-    } catch (err) {
-      toast({ title: "Copy failed", variant: "destructive" });
-    }
-  };
-  
 
   const { data: eventData } = useQuery<any>({
     queryKey: ['event', id],
@@ -352,11 +343,13 @@ export default function SpeakerModule() {
 
   return (
     <div className="space-y-0">
-      {/* Tabs Navigation — hidden when card builder is active */}
       {!isCardBuilder && (
-      <div className="border-b border-border bg-card/50">
-        <div className="flex items-center justify-between px-0">
-          <div className="flex gap-6">
+        <header className="sticky top-0 z-30 h-14 border-b border-border bg-card/95 flex items-end px-4 gap-0">
+          <Link to="/organizer" className="flex items-center gap-1.5 py-3 border-b-2 border-transparent shrink-0 mr-6">
+            <span className="text-sm font-semibold text-primary" style={{ letterSpacing: '-0.01em' }}>Seamless</span>
+            <span className="text-sm font-normal text-muted-foreground">Events</span>
+          </Link>
+          <div className="flex items-end h-full gap-6 flex-1">
             <button onClick={() => navigate(`/organizer/event/${id}/speakers`)} className={tabClass("speakers")}>
               Speakers
             </button>
@@ -376,13 +369,13 @@ export default function SpeakerModule() {
               Social Card Template
             </button>
           </div>
-        </div>
-      </div>
+          <EventHeaderActions eventData={eventData} id={id} />
+        </header>
       )}
 
       {/* Speakers Tab Content */}
       {activeTab === "speakers" && (
-        <div className="space-y-4 pt-6">
+        <div className="space-y-4 px-6 pt-6 pb-6">
           {id && (
             <GettingStartedChecklist
               eventId={id}
@@ -391,18 +384,45 @@ export default function SpeakerModule() {
               websiteCardConfigured={!!websiteCardConfig}
               promoCardConfigured={!!promoCardConfig}
               embedVisited={embedVisited}
+              hasSpeakers={speakerList.length > 0}
               onEditForm={(type) => setEditingForm(type)}
+              onAddSpeaker={() => setAddSpeakerOpen(true)}
+              activeStep={1}
             />
           )}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <AddSpeakerDialog eventId={id} eventName={eventName} emailDefaults={emailDefaults} open={addSpeakerOpen} onOpenChange={setAddSpeakerOpen} />
-              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setEditingForm("speaker-info") }>
-                <FileEdit className="h-3.5 w-3.5" />Edit Speaker Intake Form
-              </Button>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5">
+              <Input placeholder="Search…" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} className="w-[180px] h-8 text-sm" />
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-[150px] h-8 text-sm"><SelectValue placeholder="All" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="pending">Info Pending</SelectItem>
+                  <SelectItem value="submitted">Pending Approval</SelectItem>
+                  <SelectItem value="cards_approved">Ready to Publish</SelectItem>
+                  <SelectItem value="published">Published</SelectItem>
+                  <SelectItem value="archived">Archived</SelectItem>
+                </SelectContent>
+              </Select>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button title={`Sort: ${sortBy === 'name' ? 'Name A–Z' : sortBy === 'oldest' ? 'Oldest first' : 'Newest first'}`} className="h-8 w-8 flex items-center justify-center rounded-md border border-input bg-background hover:bg-muted transition-colors shrink-0">
+                    <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-40">
+                  <DropdownMenuItem onClick={() => setSortBy('newest')}>{(sortBy ?? 'newest') === 'newest' ? <Check className="h-3 w-3 mr-2 text-primary" /> : <span className="h-3 w-3 mr-2 inline-block" />}Newest first</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSortBy('oldest')}>{sortBy === 'oldest' ? <Check className="h-3 w-3 mr-2 text-primary" /> : <span className="h-3 w-3 mr-2 inline-block" />}Oldest first</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSortBy('name')}>{sortBy === 'name' ? <Check className="h-3 w-3 mr-2 text-primary" /> : <span className="h-3 w-3 mr-2 inline-block" />}Name A–Z</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
             <div className="flex items-center gap-2">
-              <HelpTip title="How speakers work" side="bottom" align="end">
+              <Button variant="outline" size="sm" className="gap-1.5 bg-muted/50 hover:bg-muted text-foreground hover:text-foreground" onClick={() => { setEditingForm("speaker-info"); setFormSaved(false); }}>
+                <FileEdit className="h-3.5 w-3.5" />Edit Intake Form
+              </Button>
+              <AddSpeakerDialog eventId={id} eventName={eventName} emailDefaults={emailDefaults} open={addSpeakerOpen} onOpenChange={setAddSpeakerOpen} />
+              <HelpTip title="How speakers work" side="bottom" align="end" compact>
                 <ul className="space-y-1 list-disc list-inside">
                   <li>Add speakers manually or approve them from <span className="font-medium text-foreground">Applications</span></li>
                   <li>Send each speaker their intake form to collect headshot, bio, and logo</li>
@@ -410,21 +430,25 @@ export default function SpeakerModule() {
                   <li>Publish live via <span className="font-medium text-foreground">Speaker Wall</span></li>
                 </ul>
               </HelpTip>
-              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setShareOpen(true)}>
-                <Share2 className="h-3.5 w-3.5" />Share All Speakers
-              </Button>
-              <ShareDialog
-                open={shareOpen}
-                onOpenChange={setShareOpen}
-                title="Share All Speakers"
-                description="Give teammates access to view or manage speakers for this event."
-              />
             </div>
           </div>
 
+          {/* Empty state — no speakers at all */}
+          {speakerList.length === 0 && !isLoading && (
+            <div className="rounded-lg border border-border flex flex-col items-center justify-center py-16 text-center">
+              <Mic2 className="h-10 w-10 text-muted-foreground/20 mb-3" />
+              <p className="text-sm font-medium text-foreground mb-1">No speakers yet</p>
+              <p className="text-xs text-muted-foreground mb-4">Add your first speaker to get started.</p>
+              <Button size="sm" onClick={() => setAddSpeakerOpen(true)}>
+                <Plus className="h-3.5 w-3.5 mr-1.5" />Add Speaker
+              </Button>
+            </div>
+          )}
+
           {/* Split layout: table + persistent quick panel */}
-          <div className="flex gap-4 items-start">
-            <div className="flex-1 min-w-0 rounded-lg border border-border overflow-hidden">
+          {(speakerList.length > 0 || isLoading) && (
+          <div className="flex items-start divide-x divide-border">
+            <div className="flex-1 min-w-0 overflow-hidden">
               <SpeakersTable
                 speakers={filteredSpeakers}
                 isLoading={isLoading}
@@ -433,12 +457,8 @@ export default function SpeakerModule() {
                 formConfig={formConfig}
                 websiteCardConfigured={!!websiteCardConfig}
                 promoCardConfigured={!!promoCardConfig}
-                searchQuery={searchInput}
-                setSearchQuery={setSearchInput}
                 statusFilter={statusFilter}
-                setStatusFilter={setStatusFilter}
                 sortBy={sortBy}
-                setSortBy={setSortBy}
                 totalCount={totalCount}
                 page={page}
                 pageSize={pageSize}
@@ -451,7 +471,7 @@ export default function SpeakerModule() {
             </div>
 
             {/* Quick panel — always visible, blank until a badge is clicked */}
-            <div className="w-[600px] shrink-0 rounded-lg border border-border overflow-hidden sticky top-4 max-h-[calc(100vh-140px)]">
+            <div className="w-[600px] shrink-0 overflow-hidden sticky top-4 max-h-[calc(100vh-140px)]">
               {panelSpeaker && panelView ? (
                 <SpeakerQuickPanel
                   speaker={panelSpeaker}
@@ -466,29 +486,75 @@ export default function SpeakerModule() {
               )}
             </div>
           </div>
+          )}
         </div>
       )}
 
       {/* Applications Tab */}
       {activeTab === "applications" && (
-        <ApplicationsTab
-          eventId={id}
-          eventName={eventName}
-          emailDefaults={emailDefaults}
-          onEditForm={() => setEditingForm("call-for-speakers")}
-          onCopyFormLink={() => handleCopyFormLink("call-for-speakers")}
-          copiedLink={copiedLink}
-        />
+        <div className="px-6 pb-6">
+          {id && (
+            <GettingStartedChecklist
+              eventId={id}
+              applicationFormConfigured={!!cfsFormConfig}
+              intakeFormConfigured={!!formConfig && formConfig.length > 0}
+              websiteCardConfigured={!!websiteCardConfig}
+              promoCardConfigured={!!promoCardConfig}
+              embedVisited={embedVisited}
+              hasSpeakers={speakerList.length > 0}
+              onEditForm={(type) => setEditingForm(type)}
+              onAddSpeaker={() => { navigate(`/organizer/event/${id}/speakers`); setAddSpeakerOpen(true); }}
+              activeStep={0}
+            />
+          )}
+          <ApplicationsTab
+            eventId={id}
+            eventName={eventName}
+            emailDefaults={emailDefaults}
+            onEditForm={() => { setEditingForm("call-for-speakers"); setFormSaved(false); }}
+            onCopyFormLink={() => handleCopyFormLink("call-for-speakers")}
+            copiedLink={copiedLink}
+          />
+        </div>
       )}
 
       {/* Embed Builder Tab */}
       {activeTab === "embed" && (
-        <EmbedBuilder eventId={id} />
+        <div className="px-6 pb-6">
+          {id && (
+            <GettingStartedChecklist
+              eventId={id}
+              applicationFormConfigured={!!cfsFormConfig}
+              intakeFormConfigured={!!formConfig && formConfig.length > 0}
+              websiteCardConfigured={!!websiteCardConfig}
+              promoCardConfigured={!!promoCardConfig}
+              embedVisited={embedVisited}
+              hasSpeakers={speakerList.length > 0}
+              onEditForm={(type) => setEditingForm(type)}
+              onAddSpeaker={() => { navigate(`/organizer/event/${id}/speakers`); setAddSpeakerOpen(true); }}
+              activeStep={4}
+            />
+          )}
+          <EmbedBuilder eventId={id} onAddSpeaker={() => { navigate(`/organizer/event/${id}/speakers`); setAddSpeakerOpen(true); }} />
+        </div>
       )}
 
       {/* Content Tab */}
       {activeTab === "content" && id && (
-        <EventContentTab eventId={id} />
+        <div className="px-6 pb-6">
+          <GettingStartedChecklist
+            eventId={id}
+            applicationFormConfigured={!!cfsFormConfig}
+            intakeFormConfigured={!!formConfig && formConfig.length > 0}
+            websiteCardConfigured={!!websiteCardConfig}
+            promoCardConfigured={!!promoCardConfig}
+            embedVisited={embedVisited}
+            hasSpeakers={speakerList.length > 0}
+            onEditForm={(type) => setEditingForm(type)}
+            onAddSpeaker={() => { navigate(`/organizer/event/${id}/speakers`); setAddSpeakerOpen(true); }}
+          />
+          <EventContentTab eventId={id} />
+        </div>
       )}
 
       {/* Card Builder Tabs */}
@@ -535,17 +601,81 @@ export default function SpeakerModule() {
             </div>
           </header>
           <div className="flex-1 overflow-y-auto">
-            <div className="max-w-6xl mx-auto px-6 py-6">
+            <div className="max-w-[1400px] mx-auto px-8 py-6">
               <SpeakerFormBuilder
                 ref={formBuilderRef}
                 eventId={id}
                 formType={editingForm}
                 eventName={eventName}
-                onSave={() => setEditingForm(null)}
+                onSave={() => setFormSaved(true)}
               />
             </div>
           </div>
         </div>
+
+        {/* Post-save dialog */}
+        <Dialog open={formSaved} onOpenChange={(v) => { if (!v) setFormSaved(false); }}>
+          <DialogContent className="sm:max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>
+                {editingForm === "call-for-speakers" ? "Application Form saved" : "Speaker Intake Form saved"}
+              </DialogTitle>
+            </DialogHeader>
+            {editingForm === "call-for-speakers" ? (
+              <>
+                <p className="text-sm text-muted-foreground">Your form is ready. Share the link so speakers can apply, then set up your Intake form for approved speakers.</p>
+                <div className="flex gap-2 pt-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      const url = `${window.location.origin}/call-for-speakers/${id}`;
+                      navigator.clipboard.writeText(url);
+                      setCopiedFormLink(true);
+                      toast({ title: "Link copied!" });
+                      setTimeout(() => setCopiedFormLink(false), 2000);
+                    }}
+                  >
+                    {copiedFormLink ? <><Check className="h-4 w-4 mr-2" />Copied</> : <><Copy className="h-4 w-4 mr-2" />Copy Link</>}
+                  </Button>
+                  <Button
+                    onClick={() => { setFormSaved(false); setEditingForm("speaker-info"); setCopiedFormLink(false); }}
+                  >
+                    Set Up Speaker Intake Form
+                  </Button>
+                  <Button variant="outline" onClick={() => { setFormSaved(false); setEditingForm(null); }}>
+                    Done
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-muted-foreground">Your Speaker Intake Form is ready. Next up: build your Speaker Card template.</p>
+                <div className="flex gap-2 pt-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      const url = `${window.location.origin}/speaker-intake/${id}`;
+                      navigator.clipboard.writeText(url);
+                      setCopiedFormLink(true);
+                      toast({ title: "Link copied!" });
+                      setTimeout(() => setCopiedFormLink(false), 2000);
+                    }}
+                  >
+                    {copiedFormLink ? <><Check className="h-4 w-4 mr-2" />Copied</> : <><Copy className="h-4 w-4 mr-2" />Copy Link</>}
+                  </Button>
+                  <Button
+                    onClick={() => { setFormSaved(false); setEditingForm(null); navigate(`/organizer/event/${id}/website-card-builder`); }}
+                  >
+                    Build Speaker Card Template
+                  </Button>
+                  <Button variant="outline" onClick={() => { setFormSaved(false); setEditingForm(null); }}>
+                    Done
+                  </Button>
+                </div>
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
         </>
       )}
     </div>

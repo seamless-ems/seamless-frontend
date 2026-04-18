@@ -11,7 +11,10 @@ interface Props {
   websiteCardConfigured: boolean;
   promoCardConfigured: boolean;
   embedVisited: boolean;
+  hasSpeakers?: boolean;
   onEditForm: (type: "speaker-info" | "call-for-speakers") => void;
+  onAddSpeaker?: () => void;
+  activeStep?: number;
 }
 
 const COLLAPSED_KEY = (id: string) => `seamless-onboarding-checklist-${id}`;
@@ -39,7 +42,10 @@ export default function GettingStartedChecklist({
   websiteCardConfigured,
   promoCardConfigured,
   embedVisited,
+  hasSpeakers,
   onEditForm,
+  onAddSpeaker,
+  activeStep,
 }: Props) {
   const navigate = useNavigate();
 
@@ -67,7 +73,7 @@ export default function GettingStartedChecklist({
       action: () => onEditForm("call-for-speakers"),
     },
     {
-      label: "Set up your Speaker Intake form",
+      label: "Set up your Speaker Intake Form",
       done: intakeFormConfigured || skipped.has(1),
       action: () => onEditForm("speaker-info"),
     },
@@ -85,6 +91,11 @@ export default function GettingStartedChecklist({
       label: "Set up your Speaker Wall",
       done: embedVisited || skipped.has(4),
       action: () => navigate(`/organizer/event/${eventId}/speakers/embed`),
+    },
+    {
+      label: "Add your first speaker",
+      done: !!hasSpeakers || skipped.has(5),
+      action: () => onAddSpeaker?.(),
     },
   ];
 
@@ -133,12 +144,7 @@ export default function GettingStartedChecklist({
         onClick={toggleCollapsed}
         className="w-full flex items-center justify-between px-4 py-3 text-left"
       >
-        <div className="flex items-center gap-3">
-          <span className="text-sm font-semibold text-primary">Get started</span>
-          <span className="text-xs bg-primary/15 text-primary px-2 py-0.5 rounded-full font-medium">
-            {completedCount} of {steps.length} complete
-          </span>
-        </div>
+        <span className="text-sm font-semibold text-primary">Get started</span>
         {collapsed
           ? <ChevronDown className="h-4 w-4 text-primary/60 shrink-0" />
           : <ChevronUp className="h-4 w-4 text-primary/60 shrink-0" />
@@ -163,7 +169,8 @@ export default function GettingStartedChecklist({
                   key={i}
                   className={cn(
                     "flex items-center justify-between py-2 gap-3",
-                    i < steps.length - 1 && "border-b border-primary/10"
+                    i < steps.length - 1 && "border-b border-primary/10",
+                    activeStep === i && !step.done && "bg-primary/5 -mx-1 px-1 rounded-md"
                   )}
                 >
                   <div className="flex items-center gap-3 min-w-0">

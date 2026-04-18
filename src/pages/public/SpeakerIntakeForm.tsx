@@ -30,7 +30,6 @@ import {
 import { MapPin } from "lucide-react";
 import { useState } from "react";
 import React from "react";
-import Uploads from "@/components/speaker/Uploads";
 import ContentUploads from "@/components/speaker/ContentUploads";
 import { type FormFieldConfig, DEFAULT_FIELDS, mergeWithDefaults } from "@/components/SpeakerFormBuilder";
 import { ImageCropDialog } from "@/components/ImageCropDialog";
@@ -212,6 +211,8 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
   const form = useForm({
     resolver: zodResolver(dynamicSchema),
     defaultValues,
+    mode: "onSubmit",
+    reValidateMode: "onSubmit",
   });
 
   const emailFieldEnabled = React.useMemo(
@@ -356,7 +357,6 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
 
   const handleCustomFileSelected = (fieldId: string, file: File) => {
     setCustomFiles((prev) => ({ ...prev, [fieldId]: file }));
-    // For preview, prefer filename. If image, also read data URL.
     if (file.type.startsWith("image/")) {
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -365,6 +365,38 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
       reader.readAsDataURL(file);
     } else {
       setCustomFilePreviews((prev) => ({ ...prev, [fieldId]: file.name }));
+    }
+  };
+
+  const CROP_FIELD_IDS = new Set(["headshot", "company_logo", "company_logo_white"]);
+  const GENERAL_ACCEPT = ".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.rtf,.html,.zip,.mp3,.wma,.mpg,.flv,.avi,.jpg,.jpeg,.png,.gif";
+
+  const makeImageHandler = (type: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!["image/png", "image/jpeg"].includes(file.type)) {
+      toast.error("Please upload a PNG or JPEG");
+      e.currentTarget.value = "";
+      return;
+    }
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setCropImageUrl(reader.result as string);
+      setCropType(type);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const onValidationError = (errors: Record<string, any>) => {
+    const firstErrorId = formConfig
+      .filter(f => f.enabled)
+      .find(f => errors[f.id])?.id;
+    if (firstErrorId) {
+      const el = document.querySelector(`[name="${firstErrorId}"]`) as HTMLElement | null;
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.focus();
+      }
     }
   };
 
@@ -563,12 +595,7 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
     }
   );
 
-  // Group fields by section for better organization
-  const personalFields = formConfig.filter(f => f.enabled && ["first_name", "last_name", "email", "linkedin"].includes(f.id));
-  const companyFields = formConfig.filter(f => f.enabled && ["company_name", "company_role"].includes(f.id));
-  const bioFields = formConfig.filter(f => f.enabled && f.id === "bio");
-  const fileFields = formConfig.filter(f => f.enabled && f.type === "file");
-  const otherFields = formConfig.filter(f => f.enabled && !["first_name", "last_name", "email", "linkedin", "company_name", "company_role", "bio"].includes(f.id) && f.type !== "file");
+  const enabledFields = formConfig.filter(f => f.enabled);
 
   return (
     <div className="min-h-screen bg-background">
@@ -582,192 +609,132 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
               {formSubtitle && <p className="text-sm text-muted-foreground">{formSubtitle}</p>}
             </div>
           )}
-          <form onSubmit={form.handleSubmit(onSubmit)} className="bg-card rounded-lg border border-border p-8 space-y-6">
+          <form onSubmit={form.handleSubmit(onSubmit, onValidationError)} className="bg-card rounded-lg border border-border p-8 space-y-6">
                 <Form {...form}>
-                  {/* Personal Details */}
-                  {personalFields.length > 0 && (
-                    <div className="space-y-4">
-                      {/* <h3 className="text-sm font-semibold text-foreground">Personal Information</h3> */}
-                      <div className="grid grid-cols-1 gap-4">
-                        {personalFields.map(field => (
-                          field.type !== "file" && (
-                            <FormField
-                              key={field.id}
-                              control={form.control}
-                              name={field.id}
-                              render={({ field: formField }) => (
-                                <FormItem>
-                                  <FormLabel className="text-xs font-medium">
-                                    {field.label}
-                                    {field.required && <span className="text-destructive ml-1">*</span>}
-                                  </FormLabel>
-                                  <FormControl>
-                                    <Input className="text-sm" placeholder={field.placeholder ?? `Enter ${field.label.toLowerCase()}`} {...formField} />
-                                  </FormControl>
-                                  <FormMessage />
-                                  {field.helpText && <p className="text-xs text-muted-foreground whitespace-pre-wrap">{field.helpText}</p>}
-                                </FormItem>
-                              )}
-                            />
-                          )
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                  {enabledFields.map(field => {
+                    if (field.id === 'sample_content') {
+                      return (
+                        <div key={field.id} className="space-y-1.5">
+                          <label className="text-sm font-medium leading-none">
+                            {field.label}{field.required && <span className="text-destructive ml-1">*</span>}
+                          </label>
+                          {field.helpText && <p className="text-xs text-muted-foreground">{field.helpText}</p>}
+                          <ContentUploads items={contentItems} setItems={setContentItems} readOnly={false} />
+                        </div>
+                      );
+                    }
 
-                  {/* Company Details */}
-                  {companyFields.length > 0 && (
-                    <div className="space-y-4 pt-2">
-                      {/* <h3 className="text-sm font-semibold text-foreground">Company Information</h3> */}
-                      <div className="grid grid-cols-1 gap-4">
-                        {companyFields.map(field => (
-                          <FormField
-                            key={field.id}
-                            control={form.control}
-                            name={field.id}
-                            render={({ field: formField }) => (
-                              <FormItem>
-                                <FormLabel className="text-xs font-medium">
-                                  {field.label}
-                                  {field.required && <span className="text-destructive ml-1">*</span>}
-                                </FormLabel>
-                                <FormControl>
-                                  <Input className="text-sm" placeholder={field.placeholder ?? `Enter ${field.label.toLowerCase()}`} {...formField} />
-                                </FormControl>
-                                <FormMessage />
-                                {field.helpText && <p className="text-xs text-muted-foreground whitespace-pre-wrap">{field.helpText}</p>}
-                              </FormItem>
-                            )}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Bio */}
-                  {bioFields.length > 0 && (
-                    <div className="space-y-4 pt-2">
-                      {bioFields.map(field => (
-                        <FormField
-                          key={field.id}
-                          control={form.control}
-                          name={field.id}
-                          render={({ field: formField }) => (
-                            <FormItem>
-                              <FormLabel className="text-xs font-medium">
-                                {field.label}
-                                {field.required && <span className="text-destructive ml-1">*</span>}
-                              </FormLabel>
-                              <FormControl>
-                                <Textarea className="text-sm" placeholder={field.placeholder ?? `Enter ${field.label.toLowerCase()}`} rows={4} {...formField} />
-                              </FormControl>
-                              <FormMessage />
-                              {field.helpText && <p className="text-xs text-muted-foreground whitespace-pre-wrap">{field.helpText}</p>}
-                            </FormItem>
+                    if (field.type === 'file') {
+                      const isHeadshot = field.id === 'headshot';
+                      const isLogo = field.id === 'company_logo';
+                      const isCropField = CROP_FIELD_IDS.has(field.id);
+                      const preview = isHeadshot ? headshotPreview : isLogo ? companyLogoPreview : (customFilePreviews?.[field.id] ?? null);
+                      const uploading = isHeadshot ? uploadingHeadshot : isLogo ? uploadingLogo : false;
+                      const isImagePreview = (isHeadshot || isLogo) ? !!preview : (preview?.startsWith('data:image') ?? false);
+                      return (
+                        <div key={field.id} className="space-y-1.5">
+                          <label className="text-sm font-medium text-foreground">
+                            {field.label}{field.required && <span className="text-destructive ml-1">*</span>}
+                          </label>
+                          {field.helpText && <p className="text-xs text-muted-foreground">{field.helpText}</p>}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (isHeadshot) headshotInputRef.current?.click();
+                              else if (isLogo) logoInputRef.current?.click();
+                              else (document.getElementById(`custom-file-${field.id}`) as HTMLInputElement | null)?.click();
+                            }}
+                            disabled={uploading}
+                            className="w-full flex items-center gap-2.5 px-3 h-10 rounded-md border border-input bg-background hover:border-primary text-sm text-muted-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                            <span>{uploading ? "Uploading…" : preview ? "Change file" : "Choose file"}</span>
+                          </button>
+                          {isImagePreview && preview && (
+                            <div className={`overflow-hidden border border-border ${isHeadshot ? "w-12 h-12 rounded-full" : "w-16 h-10 rounded-md"}`}>
+                              <img src={preview} alt={field.label} className="w-full h-full object-cover" />
+                            </div>
                           )}
-                        />
-                      ))}
-                    </div>
-                  )}
+                          {!isImagePreview && preview && (
+                            <p className="text-xs text-muted-foreground mt-1 truncate">{preview}</p>
+                          )}
+                          {isHeadshot && <input ref={headshotInputRef} type="file" accept="image/png,image/jpeg" className="hidden" onChange={makeImageHandler("headshot")} />}
+                          {isLogo && <input ref={logoInputRef} type="file" accept="image/png,image/jpeg" className="hidden" onChange={makeImageHandler("logo")} />}
+                          {!isHeadshot && !isLogo && (
+                            <input
+                              type="file"
+                              accept={isCropField ? "image/png,image/jpeg" : GENERAL_ACCEPT}
+                              className="hidden"
+                              id={`custom-file-${field.id}`}
+                              onChange={isCropField ? makeImageHandler(field.id) : (e) => {
+                                const f = e.target.files?.[0];
+                                if (f) handleCustomFileSelected(field.id, f);
+                              }}
+                            />
+                          )}
+                        </div>
+                      );
+                    }
 
-                  {/* Additional / Custom Fields */}
-                  {otherFields.length > 0 && (
-                    <div className="space-y-4 pt-2">
-                      {/* <h3 className="text-sm font-semibold text-foreground">Additional Information</h3> */}
-                      <div className="grid grid-cols-1 gap-4">
-                        {otherFields.map(field => (
-                          <FormField
-                            key={field.id}
-                            control={form.control}
-                            name={field.id}
-                            render={({ field: formField }) => (
-                              <FormItem>
-                                <FormLabel className="text-xs font-medium">
-                                  {field.label}
-                                  {field.required && <span className="text-destructive ml-1">*</span>}
-                                </FormLabel>
-                                <FormControl>
-                                            {field.type === 'textarea' ? (
-                                              <Textarea className="text-sm" placeholder={field.placeholder ?? `Enter ${field.label.toLowerCase()}`} rows={4} {...formField} />
-                                            ) : field.type === 'radio' ? (
-                                              <div className="space-y-2">
-                                                {((field as any).options || []).map((opt: string) => (
-                                                  <label key={opt} className="flex items-center gap-2 text-sm">
-                                                    <input
-                                                      type="radio"
-                                                      name={field.id}
-                                                      value={opt}
-                                                      checked={formField.value === opt}
-                                                      onChange={() => formField.onChange(opt)}
-                                                    />
-                                                    <span>{opt}</span>
-                                                  </label>
-                                                ))}
-                                              </div>
-                                            ) : field.type === 'checkbox' ? (
-                                              <div className="space-y-2">
-                                                {((field as any).options || []).length > 0 ? (
-                                                  // multi-select checkboxes
-                                                  ((field as any).options || []).map((opt: string) => (
-                                                    <label key={opt} className="flex items-center gap-2 text-sm">
-                                                      <input
-                                                        type="checkbox"
-                                                        name={`${field.id}.${opt}`}
-                                                        checked={Array.isArray(formField.value) && formField.value.includes(opt)}
-                                                        onChange={(e) => {
-                                                          const cur = Array.isArray(formField.value) ? [...formField.value] : [];
-                                                          if (e.target.checked) cur.push(opt); else {
-                                                            const idx = cur.indexOf(opt); if (idx > -1) cur.splice(idx, 1);
-                                                          }
-                                                          formField.onChange(cur);
-                                                        }}
-                                                      />
-                                                      <span>{opt}</span>
-                                                    </label>
-                                                  ))
-                                                ) : (
-                                                  // single boolean checkbox
-                                                  <label className="flex items-center gap-2 text-sm">
-                                                    <input type="checkbox" checked={Boolean(formField.value)} onChange={(e) => formField.onChange(e.target.checked)} />
-                                                    <span>{field.label}</span>
-                                                  </label>
-                                                )}
-                                              </div>
-                                            ) : (
-                                              <Input className="text-sm" placeholder={field.placeholder ?? `Enter ${field.label.toLowerCase()}`} {...formField} />
-                                            )}
-                                </FormControl>
-                                <FormMessage />
-                                {field.helpText && <p className="text-xs text-muted-foreground whitespace-pre-wrap">{field.helpText}</p>}
-                              </FormItem>
-                            )}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Uploads */}
-                  {fileFields.length > 0 && (
-                    <Uploads
-                      fileFields={fileFields}
-                      formConfig={formConfig}
-                      headshotPreview={headshotPreview}
-                      companyLogoPreview={companyLogoPreview}
-                      headshotInputRef={headshotInputRef}
-                      logoInputRef={logoInputRef}
-                      uploadingHeadshot={uploadingHeadshot}
-                      uploadingLogo={uploadingLogo}
-                      setCropImageUrl={setCropImageUrl}
-                      setCropType={setCropType}
-                      customFilePreviews={customFilePreviews}
-                      onCustomFileSelected={handleCustomFileSelected}
-                    />
-                  )}
-                  {/* Speaker content uploads (multiple) */}
-                  {formConfig.some(f => f.enabled && f.id === 'sample_content') && (
-                    <ContentUploads items={contentItems} setItems={setContentItems} readOnly={false} />
-                  )}
+                    return (
+                      <FormField
+                        key={field.id}
+                        control={form.control}
+                        name={field.id}
+                        render={({ field: formField }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs font-medium">
+                              {field.label}
+                              {field.required && <span className="text-destructive ml-1">*</span>}
+                            </FormLabel>
+                            <FormControl>
+                              {field.type === 'textarea' ? (
+                                <Textarea className="text-sm" placeholder={field.placeholder} rows={4} {...formField} />
+                              ) : field.type === 'radio' ? (
+                                <div className="space-y-2">
+                                  {((field as any).options || []).map((opt: string) => (
+                                    <label key={opt} className="flex items-center gap-2 text-sm">
+                                      <input type="radio" name={field.id} value={opt} checked={formField.value === opt} onChange={() => formField.onChange(opt)} />
+                                      <span>{opt}</span>
+                                    </label>
+                                  ))}
+                                </div>
+                              ) : field.type === 'checkbox' ? (
+                                <div className="space-y-2">
+                                  {((field as any).options || []).length > 0 ? (
+                                    ((field as any).options || []).map((opt: string) => (
+                                      <label key={opt} className="flex items-center gap-2 text-sm">
+                                        <input
+                                          type="checkbox"
+                                          name={`${field.id}.${opt}`}
+                                          checked={Array.isArray(formField.value) && formField.value.includes(opt)}
+                                          onChange={(e) => {
+                                            const cur = Array.isArray(formField.value) ? [...formField.value] : [];
+                                            if (e.target.checked) cur.push(opt); else { const idx = cur.indexOf(opt); if (idx > -1) cur.splice(idx, 1); }
+                                            formField.onChange(cur);
+                                          }}
+                                        />
+                                        <span>{opt}</span>
+                                      </label>
+                                    ))
+                                  ) : (
+                                    <label className="flex items-center gap-2 text-sm">
+                                      <input type="checkbox" checked={Boolean(formField.value)} onChange={(e) => formField.onChange(e.target.checked)} />
+                                      <span>{field.label}</span>
+                                    </label>
+                                  )}
+                                </div>
+                              ) : (
+                                <Input className="text-sm" placeholder={field.placeholder} {...formField} />
+                              )}
+                            </FormControl>
+                            <FormMessage />
+                            {field.helpText && <p className="text-xs text-muted-foreground whitespace-pre-wrap">{field.helpText}</p>}
+                          </FormItem>
+                        )}
+                      />
+                    );
+                  })}
                 </Form>
                 {/* Crop Dialog */}
                 {cropImageUrl && (
@@ -786,7 +753,7 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
                     cropShape={(() => {
                       // Default fallbacks
                       if (cropType === "headshot") {
-                        return (websiteConfig?.config?.headshot?.shape as any) ?? "circle";
+                        return (websiteConfig?.config?.headshot?.shape as any) ?? "square";
                       }
                       if (cropType === "logo") {
                         return (websiteConfig?.config?.companyLogo?.shape as any) ?? "square";
@@ -800,8 +767,8 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
                   <Button variant="ghost" type="button" onClick={() => navigate(-1)}>
                     Cancel
                   </Button>
-                  <Button type="submit" disabled={isSubmitting || Boolean(existingEmailError) || isCheckingExistingEmail}>
-                    {isSubmitting ? (isEditing ? "Updating…" : "Submitting…") : isCheckingExistingEmail ? "Checking email…" : isEditing ? "Update" : "Submit"}
+                  <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting ? (isEditing ? "Updating…" : "Submitting…") : isEditing ? "Update" : "Submit"}
                   </Button>
                 </div>
               </form>

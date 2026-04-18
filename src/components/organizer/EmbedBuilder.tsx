@@ -1,20 +1,70 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { API_BASE, getJson, updateSpeaker } from "@/lib/api";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Check, Copy, ExternalLink } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import { HelpTip } from "@/components/ui/HelpTip";
 
-export default function EmbedBuilder({ eventId }: { eventId: string | undefined }) {
+function ColPicker({ options, value, onChange, size = "sm" }: {
+  options: number[];
+  value: number;
+  onChange: (n: number) => void;
+  size?: "sm" | "md";
+}) {
+  const btnCls = size === "md" ? "h-8 w-10 text-sm" : "h-7 w-8 text-xs";
+  return (
+    <div className="flex rounded-md border border-border overflow-hidden">
+      {options.map(n => (
+        <button key={n} type="button" onClick={() => onChange(n)}
+          className={`${btnCls} font-medium transition-colors border-r border-border last:border-r-0 ${value === n ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}>
+          {n}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export default function EmbedBuilder({ eventId, onAddSpeaker }: { eventId: string | undefined; onAddSpeaker?: () => void }) {
   const queryClient = useQueryClient();
   const [copiedEmbed, setCopiedEmbed] = useState<"iframe" | "url" | null>(null);
   const [toggling, setToggling] = useState<string | null>(null);
-  const [desktopCols, setDesktopCols] = useState(2);
-  const [mobileCols, setMobileCols] = useState(1);
+
+  const colsKey = eventId ? `seamless-embed-cols-${eventId}` : null;
+  const setupKey = eventId ? `seamless-embed-setup-done-${eventId}` : null;
+
+  const readCols = (key: string | null) => {
+    if (!key) return { desktop: 2, mobile: 1 };
+    try {
+      const saved = localStorage.getItem(key);
+      if (saved) return JSON.parse(saved) as { desktop: number; mobile: number };
+    } catch {}
+    return { desktop: 2, mobile: 1 };
+  };
+
+  const [desktopCols, setDesktopCols] = useState(() => readCols(colsKey).desktop);
+  const [mobileCols, setMobileCols] = useState(() => readCols(colsKey).mobile);
+
+  useEffect(() => {
+    if (!colsKey) return;
+    try { localStorage.setItem(colsKey, JSON.stringify({ desktop: desktopCols, mobile: mobileCols })); } catch {}
+  }, [colsKey, desktopCols, mobileCols]);
+
+  const [setupOpen, setSetupOpen] = useState(false);
+  const [postSetupOpen, setPostSetupOpen] = useState(false);
+  const [setupDesktop, setSetupDesktop] = useState(() => readCols(colsKey).desktop);
+  const [setupMobile, setSetupMobile] = useState(() => readCols(colsKey).mobile);
+
+  useEffect(() => {
+    if (!setupKey) return;
+    try {
+      if (!localStorage.getItem(setupKey)) setSetupOpen(true);
+    } catch {}
+  }, [setupKey]);
 
   const { data: speakersData, isLoading } = useQuery<any>({
     queryKey: ["event", eventId, "speakers", "embed"],
@@ -75,31 +125,64 @@ export default function EmbedBuilder({ eventId }: { eventId: string | undefined 
     }
   };
 
+  const handleSetupDone = () => {
+    setDesktopCols(setupDesktop);
+    setMobileCols(setupMobile);
+    setSetupOpen(false);
+    if (setupKey) { try { localStorage.setItem(setupKey, "true"); } catch {} }
+    setPostSetupOpen(true);
+  };
+
   return (
     <div className="space-y-4 pt-6">
+      {/* First-visit setup modal */}
+      <Dialog open={setupOpen} onOpenChange={setSetupOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Set up your Speaker Wall</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">Choose how many speaker cards to show per row. You can adjust this any time from the toolbar above.</p>
+          <div className="space-y-4 py-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-foreground">Desktop columns</span>
+              <ColPicker options={[2, 3, 4]} value={setupDesktop} onChange={setSetupDesktop} size="md" />
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-foreground">Mobile columns</span>
+              <ColPicker options={[1, 2]} value={setupMobile} onChange={setSetupMobile} size="md" />
+            </div>
+          </div>
+          <Button className="w-full" onClick={handleSetupDone}>Save</Button>
+        </DialogContent>
+      </Dialog>
+
+      {/* Post-setup next-step dialog */}
+      <Dialog open={postSetupOpen} onOpenChange={setPostSetupOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Speaker Wall ready</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">Your column layout is saved. Ready to add your first speaker?</p>
+          <div className="flex gap-2 pt-1">
+            <Button onClick={() => { setPostSetupOpen(false); onAddSpeaker?.(); }}>
+              Add Speaker
+            </Button>
+            <Button variant="outline" onClick={() => setPostSetupOpen(false)}>
+              Done
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Toolbar */}
       <div className="flex items-center gap-4 flex-wrap">
         <div className="flex items-center gap-3">
           <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">Desktop</span>
-          <div className="flex rounded-md border border-border overflow-hidden">
-            {[2, 3, 4].map(n => (
-              <button key={n} onClick={() => setDesktopCols(n)}
-                className={`h-7 w-8 text-xs font-medium transition-colors border-r border-border last:border-r-0 ${desktopCols === n ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}>
-                {n}
-              </button>
-            ))}
-          </div>
+          <ColPicker options={[2, 3, 4]} value={desktopCols} onChange={setDesktopCols} />
         </div>
         <div className="flex items-center gap-3">
           <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">Mobile</span>
-          <div className="flex rounded-md border border-border overflow-hidden">
-            {[1, 2].map(n => (
-              <button key={n} onClick={() => setMobileCols(n)}
-                className={`h-7 w-8 text-xs font-medium transition-colors border-r border-border last:border-r-0 ${mobileCols === n ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}>
-                {n}
-              </button>
-            ))}
-          </div>
+          <ColPicker options={[1, 2]} value={mobileCols} onChange={setMobileCols} />
         </div>
         <div className="flex items-center gap-2 ml-auto">
           <Button variant="outline" size="sm" className="gap-1.5 h-8" onClick={() => window.open(embedUrl, "_blank", "noopener")}>

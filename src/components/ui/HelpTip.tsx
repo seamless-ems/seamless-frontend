@@ -29,7 +29,7 @@ export function HelpTip({
         {compact ? (
           <button
             type="button"
-            className="inline-flex items-center justify-center text-muted-foreground/50 hover:text-primary transition-colors rounded focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            className="inline-flex items-center justify-center text-muted-foreground/50 hover:text-muted-foreground transition-colors focus-visible:outline-none"
           >
             <HelpCircle className="h-3.5 w-3.5" />
           </button>

@@ -6,7 +6,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
 import {
 	Calendar,
 	MapPin,
@@ -54,7 +53,7 @@ const activeModules = [
 	{
 		id: "content",
 		name: "Content",
-		description: "Centralized hub for presentations and files",
+		description: "Centralized hub for all speaker content",
 		icon: FileText,
 		color: "content",
 	},
@@ -171,14 +170,6 @@ export default function CreateEvent() {
 	// 		}
 	// 	})();
 	// }, []);
-
-	const toggleModule = (moduleId: string) => {
-		setSelectedModules((prev) =>
-			prev.includes(moduleId)
-				? prev.filter((id) => id !== moduleId)
-				: [...prev, moduleId]
-		);
-	};
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -492,21 +483,15 @@ export default function CreateEvent() {
 						<div className="grid gap-3 grid-cols-2">
 							{activeModules.map((module) => {
 								const Icon = module.icon;
-								const isSelected = selectedModules.includes(module.id);
 								return (
 									<div
 										key={module.id}
-										className={cn(
-											"rounded-lg border p-3 transition-all duration-200 cursor-pointer",
-											isSelected ? "border-primary bg-primary/5" : "border-border hover:border-primary/30"
-										)}
-										onClick={() => toggleModule(module.id)}
+										className="rounded-lg border p-3 border-primary bg-primary/5"
 									>
 										<div className="flex items-center justify-between mb-2">
-											<div className={cn("flex h-8 w-8 items-center justify-center rounded", isSelected ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>
+											<div className="flex h-8 w-8 items-center justify-center rounded bg-primary text-primary-foreground">
 												<Icon className="h-4 w-4" />
 											</div>
-											<Switch checked={isSelected} />
 										</div>
 										<h4 className="font-medium text-foreground text-sm mb-1">{module.name}</h4>
 										<p className="text-xs text-muted-foreground">{module.description}</p>

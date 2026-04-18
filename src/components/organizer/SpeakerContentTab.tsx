@@ -264,12 +264,12 @@ export default function SpeakerContentTab({ eventId, speakerId, showApprovals = 
         </p>
         <div className="flex items-center gap-2">
           {activeItems.length > 0 && (
-            <Button variant="outline" size="sm" className="gap-1.5" onClick={handleDownloadAll}>
-              <Download className="h-3.5 w-3.5" />Download all
+            <Button variant="outline" size="sm" title="Download all" onClick={handleDownloadAll}>
+              <Download className="h-4 w-4" />
             </Button>
           )}
-          <Button size="sm" className="gap-1.5" onClick={() => { if (!readOnly) setUploadOpen(true); }} disabled={readOnly}>
-            <Plus className="h-3.5 w-3.5" />Upload file
+          <Button size="sm" title="Upload file" onClick={() => { if (!readOnly) setUploadOpen(true); }} disabled={readOnly}>
+            <Upload className="h-4 w-4" />
           </Button>
         </div>
       </div>

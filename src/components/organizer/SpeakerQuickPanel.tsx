@@ -157,32 +157,23 @@ export default function SpeakerQuickPanel({ speaker, eventId, view, onClose }: P
     </Dialog>
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-secondary/20 shrink-0">
-        <Avatar className="h-8 w-8 shrink-0">
-          <AvatarImage src={headshotUrl ?? undefined} alt={speakerName} />
-          <AvatarFallback className="text-xs">{initials}</AvatarFallback>
-        </Avatar>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-foreground leading-tight truncate">{speakerName}</p>
-          {(speaker.companyRole || speaker.company) && (
-            <p className="text-xs text-muted-foreground leading-tight truncate">
-              {[speaker.companyRole, speaker.company].filter(Boolean).join(' · ')}
-            </p>
-          )}
-        </div>
+      <div className="flex items-center gap-2 px-4 py-2 border-b border-border shrink-0">
+        <span className="text-xs font-medium text-muted-foreground flex-1">
+          {currentView === 'social-card' ? 'Social Card' : 'Speaker Card'}
+        </span>
         <Link
           to={`/organizer/event/${eventId}/speakers/${speaker.id}`}
           className="text-muted-foreground/40 hover:text-primary transition-colors"
           title="Open full profile"
         >
-          <ArrowUpRight className="h-4 w-4" />
+          <ArrowUpRight className="h-3.5 w-3.5" />
         </Link>
         <button
           onClick={onClose}
           className="text-muted-foreground/40 hover:text-foreground transition-colors rounded p-0.5 hover:bg-muted"
           title="Close panel"
         >
-          <X className="h-4 w-4" />
+          <X className="h-3.5 w-3.5" />
         </button>
       </div>
 

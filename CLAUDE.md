@@ -63,6 +63,7 @@ Use these exact terms everywhere (UI labels, tooltips, dialogs, HelpTips, copy):
   - **Never** use `ChevronLeft` for back-navigation; always `ArrowLeft`
 - **Unsaved changes:** any page/overlay where the user edits must guard navigation with `useWarnOnLeave(isDirty)` (beforeunload) and `UnsavedChangesDialog` (Save / Discard / Keep editing). `useBlocker` from react-router does NOT work — app uses `<BrowserRouter>`, not a data router.
 - **Commits & pushes:** never. James handles all git operations. No `git commit`, `git push`, `git rebase --continue`, or `git status` unless explicitly asked. The only exception is `git stash` if James asks to stash local changes.
+- **Icon-only buttons:** Upload, Download, and similar utility actions use icon only — no label. Use `title="…"` for tooltip. Clean up any icon+label pairs on sight. Applies to toolbar buttons and inline actions; dropdown menu items may keep labels.
 
 ---
 
@@ -72,31 +73,6 @@ Use these exact terms everywhere (UI labels, tooltips, dialogs, HelpTips, copy):
 - Add background toggle: transparent vs white (affects the copied iframe snippet)
 - Settings become query params on the embed URL (`?cols=3&cols_mobile=1`)
 - **Check `openapi.json` first** — verify `/embed/:eventId` supports these params before building; log gaps to `API_GAPS.md`
-
----
-
-## Current priority
-**SpeakerPortal — 3-column dashboard** (`src/pages/organizer/SpeakerPortal.tsx`)
-
-Replace the 4-tab layout with a full-width 3-column dashboard for non-application speakers. Applications keep the existing simple info-only view.
-
-**Layout**:
-- Sticky `h-14` header unchanged (back button, wordmark, name, app approve/reject actions)
-- Remove tab bar for non-application speakers
-- Body: `grid grid-cols-[30%_35%_35%] gap-4 px-4 py-4`
-  - **Col 1** — Info card (existing info content + edit button) stacked above `SpeakerContentTab`
-  - **Col 2** — Speaker Card: status badge + approve/unapprove/approve+publish + share buttons, then scaled preview
-  - **Col 3** — Social Card: status badge + approve/unapprove + share buttons, then scaled preview
-
-**Card preview scaling**:
-- Wrap `SpeakerPreviews` in a `ResizeObserver`-driven container
-- Native widths: website = 600px, social = 1080px
-- `scale = containerWidth / nativeWidth` (capped at 1)
-- Outer container: `overflow: hidden`, height = `nativeWidth × scale` (assumes square; adjust if portrait/landscape)
-- Inner wrapper: `width: {nativeWidth}px`, `transform: scale({scale})`, `transformOrigin: top left`
-- No "Edit template" button anywhere on this page — editing is event-level, done from the card builder
-
-**Application speakers**: keep existing tab-based approach (info tab only, approve/reject in header).
 
 ---
 

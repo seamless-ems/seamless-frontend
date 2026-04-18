@@ -3,16 +3,17 @@ import { useQuery } from "@tanstack/react-query";
 import { getJson } from "@/lib/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import SpeakerFormBuilder, { type SpeakerFormBuilderHandle } from "@/components/SpeakerFormBuilder";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { ArrowLeft, Copy, MoreVertical } from "lucide-react";
-import { Check } from "lucide-react";
+import { ArrowLeft, Copy, MoreVertical, Check } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 export default function FormsTab({ eventId }: { eventId: string | undefined }) {
   const [editingForm, setEditingForm] = useState<string | null>(null);
   const [copiedForm, setCopiedForm] = useState<string | null>(null);
-  const [copiedHeader, setCopiedHeader] = useState(false);
+  const [formSaved, setFormSaved] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
   const formBuilderRef = useRef<SpeakerFormBuilderHandle>(null);
 
   const { data: eventData } = useQuery<any>({
@@ -80,17 +81,6 @@ export default function FormsTab({ eventId }: { eventId: string | undefined }) {
     setTimeout(() => setCopiedForm(null), 2000);
   };
 
-  const handleCopyFormLink = () => {
-    const form = forms.find(f => f.id === editingForm);
-    if (!form) return;
-    const formType = form.type === "Speaker Information Form" ? "speaker-intake" : "call-for-speakers";
-    const url = `${window.location.origin}/${formType}/${eventId}`;
-    navigator.clipboard.writeText(url);
-    setCopiedHeader(true);
-    toast({ title: "Link copied to clipboard!" });
-    setTimeout(() => setCopiedHeader(false), 2000);
-  };
-
   if (editingForm) {
     const editingFormData = forms.find(f => f.id === editingForm);
     return (
@@ -98,7 +88,7 @@ export default function FormsTab({ eventId }: { eventId: string | undefined }) {
         {/* Standard sub-page header */}
         <header className="sticky top-0 z-30 h-14 flex items-center gap-3 border-b border-border bg-card/95 px-4 shrink-0">
           <button
-            onClick={() => setEditingForm(null)}
+            onClick={() => { setEditingForm(null); setFormSaved(false); }}
             className="flex items-center justify-center h-8 w-8 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -122,7 +112,7 @@ export default function FormsTab({ eventId }: { eventId: string | undefined }) {
           </div>
         </header>
         <div className="flex-1 overflow-y-auto">
-          <div className="max-w-6xl mx-auto px-6 py-6">
+          <div className="max-w-[1400px] mx-auto px-8 py-6">
             <SpeakerFormBuilder
               ref={formBuilderRef}
               eventId={eventId}
@@ -130,10 +120,62 @@ export default function FormsTab({ eventId }: { eventId: string | undefined }) {
               formName={editingFormData?.name}
               eventName={eventName}
               onBack={() => setEditingForm(null)}
-              onSave={() => setEditingForm(null)}
+              onSave={() => setFormSaved(true)}
             />
           </div>
         </div>
+
+        {/* Post-save dialog */}
+        <Dialog open={formSaved} onOpenChange={(v) => { if (!v) setFormSaved(false); }}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Form saved</DialogTitle>
+            </DialogHeader>
+            {editingForm === "call-for-speakers" ? (
+              <>
+                <p className="text-sm text-muted-foreground">Your application form is ready. Share the link with potential speakers.</p>
+                <div className="flex gap-2 pt-2">
+                  <Button
+                    className="flex-1"
+                    onClick={() => {
+                      const url = `${window.location.origin}/call-for-speakers/${eventId}`;
+                      navigator.clipboard.writeText(url);
+                      setCopiedLink(true);
+                      toast({ title: "Link copied!" });
+                      setTimeout(() => setCopiedLink(false), 2000);
+                    }}
+                  >
+                    {copiedLink ? <><Check className="h-4 w-4 mr-2" />Copied</> : <><Copy className="h-4 w-4 mr-2" />Copy form link</>}
+                  </Button>
+                  <Button variant="outline" onClick={() => { setFormSaved(false); setEditingForm(null); }}>
+                    Done
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-muted-foreground">Your intake form is ready. Copy the link to share with speakers.</p>
+                <div className="flex gap-2 pt-2">
+                  <Button
+                    className="flex-1"
+                    onClick={() => {
+                      const url = `${window.location.origin}/speaker-intake/${eventId}`;
+                      navigator.clipboard.writeText(url);
+                      setCopiedLink(true);
+                      toast({ title: "Link copied!" });
+                      setTimeout(() => setCopiedLink(false), 2000);
+                    }}
+                  >
+                    {copiedLink ? <><Check className="h-4 w-4 mr-2" />Copied</> : <><Copy className="h-4 w-4 mr-2" />Copy form link</>}
+                  </Button>
+                  <Button variant="outline" onClick={() => { setFormSaved(false); setEditingForm(null); }}>
+                    Done
+                  </Button>
+                </div>
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }
@@ -160,7 +202,7 @@ export default function FormsTab({ eventId }: { eventId: string | undefined }) {
                       </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => setEditingForm(form.id)}>
+                      <DropdownMenuItem onClick={() => { setEditingForm(form.id); setFormSaved(false); }}>
                         Edit
                       </DropdownMenuItem>
                       <DropdownMenuItem>Duplicate</DropdownMenuItem>
@@ -186,7 +228,7 @@ export default function FormsTab({ eventId }: { eventId: string | undefined }) {
                 </div>
 
                 <div className="flex gap-2 pt-2">
-                  <Button variant="outline" size="sm" className="flex-1" onClick={() => setEditingForm(form.id)}>
+                  <Button variant="outline" size="sm" className="flex-1" onClick={() => { setEditingForm(form.id); setFormSaved(false); }}>
                     Edit Form
                   </Button>
                   <Button 

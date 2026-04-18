@@ -11,7 +11,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import { Calendar, FileText, Mail, Mic2, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -27,7 +26,7 @@ const activeModules = [
   {
     id: "content",
     name: "Content",
-    description: "Centralized hub for presentations and files",
+    description: "Centralized hub for all speaker content",
     icon: FileText,
     color: "content",
   },
@@ -80,7 +79,7 @@ export default function EventSettings() {
     emailSignature: "",
   });
 
-  const [selectedModules, setSelectedModules] = useState<string[]>(["speaker"]);
+  const [selectedModules, setSelectedModules] = useState<string[]>(["speaker", "content"]);
   const { data: teams } = useQuery<any[]>({ queryKey: ["teams"], queryFn: () => getTeam() });
   const [selectedTeamId, setSelectedTeamId] = useState<string | undefined>(undefined);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -327,15 +326,11 @@ export default function EventSettings() {
                   return (
                     <div
                       key={module.id}
-                      className={cn("rounded-lg border p-3 transition-all duration-200 cursor-pointer", isSelected ? "border-primary bg-primary/5" : "border-border hover:border-primary/30")}
-                      onClick={() => toggleModule(module.id)}
+                      className="rounded-lg border p-3 border-primary bg-primary/5"
                     >
                       <div className="flex items-center justify-between mb-2">
-                        <div className={cn("flex h-8 w-8 items-center justify-center rounded", isSelected ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>
+                        <div className="flex h-8 w-8 items-center justify-center rounded bg-primary text-primary-foreground">
                           <Icon className="h-4 w-4" />
-                        </div>
-                        <div onClick={(e) => e.stopPropagation()}>
-                          <Switch checked={isSelected} onCheckedChange={() => toggleModule(module.id)} />
                         </div>
                       </div>
                       <h4 className="font-medium text-foreground text-sm mb-1">{module.name}</h4>

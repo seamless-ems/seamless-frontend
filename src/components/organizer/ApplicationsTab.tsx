@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getJson, getFormConfigForEvent, updateSpeaker } from "@/lib/api";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,8 +14,22 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "@/hooks/use-toast";
-import { Check, ChevronRight, Copy, FileEdit, MoreVertical, Search, Share2 } from "lucide-react";
+import { Check, ChevronRight, Copy, FileEdit, MoreVertical, Search } from "lucide-react";
 import { HelpTip } from "@/components/ui/HelpTip";
+
+type EmailDraft = {
+  speaker: any;
+  subject: string;
+  body: string;
+  signOff?: string;
+  ctaLabel?: string;
+  fromName: string;
+  fromEmail: string;
+  copied: boolean;
+};
+
+const EMAIL_HEADER_ROW = "flex items-center gap-3 border-b border-border/50 py-2";
+const EMAIL_HEADER_LABEL = "text-xs font-medium text-muted-foreground w-16 shrink-0";
 
 function buildRejectionEmail(firstName: string, eventName: string) {
   return {
@@ -91,6 +104,125 @@ function formatDate(dateStr: string | null | undefined) {
   }
 }
 
+function EmailComposer({
+  draft,
+  title,
+  intakeUrl,
+  onClose,
+  onDraftChange,
+}: {
+  draft: EmailDraft;
+  title: string;
+  intakeUrl?: string;
+  onClose: () => void;
+  onDraftChange: (patch: Partial<EmailDraft>) => void;
+}) {
+  const handleCopy = async () => {
+    const html = buildEmailHtml(draft.speaker.firstName, draft.body, intakeUrl ?? "", draft.ctaLabel, draft.signOff);
+    const from = [draft.fromName, draft.fromEmail ? `<${draft.fromEmail}>` : ""].filter(Boolean).join(" ");
+    const ctaLine = draft.ctaLabel && intakeUrl ? `\n\n${draft.ctaLabel}:\n${intakeUrl}` : "";
+    const plain = `${from ? `From: ${from}\n` : ""}To: ${draft.speaker.email}\nSubject: ${draft.subject}\n\nHi ${draft.speaker.firstName},\n\n${draft.body}${ctaLine}${draft.signOff ? `\n\n${draft.signOff}` : ""}`;
+    try {
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          "text/html": new Blob([html], { type: "text/html" }),
+          "text/plain": new Blob([plain], { type: "text/plain" }),
+        }),
+      ]);
+    } catch {
+      await navigator.clipboard.writeText(plain);
+    }
+    onDraftChange({ copied: true });
+    setTimeout(() => onDraftChange({ copied: false }), 2000);
+  };
+
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-3xl flex flex-col max-h-[90vh]">
+        <DialogHeader className="shrink-0">
+          <DialogTitle>{title}</DialogTitle>
+        </DialogHeader>
+        <div className="overflow-y-auto flex-1 space-y-0 pt-1">
+          <div className="rounded-t-lg border border-border bg-muted/20 px-4">
+            <div className={EMAIL_HEADER_ROW}>
+              <span className={EMAIL_HEADER_LABEL}>From</span>
+              <Input
+                value={draft.fromName}
+                onChange={(e) => { localStorage.setItem("seamless-email-from-name", e.target.value); onDraftChange({ fromName: e.target.value }); }}
+                placeholder="Your name or team"
+                className="h-8 text-sm border-0 shadow-none p-0 focus-visible:ring-0 bg-transparent flex-1"
+              />
+              <Input
+                type="email"
+                value={draft.fromEmail}
+                onChange={(e) => { localStorage.setItem("seamless-email-from-email", e.target.value); onDraftChange({ fromEmail: e.target.value }); }}
+                placeholder="you@yourorg.com"
+                className="h-8 text-sm border-0 shadow-none p-0 focus-visible:ring-0 bg-transparent w-48"
+              />
+            </div>
+            <div className={EMAIL_HEADER_ROW}>
+              <span className={EMAIL_HEADER_LABEL}>To</span>
+              <span className="text-sm text-foreground">{draft.speaker.email}</span>
+            </div>
+            <div className={`${EMAIL_HEADER_ROW} border-b-0`}>
+              <span className={EMAIL_HEADER_LABEL}>Subject</span>
+              <Input
+                value={draft.subject}
+                onChange={(e) => onDraftChange({ subject: e.target.value })}
+                className="h-8 text-sm border-0 shadow-none p-0 focus-visible:ring-0 bg-transparent flex-1"
+              />
+            </div>
+          </div>
+          <div className="rounded-b-lg border border-t-0 border-border bg-white px-8 pt-6 pb-4 space-y-4">
+            <p className="text-sm text-gray-700">Hi {draft.speaker.firstName},</p>
+            <Textarea
+              value={draft.body}
+              rows={10}
+              onChange={(e) => {
+                onDraftChange({ body: e.target.value });
+                e.currentTarget.style.height = "auto";
+                e.currentTarget.style.height = e.currentTarget.scrollHeight + "px";
+              }}
+              className="text-sm resize-none overflow-hidden border border-dashed border-border/60 bg-transparent shadow-none leading-relaxed focus-visible:border-primary/40"
+            />
+            {draft.ctaLabel && intakeUrl && (
+              <div className="py-1">
+                <span style={{ display: "inline-block", background: "#4F46E5", color: "#fff", fontSize: 14, fontWeight: 600, padding: "11px 22px", borderRadius: 6, cursor: "default" }}>
+                  {draft.ctaLabel}
+                </span>
+              </div>
+            )}
+            {draft.signOff !== undefined && (
+              <Textarea
+                value={draft.signOff}
+                rows={2}
+                onChange={(e) => {
+                  onDraftChange({ signOff: e.target.value });
+                  e.currentTarget.style.height = "auto";
+                  e.currentTarget.style.height = e.currentTarget.scrollHeight + "px";
+                }}
+                className="text-sm resize-none overflow-hidden border border-dashed border-border/60 bg-transparent shadow-none leading-relaxed focus-visible:border-primary/40"
+              />
+            )}
+            <div className="border-t border-gray-100 pt-3 text-center">
+              <span className="text-[11px] text-gray-400">Powered by <span className="font-medium">Seamless Events</span></span>
+            </div>
+          </div>
+        </div>
+        <div className="flex gap-2 pt-1 shrink-0">
+          <Button variant="outline" className="flex-1" onClick={handleCopy}>
+            {draft.copied ? <><Check className="h-3.5 w-3.5 mr-1.5" />Copied</> : <><Copy className="h-3.5 w-3.5 mr-1.5" />Copy Email</>}
+          </Button>
+          {!draft.ctaLabel && (
+            <Button variant="outline" onClick={onClose}>Skip</Button>
+          )}
+          <Button onClick={onClose}>Send</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function ApplicationsTab({ eventId, eventName = "", emailDefaults, onEditForm, onCopyFormLink, copiedLink }: {
   eventId: string | undefined;
   eventName?: string;
@@ -104,16 +236,6 @@ export default function ApplicationsTab({ eventId, eventName = "", emailDefaults
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "submitted" | "approved" | "rejected">("all");
   const [approvingId, setApprovingId] = useState<string | null>(null);
 
-  type EmailDraft = {
-    speaker: any;
-    subject: string;
-    body: string;
-    signOff?: string;
-    ctaLabel?: string;
-    fromName: string;
-    fromEmail: string;
-    copied: boolean;
-  };
   const [approvalEmail, setApprovalEmail] = useState<EmailDraft | null>(null);
   const [rejectionEmail, setRejectionEmail] = useState<EmailDraft | null>(null);
 
@@ -304,23 +426,7 @@ export default function ApplicationsTab({ eventId, eventName = "", emailDefaults
           <Button variant="outline" size="sm" className="gap-1.5" onClick={onCopyFormLink}>
             {copiedLink ? <><Check className="h-3.5 w-3.5" />Copied</> : <><Copy className="h-3.5 w-3.5" />Copy Link</>}
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-1.5"
-            onClick={async () => {
-              const url = `${window.location.origin}/call-for-speakers/${eventId}`;
-              if (navigator.share) {
-                try { await navigator.share({ title: "Call for Speakers", url }); } catch {}
-              } else {
-                await navigator.clipboard.writeText(url);
-                toast({ title: "Application link copied" });
-              }
-            }}
-          >
-            <Share2 className="h-3.5 w-3.5" />Share
-          </Button>
-          <HelpTip title="Call for Speakers" side="bottom" align="end">
+          <HelpTip title="Call for Speakers" side="bottom" align="end" compact>
             <p>Share the form link so speakers can apply. Approve to move them to your <span className="font-medium text-foreground">Speakers</span> tab; reject to dismiss (optional rejection email included).</p>
           </HelpTip>
         </div>
@@ -338,7 +444,6 @@ export default function ApplicationsTab({ eventId, eventName = "", emailDefaults
           <table className="w-full">
             <thead className="border-b border-border bg-secondary/30">
               <tr>
-                {showHeadshot && <th className="px-5 py-4 text-left text-xs font-medium text-muted-foreground w-[68px]"></th>}
                 <th className="px-5 py-4 text-left text-xs font-medium text-muted-foreground">Applicant</th>
                 {showEmail && <th className="px-5 py-4 text-left text-xs font-medium text-muted-foreground">Email</th>}
                 {showCompany && <th className="px-5 py-4 text-left text-xs font-medium text-muted-foreground">Company</th>}
@@ -366,31 +471,33 @@ export default function ApplicationsTab({ eventId, eventName = "", emailDefaults
                     key={applicant.id}
                     className="border-b border-border hover:bg-muted/40 transition-colors group"
                   >
-                    {showHeadshot && (
-                      <td className="px-5 py-4">
-                        <Avatar className="h-10 w-10">
-                          <AvatarImage src={applicant.avatarUrl ?? undefined} alt={applicant.name} />
-                          <AvatarFallback className="text-xs">{initials}</AvatarFallback>
-                        </Avatar>
-                      </td>
-                    )}
-
-                    {/* Name */}
+                    {/* Name + inline avatar */}
                     <td className="px-5 py-4">
-                      <div
-                        className="flex items-center gap-1 cursor-pointer group/name"
-                        onClick={() => window.location.href = `/organizer/event/${eventId}/speakers/${applicant.id}`}
-                      >
-                        <span className="text-sm font-semibold text-foreground group-hover/name:text-primary transition-colors leading-tight">
-                          {applicant.name}
-                        </span>
-                        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30 group-hover/name:text-muted-foreground/70 transition-colors flex-shrink-0" />
-                      </div>
-                      {showRole && applicant.companyRole && (
-                        <div className="text-xs text-muted-foreground mt-0.5 leading-tight">
-                          {applicant.companyRole}
+                      <div className="flex items-center gap-2">
+                        {applicant.avatarUrl ? (
+                          <img src={applicant.avatarUrl} alt="" className="h-7 w-7 rounded-md object-cover shrink-0" />
+                        ) : (
+                          <div className="h-7 w-7 rounded-md bg-muted flex items-center justify-center text-xs font-medium text-muted-foreground shrink-0">
+                            {(applicant.name || "S")[0].toUpperCase()}
+                          </div>
+                        )}
+                        <div>
+                          <div
+                            className="flex items-center gap-1 cursor-pointer group/name"
+                            onClick={() => window.location.href = `/organizer/event/${eventId}/speakers/${applicant.id}`}
+                          >
+                            <span className="text-sm font-semibold text-foreground group-hover/name:text-primary transition-colors leading-tight">
+                              {applicant.name}
+                            </span>
+                            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30 group-hover/name:text-muted-foreground/70 transition-colors flex-shrink-0" />
+                          </div>
+                          {showRole && applicant.companyRole && (
+                            <div className="text-xs text-muted-foreground mt-0.5 leading-tight">
+                              {applicant.companyRole}
+                            </div>
+                          )}
                         </div>
-                      )}
+                      </div>
                     </td>
 
                     {showEmail && (
@@ -492,216 +599,24 @@ export default function ApplicationsTab({ eventId, eventName = "", emailDefaults
         )}
       </div>
 
-      {/* Approval email dialog */}
-      {approvalEmail && (() => {
-        const intakeUrl = `${window.location.origin}/speaker-intake/${eventId}`;
-        const headerRowCls = "flex items-center gap-3 border-b border-border/50 py-2";
-        const headerLabelCls = "text-xs font-medium text-muted-foreground w-16 shrink-0";
+      {approvalEmail && (
+        <EmailComposer
+          draft={approvalEmail}
+          title={`Send congratulations to ${approvalEmail.speaker.firstName}`}
+          intakeUrl={`${window.location.origin}/speaker-intake/${eventId}`}
+          onClose={() => setApprovalEmail(null)}
+          onDraftChange={(patch) => setApprovalEmail(e => e ? { ...e, ...patch } : null)}
+        />
+      )}
 
-        const handleCopy = async () => {
-          const html = buildEmailHtml(approvalEmail.speaker.firstName, approvalEmail.body, intakeUrl, approvalEmail.ctaLabel, approvalEmail.signOff);
-          const from = [approvalEmail.fromName, approvalEmail.fromEmail ? `<${approvalEmail.fromEmail}>` : ""].filter(Boolean).join(" ");
-          const plain = `${from ? `From: ${from}\n` : ""}To: ${approvalEmail.speaker.email}\nSubject: ${approvalEmail.subject}\n\nHi ${approvalEmail.speaker.firstName},\n\n${approvalEmail.body}\n\n${approvalEmail.ctaLabel}:\n${intakeUrl}${approvalEmail.signOff ? `\n\n${approvalEmail.signOff}` : ""}`;
-          try {
-            await navigator.clipboard.write([
-              new ClipboardItem({
-                "text/html": new Blob([html], { type: "text/html" }),
-                "text/plain": new Blob([plain], { type: "text/plain" }),
-              }),
-            ]);
-          } catch {
-            await navigator.clipboard.writeText(plain);
-          }
-          setApprovalEmail((e) => e ? { ...e, copied: true } : null);
-          setTimeout(() => setApprovalEmail((e) => e ? { ...e, copied: false } : null), 2000);
-        };
-
-        return (
-          <Dialog open onOpenChange={() => setApprovalEmail(null)}>
-            <DialogContent className="sm:max-w-3xl flex flex-col max-h-[90vh]">
-              <DialogHeader className="shrink-0">
-                <DialogTitle>Send congratulations to {approvalEmail.speaker.firstName}</DialogTitle>
-              </DialogHeader>
-
-              <div className="overflow-y-auto flex-1 space-y-0 pt-1">
-                {/* Email header */}
-                <div className="rounded-t-lg border border-border bg-muted/20 px-4">
-                  <div className={headerRowCls}>
-                    <span className={headerLabelCls}>From</span>
-                    <Input
-                      value={approvalEmail.fromName}
-                      onChange={(e) => { localStorage.setItem("seamless-email-from-name", e.target.value); setApprovalEmail((s) => s ? { ...s, fromName: e.target.value } : null); }}
-                      placeholder="Your name or team"
-                      className="h-8 text-sm border-0 shadow-none p-0 focus-visible:ring-0 bg-transparent flex-1"
-                    />
-                    <Input
-                      type="email"
-                      value={approvalEmail.fromEmail}
-                      onChange={(e) => { localStorage.setItem("seamless-email-from-email", e.target.value); setApprovalEmail((s) => s ? { ...s, fromEmail: e.target.value } : null); }}
-                      placeholder="you@yourorg.com"
-                      className="h-8 text-sm border-0 shadow-none p-0 focus-visible:ring-0 bg-transparent w-48"
-                    />
-                  </div>
-                  <div className={headerRowCls}>
-                    <span className={headerLabelCls}>To</span>
-                    <span className="text-sm text-foreground">{approvalEmail.speaker.email}</span>
-                  </div>
-                  <div className={`${headerRowCls} border-b-0`}>
-                    <span className={headerLabelCls}>Subject</span>
-                    <Input
-                      value={approvalEmail.subject}
-                      onChange={(e) => setApprovalEmail((s) => s ? { ...s, subject: e.target.value } : null)}
-                      className="h-8 text-sm border-0 shadow-none p-0 focus-visible:ring-0 bg-transparent flex-1"
-                    />
-                  </div>
-                </div>
-
-                {/* Email body */}
-                <div className="rounded-b-lg border border-t-0 border-border bg-white px-8 pt-6 pb-4 space-y-4">
-                  <p className="text-sm text-gray-700">Hi {approvalEmail.speaker.firstName},</p>
-
-                  <Textarea
-                    value={approvalEmail.body}
-                    rows={10}
-                    onChange={(e) => {
-                      setApprovalEmail((s) => s ? { ...s, body: e.target.value } : null);
-                      e.currentTarget.style.height = "auto";
-                      e.currentTarget.style.height = e.currentTarget.scrollHeight + "px";
-                    }}
-                    className="text-sm resize-none overflow-hidden border border-dashed border-border/60 bg-transparent shadow-none leading-relaxed focus-visible:border-primary/40"
-                  />
-
-                  <div className="py-1">
-                    <span style={{ display: "inline-block", background: "#4F46E5", color: "#fff", fontSize: 14, fontWeight: 600, padding: "11px 22px", borderRadius: 6, cursor: "default" }}>
-                      {approvalEmail.ctaLabel}
-                    </span>
-                  </div>
-
-                  {approvalEmail.signOff !== undefined && (
-                    <Textarea
-                      value={approvalEmail.signOff}
-                      rows={2}
-                      onChange={(e) => {
-                        setApprovalEmail((s) => s ? { ...s, signOff: e.target.value } : null);
-                        e.currentTarget.style.height = "auto";
-                        e.currentTarget.style.height = e.currentTarget.scrollHeight + "px";
-                      }}
-                      className="text-sm resize-none overflow-hidden border border-dashed border-border/60 bg-transparent shadow-none leading-relaxed focus-visible:border-primary/40"
-                    />
-                  )}
-
-                  <div className="border-t border-gray-100 pt-3 text-center">
-                    <span className="text-[11px] text-gray-400">Powered by <span className="font-medium">Seamless Events</span></span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex gap-2 pt-1 shrink-0">
-                <Button variant="outline" className="flex-1" onClick={handleCopy}>
-                  {approvalEmail.copied
-                    ? <><Check className="h-3.5 w-3.5 mr-1.5" />Copied</>
-                    : <><Copy className="h-3.5 w-3.5 mr-1.5" />Copy Email</>}
-                </Button>
-                <Button onClick={() => setApprovalEmail(null)}>Send</Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-        );
-      })()}
-
-      {/* Rejection email dialog */}
-      {rejectionEmail && (() => {
-        const headerRowCls = "flex items-center gap-3 border-b border-border/50 py-2";
-        const headerLabelCls = "text-xs font-medium text-muted-foreground w-16 shrink-0";
-
-        const handleCopy = async () => {
-          const html = buildEmailHtml(rejectionEmail.speaker.firstName, rejectionEmail.body, "", undefined);
-          const from = [rejectionEmail.fromName, rejectionEmail.fromEmail ? `<${rejectionEmail.fromEmail}>` : ""].filter(Boolean).join(" ");
-          const plain = `${from ? `From: ${from}\n` : ""}To: ${rejectionEmail.speaker.email}\nSubject: ${rejectionEmail.subject}\n\nHi ${rejectionEmail.speaker.firstName},\n\n${rejectionEmail.body}`;
-          try {
-            await navigator.clipboard.write([
-              new ClipboardItem({
-                "text/html": new Blob([html], { type: "text/html" }),
-                "text/plain": new Blob([plain], { type: "text/plain" }),
-              }),
-            ]);
-          } catch {
-            await navigator.clipboard.writeText(plain);
-          }
-          setRejectionEmail((e) => e ? { ...e, copied: true } : null);
-          setTimeout(() => setRejectionEmail((e) => e ? { ...e, copied: false } : null), 2000);
-        };
-
-        return (
-          <Dialog open onOpenChange={() => setRejectionEmail(null)}>
-            <DialogContent className="sm:max-w-3xl flex flex-col max-h-[90vh]">
-              <DialogHeader className="shrink-0">
-                <DialogTitle>Let {rejectionEmail.speaker.firstName} know</DialogTitle>
-              </DialogHeader>
-
-              <div className="overflow-y-auto flex-1 space-y-0 pt-1">
-                <div className="rounded-t-lg border border-border bg-muted/20 px-4">
-                  <div className={headerRowCls}>
-                    <span className={headerLabelCls}>From</span>
-                    <Input
-                      value={rejectionEmail.fromName}
-                      onChange={(e) => { localStorage.setItem("seamless-email-from-name", e.target.value); setRejectionEmail((s) => s ? { ...s, fromName: e.target.value } : null); }}
-                      placeholder="Your name or team"
-                      className="h-8 text-sm border-0 shadow-none p-0 focus-visible:ring-0 bg-transparent flex-1"
-                    />
-                    <Input
-                      type="email"
-                      value={rejectionEmail.fromEmail}
-                      onChange={(e) => { localStorage.setItem("seamless-email-from-email", e.target.value); setRejectionEmail((s) => s ? { ...s, fromEmail: e.target.value } : null); }}
-                      placeholder="you@yourorg.com"
-                      className="h-8 text-sm border-0 shadow-none p-0 focus-visible:ring-0 bg-transparent w-48"
-                    />
-                  </div>
-                  <div className={headerRowCls}>
-                    <span className={headerLabelCls}>To</span>
-                    <span className="text-sm text-foreground">{rejectionEmail.speaker.email}</span>
-                  </div>
-                  <div className={`${headerRowCls} border-b-0`}>
-                    <span className={headerLabelCls}>Subject</span>
-                    <Input
-                      value={rejectionEmail.subject}
-                      onChange={(e) => setRejectionEmail((s) => s ? { ...s, subject: e.target.value } : null)}
-                      className="h-8 text-sm border-0 shadow-none p-0 focus-visible:ring-0 bg-transparent flex-1"
-                    />
-                  </div>
-                </div>
-
-                <div className="rounded-b-lg border border-t-0 border-border bg-white px-8 pt-6 pb-4 space-y-4">
-                  <p className="text-sm text-gray-700">Hi {rejectionEmail.speaker.firstName},</p>
-                  <Textarea
-                    value={rejectionEmail.body}
-                    rows={10}
-                    onChange={(e) => {
-                      setRejectionEmail((s) => s ? { ...s, body: e.target.value } : null);
-                      e.currentTarget.style.height = "auto";
-                      e.currentTarget.style.height = e.currentTarget.scrollHeight + "px";
-                    }}
-                    className="text-sm resize-none overflow-hidden border border-dashed border-border/60 bg-transparent shadow-none leading-relaxed focus-visible:border-primary/40"
-                  />
-                  <div className="border-t border-gray-100 pt-3 text-center">
-                    <span className="text-[11px] text-gray-400">Powered by <span className="font-medium">Seamless Events</span></span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex gap-2 pt-1 shrink-0">
-                <Button variant="outline" className="flex-1" onClick={handleCopy}>
-                  {rejectionEmail.copied
-                    ? <><Check className="h-3.5 w-3.5 mr-1.5" />Copied</>
-                    : <><Copy className="h-3.5 w-3.5 mr-1.5" />Copy Email</>}
-                </Button>
-                <Button variant="outline" onClick={() => setRejectionEmail(null)}>Skip</Button>
-                <Button onClick={() => setRejectionEmail(null)}>Send</Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-        );
-      })()}
+      {rejectionEmail && (
+        <EmailComposer
+          draft={rejectionEmail}
+          title={`Let ${rejectionEmail.speaker.firstName} know`}
+          onClose={() => setRejectionEmail(null)}
+          onDraftChange={(patch) => setRejectionEmail(e => e ? { ...e, ...patch } : null)}
+        />
+      )}
     </div>
   );
 }

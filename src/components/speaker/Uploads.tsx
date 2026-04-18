@@ -1,6 +1,5 @@
 import React from "react";
 import { toast } from "@/hooks/use-toast";
-import { UploadCloud } from "lucide-react";
 import type { FormFieldConfig } from "@/components/SpeakerFormBuilder";
 
 type Props = {
@@ -24,56 +23,33 @@ type UploadRowProps = {
   required?: boolean;
   preview: string | null;
   uploading?: boolean;
-  hint?: string;
   helpText?: string;
   isHeadshot?: boolean;
   onClick: () => void;
   inputEl: React.ReactNode;
 };
 
-function UploadRow({ label, required, preview, uploading, hint = "PNG or JPG", helpText, isHeadshot, onClick, inputEl }: UploadRowProps) {
+function UploadRow({ label, required, preview, uploading, helpText, isHeadshot, onClick, inputEl }: UploadRowProps) {
   return (
     <div className="space-y-1.5">
-      <label className="text-xs font-medium text-foreground">
-        {label}
-        {required && <span className="text-destructive ml-1">*</span>}
+      <label className="text-sm font-medium text-foreground">
+        {label}{required && <span className="text-destructive ml-1">*</span>}
       </label>
-
+      {helpText && <p className="text-xs text-muted-foreground">{helpText}</p>}
       <button
         type="button"
         onClick={onClick}
         disabled={uploading}
-        className="w-full flex items-center gap-4 rounded-lg border border-dashed border-border bg-muted/30 px-4 py-3 text-left transition-colors hover:border-primary hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-60 disabled:cursor-not-allowed"
+        className="w-full flex items-center gap-2.5 px-3 h-10 rounded-md border border-input bg-background hover:border-primary text-sm text-muted-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        <div className={`shrink-0 flex items-center justify-center overflow-hidden bg-background border border-border ${isHeadshot ? "w-12 h-12 rounded-full" : "w-16 h-10 rounded-md"}`}>
-          {preview ? (
-            <img src={preview} alt={label} className="w-full h-full object-cover" />
-          ) : (
-            <UploadCloud className="h-5 w-5 text-muted-foreground/50" />
-          )}
-        </div>
-
-        <div className="flex-1 min-w-0">
-          {uploading ? (
-            <p className="text-sm text-muted-foreground">Uploading…</p>
-          ) : preview ? (
-            <>
-              <p className="text-sm font-medium text-foreground">Image uploaded</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Click to replace</p>
-            </>
-          ) : (
-            <>
-              <p className="text-sm font-medium text-foreground">Click to upload</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{hint}</p>
-            </>
-          )}
-        </div>
+        <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+        <span>{uploading ? "Uploading…" : preview ? "Change file" : "Choose file"}</span>
       </button>
-
-      {helpText && (
-        <p className="text-xs text-muted-foreground leading-snug whitespace-pre-wrap">{helpText}</p>
+      {preview && (
+        <div className={`overflow-hidden border border-border ${isHeadshot ? "w-12 h-12 rounded-full" : "w-16 h-10 rounded-md"}`}>
+          <img src={preview} alt={label} className="w-full h-full object-cover" />
+        </div>
       )}
-
       {inputEl}
     </div>
   );
@@ -111,7 +87,6 @@ export default function Uploads(props: Props) {
     reader.readAsDataURL(file);
   };
 
-  // Fields that should go through the crop dialog (logos and headshots)
   const CROP_FIELD_IDS = new Set(["headshot", "company_logo", "company_logo_white"]);
 
   const hasHeadshot = fileFields.some(f => f.id === "headshot");
@@ -122,8 +97,6 @@ export default function Uploads(props: Props) {
 
   return (
     <div className="space-y-4 pt-2">
-      <h3 className="text-sm font-semibold text-foreground">Uploads</h3>
-
       <div className="space-y-4">
         {hasHeadshot && (
           <UploadRow
@@ -132,8 +105,7 @@ export default function Uploads(props: Props) {
             helpText={formConfig.find(f => f.id === "headshot")?.helpText}
             preview={headshotPreview}
             uploading={uploadingHeadshot}
-            hint="PNG or JPG"
-            isHeadshot
+isHeadshot
             onClick={() => headshotInputRef.current?.click()}
             inputEl={
               <input
@@ -154,8 +126,7 @@ export default function Uploads(props: Props) {
             helpText={formConfig.find(f => f.id === "company_logo")?.helpText}
             preview={companyLogoPreview}
             uploading={uploadingLogo}
-            hint="PNG or JPG"
-            onClick={() => logoInputRef.current?.click()}
+onClick={() => logoInputRef.current?.click()}
             inputEl={
               <input
                 ref={logoInputRef}
@@ -173,6 +144,8 @@ export default function Uploads(props: Props) {
           const isImagePreview = preview?.startsWith("data:image") || false;
           const configField = formConfig.find(f => f.id === field.id);
           const usesCropper = CROP_FIELD_IDS.has(field.id);
+          const isImageField = usesCropper;
+          const GENERAL_ACCEPT = ".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.rtf,.html,.zip,.mp3,.wma,.mpg,.flv,.avi,.jpg,.jpeg,.png,.gif";
           return (
             <UploadRow
               key={field.id}
@@ -180,7 +153,7 @@ export default function Uploads(props: Props) {
               required={configField?.required}
               helpText={configField?.helpText}
               preview={isImagePreview ? preview : null}
-              hint="PNG or JPG"
+              hint={isImageField ? "PNG or JPG" : "PDF, DOC, XLS, MP3, MP4, ZIP and more"}
               onClick={() => {
                 const el = document.getElementById(`custom-file-${field.id}`) as HTMLInputElement | null;
                 el?.click();
@@ -192,17 +165,12 @@ export default function Uploads(props: Props) {
                   )}
                   <input
                     type="file"
-                    accept="image/png,image/jpeg"
+                    accept={isImageField ? "image/png,image/jpeg" : GENERAL_ACCEPT}
                     className="hidden"
                     id={`custom-file-${field.id}`}
                     onChange={usesCropper ? makeImageHandler(field.id) : (e) => {
                       const file = e.target.files?.[0];
                       if (!file) return;
-                      if (!["image/png", "image/jpeg"].includes(file.type)) {
-                        toast({ title: "Invalid file type", description: "Please upload a PNG or JPEG", variant: "destructive" });
-                        (e.target as HTMLInputElement).value = "";
-                        return;
-                      }
                       onCustomFileSelected?.(field.id, file);
                     }}
                   />
