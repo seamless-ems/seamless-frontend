@@ -269,8 +269,13 @@ export function getBillingPortal(): Promise<{ url?: string; portalUrl?: string }
 }
 
 // Create a checkout for a product tied to an event. Backend expects product_id and event_id as query params.
-export function createCheckout(productId: string, eventId: string): Promise<any> {
-  const qs = `?product_id=${encodeURIComponent(productId)}&event_id=${encodeURIComponent(eventId)}`;
+export function createCheckout(productId: string, eventId: string, opts?: { currency?: string; locale?: string }): Promise<any> {
+  const params = new URLSearchParams();
+  params.set('product_id', String(productId));
+  params.set('event_id', String(eventId));
+  if (opts?.currency) params.set('currency', String(opts.currency));
+  if (opts?.locale) params.set('locale', String(opts.locale));
+  const qs = params.toString() ? `?${params.toString()}` : '';
   return postJson<{}, any>(`/payments/checkout${qs}`, {});
 }
 

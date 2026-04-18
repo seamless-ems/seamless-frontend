@@ -2,6 +2,7 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
 import { getJson, createCheckout } from '@/lib/api';
+import { getLocaleAndCurrency } from '@/lib/locale';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
 
@@ -41,7 +42,8 @@ export default function TrialOverlay() {
 
   const handleUpgrade = async () => {
     try {
-      const res = await createCheckout('speaker', String(event.id));
+      const { locale, currency } = getLocaleAndCurrency();
+      const res = await createCheckout('speaker', String(event.id), { currency, locale });
       const url = res?.url || res?.checkout_url || res?.redirect_url || res?.checkoutUrl || (typeof res === 'string' ? res : undefined) || res?.data?.url;
       if (url) window.open(url, '_blank', 'noopener,noreferrer');
       else toast({ title: 'Checkout created', description: 'No redirect URL returned; check billing dashboard.' });

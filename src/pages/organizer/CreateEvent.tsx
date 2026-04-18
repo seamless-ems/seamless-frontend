@@ -19,6 +19,7 @@ import {
 import { cn } from "@/lib/utils";
 // TODO: Google Drive — restore getIntegrationUrl, getGoogleDriveStatus, deleteIntegration, createGoogleDriveFolder when re-enabling
 import { createEvent, getTeam, uploadFile, getMe, createCheckout } from "@/lib/api";
+import { getLocaleAndCurrency } from '@/lib/locale';
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
@@ -263,7 +264,8 @@ export default function CreateEvent() {
 								if (!createdEventId) return;
 								try {
 									setCreatingCheckout(true);
-									const res = await createCheckout("speaker", createdEventId);
+									const { locale, currency } = getLocaleAndCurrency();
+									const res = await createCheckout("speaker", createdEventId, { currency, locale });
 									const url = res?.url || res?.checkout_url || res?.redirect_url || res?.checkoutUrl || (typeof res === "string" ? res : undefined) || res?.data?.url;
 									if (url) {
 										window.location.href = url;
@@ -305,7 +307,8 @@ export default function CreateEvent() {
 								if (!createdEventId) return;
 								try {
 									setCreatingCheckout(true);
-									const res = await createCheckout("schedule", createdEventId);
+									const { locale, currency } = getLocaleAndCurrency();
+									const res = await createCheckout("schedule", createdEventId, { currency, locale });
 									const url = res?.url || res?.checkout_url || res?.redirect_url || res?.checkoutUrl || (typeof res === "string" ? res : undefined) || res?.data?.url;
 									if (url) {
 										window.location.href = url;

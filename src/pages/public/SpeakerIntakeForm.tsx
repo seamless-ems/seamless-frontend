@@ -30,6 +30,11 @@ import {
 import { MapPin } from "lucide-react";
 import { useState } from "react";
 import React from "react";
+<<<<<<< HEAD
+=======
+import { CircleLoader } from 'react-spinners';
+import Uploads from "@/components/speaker/Uploads";
+>>>>>>> 1278e191c75c93cf2c8ae9c6570109890753b67b
 import ContentUploads from "@/components/speaker/ContentUploads";
 import { type FormFieldConfig, DEFAULT_FIELDS, mergeWithDefaults } from "@/components/SpeakerFormBuilder";
 import { ImageCropDialog } from "@/components/ImageCropDialog";
@@ -600,6 +605,15 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
   return (
     <div className="min-h-screen bg-background">
       <MissingFormDialog open={missingFormDialogOpen} onOpenChange={setMissingFormDialogOpen} eventId={String(eventId)} />
+      {/* Full-screen uploading overlay */}
+      {isSubmitting && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="flex flex-col items-center gap-4 bg-card/90 border border-border rounded-lg p-6">
+            <CircleLoader size={60} color="#4e5ca6" />
+            <div className="text-lg font-semibold">We are uploading — please wait</div>
+          </div>
+        </div>
+      )}
       {/* Main Content */}
       <div className="p-6 lg:p-12">
         <div className="max-w-2xl mx-auto space-y-6">
