@@ -106,7 +106,7 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
   const [companyLogoPreview, setCompanyLogoPreview] = useState<string | null>(null);
   const [customFiles, setCustomFiles] = useState<Record<string, File | null>>({});
   const [customFilePreviews, setCustomFilePreviews] = useState<Record<string, string | null>>({});
-  const [contentItems, setContentItems] = useState<any[]>([]);
+  const [contentItems, setContentItems] = useState<any[]>([{ id: 'content-1', file: null, preview: null, name: '', contentType: null }]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formConfig, setFormConfig] = useState<FormFieldConfig[]>(DEFAULT_FIELDS);
   const [formTitle, setFormTitle] = useState<string | null>(null);
@@ -468,6 +468,8 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
             payload.talkTitle = val;
           } else if (fid === "talk_description") {
             payload.talkDescription = val;
+          } else if (fid === "talk_topic") {
+            payload.talkTopic = val;
           } else {
             customFields[field.id] = val;
           }
@@ -503,48 +505,45 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
         }
       }
 
-      // Upload any custom file fields (not headshot/company_logo) and attach to customFields
-      const otherFileFields = formConfig.filter(f => f.enabled && f.type === "file" && f.id !== "headshot" && f.id !== "company_logo" && f.id !== 'sample_content');
+      // Upload any custom file fields (not headshot/company_logo/sample_content) and attach to payload
+      const otherFileFields = formConfig.filter(f => f.enabled && f.type === "file" && f.id !== "headshot" && f.id !== "company_logo" && f.id !== "sample_content");
       for (const field of otherFileFields) {
         const file = customFiles[field.id];
         if (file) {
-            try {
-              
-              const res = await uploadFile(file, speakerId, eventId!, speakerDisplayName);
-              const url = res?.public_url ?? res?.publicUrl ?? res?.url ?? null;
-              // If this file corresponds to a newly-supported top-level property, map it accordingly
-              const fid = String(field.id || "").toLowerCase();
-              if (fid === "company_logo_white" || fid === "companylogowhite") {
-                payload.companyLogoWhite = url;
-              } else if (fid === "talk_title") {
-                payload.talkTitle = url;
-              } else if (fid === "talk_description") {
-                payload.talkDescription = url;
-              } else {
-                customFields[field.id] = url;
-              }
-              
-            } catch (err) {
-              
+          try {
+            const res = await uploadFile(file, speakerId, eventId!, speakerDisplayName);
+            const url = res?.public_url ?? res?.publicUrl ?? res?.url ?? null;
+            const fid = String(field.id || "").toLowerCase();
+            if (fid === "company_logo_white" || fid === "companylogowhite") {
+              payload.companyLogoWhite = url;
+            } else if (fid === "talk_title") {
+              payload.talkTitle = url;
+            } else if (fid === "talk_description") {
+              payload.talkDescription = url;
+            } else {
+              customFields[field.id] = url;
             }
-        }
+          } catch (err) {
 
-            // Handle contentItems (CreateContentSchema array)
-            if (contentItems && contentItems.length > 0) {
-              payload.content = payload.content || [];
-              for (const it of contentItems) {
-                if (it.file) {
-                  try {
-                    const res = await uploadFile(it.file, speakerId, eventId!, speakerDisplayName);
-                    const url = res?.public_url ?? res?.publicUrl ?? res?.url ?? null;
-                    if (!url) continue;
-                    payload.content.push({ content: url, contentType: it.contentType || it.file.type || 'application/octet-stream', name: it.name || it.file.name });
-                  } catch (err) {
-                    // ignore individual content upload failures
-                  }
-                }
-              }
+          }
+        }
+      }
+
+      // Upload sample content files (multi-file via ContentUploads → payload.content array)
+      if (contentItems && contentItems.length > 0) {
+        payload.content = payload.content || [];
+        for (const it of contentItems) {
+          if (it.file) {
+            try {
+              const res = await uploadFile(it.file, speakerId, eventId!, speakerDisplayName);
+              const url = res?.public_url ?? res?.publicUrl ?? res?.url ?? null;
+              if (!url) continue;
+              payload.content.push({ content: url, contentType: it.contentType || it.file.type || 'application/octet-stream', name: it.name || it.file.name });
+            } catch (err) {
+              // ignore individual upload failures
             }
+          }
+        }
       }
 
       // Attach customFields if any

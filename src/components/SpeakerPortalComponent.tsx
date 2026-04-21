@@ -346,7 +346,7 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
             };
 
             // All enabled fields not in the hardcoded core set
-            const CORE_IDS = new Set(['first_name', 'last_name', 'company_role', 'company_name', 'email', 'linkedin', 'bio', 'headshot', 'company_logo']);
+            const CORE_IDS = new Set(['first_name', 'last_name', 'company_role', 'company_name', 'email', 'linkedin', 'bio', 'headshot', 'company_logo', 'talk_topic', 'sample_content']);
             // Inline: text/url/email/radio/checkbox fields shown in the 2-col grid
             const extraInlineFields = configFields.filter(f => f.enabled && !CORE_IDS.has(f.id) && f.type !== 'file' && f.type !== 'textarea');
             // Block: textarea fields shown as full-width blocks (like bio)
@@ -378,6 +378,9 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
                       {fieldEnabled('company_name') && <Field label="Company" value={s?.companyName} />}
                       {fieldEnabled('email') && <Field label="Email" value={s?.email} href={s?.email ? `mailto:${s.email}` : undefined} />}
                       {fieldEnabled('linkedin') && s?.linkedin && <Field label="LinkedIn" value={s.linkedin} href={s.linkedin} />}
+                      {(fieldEnabled('talk_topic') || s?.talkTopic) && (
+                        <Field label="Talk / Session Topic" value={s?.talkTopic} />
+                      )}
                       {(fieldEnabled('talk_title') || s?.talkTitle) && (
                         <Field label="Talk Title" value={s?.talkTitle} />
                       )}
@@ -441,7 +444,7 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
                     )}
                   </div>
 
-                  {(fieldEnabled('headshot') || fieldEnabled('company_logo') || extraFileFields.length > 0) && (
+                  {(fieldEnabled('headshot') || fieldEnabled('company_logo') || extraFileFields.length > 0 || fieldEnabled('sample_content') || (s?.content && s.content.length > 0)) && (
                   <div className="w-[260px] shrink-0 px-6 py-6 flex flex-col items-center gap-6">
                     {fieldEnabled('headshot') && (
                     <div className="flex flex-col items-center gap-1.5 w-full">
@@ -523,6 +526,33 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
                         </div>
                       );
                     })}
+
+                    {(fieldEnabled('sample_content') || (s?.content && s.content.length > 0)) && (
+                      <div className="flex flex-col gap-1.5 w-full">
+                        <p className="text-xs font-medium text-muted-foreground mb-1">Sample Content</p>
+                        {s?.content && s.content.length > 0 ? (
+                          <div className="w-full rounded-lg border border-border bg-muted/20 divide-y divide-border overflow-hidden">
+                            {s.content.map((item: any, i: number) => (
+                              <a
+                                key={item.id ?? i}
+                                href={item.content}
+                                target="_blank"
+                                rel="noreferrer"
+                                download={item.name || true}
+                                className="flex items-center gap-2 px-3 py-2 hover:bg-muted/40 transition-colors group"
+                              >
+                                <svg className="h-3.5 w-3.5 shrink-0 text-muted-foreground group-hover:text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                                <span className="text-xs text-foreground truncate">{item.name || 'Download'}</span>
+                              </a>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="w-full rounded-lg border border-border bg-muted/20 px-3 py-2">
+                            <span className="text-xs text-muted-foreground/50">Not uploaded</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                   )}
                 </div>
@@ -634,6 +664,7 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
                   const cf = payload.customFields as Record<string, any>;
                   if (cf["company_logo_white"]) { payload.companyLogoWhite = cf["company_logo_white"]; delete cf["company_logo_white"]; }
                   if (cf["companylogowhite"]) { payload.companyLogoWhite = cf["companylogowhite"]; delete cf["companylogowhite"]; }
+                  if (cf["talk_topic"]) { payload.talkTopic = cf["talk_topic"]; delete cf["talk_topic"]; }
                   if (cf["talk_title"]) { payload.talkTitle = cf["talk_title"]; delete cf["talk_title"]; }
                   if (cf["talk_description"]) { payload.talkDescription = cf["talk_description"]; delete cf["talk_description"]; }
                   if (Object.keys(cf).length === 0) delete payload.customFields;
@@ -680,6 +711,7 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
                   const cf = payload.customFields as Record<string, any>;
                   if (cf["company_logo_white"]) { payload.companyLogoWhite = cf["company_logo_white"]; delete cf["company_logo_white"]; }
                   if (cf["companylogowhite"]) { payload.companyLogoWhite = cf["companylogowhite"]; delete cf["companylogowhite"]; }
+                  if (cf["talk_topic"]) { payload.talkTopic = cf["talk_topic"]; delete cf["talk_topic"]; }
                   if (cf["talk_title"]) { payload.talkTitle = cf["talk_title"]; delete cf["talk_title"]; }
                   if (cf["talk_description"]) { payload.talkDescription = cf["talk_description"]; delete cf["talk_description"]; }
                   if (Object.keys(cf).length === 0) delete payload.customFields;
