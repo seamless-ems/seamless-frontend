@@ -487,7 +487,7 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
           const headshotUrl = res?.public_url ?? res?.publicUrl ?? res?.url ?? null;
           payload.headshot = headshotUrl;
         } catch (err) {
-          
+          console.error("Failed to upload headshot:", err);
         }
       }
 
@@ -501,7 +501,7 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
           // Backend expects companyLogo (camelCase) as the alias
           payload.companyLogo = logoUrl;
         } catch (err) {
-          
+          console.error("Failed to upload company logo:", err);
         }
       }
 
@@ -524,7 +524,7 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
               customFields[field.id] = url;
             }
           } catch (err) {
-
+            console.error(`Failed to upload file for field ${field.id}:`, err);
           }
         }
       }
