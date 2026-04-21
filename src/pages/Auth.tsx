@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { signInWithGooglePopup } from "@/lib/firebase";
 import { isOnboardingCompleted } from "@/lib/onboarding";
 import { useAuth } from "@/contexts/AuthContext";
+import { Loader2 } from "lucide-react";
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -28,7 +29,7 @@ function GoogleIcon() {
 
 type LoginValues = z.infer<typeof loginSchema>;
 
-function LoginForm({ onEmailChange, initialEmail, onSent, isCheckingEmail }: { onEmailChange?: (email: string) => void; initialEmail?: string; onSent?: (email: string) => void; isCheckingEmail?: boolean }) {
+function LoginForm({ onEmailChange, initialEmail, onSent, showSubmitButton, isChecking }: { onEmailChange?: (email: string) => void; initialEmail?: string; onSent?: (email: string) => void; showSubmitButton?: boolean; isChecking?: boolean }) {
   const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: initialEmail || "" },
@@ -60,10 +61,18 @@ function LoginForm({ onEmailChange, initialEmail, onSent, isCheckingEmail }: { o
       <div className="space-y-2">
         <label className="text-sm font-medium">Email</label>
         <Input {...form.register("email")} type="email" placeholder="you@example.com" className="h-12" />
+        {isChecking && (
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            <span>Checking…</span>
+          </div>
+        )}
       </div>
-      <Button type="submit" variant="outline" className="w-full h-12 border-[1.5px] font-medium" disabled={Boolean(isCheckingEmail)}>
-        {isCheckingEmail ? 'Checking…' : 'Continue with email'}
-      </Button>
+      {showSubmitButton && (
+        <Button type="submit" variant="outline" className="w-full h-12 border-[1.5px] font-medium">
+          Continue with email
+        </Button>
+      )}
     </form>
   );
 }
@@ -102,6 +111,7 @@ const Auth: React.FC = () => {
 
   const onEmailChange = React.useCallback((email: string) => {
     if (checkTimeoutRef.current) window.clearTimeout(checkTimeoutRef.current as number);
+    setEmailCheck(null);
     // @ts-ignore
     checkTimeoutRef.current = window.setTimeout(() => doCheckEmail(email), 600);
   }, [doCheckEmail]);
@@ -160,7 +170,13 @@ const Auth: React.FC = () => {
   return cardShell(
     <>
       <div className="space-y-4">
-        <LoginForm onEmailChange={onEmailChange} initialEmail={speakerEmail} onSent={setSentTo} isCheckingEmail={checkingEmail} />
+        <LoginForm
+          onEmailChange={onEmailChange}
+          initialEmail={speakerEmail}
+          onSent={setSentTo}
+          isChecking={checkingEmail}
+          showSubmitButton={emailCheck !== null}
+        />
 
         {emailCheck?.exists && emailCheck.providers?.includes("google.com") && (
           <div className="p-3 rounded border border-border bg-primary/5">

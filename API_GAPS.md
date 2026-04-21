@@ -1,6 +1,6 @@
 JT TO DO 
 
-Polar (DONE - JT)
+Polar 
 - Force currency icon by rule e.g. $ or E
 - The curency rules = 
 Euro Zone = Euro 
@@ -8,14 +8,12 @@ United Kingdom = GBP
 United States = USD 
 Canada = CAD 
 
-(DONE - JT)
-Profile > BILLING 
+Profile > BILLING > DONE IN SANDBOX
 - Add in a billing section 
 - Link to polar 
 - Add seamless logo + colours etc 
 - Add 'Help' email reference if possible 
 
-(DONE - JT)
 Profile > Help 
 - Set up Help Form linked to Contact@ Name, email, question
 - Auto fill email 
@@ -24,7 +22,7 @@ Profile > Help
 APPLICATION APPROVED FLOW 
 
 1/ APPLICATION APPROVED EMAIL 
-- Wire up the send as perhow we do speaker sending 
+- Wire up the send as per how we do speaker sending 
 
 2/ When application is approved, moved to speakers
 
@@ -32,7 +30,7 @@ APPLICATION APPROVED FLOW
 
 4/ The status of the speaker is pending the content we have e.g. if application includes all info requried from speaker intake they are marked as Pending Approval, otherwise - it is Info Pending
 
-DEMO SPEAKER CONTENT (DONE - JT)
+DEMO SPEAKER CONTENT
 - PNGs for white and colour needed, transperant backgrounds for all 
 - Fake logos & companies only 
 
@@ -46,26 +44,12 @@ Username noting (noting it will come from via Seamless (from name) which is best
 Body 
 
 
-USER PROFILE 
-- Add Edit on Name & Team 
-- Add some 'explainer copy' on how it is default name
 
-GET STARTED GUIDE 
-- Update SEt up speaker wall to Add Your First Speaker (if there is already a speaker this has the line through it that's the trigger)
-- Make sure the refreshing is working as planned 
-- Once all are complete the field goes 
 
-APPLICATION FORM 
-- Change the default on fields e.g. Headshot is not default on but Title is 
-- Rearrange the order e.g. Talk needs to be more prominent 
-- Change DEFAULT FIELDS heading 
 
-- When I hit Save on Application form for the first time, I should go back to application form 
-- Copy form / Share needs to be more prominent 
-- Get Start component is saved as a seperate component so it can sit on multiple tabs e.g. Applications / Content 
 
 - On the application form submission, talk topic should be a large field like Bio 
-- On the application form, headshot should crop to a square as a default 
+
 - On sample content, put in the list of content we can upload (the jotform options in the Read Me). This should be the same on all content uploads and custom field that is a file type BUT user can toggle
 
 - Talk Topic, Talk Description, Proposed Talk Topic, sample content + company logo white are now wired into API. Swap them from custom fields. Company Logo has also been renamed to Company Logo Colour so we have 2x distinct fields 

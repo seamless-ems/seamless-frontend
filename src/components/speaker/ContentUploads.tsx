@@ -29,8 +29,6 @@ export default function ContentUploads({
     setItems(items.filter(i => i.id !== id));
   };
 
-  const ACCEPT = ".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.rtf,.html,.zip,.mp3,.wma,.mpg,.flv,.avi,.jpg,.jpeg,.png,.gif";
-
   const onFileChange = (id: string, file?: File) => {
     if (!file) return;
     const reader = new FileReader();
@@ -57,7 +55,7 @@ export default function ContentUploads({
           {!readOnly && (
             <>
               <div>
-                <input id={`content-file-${item.id}`} type="file" accept={ACCEPT} className="hidden" onChange={(e) => onFileChange(item.id, e.target.files?.[0])} />
+                <input id={`content-file-${item.id}`} type="file" className="hidden" onChange={(e) => onFileChange(item.id, e.target.files?.[0])} />
                 <label htmlFor={`content-file-${item.id}`} className="inline-flex items-center h-9 px-3 rounded-md border border-border hover:bg-muted/30 cursor-pointer text-sm">
                   {item.file ? 'Replace' : 'Choose file'}
                 </label>

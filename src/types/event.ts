@@ -43,6 +43,7 @@ export interface Speaker {
   talkDescription?: string | null;
   talkTopic?: string | null;
   sampleContent?: string | null;
+  content?: Array<{ id?: string | null; content: string; contentType: string; name: string }> | null;
   formType?: string;
   speakerInformationStatus?: 'info_pending' | 'info_approved' | 'info_rejected';
   callForSpeakersStatus?: 'submitted' | 'accepted' | 'rejected';
