@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getJson, getFormConfigForEvent, updateSpeaker } from "@/lib/api";
+import { getJson, getFormConfigForEvent, updateSpeaker, emailSpeaker } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,7 +34,7 @@ const EMAIL_HEADER_LABEL = "text-xs font-medium text-muted-foreground w-16 shrin
 function buildRejectionEmail(firstName: string, eventName: string) {
   return {
     subject: `Your application to speak at ${eventName}`,
-    body: `Thank you for taking the time to apply to speak at ${eventName}.\n\nAfter careful consideration, we're unfortunately unable to offer you a speaking slot on this occasion. We had a high volume of applications and the decision was a difficult one.\n\nWe hope you'll consider applying again in the future — we'd love to have you involved.\n\nThanks again for your interest, and we hope to see you at ${eventName}.\n\nBest regards,\nTeam ${eventName}`,
+    body: `Thank you for taking the time to apply to speak at ${eventName}.\n\nAfter careful consideration, we're unfortunately unable to offer you a speaking slot on this occasion. \n\nWe hope you'll consider applying again in the future, we'd love to have you involved.\n\nThanks again for your interest, and we hope to see you at ${eventName}.\n\nBest regards,\nTeam ${eventName}`,
   };
 }
 
@@ -69,7 +69,7 @@ function buildEmailHtml(firstName: string, body: string, intakeUrl: string, ctaL
           ${bodyHtml}${btnHtml}${signOffHtml}
         </td></tr>
         <tr><td style="padding:16px 48px 24px;border-top:1px solid #f3f4f6;text-align:center">
-          <p style="margin:0;font-size:11px;color:#9ca3af">Powered by <a href="https://seamlessevents.ai" style="color:#9ca3af;text-decoration:underline">Seamless Events</a></p>
+          <p style="margin:0;font-size:11px;color:#9ca3af">Powered by <a href="https://seamlessevents.io" style="color:#9ca3af;text-decoration:underline">Seamless Events</a></p>
         </td></tr>
       </table>
     </td></tr>
@@ -110,13 +110,17 @@ function EmailComposer({
   intakeUrl,
   onClose,
   onDraftChange,
+  onSend,
 }: {
   draft: EmailDraft;
   title: string;
   intakeUrl?: string;
   onClose: () => void;
   onDraftChange: (patch: Partial<EmailDraft>) => void;
+  onSend?: () => Promise<void>;
 }) {
+  const [sending, setSending] = useState(false);
+
   const handleCopy = async () => {
     const html = buildEmailHtml(draft.speaker.firstName, draft.body, intakeUrl ?? "", draft.ctaLabel, draft.signOff);
     const from = [draft.fromName, draft.fromEmail ? `<${draft.fromEmail}>` : ""].filter(Boolean).join(" ");
@@ -209,14 +213,30 @@ function EmailComposer({
             </div>
           </div>
         </div>
-        <div className="flex gap-2 pt-1 shrink-0">
+          <div className="flex gap-2 pt-1 shrink-0">
           <Button variant="outline" className="flex-1" onClick={handleCopy}>
             {draft.copied ? <><Check className="h-3.5 w-3.5 mr-1.5" />Copied</> : <><Copy className="h-3.5 w-3.5 mr-1.5" />Copy Email</>}
           </Button>
           {!draft.ctaLabel && (
             <Button variant="outline" onClick={onClose}>Skip</Button>
           )}
-          <Button onClick={onClose}>Send</Button>
+          <Button
+            onClick={async () => {
+              if (!onSend) {
+                onClose();
+                return;
+              }
+              try {
+                setSending(true);
+                await onSend();
+              } finally {
+                setSending(false);
+              }
+            }}
+            disabled={sending}
+          >
+            {sending ? "Sending…" : "Send"}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
@@ -379,6 +399,35 @@ export default function ApplicationsTab({ eventId, eventName = "", emailDefaults
       setApprovingId(null);
     }
   };
+
+    const handleSendEmail = async (draft: EmailDraft | null, intakeUrl?: string) => {
+      console.log("handleSendEmail", { draft, intakeUrl });
+      if (!draft) return;
+      try {
+        const html = buildEmailHtml(draft.speaker.firstName ?? draft.speaker.name ?? "", draft.body, intakeUrl ?? "", draft.ctaLabel, draft.signOff);
+        const payload = {
+          recipientEmail: draft.speaker.email,
+          recipientName: draft.speaker.firstName ?? draft.speaker.name ?? "",
+          subject: draft.subject,
+          htmlContent: html,
+          userName: draft.fromName || "",
+          userEmail: draft.fromEmail || "",
+        };
+
+        await emailSpeaker(eventId!, draft.speaker.id, payload);
+        toast({ title: "Email sent", description: `Message sent to ${payload.recipientEmail}` });
+        queryClient.invalidateQueries({ queryKey: ["event", eventId, "applications"] });
+        queryClient.invalidateQueries({ queryKey: ["event", eventId, "speakers"] });
+      } catch (err: any) {
+        console.error("sendEmail error:", err);
+        toast({
+          title: "Failed to send email",
+          description: err?.message || err?.responseText || "Unknown error",
+          variant: "destructive",
+        });
+        throw err;
+      }
+    };
 
   const filterBtnClass = (f: typeof statusFilter) =>
     `px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
@@ -606,6 +655,7 @@ export default function ApplicationsTab({ eventId, eventName = "", emailDefaults
           intakeUrl={`${window.location.origin}/speaker-intake/${eventId}`}
           onClose={() => setApprovalEmail(null)}
           onDraftChange={(patch) => setApprovalEmail(e => e ? { ...e, ...patch } : null)}
+          onSend={async () => { await handleSendEmail(approvalEmail, `${window.location.origin}/speaker-intake/${eventId}`); setApprovalEmail(null); }}
         />
       )}
 
@@ -615,6 +665,7 @@ export default function ApplicationsTab({ eventId, eventName = "", emailDefaults
           title={`Let ${rejectionEmail.speaker.firstName} know`}
           onClose={() => setRejectionEmail(null)}
           onDraftChange={(patch) => setRejectionEmail(e => e ? { ...e, ...patch } : null)}
+          onSend={async () => { await handleSendEmail(rejectionEmail); setRejectionEmail(null); }}
         />
       )}
     </div>

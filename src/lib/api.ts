@@ -399,6 +399,11 @@ export function getPromoConfigForEvent(eventId: string, promoType?: string): Pro
   return getJson<any>(`/promo-cards/config/${encodeURIComponent(eventId)}${qs}`);
 }
 
+// Send an email to a speaker for a given event. Payload must match EmailPayloadSchema
+export function emailSpeaker(eventId: string, speakerId: string, payload: { recipientEmail: string; recipientName: string; subject: string; htmlContent: string; userName: string; userEmail: string; }) {
+  return postJson<typeof payload, any>(`/events/${encodeURIComponent(eventId)}/speakers/${encodeURIComponent(speakerId)}/email`, payload);
+}
+
 export function createPromoConfig(body: { eventId: string; promoType: string; config: any }): Promise<any> {
   return postJson<typeof body, any>(`/promo-cards/config`, body);
 }
@@ -467,9 +472,9 @@ export async function checkSpeakerExistsForEvent(eventId: string, email: string)
 }
 
 // Send an email to a speaker for an event. Backend: POST /events/{event_id}/speakers/{speaker_id}/email
-export function emailSpeaker(eventId: string, speakerId: string, body: { recipient_email: string; recipient_name: string; subject: string; html_content: string; from_name?: string; }) {
-  return postJson<typeof body, any>(`/events/${encodeURIComponent(eventId)}/speakers/${encodeURIComponent(speakerId)}/email`, body);
-}
+// export function emailSpeaker(eventId: string, speakerId: string, body: { recipient_email: string; recipient_name: string; subject: string; html_content: string; from_name?: string; }) {
+//   return postJson<typeof body, any>(`/events/${encodeURIComponent(eventId)}/speakers/${encodeURIComponent(speakerId)}/email`, body);
+// }
 
 export async function updateSpeaker<T = any>(eventId: string, speakerId: string, body: T): Promise<any> {
   return patchJson<T, any>(`/events/${eventId}/speakers/${speakerId}`, body);
