@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Archive, ChevronDown, ChevronRight, Download, MoreVertical, RefreshCw, RotateCcw, Upload } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { archiveContent } from '@/lib/api';
+import { archiveContent, unarchiveContent } from '@/lib/api';
 
 function getFileTypeLabel(contentType: string, url: string): string {
   if (contentType?.includes('pdf') || url?.endsWith('.pdf')) return 'PDF';
@@ -144,8 +144,7 @@ export default function SpeakerContentTab({ eventId, speakerId, speakerName, sho
   const [archiving, setArchiving] = useState<any | null>(null);
   const [restoring, setRestoring] = useState<{ version: any; documentId: string; itemName: string } | null>(null);
 
-  // Local session-only archive tracking (API doesn't return archived items)
-  const [localArchived, setLocalArchived] = useState<any[]>([]);
+  // Archived items toggle (API returns archived items with `archived: true`)
   const [showArchived, setShowArchived] = useState(false);
 
   // Expanded history rows
@@ -253,7 +252,6 @@ export default function SpeakerContentTab({ eventId, speakerId, speakerName, sho
     try {
       const docId = archiving.documentId ?? archiving.document_id ?? archiving.id;
       await archiveContent(speakerId, docId);
-      setLocalArchived(prev => [...prev, archiving]);
       queryClient.invalidateQueries({ queryKey: ['content', speakerId] });
       toast({ title: 'File archived' });
       setArchiving(null);
@@ -268,14 +266,22 @@ export default function SpeakerContentTab({ eventId, speakerId, speakerName, sho
     if (!restoring) return;
     setUploading(true);
     try {
-      const url = restoring.version.content ?? restoring.version.publicUrl ?? restoring.version.public_url ?? '';
-      const contentType = restoring.version.contentType ?? restoring.version.content_type ?? 'application/octet-stream';
-      await createNewContentVersion(speakerId, restoring.documentId, { content: url, contentType });
-      queryClient.invalidateQueries({ queryKey: ['content', speakerId] });
-      queryClient.invalidateQueries({ queryKey: ['content', speakerId, restoring.documentId, 'history'] });
-      setLocalArchived(prev => prev.filter(i => (i.documentId ?? i.document_id ?? i.id) !== restoring.documentId));
-      toast({ title: `Restored to v${restoring.version.version}` });
-      setRestoring(null);
+      if (restoring.isArchived) {
+        // Unarchive the document using backend endpoint
+        await unarchiveContent(speakerId, restoring.documentId);
+        queryClient.invalidateQueries({ queryKey: ['content', speakerId] });
+        queryClient.invalidateQueries({ queryKey: ['content', speakerId, restoring.documentId, 'history'] });
+        toast({ title: 'File unarchived' });
+        setRestoring(null);
+      } else {
+        const url = restoring.version.content ?? restoring.version.publicUrl ?? restoring.version.public_url ?? '';
+        const contentType = restoring.version.contentType ?? restoring.version.content_type ?? 'application/octet-stream';
+        await createNewContentVersion(speakerId, restoring.documentId, { content: url, contentType });
+        queryClient.invalidateQueries({ queryKey: ['content', speakerId] });
+        queryClient.invalidateQueries({ queryKey: ['content', speakerId, restoring.documentId, 'history'] });
+        toast({ title: `Restored to v${restoring.version.version}` });
+        setRestoring(null);
+      }
     } catch (err: any) {
       toast({ title: 'Restore failed', description: String(err?.message || err), variant: 'destructive' });
     } finally {
@@ -418,28 +424,28 @@ export default function SpeakerContentTab({ eventId, speakerId, speakerName, sho
         )}
       </div>
 
-      {/* Archived files — session-only */}
-      {localArchived.length > 0 && (
+      {/* Archived files */}
+      {archivedItems.length > 0 && (
         <div className="px-5 py-4 border-t border-border">
           <button
             onClick={() => setShowArchived(v => !v)}
             className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
             {showArchived ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-            Archived files ({localArchived.length})
+            Archived files ({archivedItems.length})
           </button>
           {showArchived && (
             <div className="mt-2 rounded-lg border border-border border-dashed overflow-hidden">
-              {localArchived.map((item: any) => {
+              {archivedItems.map((item: any) => {
                 const url = item.content ?? item.url ?? item.publicUrl ?? item.public_url ?? '';
                 const name = item.name ?? getFilename(url);
                 const fileType = getFileTypeLabel(item.contentType ?? item.content_type ?? '', url);
                 return (
-                  <div key={item.id ?? item.documentId} className="flex items-center gap-3 px-4 py-2.5 border-b border-border/50 last:border-0 opacity-60 hover:opacity-100 transition-opacity">
+                  <div key={item.id ?? item.documentId ?? item.document_id} className="flex items-center gap-3 px-4 py-2.5 border-b border-border/50 last:border-0 opacity-60 hover:opacity-100 transition-opacity">
                     <span className="flex-1 text-sm text-muted-foreground truncate">{name}</span>
                     <span className="text-xs font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0">{fileType}</span>
-                    {!readOnly && (
-                      <Button variant="ghost" size="sm" className="h-6 text-xs px-2 shrink-0" onClick={() => setRestoring({ version: { content: url, contentType: item.contentType ?? item.content_type, version: item.version ?? 1 }, documentId: item.documentId ?? item.document_id ?? item.id, itemName: name })}>
+                        {!readOnly && (
+                          <Button variant="ghost" size="sm" className="h-6 text-xs px-2 shrink-0" onClick={() => setRestoring({ version: { content: url, contentType: item.contentType ?? item.content_type, version: item.version ?? 1 }, documentId: item.documentId ?? item.document_id ?? item.id, itemName: name, isArchived: true })}>
                         <RotateCcw className="h-3 w-3 mr-1" />Restore
                       </Button>
                     )}

@@ -544,3 +544,8 @@ export function createNewContentVersion(speakerId: string, documentId: string, b
 export function archiveContent(speakerId: string, documentId: string): Promise<any> {
   return patchJson<{}, any>(`/content/${encodeURIComponent(speakerId)}/${encodeURIComponent(documentId)}/archive`, {});
 }
+
+// Unarchive a content document (reverse of archive)
+export function unarchiveContent(speakerId: string, documentId: string): Promise<any> {
+  return patchJson<{}, any>(`/content/${encodeURIComponent(speakerId)}/${encodeURIComponent(documentId)}/unarchive`, {});
+}

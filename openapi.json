@@ -3187,6 +3187,60 @@
         }
       }
     },
+    "/content/{speaker_id}/{document_id}/unarchive": {
+      "patch": {
+        "tags": [
+          "Content"
+        ],
+        "summary": "Unarchive Content",
+        "description": "Unarchive a content item.",
+        "operationId": "unarchive_content_content__speaker_id___document_id__unarchive_patch",
+        "parameters": [
+          {
+            "name": "speaker_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Speaker Id"
+            }
+          },
+          {
+            "name": "document_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Document Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContentSchema-Output"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/promo-cards/config": {
       "post": {
         "tags": [
@@ -6058,28 +6112,6 @@
             ],
             "title": "Talkdescription"
           },
-          "proposedTalkTopic": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Proposedtalktopic"
-          },
-          "sampleContent": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Samplecontent"
-          },
           "formType": {
             "type": "string",
             "title": "Formtype"
@@ -6348,28 +6380,6 @@
               }
             ],
             "title": "Talkdescription"
-          },
-          "talkTopic": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Talktopic"
-          },
-          "sampleContent": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Samplecontent"
           },
           "formType": {
             "type": "string",
@@ -6666,28 +6676,6 @@
             ],
             "title": "Talkdescription"
           },
-          "proposedTalkTopic": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Proposedtalktopic"
-          },
-          "sampleContent": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Samplecontent"
-          },
           "formType": {
             "type": "string",
             "title": "Formtype"
@@ -6888,28 +6876,6 @@
               }
             ],
             "title": "Talkdescription"
-          },
-          "proposedTalkTopic": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Proposedtalktopic"
-          },
-          "sampleContent": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Samplecontent"
           },
           "formType": {
             "type": "string",
@@ -7179,28 +7145,6 @@
               }
             ],
             "title": "Talkdescription"
-          },
-          "talkTopic": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Talktopic"
-          },
-          "sampleContent": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Samplecontent"
           },
           "formType": {
             "type": "string",
