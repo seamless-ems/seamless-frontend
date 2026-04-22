@@ -453,6 +453,8 @@ export default function SpeakerModule() {
                 speakers={filteredSpeakers}
                 isLoading={isLoading}
                 eventId={id}
+                eventName={eventName}
+                emailDefaults={emailDefaults}
                 selectedTab={activeTab}
                 formConfig={formConfig}
                 websiteCardConfigured={!!websiteCardConfig}
@@ -653,15 +655,9 @@ export default function SpeakerModule() {
                 <div className="flex gap-2 pt-2">
                   <Button
                     variant="outline"
-                    onClick={() => {
-                      const url = `${window.location.origin}/speaker-intake/${id}`;
-                      navigator.clipboard.writeText(url);
-                      setCopiedFormLink(true);
-                      toast({ title: "Link copied!" });
-                      setTimeout(() => setCopiedFormLink(false), 2000);
-                    }}
+                    onClick={() => { setFormSaved(false); setEditingForm(null); setAddSpeakerOpen(true); }}
                   >
-                    {copiedFormLink ? <><Check className="h-4 w-4 mr-2" />Copied</> : <><Copy className="h-4 w-4 mr-2" />Copy Link</>}
+                    Add Speaker
                   </Button>
                   <Button
                     onClick={() => { setFormSaved(false); setEditingForm(null); navigate(`/organizer/event/${id}/website-card-builder`); }}

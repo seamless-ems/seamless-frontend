@@ -2,11 +2,12 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { useQueryClient } from "@tanstack/react-query";
-import { deleteSpeaker, updateSpeaker } from "@/lib/api";
+import { deleteSpeaker, updateSpeaker, emailSpeaker } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
-import { Download, Copy, Check, ChevronRight, Trash, MoreVertical, ArrowUpDown, X } from "lucide-react";
+import { Download, Copy, Check, ChevronRight, Trash, MoreVertical, ArrowUpDown, X, Mail } from "lucide-react";
 import { API_BASE } from "@/lib/api";
 import { HelpTip } from "@/components/ui/HelpTip";
 import {
@@ -37,6 +38,8 @@ type Props = {
   formConfig?: any[] | null;
   websiteCardConfigured?: boolean;
   promoCardConfigured?: boolean;
+  eventName?: string;
+  emailDefaults?: { fromName: string; fromEmail: string; replyToEmail: string };
   // Controls
   searchQuery?: string;
   setSearchQuery?: (s: string) => void;
@@ -123,7 +126,27 @@ function formatDate(dateStr: string | null | undefined) {
   }
 }
 
-export default function SpeakersTable({ speakers, isLoading, eventId, selectedTab, formConfig, websiteCardConfigured = false, promoCardConfigured = false, searchQuery, setSearchQuery, statusFilter, setStatusFilter, sortBy, setSortBy, totalCount, pendingCount, page, pageSize, setPage, setPageSize, onBadgeClick, selectedSpeakerId }: Props) {
+const DEFAULT_INTRO = (eventName: string) =>
+  `We're looking forward to having you speak at ${eventName}!\n\nPlease submit your speaker details using the link below. After submitting, you can log in to Seamless Events to update your profile and manage your content.`;
+
+const DEFAULT_CLOSING = (eventName: string) =>
+  `If you have any questions, don't hesitate to get in touch.\n\nBest regards,\nTeam ${eventName}`;
+
+function buildReminderHtml(
+  firstName: string, intro: string, closing: string, intakeUrl: string,
+  fromEmail: string, fromName: string, replyTo: string, toEmail: string, subject: string
+) {
+  const introHtml = intro.split("\n\n").map(p =>
+    `<p style="margin:0 0 16px 0;color:#374151;font-size:15px;line-height:1.6">${p.replace(/\n/g, "<br>")}</p>`
+  ).join("");
+  const closingHtml = closing.split("\n\n").map(p =>
+    `<p style="margin:0 0 12px 0;color:#374151;font-size:15px;line-height:1.6">${p.replace(/\n/g, "<br>")}</p>`
+  ).join("");
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="margin:0;padding:0;background:#f9fafb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"><table width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;padding:40px 0"><tr><td align="center"><table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;border:1px solid #e5e7eb"><tr><td style="padding:40px 48px"><p style="margin:0 0 24px 0;color:#374151;font-size:15px;line-height:1.6">Hi ${firstName},</p>${introHtml}<table cellpadding="0" cellspacing="0" style="margin:32px 0"><tr><td><a href="${intakeUrl}" style="display:inline-block;background:#4F46E5;color:#ffffff;font-size:15px;font-weight:600;padding:14px 28px;border-radius:6px;text-decoration:none">Submit your speaker details</a></td></tr></table>${closingHtml}</td></tr><tr><td style="padding:16px 48px 24px;border-top:1px solid #f3f4f6;text-align:center"><p style="margin:0;font-size:11px;color:#9ca3af">Powered by <a href="https://seamlessevents.io" style="color:#9ca3af;text-decoration:underline">Seamless Events</a></p></td></tr></table></td></tr></table></body></html>`;
+  return html;
+}
+
+export default function SpeakersTable({ speakers, isLoading, eventId, eventName = "the event", emailDefaults, selectedTab, formConfig, websiteCardConfigured = false, promoCardConfigured = false, searchQuery, setSearchQuery, statusFilter, setStatusFilter, sortBy, setSortBy, totalCount, pendingCount, page, pageSize, setPage, setPageSize, onBadgeClick, selectedSpeakerId }: Props) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const eventUuid = eventId ?? "";
@@ -136,6 +159,70 @@ export default function SpeakersTable({ speakers, isLoading, eventId, selectedTa
   const [bulkPublishIds, setBulkPublishIds] = useState<string[]>([]);
   const [bulkUnpublishOpen, setBulkUnpublishOpen] = useState(false);
   const selectAllRef = useRef<HTMLInputElement>(null);
+
+  // Reminder email state
+  const [reminderSpeaker, setReminderSpeaker] = useState<any | null>(null);
+  const [reminderFromName, setReminderFromName] = useState("");
+  const [reminderFromEmail, setReminderFromEmail] = useState("");
+  const [reminderReplyTo, setReminderReplyTo] = useState("");
+  const [reminderSubject, setReminderSubject] = useState("");
+  const [reminderIntro, setReminderIntro] = useState("");
+  const [reminderClosing, setReminderClosing] = useState("");
+  const [reminderSending, setReminderSending] = useState(false);
+  const [reminderCopied, setReminderCopied] = useState(false);
+
+  const openReminder = (speaker: any) => {
+    const firstName = speaker.firstName ?? speaker.name?.split(" ")[0] ?? "";
+    setReminderSpeaker(speaker);
+    setReminderFromName(emailDefaults?.fromName || "");
+    setReminderFromEmail(emailDefaults?.fromEmail || "");
+    setReminderReplyTo(emailDefaults?.replyToEmail || "");
+    setReminderSubject(`Your speaker details for ${eventName}`);
+    setReminderIntro(DEFAULT_INTRO(eventName));
+    setReminderClosing(DEFAULT_CLOSING(eventName));
+  };
+
+  const handleReminderCopy = async () => {
+    if (!reminderSpeaker) return;
+    const firstName = reminderSpeaker.firstName ?? reminderSpeaker.name?.split(" ")[0] ?? "";
+    const intakeUrl = `${window.location.origin}/speaker-intake/${eventUuid}?speakerId=${reminderSpeaker.id}`;
+    const html = buildReminderHtml(firstName, reminderIntro, reminderClosing, intakeUrl, reminderFromEmail, reminderFromName, reminderReplyTo, reminderSpeaker.email ?? "", reminderSubject);
+    const plain = `Hi ${firstName},\n\n${reminderIntro}\n\nSubmit your speaker details:\n${intakeUrl}\n\n${reminderClosing}`;
+    try {
+      await navigator.clipboard.write([
+        new ClipboardItem({ "text/html": new Blob([html], { type: "text/html" }), "text/plain": new Blob([plain], { type: "text/plain" }) }),
+      ]);
+    } catch {
+      await navigator.clipboard.writeText(plain);
+    }
+    setReminderCopied(true);
+    setTimeout(() => setReminderCopied(false), 2000);
+  };
+
+  const handleReminderSend = async () => {
+    if (!reminderSpeaker || !eventId) return;
+    const firstName = reminderSpeaker.firstName ?? reminderSpeaker.name?.split(" ")[0] ?? "";
+    const intakeUrl = `${window.location.origin}/speaker-intake/${eventUuid}?speakerId=${reminderSpeaker.id}`;
+    const html = buildReminderHtml(firstName, reminderIntro, reminderClosing, intakeUrl, reminderFromEmail, reminderFromName, reminderReplyTo, reminderSpeaker.email ?? "", reminderSubject);
+    const body = {
+      recipient_email: reminderSpeaker.email ?? "",
+      recipient_name: (reminderSpeaker.name || `${reminderSpeaker.firstName ?? ""} ${reminderSpeaker.lastName ?? ""}`.trim()),
+      subject: reminderSubject,
+      html_content: html,
+      userName: reminderFromName || reminderFromEmail || `Team ${eventName}`,
+      userEmail: reminderFromEmail,
+    };
+    setReminderSending(true);
+    try {
+      await emailSpeaker(eventId, reminderSpeaker.id, body);
+      toast({ title: "Reminder sent" });
+      setReminderSpeaker(null);
+    } catch (err: any) {
+      toast({ title: "Failed to send reminder", description: String(err?.message || err) });
+    } finally {
+      setReminderSending(false);
+    }
+  };
 
   const isSelectionActive = selectedIds.size > 0;
 
@@ -355,6 +442,7 @@ export default function SpeakersTable({ speakers, isLoading, eventId, selectedTa
       <table className="w-full table-fixed">
       <colgroup>{[<col key="select" style={{ width: '36px' }} />,
         <col key="name" />,
+        <col key="reminder" style={{ width: '52px' }} />,
         <col key="website" style={{ width: '148px' }} />,
         <col key="promo" style={{ width: '148px' }} />,
         <col key="actions" style={{ width: '36px' }} />]}</colgroup>
@@ -416,6 +504,7 @@ export default function SpeakersTable({ speakers, isLoading, eventId, selectedTa
               </div>
             ) : null}
           </th>
+          <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground w-[52px]" />
           <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground w-[148px]">
             {!isSelectionActive && <span>Speaker Card</span>}
           </th>
@@ -498,6 +587,17 @@ export default function SpeakersTable({ speakers, isLoading, eventId, selectedTa
                 </div>
               </td>
 
+
+              {/* Send Reminder */}
+              <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                <button
+                  title="Send reminder"
+                  onClick={() => openReminder(speaker)}
+                  className="rounded p-1 text-muted-foreground/40 hover:text-primary hover:bg-primary/8 opacity-0 group-hover:opacity-100 transition-all"
+                >
+                  <Mail className="h-4 w-4" />
+                </button>
+              </td>
 
               {/* Speaker Card */}
               <td className="px-3 py-3">
@@ -662,6 +762,69 @@ export default function SpeakersTable({ speakers, isLoading, eventId, selectedTa
         </div>
       </div>
     )}
+    {/* Reminder email dialog */}
+    <Dialog open={!!reminderSpeaker} onOpenChange={(v) => { if (!v) setReminderSpeaker(null); }}>
+      <DialogContent className="sm:max-w-3xl">
+        {reminderSpeaker && (() => {
+          const firstName = reminderSpeaker.firstName ?? reminderSpeaker.name?.split(" ")[0] ?? "";
+          const headerRowCls = "flex items-center gap-3 border-b border-border/50 py-2";
+          const headerLabelCls = "text-xs font-medium text-muted-foreground w-16 shrink-0";
+          return (
+            <>
+              <DialogHeader>
+                <DialogTitle>Send reminder to {firstName}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-0 pt-1">
+                <div className="rounded-t-lg border border-border bg-muted/20 px-4">
+                  <div className={headerRowCls}>
+                    <span className={headerLabelCls}>From name</span>
+                    <Input value={reminderFromName} onChange={(e) => setReminderFromName(e.target.value)} placeholder={`${eventName} Speaker Team`} className="h-8 text-sm border-0 shadow-none p-0 focus-visible:ring-0 bg-transparent flex-1" />
+                  </div>
+                  <div className={headerRowCls}>
+                    <span className={headerLabelCls}>From email</span>
+                    <Input type="email" value={reminderFromEmail} onChange={(e) => setReminderFromEmail(e.target.value)} placeholder="you@yourorg.com" className="h-8 text-sm border-0 shadow-none p-0 focus-visible:ring-0 bg-transparent flex-1" />
+                  </div>
+                  <div className={headerRowCls}>
+                    <span className={headerLabelCls}>Reply-to</span>
+                    <Input type="email" value={reminderReplyTo} onChange={(e) => setReminderReplyTo(e.target.value)} placeholder={reminderFromEmail || "defaults to From email"} className="h-8 text-sm border-0 shadow-none p-0 focus-visible:ring-0 bg-transparent flex-1" />
+                  </div>
+                  <div className={headerRowCls}>
+                    <span className={headerLabelCls}>To</span>
+                    <span className="text-sm text-foreground">{reminderSpeaker.email}</span>
+                  </div>
+                  <div className={`${headerRowCls} border-b-0`}>
+                    <span className={headerLabelCls}>Subject</span>
+                    <Input value={reminderSubject} onChange={(e) => setReminderSubject(e.target.value)} className="h-8 text-sm border-0 shadow-none p-0 focus-visible:ring-0 bg-transparent flex-1" />
+                  </div>
+                </div>
+                <div className="rounded-b-lg border border-t-0 border-border bg-white px-8 pt-5 pb-4 space-y-3">
+                  <p className="text-sm text-gray-700">Hi {firstName || "…"},</p>
+                  <Textarea value={reminderIntro} rows={1} ref={(el) => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; } }} onChange={(e) => { setReminderIntro(e.target.value); e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }} className="text-sm resize-none overflow-hidden border border-slate-200 bg-transparent shadow-none leading-relaxed focus-visible:border-primary/40" />
+                  <div>
+                    <span style={{ display: "inline-block", background: "#4F46E5", color: "#fff", fontSize: 14, fontWeight: 600, padding: "11px 22px", borderRadius: 6, cursor: "default", whiteSpace: "nowrap" }}>
+                      Submit your speaker details
+                    </span>
+                  </div>
+                  <Textarea value={reminderClosing} rows={1} ref={(el) => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; } }} onChange={(e) => { setReminderClosing(e.target.value); e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }} className="text-sm resize-none overflow-hidden border border-slate-200 bg-transparent shadow-none leading-relaxed focus-visible:border-primary/40" />
+                  <div className="border-t border-gray-100 pt-3 text-center">
+                    <span className="text-[11px] text-gray-400">Powered by <span className="font-medium">Seamless Events</span></span>
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-2 pt-1">
+                <Button variant="outline" className="flex-1" onClick={handleReminderCopy}>
+                  {reminderCopied ? <><Check className="h-3.5 w-3.5 mr-1.5" />Copied</> : <><Copy className="h-3.5 w-3.5 mr-1.5" />Copy Email</>}
+                </Button>
+                <Button onClick={handleReminderSend} disabled={reminderSending}>
+                  {reminderSending ? "Sending…" : "Send"}
+                </Button>
+              </div>
+            </>
+          );
+        })()}
+      </DialogContent>
+    </Dialog>
+
     {/* Danger confirmation modal for deletions */}
     <AlertDialog open={confirmOpen} onOpenChange={(open) => { if (!open) { setConfirmTarget(null); } setConfirmOpen(open); }}>
       <AlertDialogContent>

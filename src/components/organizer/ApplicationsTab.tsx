@@ -180,20 +180,21 @@ export function EmailComposer({
               />
             </div>
           </div>
-          <div className="rounded-b-lg border border-t-0 border-border bg-white px-8 pt-6 pb-4 space-y-4">
+          <div className="rounded-b-lg border border-t-0 border-border bg-white px-8 pt-5 pb-4 space-y-3">
             <p className="text-sm text-gray-700">Hi {draft.speaker.firstName},</p>
             <Textarea
               value={draft.body}
-              rows={10}
+              rows={1}
+              ref={(el) => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; } }}
               onChange={(e) => {
                 onDraftChange({ body: e.target.value });
                 e.currentTarget.style.height = "auto";
                 e.currentTarget.style.height = e.currentTarget.scrollHeight + "px";
               }}
-              className="text-sm resize-none overflow-hidden border border-dashed border-border/60 bg-transparent shadow-none leading-relaxed focus-visible:border-primary/40"
+              className="text-sm resize-none overflow-hidden border border-slate-200 bg-transparent shadow-none leading-relaxed focus-visible:border-primary/40"
             />
             {draft.ctaLabel && intakeUrl && (
-              <div className="py-1">
+              <div>
                 <span style={{ display: "inline-block", background: "#4F46E5", color: "#fff", fontSize: 14, fontWeight: 600, padding: "11px 22px", borderRadius: 6, cursor: "default" }}>
                   {draft.ctaLabel}
                 </span>
@@ -202,13 +203,14 @@ export function EmailComposer({
             {draft.signOff !== undefined && (
               <Textarea
                 value={draft.signOff}
-                rows={2}
+                rows={1}
+                ref={(el) => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; } }}
                 onChange={(e) => {
                   onDraftChange({ signOff: e.target.value });
                   e.currentTarget.style.height = "auto";
                   e.currentTarget.style.height = e.currentTarget.scrollHeight + "px";
                 }}
-                className="text-sm resize-none overflow-hidden border border-dashed border-border/60 bg-transparent shadow-none leading-relaxed focus-visible:border-primary/40"
+                className="text-sm resize-none overflow-hidden border border-slate-200 bg-transparent shadow-none leading-relaxed focus-visible:border-primary/40"
               />
             )}
             <div className="border-t border-gray-100 pt-3 text-center">

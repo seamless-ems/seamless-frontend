@@ -32,7 +32,7 @@ import { useState } from "react";
 import React from "react";
 import { CircleLoader } from 'react-spinners';
 import ContentUploads from "@/components/speaker/ContentUploads";
-import { type FormFieldConfig, DEFAULT_FIELDS, mergeWithDefaults, FORM_SECTIONS } from "@/components/SpeakerFormBuilder";
+import { type FormFieldConfig, DEFAULT_FIELDS, mergeWithDefaults } from "@/components/SpeakerFormBuilder";
 import { ImageCropDialog } from "@/components/ImageCropDialog";
 import { useRef } from "react";
 import { generateUuid } from "@/lib/utils";
@@ -238,11 +238,11 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
     if (!s) return;
     const resetData: Record<string, any> = {};
     formConfig.forEach(f => {
-      if (f.id === "first_name") resetData[f.id] = s.first_name ?? "";
-      else if (f.id === "last_name") resetData[f.id] = s.last_name ?? "";
+      if (f.id === "first_name") resetData[f.id] = s.firstName ?? s.first_name ?? "";
+      else if (f.id === "last_name") resetData[f.id] = s.lastName ?? s.last_name ?? "";
       else if (f.id === "email") resetData[f.id] = s.email ?? "";
-      else if (f.id === "company_name") resetData[f.id] = s.company_name ?? "";
-      else if (f.id === "company_role") resetData[f.id] = s.company_role ?? "";
+      else if (f.id === "company_name") resetData[f.id] = s.companyName ?? s.company_name ?? "";
+      else if (f.id === "company_role") resetData[f.id] = s.companyRole ?? s.company_role ?? "";
       else if (f.id === "bio") resetData[f.id] = s.bio ?? "";
       else if (f.id === "linkedin") resetData[f.id] = s.linkedin ?? "";
     });
@@ -401,7 +401,7 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
   const onSubmit = async (data: any) => {
     setIsSubmitting(true);
 
-    const speakerId = generateUuid(); // Generate a unique ID for the speaker (used for file uploads before we have a speaker record)
+    const uploadSpeakerId = isEditing && speakerId ? speakerId : generateUuid();
 
     try {
       if (!eventId) {
@@ -491,7 +491,7 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
       if (headshot) {
           try {
           
-          const res = await uploadFile(headshot, speakerId, eventId!, speakerDisplayName);
+          const res = await uploadFile(headshot, uploadSpeakerId, eventId!, speakerDisplayName);
           const headshotUrl = res?.public_url ?? res?.publicUrl ?? res?.url ?? null;
           payload.headshot = headshotUrl;
         } catch (err) {
@@ -503,7 +503,7 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
       if (companyLogo) {
         try {
           
-          const res = await uploadFile(companyLogo, speakerId, eventId!, speakerDisplayName);
+          const res = await uploadFile(companyLogo, uploadSpeakerId, eventId!, speakerDisplayName);
           const logoUrl = res?.public_url ?? res?.publicUrl ?? res?.url ?? null;
           
           payload.companyLogoColour = logoUrl;
@@ -518,7 +518,7 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
         const file = customFiles[field.id];
         if (file) {
           try {
-            const res = await uploadFile(file, speakerId, eventId!, speakerDisplayName);
+            const res = await uploadFile(file, uploadSpeakerId, eventId!, speakerDisplayName);
             const url = res?.public_url ?? res?.publicUrl ?? res?.url ?? null;
             const fid = String(field.id || "").toLowerCase();
             if (fid === "company_logo_white" || fid === "companylogowhite") {
@@ -542,7 +542,7 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
         for (const it of contentItems) {
           if (it.file) {
             try {
-              const res = await uploadFile(it.file, speakerId, eventId!, speakerDisplayName);
+              const res = await uploadFile(it.file, uploadSpeakerId, eventId!, speakerDisplayName);
               const url = res?.public_url ?? res?.publicUrl ?? res?.url ?? null;
               if (!url) continue;
               payload.content.push({ content: url, contentType: it.contentType || it.file.type || 'application/octet-stream', name: it.name || it.file.name });
@@ -574,7 +574,7 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
 
       // Tell backend which form this submission is for (backend expects underscored form types)
       payload.formType = backendFormType;
-      payload.id = speakerId; // Include the generated speaker ID in the payload for updates
+      payload.id = uploadSpeakerId;
 
       
 
@@ -602,17 +602,9 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
     }
   );
 
-  const sectionOrderedIds = (FORM_SECTIONS[backendFormType] ?? FORM_SECTIONS["speaker-info"]).flatMap(s => s.fieldIds);
-  const enabledFields = formConfig
-    .filter(f => f.enabled)
-    .sort((a, b) => {
-      const ai = sectionOrderedIds.indexOf(a.id);
-      const bi = sectionOrderedIds.indexOf(b.id);
-      if (ai === -1 && bi === -1) return 0;
-      if (ai === -1) return 1;
-      if (bi === -1) return -1;
-      return ai - bi;
-    });
+  const enabledFields = formConfig.filter(f => f.enabled);
+  const resolvedEventName = eventData?.title || eventData?.name ||
+    (formTitle?.includes(' | ') ? formTitle.split(' | ').slice(1).join(' | ') : null);
 
   return (
     <div className="min-h-screen bg-background">
@@ -702,6 +694,22 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
                                 if (f) handleCustomFileSelected(field.id, f);
                               }}
                             />
+                          )}
+                        </div>
+                      );
+                    }
+
+                    if (field.id === 'email' && isEditing) {
+                      return (
+                        <div key={field.id} className="space-y-1.5">
+                          <label className="text-xs font-medium">{field.label}</label>
+                          <div className="h-9 px-3 flex items-center rounded-md border border-input bg-muted/40 text-sm text-muted-foreground select-none">
+                            {String(form.getValues('email' as any) || '')}
+                          </div>
+                          {resolvedEventName && (
+                            <p className="text-xs text-muted-foreground">
+                              Wrong email? Contact the team at <span className="font-medium text-foreground">{resolvedEventName}</span>.
+                            </p>
                           )}
                         </div>
                       );

@@ -173,7 +173,7 @@ export const DEFAULT_FIELDS: FormFieldConfig[] = [
   },
   {
     id: "sample_content",
-    label: "Sample Content",
+    label: "Content",
     type: "file",
     required: false,
     enabled: false,
@@ -202,7 +202,7 @@ export const FIELD_MIGRATIONS: Record<string, Partial<FormFieldConfig>> = {
   },
   talk_title: { sectionStart: "Talk / Session" },
   sample_content: {
-    label: "Sample Content",
+    label: "Content",
     helpText: "Please add a description for each file you upload.",
   },
 };
@@ -683,17 +683,9 @@ const SpeakerFormBuilder = forwardRef<
 
   const enabledFields = fields.filter((f) => f.enabled);
 
-  const sectionOrderedIds = sections.flatMap((s) => s.fieldIds);
-  const previewFields = [...enabledFields]
-    .filter((f) => !f.formTypes || f.formTypes.includes(formType ?? "speaker-info"))
-    .sort((a, b) => {
-      const ai = sectionOrderedIds.indexOf(a.id);
-      const bi = sectionOrderedIds.indexOf(b.id);
-      if (ai === -1 && bi === -1) return 0;
-      if (ai === -1) return 1;
-      if (bi === -1) return -1;
-      return ai - bi;
-    });
+  const previewFields = enabledFields.filter(
+    (f) => !f.formTypes || f.formTypes.includes(formType ?? "speaker-info"),
+  );
 
   return (
     <div className="space-y-6">

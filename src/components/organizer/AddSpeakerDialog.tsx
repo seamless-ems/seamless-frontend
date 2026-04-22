@@ -20,7 +20,7 @@ type Props = {
 };
 
 const DEFAULT_INTRO = (eventName: string) =>
-  `We're looking forward to having you speak at ${eventName}!\n\nPlease submit your speaker details using the link below. You'll need to log in or create a free Seamless account — it only takes a minute. We'll use your details to promote your session and create your speaker assets.`;
+  `We're looking forward to having you speak at ${eventName}!\n\nPlease submit your speaker details using the link below. After submitting, you can log in to Seamless Events to update your profile and manage your content.`;
 
 const DEFAULT_CLOSING = (eventName: string) =>
   `If you have any questions, don't hesitate to get in touch.\n\nBest regards,\nTeam ${eventName}`;
@@ -111,7 +111,9 @@ export default function AddSpeakerDialog({ eventId, eventName = "the event", ema
   const [introText, setIntroText] = useState("");
   const [closingText, setClosingText] = useState("");
 
-  const intakeUrl = `${window.location.origin}/login?speakerEmail=${encodeURIComponent(fields.email)}`;
+  const intakeUrl = createdSpeakerId
+    ? `${window.location.origin}/speaker-intake/${eventId}?speakerId=${createdSpeakerId}`
+    : `${window.location.origin}/speaker-intake/${eventId}`;
 
   const reset = () => {
     setStep("choose");
@@ -431,22 +433,25 @@ export default function AddSpeakerDialog({ eventId, eventName = "the event", ema
               <DialogTitle>Send intake form to {fields.firstName}</DialogTitle>
             </DialogHeader>
 
-            <div className="space-y-0 pt-1">
+            <div className="space-y-0">
               <div className="rounded-t-lg border border-border bg-muted/20 px-4">
                 <div className={headerRowCls}>
-                  <span className={headerLabelCls}>From</span>
+                  <span className={headerLabelCls}>From name</span>
                   <Input
                     value={fromName}
                     onChange={(e) => setFromName(e.target.value)}
                     placeholder={`${eventName} Speaker Team`}
                     className="h-8 text-sm border-0 shadow-none p-0 focus-visible:ring-0 bg-transparent flex-1"
                   />
+                </div>
+                <div className={headerRowCls}>
+                  <span className={headerLabelCls}>From email</span>
                   <Input
                     type="email"
                     value={fromEmail}
                     onChange={(e) => setFromEmail(e.target.value)}
                     placeholder="you@yourorg.com"
-                    className="h-8 text-sm border-0 shadow-none p-0 focus-visible:ring-0 bg-transparent w-48"
+                    className="h-8 text-sm border-0 shadow-none p-0 focus-visible:ring-0 bg-transparent flex-1"
                   />
                 </div>
                 <div className={headerRowCls}>
@@ -473,21 +478,22 @@ export default function AddSpeakerDialog({ eventId, eventName = "the event", ema
                 </div>
               </div>
 
-              <div className="rounded-b-lg border border-t-0 border-border bg-white px-8 pt-6 pb-4 space-y-4">
+              <div className="rounded-b-lg border border-t-0 border-border bg-white px-8 pt-5 pb-4 space-y-3">
                 <p className="text-sm text-gray-700">Hi {fields.firstName || "…"},</p>
 
                 <Textarea
                   value={introText}
-                  rows={6}
+                  rows={1}
+                  ref={(el) => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; } }}
                   onChange={(e) => {
                     setIntroText(e.target.value);
                     e.target.style.height = "auto";
                     e.target.style.height = e.target.scrollHeight + "px";
                   }}
-                  className="text-sm resize-none overflow-hidden border border-dashed border-border/60 bg-transparent shadow-none leading-relaxed focus-visible:border-primary/40"
+                  className="text-sm resize-none overflow-hidden border border-slate-200 bg-transparent shadow-none leading-relaxed focus-visible:border-primary/40"
                 />
 
-                <div className="py-1">
+                <div>
                   <span
                     style={{
                       display: "inline-block",
@@ -507,13 +513,14 @@ export default function AddSpeakerDialog({ eventId, eventName = "the event", ema
 
                 <Textarea
                   value={closingText}
-                  rows={5}
+                  rows={1}
+                  ref={(el) => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; } }}
                   onChange={(e) => {
                     setClosingText(e.target.value);
                     e.target.style.height = "auto";
                     e.target.style.height = e.target.scrollHeight + "px";
                   }}
-                  className="text-sm resize-none overflow-hidden border border-dashed border-border/60 bg-transparent shadow-none leading-relaxed focus-visible:border-primary/40"
+                  className="text-sm resize-none overflow-hidden border border-slate-200 bg-transparent shadow-none leading-relaxed focus-visible:border-primary/40"
                 />
 
                 <div className="border-t border-gray-100 pt-3 text-center">

@@ -75,6 +75,18 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
     return [];
   })();
 
+  const DEFAULT_EDIT_FIELDS = [
+    { id: 'first_name', label: 'First Name', type: 'text', enabled: true, required: true },
+    { id: 'last_name', label: 'Last Name', type: 'text', enabled: true, required: true },
+    { id: 'email', label: 'Email', type: 'email', enabled: true, required: true },
+    { id: 'company_role', label: 'Title', type: 'text', enabled: true, required: false },
+    { id: 'company_name', label: 'Company', type: 'text', enabled: true, required: false },
+    { id: 'linkedin', label: 'LinkedIn', type: 'url', enabled: true, required: false },
+    { id: 'talk_topic', label: 'Talk / Session Topic', type: 'text', enabled: true, required: false },
+    { id: 'bio', label: 'Bio', type: 'textarea', enabled: true, required: false },
+  ];
+  const editFormFields = configFields.length > 0 ? configFields : DEFAULT_EDIT_FIELDS;
+
   // Use the canonical Speaker type and derive a few display helpers
   const s = (speaker as Speaker) ?? null;
   const fullName = s ? `${s.firstName ?? ''} ${s.lastName ?? ''}`.trim() || (s as any).name || '' : '';
@@ -83,6 +95,7 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
   const promoApproved = s?.promoCardApproved ?? false;
 
   const { isReadOnly } = useEventAccess(id);
+  const effectiveReadOnly = isOrganizerView && isReadOnly;
 
   const canApprove = Boolean(s?.headshot);
 
@@ -353,7 +366,7 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
             );
 
             const makeFileHandler = (type: 'headshot' | 'logo' | 'logoWhite') => (e: React.ChangeEvent<HTMLInputElement>) => {
-              if (isReadOnly) return;
+              if (effectiveReadOnly) return;
               const file = e.target.files?.[0];
               if (!file) return;
               if (!['image/png', 'image/jpeg', 'image/avif'].includes(file.type)) {
@@ -384,7 +397,7 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
               <div className='grid grid-cols-2 gap-6 items-start'>
               <div className="rounded-lg border border-border overflow-hidden">
                 <div className="px-6 py-4 bg-muted/30 border-b border-border flex items-center justify-between">
-                  <p className="text-sm font-medium text-foreground">{isApplication ? 'Details' : 'Speaker Information'}</p>
+                  <p className="text-sm font-medium text-foreground">Details</p>
                   <div className="flex items-center gap-1">
                     <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs" onClick={() => {
                       const lines = [
@@ -401,7 +414,7 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
                     }}>
                       <Copy className="h-3.5 w-3.5" />Copy
                     </Button>
-                    <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs" onClick={() => setEditOpen(true)} disabled={isReadOnly}>
+                    <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs" onClick={() => setEditOpen(true)} disabled={effectiveReadOnly}>
                       <Edit className="h-3.5 w-3.5" />Edit
                     </Button>
                   </div>
@@ -498,8 +511,8 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
                       <div className="flex items-center gap-2">
                         <button
                           className="text-xs text-muted-foreground hover:text-primary transition-colors"
-                          onClick={() => { if (!isReadOnly) headshotInputRef.current?.click(); }}
-                          disabled={uploadingHeadshot || isReadOnly}
+                          onClick={() => { if (!effectiveReadOnly) headshotInputRef.current?.click(); }}
+                          disabled={uploadingHeadshot || effectiveReadOnly}
                         >
                           {uploadingHeadshot ? 'Uploading…' : headshotUrl ? 'Replace' : 'Upload'}
                         </button>
@@ -525,8 +538,8 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
                       <div className="flex items-center gap-2">
                         <button
                           className="text-xs text-muted-foreground hover:text-primary transition-colors"
-                          onClick={() => { if (!isReadOnly) logoInputRef.current?.click(); }}
-                          disabled={uploadingLogo || isReadOnly}
+                          onClick={() => { if (!effectiveReadOnly) logoInputRef.current?.click(); }}
+                          disabled={uploadingLogo || effectiveReadOnly}
                         >
                           {uploadingLogo ? 'Uploading…' : ((s as any)?.companyLogoColour ?? s?.companyLogo) ? 'Replace' : 'Upload'}
                         </button>
@@ -552,8 +565,8 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
                       <div className="flex items-center gap-2">
                         <button
                           className="text-xs text-muted-foreground hover:text-primary transition-colors"
-                          onClick={() => { if (!isReadOnly) logoWhiteInputRef.current?.click(); }}
-                          disabled={uploadingLogoWhite || isReadOnly}
+                          onClick={() => { if (!effectiveReadOnly) logoWhiteInputRef.current?.click(); }}
+                          disabled={uploadingLogoWhite || effectiveReadOnly}
                         >
                           {uploadingLogoWhite ? 'Uploading…' : s?.companyLogoWhite ? 'Replace' : 'Upload'}
                         </button>
@@ -602,7 +615,7 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
                 </div>
               </div>
                 <div className="rounded-lg border border-border overflow-hidden">
-                  <SpeakerContentTab eventId={id!} speakerId={spkId!} speakerName={fullName || undefined} showApprovals={isOrganizerView} readOnly={isReadOnly} />
+                  <SpeakerContentTab eventId={id!} speakerId={spkId!} speakerName={fullName || undefined} showApprovals={isOrganizerView} readOnly={effectiveReadOnly} />
                 </div>
               </div>
             );
@@ -655,7 +668,7 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
               talkDescription: s?.talkDescription ?? '',
               ...(() => {
                 const vals: Record<string, any> = {};
-                configFields.forEach((field: any) => {
+                editFormFields.forEach((field: any) => {
                   if (field.custom && field.enabled && field.type !== 'file') {
                     const cf = s?.customFields || {};
                     vals[field.id] = cf[field.id] || cf[field.id.replace(/_/g, '')] || '';
@@ -664,7 +677,7 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
                 return vals;
               })(),
             }}
-            formConfig={configFields}
+            formConfig={editFormFields}
             submitLabel="Save"
             onCancel={() => setEditOpen(false)}
             onSubmit={async (values) => {
@@ -675,7 +688,7 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
                 Object.keys(values).forEach(key => {
                   if (!standardKeys.includes(key)) customFields[key] = values[key];
                 });
-                const requiredFields = configFields.filter((f: any) => f.required && f.enabled);
+                const requiredFields = editFormFields.filter((f: any) => f.required && f.enabled);
                 const allRequiredFilled = requiredFields.every((field: any) => {
                   const key = field.id === 'first_name' ? 'firstName'
                     : field.id === 'last_name' ? 'lastName'
