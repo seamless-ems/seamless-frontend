@@ -37,6 +37,7 @@ export interface Speaker {
   bio?: string;
   headshot?: string;
   companyLogo?: string;
+  companyLogoColour?: string;
   companyLogoWhite?: string;
   talkTitle?: string | null;
   talkDescription?: string | null;

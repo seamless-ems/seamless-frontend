@@ -435,12 +435,6 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
                       {(fieldEnabled('talk_title') || s?.talkTitle) && (
                         <Field label="Talk Title" value={s?.talkTitle} />
                       )}
-                      {(fieldEnabled('talk_description') || s?.talkDescription) && (
-                        <div>
-                          <p className="text-xs font-medium text-muted-foreground mb-0.5">Talk Description</p>
-                          <p className="text-sm text-foreground">{s?.talkDescription || <span className="text-muted-foreground/40">—</span>}</p>
-                        </div>
-                      )}
                       {extraInlineFields.map(field => (
                         <Field
                           key={field.id}
@@ -462,6 +456,15 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
                             Read more
                           </button>
                         )}
+                      </div>
+                    )}
+
+                    {(fieldEnabled('talk_description') || s?.talkDescription) && (
+                      <div className="pt-4 border-t border-border">
+                        <p className="text-xs font-medium text-muted-foreground mb-1.5">Talk Description</p>
+                        <p className="text-sm text-foreground leading-relaxed">
+                          {s?.talkDescription || <span className="text-muted-foreground/40">—</span>}
+                        </p>
                       </div>
                     )}
 
@@ -530,8 +533,8 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
                     <div className="flex flex-col items-center gap-1.5 w-full">
                       <p className="text-xs font-medium text-muted-foreground self-start mb-1">Company Logo — Colour</p>
                       <div className="w-full h-[64px] rounded-lg border border-border bg-white flex items-center justify-center p-2.5">
-                        {((s as any)?.companyLogoColour ?? s?.companyLogo)
-                          ? <img src={(s as any)?.companyLogoColour ?? s?.companyLogo} alt="Logo" className="max-w-full max-h-full object-contain" />
+                        {(s?.companyLogoColour ?? s?.companyLogo)
+                          ? <img src={s?.companyLogoColour ?? s?.companyLogo} alt="Logo" className="max-w-full max-h-full object-contain" />
                           : <span className="text-xs text-muted-foreground/50 text-center leading-tight">{s?.companyName || 'No logo'}</span>
                         }
                       </div>
@@ -541,10 +544,10 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
                           onClick={() => { if (!effectiveReadOnly) logoInputRef.current?.click(); }}
                           disabled={uploadingLogo || effectiveReadOnly}
                         >
-                          {uploadingLogo ? 'Uploading…' : ((s as any)?.companyLogoColour ?? s?.companyLogo) ? 'Replace' : 'Upload'}
+                          {uploadingLogo ? 'Uploading…' : (s?.companyLogoColour ?? s?.companyLogo) ? 'Replace' : 'Upload'}
                         </button>
-                        {((s as any)?.companyLogoColour ?? s?.companyLogo) && (
-                          <button title="Download logo" className="text-muted-foreground hover:text-primary transition-colors" onClick={() => window.open((s as any)?.companyLogoColour ?? s?.companyLogo, '_blank')}>
+                        {(s?.companyLogoColour ?? s?.companyLogo) && (
+                          <button title="Download logo" className="text-muted-foreground hover:text-primary transition-colors" onClick={() => window.open(s?.companyLogoColour ?? s?.companyLogo, '_blank')}>
                             <Download className="h-3.5 w-3.5" />
                           </button>
                         )}

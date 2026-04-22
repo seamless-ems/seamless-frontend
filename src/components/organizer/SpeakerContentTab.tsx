@@ -2,24 +2,44 @@ import React, { useState, useRef } from 'react';
 import JSZip from 'jszip';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
-import { getSpeakerContent, createSpeakerContent, uploadFile, getContentHistory, createNewContentVersion } from '@/lib/api';
+import {
+  getSpeakerContent, createSpeakerContent, uploadFile,
+  getContentHistory, createNewContentVersion, archiveContent, unarchiveContent,
+} from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Archive, ChevronDown, ChevronRight, Download, MoreVertical, RefreshCw, RotateCcw, Upload } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { archiveContent, unarchiveContent } from '@/lib/api';
+
+type RestoringState = {
+  version: any;
+  documentId: string;
+  itemName: string;
+  isArchived?: boolean;
+};
+
+function docId(item: any): string {
+  return item.documentId ?? item.document_id ?? item.id;
+}
+
+function latestPerDoc(arr: any[]): any[] {
+  const seen = new Map<string, any>();
+  for (const item of arr) {
+    const key = docId(item);
+    const existing = seen.get(key);
+    if (!existing || (item.version ?? 0) > (existing.version ?? 0)) {
+      seen.set(key, item);
+    }
+  }
+  return Array.from(seen.values());
+}
 
 function getFileTypeLabel(contentType: string, url: string): string {
   if (contentType?.includes('pdf') || url?.endsWith('.pdf')) return 'PDF';
@@ -63,7 +83,7 @@ function HistorySection({ speakerId, documentId, currentVersion, itemName, onRes
   documentId: string;
   currentVersion: number;
   itemName: string;
-  onRestore: (data: { version: any; documentId: string; itemName: string }) => void;
+  onRestore: (data: RestoringState) => void;
 }) {
   const { data: versions, isLoading } = useQuery<any[]>({
     queryKey: ['content', speakerId, documentId, 'history'],
@@ -105,15 +125,15 @@ function HistorySection({ speakerId, documentId, currentVersion, itemName, onRes
                 </a>
               )}
               {!isCurrent && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 text-xs px-2"
-                    onClick={() => onRestore({ version: v, documentId, itemName })}
-                  >
-                    <RotateCcw className="h-3 w-3 mr-1" />Restore
-                  </Button>
-                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 text-xs px-2"
+                  onClick={() => onRestore({ version: v, documentId, itemName })}
+                >
+                  <RotateCcw className="h-3 w-3 mr-1" />Restore
+                </Button>
+              )}
             </div>
           </div>
         );
@@ -122,33 +142,30 @@ function HistorySection({ speakerId, documentId, currentVersion, itemName, onRes
   );
 }
 
-export default function SpeakerContentTab({ eventId, speakerId, speakerName, showApprovals = true, readOnly = false }: { eventId: string; speakerId: string; speakerName?: string; showApprovals?: boolean; readOnly?: boolean }) {
+export default function SpeakerContentTab({ eventId, speakerId, speakerName, readOnly = false }: {
+  eventId: string;
+  speakerId: string;
+  speakerName?: string;
+  readOnly?: boolean;
+}) {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
-  const currentUserName = user?.name || user?.email || undefined;
 
-  // Upload new
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadName, setUploadName] = useState('');
   const [uploadFileObj, setUploadFileObj] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const uploadInputRef = useRef<HTMLInputElement>(null);
 
-  // Replace
   const [replacing, setReplacing] = useState<any | null>(null);
   const [replaceFile, setReplaceFile] = useState<File | null>(null);
   const [replaceConfirmOpen, setReplaceConfirmOpen] = useState(false);
   const replaceInputRef = useRef<HTMLInputElement>(null);
 
-  // Archive / restore confirmations
   const [archiving, setArchiving] = useState<any | null>(null);
-  const [restoring, setRestoring] = useState<{ version: any; documentId: string; itemName: string } | null>(null);
-
-  // Archived items toggle (API returns archived items with `archived: true`)
+  const [restoring, setRestoring] = useState<RestoringState | null>(null);
   const [showArchived, setShowArchived] = useState(false);
-
-  // Expanded history rows
   const [expandedHistory, setExpandedHistory] = useState<Set<string>>(new Set());
+  const [zipping, setZipping] = useState(false);
 
   const { data: contentItems, isLoading } = useQuery<any[]>({
     queryKey: ['content', speakerId],
@@ -157,15 +174,12 @@ export default function SpeakerContentTab({ eventId, speakerId, speakerName, sho
   });
 
   const items: any[] = contentItems ?? [];
-  const sortByRecent = (a: any, b: any) => {
-    const ta = new Date(a.updatedAt ?? a.createdAt ?? 0).getTime();
-    const tb = new Date(b.updatedAt ?? b.createdAt ?? 0).getTime();
-    return tb - ta;
-  };
-  const activeItems = items.filter(i => !i.archived).sort(sortByRecent);
-  const archivedItems = items.filter(i => i.archived).sort(sortByRecent);
+  const sortByRecent = (a: any, b: any) =>
+    new Date(b.updatedAt ?? b.createdAt ?? 0).getTime() - new Date(a.updatedAt ?? a.createdAt ?? 0).getTime();
 
-  const [zipping, setZipping] = useState(false);
+  const latestItems = latestPerDoc(items);
+  const activeItems = latestItems.filter(i => !i.archived).sort(sortByRecent);
+  const archivedItems = latestItems.filter(i => i.archived).sort(sortByRecent);
 
   const handleDownloadAll = async () => {
     if (activeItems.length === 0 || zipping) return;
@@ -179,8 +193,7 @@ export default function SpeakerContentTab({ eventId, speakerId, speakerName, sho
         const blob = await res.blob();
         const baseName = item.name ?? getFilename(url);
         const urlExt = url.split('?')[0].split('.').pop()?.toLowerCase() ?? '';
-        const hasExt = baseName.includes('.');
-        const filename = hasExt ? baseName : (urlExt ? `${baseName}.${urlExt}` : baseName);
+        const filename = baseName.includes('.') ? baseName : (urlExt ? `${baseName}.${urlExt}` : baseName);
         zip.file(filename, blob);
       }));
       const content = await zip.generateAsync({ type: 'blob' });
@@ -196,10 +209,10 @@ export default function SpeakerContentTab({ eventId, speakerId, speakerName, sho
     }
   };
 
-  const toggleHistory = (docId: string) => {
+  const toggleHistory = (id: string) => {
     setExpandedHistory(prev => {
       const next = new Set(prev);
-      next.has(docId) ? next.delete(docId) : next.add(docId);
+      next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
   };
@@ -231,10 +244,10 @@ export default function SpeakerContentTab({ eventId, speakerId, speakerName, sho
       const res = await uploadFile(replaceFile, speakerId, eventId);
       const url = res?.public_url ?? res?.publicUrl ?? res?.url ?? null;
       if (!url) throw new Error('Upload did not return a file URL');
-      const docId = replacing.documentId ?? replacing.document_id ?? replacing.id;
-      await createNewContentVersion(speakerId, docId, { content: url, contentType: replaceFile.type || 'application/octet-stream' });
+      const id = docId(replacing);
+      await createNewContentVersion(speakerId, id, { content: url, contentType: replaceFile.type || 'application/octet-stream' });
       queryClient.invalidateQueries({ queryKey: ['content', speakerId] });
-      queryClient.invalidateQueries({ queryKey: ['content', speakerId, docId, 'history'] });
+      queryClient.invalidateQueries({ queryKey: ['content', speakerId, id, 'history'] });
       toast({ title: 'File replaced' });
       setReplaceConfirmOpen(false);
       setReplacing(null);
@@ -250,8 +263,7 @@ export default function SpeakerContentTab({ eventId, speakerId, speakerName, sho
     if (!archiving) return;
     setUploading(true);
     try {
-      const docId = archiving.documentId ?? archiving.document_id ?? archiving.id;
-      await archiveContent(speakerId, docId);
+      await archiveContent(speakerId, docId(archiving));
       queryClient.invalidateQueries({ queryKey: ['content', speakerId] });
       toast({ title: 'File archived' });
       setArchiving(null);
@@ -267,12 +279,10 @@ export default function SpeakerContentTab({ eventId, speakerId, speakerName, sho
     setUploading(true);
     try {
       if (restoring.isArchived) {
-        // Unarchive the document using backend endpoint
         await unarchiveContent(speakerId, restoring.documentId);
         queryClient.invalidateQueries({ queryKey: ['content', speakerId] });
         queryClient.invalidateQueries({ queryKey: ['content', speakerId, restoring.documentId, 'history'] });
         toast({ title: 'File unarchived' });
-        setRestoring(null);
       } else {
         const url = restoring.version.content ?? restoring.version.publicUrl ?? restoring.version.public_url ?? '';
         const contentType = restoring.version.contentType ?? restoring.version.content_type ?? 'application/octet-stream';
@@ -280,8 +290,8 @@ export default function SpeakerContentTab({ eventId, speakerId, speakerName, sho
         queryClient.invalidateQueries({ queryKey: ['content', speakerId] });
         queryClient.invalidateQueries({ queryKey: ['content', speakerId, restoring.documentId, 'history'] });
         toast({ title: `Restored to v${restoring.version.version}` });
-        setRestoring(null);
       }
+      setRestoring(null);
     } catch (err: any) {
       toast({ title: 'Restore failed', description: String(err?.message || err), variant: 'destructive' });
     } finally {
@@ -291,7 +301,6 @@ export default function SpeakerContentTab({ eventId, speakerId, speakerName, sho
 
   return (
     <div>
-      {/* Card header — matches Details panel */}
       <div className="px-6 py-4 bg-muted/30 border-b border-border flex items-center justify-between">
         <p className="text-sm font-medium text-foreground">Content</p>
         <div className="flex items-center gap-1">
@@ -308,7 +317,6 @@ export default function SpeakerContentTab({ eventId, speakerId, speakerName, sho
         </div>
       </div>
 
-      {/* File list — full-bleed, no inner card */}
       <div>
         {isLoading ? (
           <div className="py-12 text-center text-sm text-muted-foreground">Loading files…</div>
@@ -323,7 +331,7 @@ export default function SpeakerContentTab({ eventId, speakerId, speakerName, sho
           <table className="w-full">
             <thead className="border-b border-border bg-muted/30">
               <tr>
-                <th className="px-5 py-3 text-left text-xs font-medium text-muted-foreground">Name</th>
+                <th className="px-5 py-3 text-left text-xs font-medium text-muted-foreground">Description</th>
                 <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground w-16">Type</th>
                 <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground w-36">Uploaded</th>
                 <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground w-20">Version</th>
@@ -333,13 +341,14 @@ export default function SpeakerContentTab({ eventId, speakerId, speakerName, sho
             <tbody>
               {activeItems.map((item: any) => {
                 const url = item.content ?? item.url ?? item.publicUrl ?? item.public_url ?? '';
-                const docId = item.documentId ?? item.document_id ?? item.id;
-                const name = item.name ?? getFilename(url);
+                const id = docId(item);
+                const description = item.name;
+                const filename = getFilename(url);
                 const fileType = getFileTypeLabel(item.contentType ?? item.content_type ?? '', url);
-                const historyOpen = expandedHistory.has(docId);
+                const historyOpen = expandedHistory.has(id);
 
                 return (
-                  <React.Fragment key={item.id ?? docId}>
+                  <React.Fragment key={item.id ?? id}>
                     <tr className="border-b border-border last:border-0 hover:bg-muted/40 transition-colors group">
                       <td className="px-5 py-3.5">
                         <a
@@ -348,8 +357,11 @@ export default function SpeakerContentTab({ eventId, speakerId, speakerName, sho
                           rel="noreferrer"
                           className="text-sm font-medium text-foreground hover:text-primary transition-colors"
                         >
-                          {name}
+                          {description || filename}
                         </a>
+                        {description && filename && (
+                          <p className="text-xs text-muted-foreground mt-0.5 truncate">{filename}</p>
+                        )}
                       </td>
                       <td className="px-3 py-3.5">
                         <span className="text-xs font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
@@ -359,7 +371,7 @@ export default function SpeakerContentTab({ eventId, speakerId, speakerName, sho
                       <td className="px-3 py-3.5 text-xs text-muted-foreground">{formatDate(item.createdAt)}</td>
                       <td className="px-3 py-3.5">
                         <button
-                          onClick={() => toggleHistory(docId)}
+                          onClick={() => toggleHistory(id)}
                           className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
                           title={historyOpen ? 'Hide history' : 'View history'}
                         >
@@ -408,9 +420,9 @@ export default function SpeakerContentTab({ eventId, speakerId, speakerName, sho
                         <td colSpan={5} className="p-0">
                           <HistorySection
                             speakerId={speakerId}
-                            documentId={docId}
+                            documentId={id}
                             currentVersion={item.version ?? 1}
-                            itemName={name}
+                            itemName={description || filename}
                             onRestore={(data) => setRestoring(data)}
                           />
                         </td>
@@ -424,7 +436,6 @@ export default function SpeakerContentTab({ eventId, speakerId, speakerName, sho
         )}
       </div>
 
-      {/* Archived files */}
       {archivedItems.length > 0 && (
         <div className="px-5 py-4 border-t border-border">
           <button
@@ -440,12 +451,18 @@ export default function SpeakerContentTab({ eventId, speakerId, speakerName, sho
                 const url = item.content ?? item.url ?? item.publicUrl ?? item.public_url ?? '';
                 const name = item.name ?? getFilename(url);
                 const fileType = getFileTypeLabel(item.contentType ?? item.content_type ?? '', url);
+                const id = docId(item);
                 return (
-                  <div key={item.id ?? item.documentId ?? item.document_id} className="flex items-center gap-3 px-4 py-2.5 border-b border-border/50 last:border-0 opacity-60 hover:opacity-100 transition-opacity">
+                  <div key={item.id ?? id} className="flex items-center gap-3 px-4 py-2.5 border-b border-border/50 last:border-0 opacity-60 hover:opacity-100 transition-opacity">
                     <span className="flex-1 text-sm text-muted-foreground truncate">{name}</span>
                     <span className="text-xs font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0">{fileType}</span>
-                        {!readOnly && (
-                          <Button variant="ghost" size="sm" className="h-6 text-xs px-2 shrink-0" onClick={() => setRestoring({ version: { content: url, contentType: item.contentType ?? item.content_type, version: item.version ?? 1 }, documentId: item.documentId ?? item.document_id ?? item.id, itemName: name, isArchived: true })}>
+                    {!readOnly && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 text-xs px-2 shrink-0"
+                        onClick={() => setRestoring({ version: { content: url, contentType: item.contentType ?? item.content_type, version: item.version ?? 1 }, documentId: id, itemName: name, isArchived: true })}
+                      >
                         <RotateCcw className="h-3 w-3 mr-1" />Restore
                       </Button>
                     )}
@@ -457,8 +474,6 @@ export default function SpeakerContentTab({ eventId, speakerId, speakerName, sho
         </div>
       )}
 
-
-      {/* Hidden file inputs */}
       <input
         ref={uploadInputRef}
         type="file"
@@ -483,7 +498,6 @@ export default function SpeakerContentTab({ eventId, speakerId, speakerName, sho
         }}
       />
 
-      {/* Upload dialog */}
       <Dialog open={uploadOpen} onOpenChange={(v) => {
         if (!v) { setUploadOpen(false); setUploadName(''); setUploadFileObj(null); }
         else setUploadOpen(true);
@@ -497,7 +511,7 @@ export default function SpeakerContentTab({ eventId, speakerId, speakerName, sho
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label className="text-sm font-medium mb-1.5 block">File name</Label>
+              <Label className="text-sm font-medium mb-1.5 block">Description</Label>
               <Input
                 placeholder="e.g. Keynote Slides, Run of Show"
                 value={uploadName}
@@ -533,14 +547,13 @@ export default function SpeakerContentTab({ eventId, speakerId, speakerName, sho
             <Button variant="outline" onClick={() => { setUploadOpen(false); setUploadName(''); setUploadFileObj(null); }}>
               Cancel
             </Button>
-            <Button disabled={readOnly || !uploadFileObj || !uploadName.trim() || uploading} onClick={handleUpload}>
+            <Button disabled={!uploadFileObj || !uploadName.trim() || uploading} onClick={handleUpload}>
               {uploading ? 'Uploading…' : 'Upload'}
             </Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Replace confirmation */}
       <AlertDialog open={replaceConfirmOpen} onOpenChange={(v) => {
         if (!v) { setReplaceConfirmOpen(false); setReplaceFile(null); setReplacing(null); }
       }}>
@@ -551,16 +564,15 @@ export default function SpeakerContentTab({ eventId, speakerId, speakerName, sho
               The current version of <strong>{replacing?.name ?? 'this file'}</strong> will be saved in history and can be restored at any time. The file name stays the same.
             </AlertDialogDescription>
           </AlertDialogHeader>
-            <AlertDialogFooter>
+          <AlertDialogFooter>
             <AlertDialogCancel onClick={() => { setReplaceFile(null); setReplacing(null); }}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleReplaceConfirm} disabled={uploading || readOnly}>
+            <AlertDialogAction onClick={handleReplaceConfirm} disabled={uploading}>
               {uploading ? 'Replacing…' : 'Yes, replace'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Archive confirmation */}
       <AlertDialog open={Boolean(archiving)} onOpenChange={(v) => { if (!v) setArchiving(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -568,12 +580,11 @@ export default function SpeakerContentTab({ eventId, speakerId, speakerName, sho
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleArchiveConfirm} disabled={readOnly}>Yes, archive</AlertDialogAction>
+            <AlertDialogAction onClick={handleArchiveConfirm}>Yes, archive</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Restore confirmation */}
       <AlertDialog open={Boolean(restoring)} onOpenChange={(v) => { if (!v) setRestoring(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -584,7 +595,7 @@ export default function SpeakerContentTab({ eventId, speakerId, speakerName, sho
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleRestoreConfirm} disabled={uploading || readOnly}>
+            <AlertDialogAction onClick={handleRestoreConfirm} disabled={uploading}>
               {uploading ? 'Restoring…' : 'Yes, restore'}
             </AlertDialogAction>
           </AlertDialogFooter>

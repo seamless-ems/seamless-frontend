@@ -19,6 +19,7 @@ Rules for every agent that touches this file:
 1. Read `README.md` for setup.
 2. Read this file for current priorities and rules.
 3. Check `API_GAPS.md` before any API-related work.
+4. Check `BACKEND_QUEUE.md` for pending backend items and their frontend wiring instructions.
 
 ---
 
@@ -68,11 +69,17 @@ Use these exact terms everywhere (UI labels, tooltips, dialogs, HelpTips, copy):
 ---
 
 ## Next up
-**EmbedBuilder layout settings** (`src/components/organizer/EmbedBuilder.tsx`)
-- Add columns-per-row control: desktop (2–4) and mobile (1–2), simple button-group toggles
-- Add background toggle: transparent vs white (affects the copied iframe snippet)
-- Settings become query params on the embed URL (`?cols=3&cols_mobile=1`)
-- **Check `openapi.json` first** — verify `/embed/:eventId` supports these params before building; log gaps to `API_GAPS.md`
+**Speaker intake auth flow** — frontend complete. Awaiting backend fixes:
+
+1. **`POST /auth/firebase/send-magic-link`** must use the `url` field from the request body as the Firebase `continueUrl`. Currently hardcoded to `/finish-signup` — this drops the `?redirect=` param we encode, breaking cross-device post-login redirects to the speaker's profile page.
+
+2. **Confirmation email** — `POST /events/:eventId/speakers/:speakerId/email` requires auth. Speakers submitting the public intake form are unauthenticated, so the call fails silently. Fix: trigger the welcome email server-side inside the `POST /events/:eventId/speaker-intake` handler. Email should include their login email and a link to `/login?redirect=/speaker/:speakerId/event/:eventId`.
+
+3. **`PATCH /events/:eventId/speakers/:speakerId`** — identify the record by `speakerId` (not email) so speakers can update their own email without creating a duplicate.
+
+4. **`GET /events/:eventId/speakers/:speakerId`** — allow unauthenticated CORS so the public intake form can pre-populate fields. Currently works via camelCase fallbacks but is fragile.
+
+5. **Link expiry** — the `?speakerId=` intake URL is permanently live. Once the auth flow is complete, invalidate the plain intake link once a speaker has an authenticated account.
 
 ---
 
