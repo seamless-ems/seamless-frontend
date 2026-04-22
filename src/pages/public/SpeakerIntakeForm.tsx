@@ -36,7 +36,6 @@ import { type FormFieldConfig, DEFAULT_FIELDS, mergeWithDefaults, FORM_SECTIONS 
 import { ImageCropDialog } from "@/components/ImageCropDialog";
 import { useRef } from "react";
 import { generateUuid } from "@/lib/utils";
-import MissingFormDialog from "@/components/MissingFormDialog";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/avif"];
@@ -113,7 +112,7 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
   const [formTitle, setFormTitle] = useState<string | null>(null);
   const [formSubtitle, setFormSubtitle] = useState<string | null>(null);
   const [showFormTitle, setShowFormTitle] = useState<boolean>(true);
-  const [missingFormDialogOpen, setMissingFormDialogOpen] = useState<boolean>(false);
+
   const [cropImageUrl, setCropImageUrl] = useState<string | null>(null);
   const [cropType, setCropType] = useState<string | null>(null);
   const [formName, setFormName] = useState<string>("Speaker Information");
@@ -174,10 +173,7 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
             setFormConfig(DEFAULT_FIELDS);
           }
         })
-        .catch((err) => {
-          if (err && (err.status === 404 || err?.status === 404)) {
-            setMissingFormDialogOpen(true);
-          }
+        .catch(() => {
           setFormConfig(DEFAULT_FIELDS);
         });
     }).catch((err) => {
@@ -620,7 +616,6 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
 
   return (
     <div className="min-h-screen bg-background">
-      <MissingFormDialog open={missingFormDialogOpen} onOpenChange={setMissingFormDialogOpen} eventId={String(eventId)} />
       {/* Full-screen uploading overlay */}
       {isSubmitting && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">

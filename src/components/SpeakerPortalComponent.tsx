@@ -2,16 +2,14 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Check, Edit, Share2, X } from "lucide-react";
-import ShareDialog from "@/components/organizer/ShareDialog";
+import { ArrowLeft, Check, Copy, Download, Edit, X } from "lucide-react";
 import { Speaker } from "@/types/event";
-import { getJson, updateSpeaker, uploadFile, getFormConfigForEvent } from "@/lib/api";
+import { getJson, updateSpeaker, uploadFile, getFormConfigForEvent, emailSpeaker } from "@/lib/api";
+import { EmailDraft, EmailComposer, buildRejectionEmail, buildEmailHtml } from "@/components/organizer/ApplicationsTab";
 import { useEventAccess } from '@/contexts/EventAccessContext';
 import { ImageCropDialog } from "@/components/ImageCropDialog";
-import MissingFormDialog from "@/components/MissingFormDialog";
 import SpeakerForm from "@/components/SpeakerForm";
 import SpeakerCardTab from "@/components/organizer/SpeakerCardTab";
 import SpeakerContentTab from "@/components/organizer/SpeakerContentTab";
@@ -46,6 +44,13 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
     enabled: Boolean(id && spkId),
   });
 
+  const { data: eventData } = useQuery<any>({
+    queryKey: ['event', id],
+    queryFn: () => getJson<any>(`/events/${id}`),
+    enabled: Boolean(id),
+  });
+  const eventName: string = eventData?.title || eventData?.name || '';
+
   const rawFormType = (speaker as any)?.form_type ?? (speaker as any)?.formType ?? 'speaker-info';
   const isApplication = rawFormType === 'call-for-speakers';
 
@@ -54,8 +59,7 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
     queryFn: async () => {
       try {
         return await getFormConfigForEvent(id!, isApplication ? "call-for-speakers" : "speaker-info");
-      } catch (err: any) {
-        if (err?.status === 404 && !isApplication) setMissingFormDialogOpen(true);
+      } catch {
         return null;
       }
     },
@@ -74,41 +78,29 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
   // Use the canonical Speaker type and derive a few display helpers
   const s = (speaker as Speaker) ?? null;
   const fullName = s ? `${s.firstName ?? ''} ${s.lastName ?? ''}`.trim() || (s as any).name || '' : '';
-  const infoStatus = s ? (s.speakerInformationStatus ?? (s as any).intakeFormStatus ?? 'pending') : 'pending';
   const headshotUrl = s?.headshot ?? null;
   const websiteApproved = s?.websiteCardApproved ?? false;
   const promoApproved = s?.promoCardApproved ?? false;
-  const embedEnabled = s?.embedEnabled ?? false;
 
   const { isReadOnly } = useEventAccess(id);
-  
-
-  const speakerStatus = (() => {
-    if (infoStatus === 'pending' || !headshotUrl)
-      return { label: 'Info Pending', cls: 'bg-warning/10 text-warning border-warning/30' };
-    if (!websiteApproved)
-      return { label: 'Card Approval Pending', cls: 'bg-blue-500/10 text-blue-600 border-blue-500/30' };
-    if (!embedEnabled)
-      return { label: 'Cards Approved', cls: 'bg-success/10 text-success border-success/30' };
-    return { label: 'Published', cls: 'bg-success/10 text-success border-success/30' };
-  })();
 
   const canApprove = Boolean(s?.headshot);
 
   const queryClient = useQueryClient();
-  const [missingFormDialogOpen, setMissingFormDialogOpen] = useState(false);
+  const [rejectionEmail, setRejectionEmail] = useState<EmailDraft | null>(null);
   const [editOpen, setEditOpen] = useState(() => initialOpenEdit ?? !!(location.state as any)?.openEdit);
   const [bioOpen, setBioOpen] = useState(false);
-  const [notesOpen, setNotesOpen] = useState(false);
-  const [internalNotes, setInternalNotes] = useState('');
+  // const [notesOpen, setNotesOpen] = useState(false); // Internal Notes — not MVP
+  // const [internalNotes, setInternalNotes] = useState(''); // Internal Notes — not MVP
   const [cropImageUrl, setCropImageUrl] = useState<string | null>(null);
-  const [cropType, setCropType] = useState<'headshot' | 'logo' | null>(null);
+  const [cropType, setCropType] = useState<'headshot' | 'logo' | 'logoWhite' | null>(null);
   const [uploadingHeadshot, setUploadingHeadshot] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingLogoWhite, setUploadingLogoWhite] = useState(false);
   const [updatingAppStatus, setUpdatingAppStatus] = useState(false);
-  const [shareOpen, setShareOpen] = useState(false);
   const headshotInputRef = useRef<HTMLInputElement | null>(null);
   const logoInputRef = useRef<HTMLInputElement | null>(null);
+  const logoWhiteInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleWebsiteApproval = async () => {
     if (!id || !spkId || !canApprove) return;
@@ -165,28 +157,70 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
     if (!id || !spkId) return;
     setUpdatingAppStatus(true);
     try {
-      await updateSpeaker(id, spkId, { call_for_speakers_status: status });
+      await updateSpeaker(id, spkId, {
+        id: spkId,
+        firstName: s?.firstName ?? '',
+        lastName: s?.lastName ?? '',
+        email: s?.email ?? '',
+        formType: status === 'approved' ? 'speaker-info' : 'call-for-speakers',
+        callForSpeakersStatus: status,
+      });
       queryClient.invalidateQueries({ queryKey: ['event', id, 'speaker', spkId] });
       queryClient.invalidateQueries({ queryKey: ['event', id, 'applications'] });
       queryClient.invalidateQueries({ queryKey: ['event', id, 'speakers'], exact: false });
-      toast({ title: status === 'approved' ? 'Application approved — speaker added to your Speakers list' : 'Application rejected' });
+      if (status === 'rejected') {
+        const tpl = buildRejectionEmail(s?.firstName ?? '', eventName);
+        const savedFromName = eventData?.from_name ?? eventData?.fromName ?? localStorage.getItem('seamless-email-from-name') ?? '';
+        const savedFromEmail = eventData?.from_email ?? eventData?.fromEmail ?? localStorage.getItem('seamless-email-from-email') ?? '';
+        setRejectionEmail({ speaker: s, subject: tpl.subject, body: tpl.body, fromName: savedFromName, fromEmail: savedFromEmail, copied: false });
+      } else {
+        toast({ title: 'Application approved — speaker added to your Speakers list' });
+      }
     } catch (err: any) {
-      toast({ title: 'Failed to update application', variant: 'destructive' });
+      toast({ title: 'Failed to update application', description: String(err?.message || err), variant: 'destructive' });
     } finally {
       setUpdatingAppStatus(false);
     }
   };
 
+  const handleSendRejectionEmail = async () => {
+    if (!rejectionEmail || !id || !spkId) return;
+    try {
+      const html = buildEmailHtml(rejectionEmail.speaker?.firstName ?? '', rejectionEmail.body, '', undefined, undefined);
+      await emailSpeaker(id, spkId, {
+        recipientEmail: rejectionEmail.speaker?.email ?? '',
+        recipientName: rejectionEmail.speaker?.firstName ?? '',
+        subject: rejectionEmail.subject,
+        htmlContent: html,
+        userName: rejectionEmail.fromName || '',
+        userEmail: rejectionEmail.fromEmail || '',
+      });
+      toast({ title: 'Email sent' });
+      setRejectionEmail(null);
+    } catch (err: any) {
+      toast({ title: 'Failed to send email', description: String(err?.message || err), variant: 'destructive' });
+    }
+  };
+
   const handleCropComplete = async (croppedBlob: Blob) => {
     if (!id || !spkId) return;
-    const isHeadshot = cropType === 'headshot';
+    const ct = cropType;
+    const isHeadshot = ct === 'headshot';
+    const isLogoWhite = ct === 'logoWhite';
     try {
-      isHeadshot ? setUploadingHeadshot(true) : setUploadingLogo(true);
+      if (isHeadshot) setUploadingHeadshot(true);
+      else if (isLogoWhite) setUploadingLogoWhite(true);
+      else setUploadingLogo(true);
       const mime = (croppedBlob as any).type || 'image/jpeg';
       const rawExt = mime.split('/')[1] || 'jpeg';
       const ext = rawExt.split('+')[0] === 'jpeg' ? 'jpg' : rawExt.split('+')[0];
-      const file = new File([croppedBlob], `${cropType}.${ext}`, { type: mime });
-      const res = await uploadFile(file, undefined, spkId, id);
+      const file = new File([croppedBlob], `${ct}.${ext}`, { type: mime });
+      let res: any;
+      try {
+        res = await uploadFile(file, undefined, spkId, id);
+      } catch (uploadErr: any) {
+        throw new Error(`Upload failed: ${String(uploadErr?.message || uploadErr)}`);
+      }
       const url = res?.public_url ?? res?.publicUrl ?? res?.url ?? null;
       if (!url) throw new Error('Upload did not return a file url');
       const patch: any = {
@@ -200,19 +234,25 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
         patch.headshot = url;
         patch.websiteCardApproved = false;
         patch.promoCardApproved = false;
+      } else if (isLogoWhite) {
+        patch.companyLogoWhite = url;
       } else {
-        patch.companyLogo = url;
+        patch.companyLogoColour = url;
       }
-      await updateSpeaker(id, spkId, patch);
+      try {
+        await updateSpeaker(id, spkId, patch);
+      } catch (patchErr: any) {
+        throw new Error(`Save failed: ${String(patchErr?.message || patchErr)}`);
+      }
       queryClient.invalidateQueries({ queryKey: ['event', id, 'speaker', spkId] });
       queryClient.invalidateQueries({ queryKey: ['event', id, 'speakers'], exact: false });
-      toast({ title: `${isHeadshot ? 'Headshot' : 'Company logo'} updated${isHeadshot ? ' — approval reset' : ''}` });
+      toast({ title: isHeadshot ? 'Headshot updated — approval reset' : isLogoWhite ? 'White logo updated' : 'Company logo updated' });
     } catch (err: any) {
-      toast({ title: `Failed to upload ${isHeadshot ? 'headshot' : 'logo'}`, description: String(err?.message || err) });
+      toast({ title: `Failed to upload ${isHeadshot ? 'headshot' : isLogoWhite ? 'white logo' : 'logo'}`, description: String(err?.message || err) });
     } finally {
-      isHeadshot ? setUploadingHeadshot(false) : setUploadingLogo(false);
-      if (isHeadshot && headshotInputRef.current) headshotInputRef.current.value = '';
-      if (!isHeadshot && logoInputRef.current) logoInputRef.current.value = '';
+      if (isHeadshot) { setUploadingHeadshot(false); if (headshotInputRef.current) headshotInputRef.current.value = ''; }
+      else if (isLogoWhite) { setUploadingLogoWhite(false); if (logoWhiteInputRef.current) logoWhiteInputRef.current.value = ''; }
+      else { setUploadingLogo(false); if (logoInputRef.current) logoInputRef.current.value = ''; }
       setCropImageUrl(null);
       setCropType(null);
     }
@@ -235,7 +275,6 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <MissingFormDialog open={missingFormDialogOpen} onOpenChange={setMissingFormDialogOpen} eventId={String(id)} />
 
       <header className="sticky top-0 z-30 h-14 flex items-center gap-3 border-b border-border bg-card/95 px-4 shrink-0">
         <button
@@ -245,31 +284,15 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
-        <div className="flex items-baseline gap-1 shrink-0">
-          <span className="text-[17px] font-semibold text-primary" style={{ letterSpacing: '-0.01em' }}>Seamless</span>
-          <span className="text-[13px] font-normal text-muted-foreground ml-0.5">Events</span>
-        </div>
+        <span className="text-[17px] font-semibold text-primary shrink-0" style={{ letterSpacing: '-0.01em' }}>Seamless</span>
+        <span className="text-sm text-muted-foreground shrink-0">Events</span>
         {fullName && (
           <>
-            <span className="text-muted-foreground/40 text-sm">—</span>
+            <span className="text-muted-foreground/40 text-sm shrink-0">—</span>
             <span className="text-sm text-muted-foreground truncate max-w-[220px]">{fullName}</span>
           </>
         )}
         <div className="flex-1" />
-        {isOrganizerView && (
-          <>
-            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setShareOpen(true)}>
-              <Share2 className="h-3.5 w-3.5" />
-              Share Speaker
-            </Button>
-            <ShareDialog
-              open={shareOpen}
-              onOpenChange={setShareOpen}
-              title="Share Speaker"
-              description="Give teammates access to view or manage this speaker's profile and files."
-            />
-          </>
-        )}
         {isOrganizerView && isApplication && s?.callForSpeakersStatus !== 'approved' && (
           <div className="flex items-center gap-2">
             {s?.callForSpeakersStatus === 'rejected' ? (
@@ -295,23 +318,21 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
         )}
       </header>
 
-      <div className="border-b border-border bg-card/50 px-6 shrink-0">
-        <div className="flex gap-6">
-          <button onClick={() => navigate(baseSpeakerPath, { replace: true })} className={tabClass('info')}>
-            {isApplication ? 'Application' : 'Info & Content'}
-          </button>
-          {!isApplication && (
-            <>
-              <button onClick={() => navigate(`${baseSpeakerPath}/speaker-card`, { replace: true })} className={tabClass('speaker-card')}>
-                Speaker Card
-              </button>
-              <button onClick={() => navigate(`${baseSpeakerPath}/social-card`, { replace: true })} className={tabClass('social-card')}>
-                Social Card
-              </button>
-            </>
-          )}
+      {!isApplication && (
+        <div className="border-b border-border bg-card/50 px-6 shrink-0">
+          <div className="flex gap-6">
+            <button onClick={() => navigate(baseSpeakerPath, { replace: true })} className={tabClass('info')}>
+              Info & Content
+            </button>
+            <button onClick={() => navigate(`${baseSpeakerPath}/speaker-card`, { replace: true })} className={tabClass('speaker-card')}>
+              Speaker Card
+            </button>
+            <button onClick={() => navigate(`${baseSpeakerPath}/social-card`, { replace: true })} className={tabClass('social-card')}>
+              Social Card
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       <div className={`flex-1 overflow-auto${activeTab === 'speaker-card' || activeTab === 'social-card' ? ' bg-white' : ''}`}>
         <div className="px-6 py-6">
@@ -331,7 +352,7 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
               </div>
             );
 
-            const makeFileHandler = (type: 'headshot' | 'logo') => (e: React.ChangeEvent<HTMLInputElement>) => {
+            const makeFileHandler = (type: 'headshot' | 'logo' | 'logoWhite') => (e: React.ChangeEvent<HTMLInputElement>) => {
               if (isReadOnly) return;
               const file = e.target.files?.[0];
               if (!file) return;
@@ -347,7 +368,7 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
 
             // All enabled fields not in the hardcoded core set
             // `sample_content` is handled by the SpeakerContentTab component now
-            const CORE_IDS = new Set(['first_name', 'last_name', 'company_role', 'company_name', 'email', 'linkedin', 'bio', 'headshot', 'company_logo', 'talk_topic']);
+            const CORE_IDS = new Set(['first_name', 'last_name', 'company_role', 'company_name', 'email', 'linkedin', 'bio', 'headshot', 'company_logo', 'company_logo_white', 'talk_topic', 'talk_title', 'talk_description', 'sample_content']);
             // Inline: text/url/email/radio/checkbox fields shown in the 2-col grid
             const extraInlineFields = configFields.filter(f => f.enabled && !CORE_IDS.has(f.id) && f.type !== 'file' && f.type !== 'textarea');
             // Block: textarea fields shown as full-width blocks (like bio)
@@ -363,11 +384,27 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
               <div className='grid grid-cols-2 gap-6 items-start'>
               <div className="rounded-lg border border-border overflow-hidden">
                 <div className="px-6 py-4 bg-muted/30 border-b border-border flex items-center justify-between">
-                  <p className="text-sm font-medium text-foreground">{isApplication ? 'Application Details' : 'Speaker Information'}</p>
-                      <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs" onClick={() => setEditOpen(true)} disabled={isReadOnly}>
-                    <Edit className="h-3.5 w-3.5" />Edit
-                  </Button>
-                  
+                  <p className="text-sm font-medium text-foreground">{isApplication ? 'Details' : 'Speaker Information'}</p>
+                  <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs" onClick={() => {
+                      const lines = [
+                        fullName && `Name: ${fullName}`,
+                        s?.companyRole && `Title: ${s.companyRole}`,
+                        s?.companyName && `Company: ${s.companyName}`,
+                        s?.email && `Email: ${s.email}`,
+                        s?.linkedin && `LinkedIn: ${s.linkedin}`,
+                        s?.talkTopic && `Talk / Session Topic: ${s.talkTopic}`,
+                        s?.bio && `Bio: ${s.bio}`,
+                      ].filter(Boolean).join('\n');
+                      navigator.clipboard.writeText(lines);
+                      toast({ title: 'Details copied' });
+                    }}>
+                      <Copy className="h-3.5 w-3.5" />Copy
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs" onClick={() => setEditOpen(true)} disabled={isReadOnly}>
+                      <Edit className="h-3.5 w-3.5" />Edit
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="flex gap-0 divide-x divide-border">
@@ -427,6 +464,7 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
                       );
                     })}
 
+                    {/* Internal Notes — commented out, not MVP
                     {isOrganizerView && (
                     <div className="pt-4 border-t border-border">
                       <div className="flex items-center justify-between mb-1.5">
@@ -443,6 +481,7 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
                       </p>
                     </div>
                     )}
+                    */}
                   </div>
 
                   {(fieldEnabled('headshot') || fieldEnabled('company_logo') || extraFileFields.length > 0) && (
@@ -456,47 +495,76 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
                           : <span className="text-3xl font-semibold text-muted-foreground">{s?.firstName?.[0] ?? '?'}</span>
                         }
                       </div>
-                      <button
-                        className="text-xs text-muted-foreground hover:text-primary transition-colors"
-                        onClick={() => { if (!isReadOnly) headshotInputRef.current?.click(); }}
-                        disabled={uploadingHeadshot || isReadOnly}
-                      >
-                        {uploadingHeadshot ? 'Uploading…' : headshotUrl ? 'Replace' : 'Upload'}
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          className="text-xs text-muted-foreground hover:text-primary transition-colors"
+                          onClick={() => { if (!isReadOnly) headshotInputRef.current?.click(); }}
+                          disabled={uploadingHeadshot || isReadOnly}
+                        >
+                          {uploadingHeadshot ? 'Uploading…' : headshotUrl ? 'Replace' : 'Upload'}
+                        </button>
+                        {headshotUrl && (
+                          <button title="Download headshot" className="text-muted-foreground hover:text-primary transition-colors" onClick={() => window.open(headshotUrl, '_blank')}>
+                            <Download className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
                       <input ref={headshotInputRef} type="file" accept="image/png,image/jpeg,image/avif" className="hidden" onChange={makeFileHandler('headshot')} />
                     </div>
                     )}
 
                     {fieldEnabled('company_logo') && (
                     <div className="flex flex-col items-center gap-1.5 w-full">
-                      <p className="text-xs font-medium text-muted-foreground self-start mb-1">Company Logo</p>
+                      <p className="text-xs font-medium text-muted-foreground self-start mb-1">Company Logo — Colour</p>
                       <div className="w-full h-[64px] rounded-lg border border-border bg-white flex items-center justify-center p-2.5">
-                        {s?.companyLogo
-                          ? <img src={s.companyLogo} alt="Logo" className="max-w-full max-h-full object-contain" />
+                        {((s as any)?.companyLogoColour ?? s?.companyLogo)
+                          ? <img src={(s as any)?.companyLogoColour ?? s?.companyLogo} alt="Logo" className="max-w-full max-h-full object-contain" />
                           : <span className="text-xs text-muted-foreground/50 text-center leading-tight">{s?.companyName || 'No logo'}</span>
                         }
                       </div>
-                      <button
-                        className="text-xs text-muted-foreground hover:text-primary transition-colors"
-                        onClick={() => { if (!isReadOnly) logoInputRef.current?.click(); }}
-                        disabled={uploadingLogo || isReadOnly}
-                      >
-                        {uploadingLogo ? 'Uploading…' : s?.companyLogo ? 'Replace' : 'Upload'}
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          className="text-xs text-muted-foreground hover:text-primary transition-colors"
+                          onClick={() => { if (!isReadOnly) logoInputRef.current?.click(); }}
+                          disabled={uploadingLogo || isReadOnly}
+                        >
+                          {uploadingLogo ? 'Uploading…' : ((s as any)?.companyLogoColour ?? s?.companyLogo) ? 'Replace' : 'Upload'}
+                        </button>
+                        {((s as any)?.companyLogoColour ?? s?.companyLogo) && (
+                          <button title="Download logo" className="text-muted-foreground hover:text-primary transition-colors" onClick={() => window.open((s as any)?.companyLogoColour ?? s?.companyLogo, '_blank')}>
+                            <Download className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
                       <input ref={logoInputRef} type="file" accept="image/png,image/jpeg,image/avif" className="hidden" onChange={makeFileHandler('logo')} />
                     </div>
                     )}
 
                     {(fieldEnabled('company_logo_white') || s?.companyLogoWhite) && (
-                      <div className="flex flex-col items-center gap-1.5 w-full">
-                        <p className="text-xs font-medium text-muted-foreground self-start mb-1">Company Logo (white)</p>
-                        <div className="w-full h-[64px] rounded-lg border border-border flex items-center justify-center p-2.5" style={{ background: '#1f2937' }}>
-                          {s?.companyLogoWhite
-                            ? <img src={s.companyLogoWhite} alt="Logo (white)" className="max-w-full max-h-full object-contain" />
-                            : <span className="text-xs text-white/60 text-center leading-tight">Not uploaded</span>
-                          }
-                        </div>
+                    <div className="flex flex-col items-center gap-1.5 w-full">
+                      <p className="text-xs font-medium text-muted-foreground self-start mb-1">Company Logo — White</p>
+                      <div className="w-full h-[64px] rounded-lg border border-border flex items-center justify-center p-2.5" style={{ background: '#1f2937' }}>
+                        {s?.companyLogoWhite
+                          ? <img src={s.companyLogoWhite} alt="Logo (white)" className="max-w-full max-h-full object-contain" />
+                          : <span className="text-xs text-white/40 text-center leading-tight">No logo</span>
+                        }
                       </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          className="text-xs text-muted-foreground hover:text-primary transition-colors"
+                          onClick={() => { if (!isReadOnly) logoWhiteInputRef.current?.click(); }}
+                          disabled={uploadingLogoWhite || isReadOnly}
+                        >
+                          {uploadingLogoWhite ? 'Uploading…' : s?.companyLogoWhite ? 'Replace' : 'Upload'}
+                        </button>
+                        {s?.companyLogoWhite && (
+                          <button title="Download white logo" className="text-muted-foreground hover:text-primary transition-colors" onClick={() => window.open(s.companyLogoWhite, '_blank')}>
+                            <Download className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
+                      <input ref={logoWhiteInputRef} type="file" accept="image/png,image/jpeg,image/avif" className="hidden" onChange={makeFileHandler('logoWhite')} />
+                    </div>
                     )}
 
                     {extraFileFields.map(field => {
@@ -534,12 +602,7 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
                 </div>
               </div>
                 <div className="rounded-lg border border-border overflow-hidden">
-                  <div className="px-6 py-4 bg-muted/30 border-b border-border">
-                    <p className="text-sm font-medium text-foreground">Speaker Files</p>
-                  </div>
-                  <div className="px-6 py-5">
-                    <SpeakerContentTab eventId={id!} speakerId={spkId!} showApprovals={isOrganizerView} />
-                  </div>
+                  <SpeakerContentTab eventId={id!} speakerId={spkId!} speakerName={fullName || undefined} showApprovals={isOrganizerView} readOnly={isReadOnly} />
                 </div>
               </div>
             );
@@ -574,10 +637,9 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
       </div>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent>
+        <DialogContent aria-describedby={undefined}>
           <DialogHeader>
-            <DialogTitle>Edit Speaker</DialogTitle>
-            <DialogDescription>Update speaker details</DialogDescription>
+            <DialogTitle>{isApplication ? 'Edit Application' : 'Edit Speaker'}</DialogTitle>
           </DialogHeader>
           <SpeakerForm
             initialValues={{
@@ -588,6 +650,9 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
               companyRole: s?.companyRole ?? '',
               linkedin: s?.linkedin ?? '',
               bio: s?.bio ?? '',
+              talkTopic: s?.talkTopic ?? '',
+              talkTitle: s?.talkTitle ?? '',
+              talkDescription: s?.talkDescription ?? '',
               ...(() => {
                 const vals: Record<string, any> = {};
                 configFields.forEach((field: any) => {
@@ -605,7 +670,7 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
             onSubmit={async (values) => {
               if (!id || !spkId) return;
               try {
-                const standardKeys = ['firstName', 'lastName', 'email', 'companyName', 'companyRole', 'linkedin', 'bio'];
+                const standardKeys = ['firstName', 'lastName', 'email', 'companyName', 'companyRole', 'linkedin', 'bio', 'talkTopic', 'talkTitle', 'talkDescription'];
                 const customFields: Record<string, any> = {};
                 Object.keys(values).forEach(key => {
                   if (!standardKeys.includes(key)) customFields[key] = values[key];
@@ -616,6 +681,9 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
                     : field.id === 'last_name' ? 'lastName'
                     : field.id === 'company_name' ? 'companyName'
                     : field.id === 'company_role' ? 'companyRole'
+                    : field.id === 'talk_topic' ? 'talkTopic'
+                    : field.id === 'talk_title' ? 'talkTitle'
+                    : field.id === 'talk_description' ? 'talkDescription'
                     : field.id;
                   const value = standardKeys.includes(key) ? (values as any)[key] : customFields[key];
                   return value && value.trim() !== '';
@@ -629,18 +697,17 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
                   companyRole: (values as any).companyRole || null,
                   linkedin: (values as any).linkedin || null,
                   bio: (values as any).bio || null,
+                  talkTopic: (values as any).talkTopic || null,
+                  talkTitle: (values as any).talkTitle || null,
+                  talkDescription: (values as any).talkDescription || null,
                   formType: s?.formType || 'speaker-info',
                   intakeFormStatus: allRequiredFilled ? 'submitted' : 'pending',
                 };
                 if (Object.keys(customFields).length > 0) payload.customFields = customFields;
-                // Move reserved keys out of customFields into top-level properties
                 if (payload.customFields) {
                   const cf = payload.customFields as Record<string, any>;
                   if (cf["company_logo_white"]) { payload.companyLogoWhite = cf["company_logo_white"]; delete cf["company_logo_white"]; }
                   if (cf["companylogowhite"]) { payload.companyLogoWhite = cf["companylogowhite"]; delete cf["companylogowhite"]; }
-                  if (cf["talk_topic"]) { payload.talkTopic = cf["talk_topic"]; delete cf["talk_topic"]; }
-                  if (cf["talk_title"]) { payload.talkTitle = cf["talk_title"]; delete cf["talk_title"]; }
-                  if (cf["talk_description"]) { payload.talkDescription = cf["talk_description"]; delete cf["talk_description"]; }
                   if (Object.keys(cf).length === 0) delete payload.customFields;
                 }
                 await updateSpeaker(id, spkId, payload);
@@ -663,6 +730,7 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
         </DialogContent>
       </Dialog>
 
+      {/* Internal Notes dialog — commented out, not MVP
       <Dialog open={notesOpen} onOpenChange={setNotesOpen}>
         <DialogContent>
           <DialogHeader>
@@ -701,6 +769,17 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
           </div>
         </DialogContent>
       </Dialog>
+      */}
+
+      {rejectionEmail && (
+        <EmailComposer
+          draft={rejectionEmail}
+          title={`Let ${rejectionEmail.speaker?.firstName} know`}
+          onClose={() => setRejectionEmail(null)}
+          onDraftChange={(patch) => setRejectionEmail(e => e ? { ...e, ...patch } : null)}
+          onSend={handleSendRejectionEmail}
+        />
+      )}
 
       {cropImageUrl && (
         <ImageCropDialog
@@ -709,7 +788,7 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
           imageUrl={cropImageUrl}
           aspectRatio={cropType === 'headshot' ? 1 : NaN}
           onCropComplete={handleCropComplete}
-          title={cropType === 'headshot' ? 'Crop Headshot' : 'Crop Company Logo'}
+          title={cropType === 'headshot' ? 'Crop Headshot' : cropType === 'logoWhite' ? 'Crop White Logo' : 'Crop Company Logo'}
           instructions={cropType === 'headshot'
             ? 'Drag to reposition, scroll to zoom. Crop to square format.'
             : 'Drag to reposition, scroll to zoom.'}

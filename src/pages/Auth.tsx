@@ -123,9 +123,24 @@ const Auth: React.FC = () => {
   }, []);
 
   React.useEffect(() => {
+    const redirect = new URLSearchParams(location.search).get('redirect');
+    if (redirect) {
+      try { window.localStorage.setItem('seamless-post-login-redirect', redirect); } catch (e) {}
+    }
+  }, []);
+
+  React.useEffect(() => {
     if (isLoading) return;
     if (isAuthenticated) {
-      navigate(isOnboardingCompleted() ? "/organizer" : "/onboarding", { replace: true });
+      let dest = '/organizer';
+      try {
+        const stored = window.localStorage.getItem('seamless-post-login-redirect');
+        if (stored) { dest = stored; window.localStorage.removeItem('seamless-post-login-redirect'); }
+        else if (!isOnboardingCompleted()) dest = '/onboarding';
+      } catch (e) {
+        if (!isOnboardingCompleted()) dest = '/onboarding';
+      }
+      navigate(dest, { replace: true });
     }
   }, [isAuthenticated, isLoading, navigate]);
 

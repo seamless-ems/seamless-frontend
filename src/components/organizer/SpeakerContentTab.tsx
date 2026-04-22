@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import JSZip from 'jszip';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { getSpeakerContent, createSpeakerContent, uploadFile, getContentHistory, createNewContentVersion } from '@/lib/api';
@@ -16,7 +17,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
-import { Archive, ChevronDown, ChevronRight, Download, MoreVertical, Plus, RefreshCw, RotateCcw, Upload } from 'lucide-react';
+import { Archive, ChevronDown, ChevronRight, Download, MoreVertical, RefreshCw, RotateCcw, Upload } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { archiveContent } from '@/lib/api';
 
@@ -121,7 +122,7 @@ function HistorySection({ speakerId, documentId, currentVersion, itemName, onRes
   );
 }
 
-export default function SpeakerContentTab({ eventId, speakerId, showApprovals = true, readOnly = false }: { eventId: string; speakerId: string; showApprovals?: boolean; readOnly?: boolean }) {
+export default function SpeakerContentTab({ eventId, speakerId, speakerName, showApprovals = true, readOnly = false }: { eventId: string; speakerId: string; speakerName?: string; showApprovals?: boolean; readOnly?: boolean }) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const currentUserName = user?.name || user?.email || undefined;
@@ -143,6 +144,10 @@ export default function SpeakerContentTab({ eventId, speakerId, showApprovals = 
   const [archiving, setArchiving] = useState<any | null>(null);
   const [restoring, setRestoring] = useState<{ version: any; documentId: string; itemName: string } | null>(null);
 
+  // Local session-only archive tracking (API doesn't return archived items)
+  const [localArchived, setLocalArchived] = useState<any[]>([]);
+  const [showArchived, setShowArchived] = useState(false);
+
   // Expanded history rows
   const [expandedHistory, setExpandedHistory] = useState<Set<string>>(new Set());
 
@@ -153,21 +158,43 @@ export default function SpeakerContentTab({ eventId, speakerId, showApprovals = 
   });
 
   const items: any[] = contentItems ?? [];
-  const activeItems = items.filter(i => !i.archived);
-  const archivedItems = items.filter(i => i.archived);
+  const sortByRecent = (a: any, b: any) => {
+    const ta = new Date(a.updatedAt ?? a.createdAt ?? 0).getTime();
+    const tb = new Date(b.updatedAt ?? b.createdAt ?? 0).getTime();
+    return tb - ta;
+  };
+  const activeItems = items.filter(i => !i.archived).sort(sortByRecent);
+  const archivedItems = items.filter(i => i.archived).sort(sortByRecent);
 
-  const handleDownloadAll = () => {
-    activeItems.forEach((item: any) => {
-      const url = item.content ?? item.url ?? item.publicUrl ?? item.public_url ?? '';
-      if (!url) return;
+  const [zipping, setZipping] = useState(false);
+
+  const handleDownloadAll = async () => {
+    if (activeItems.length === 0 || zipping) return;
+    setZipping(true);
+    try {
+      const zip = new JSZip();
+      await Promise.all(activeItems.map(async (item: any) => {
+        const url = item.content ?? item.url ?? item.publicUrl ?? item.public_url ?? '';
+        if (!url) return;
+        const res = await fetch(url);
+        const blob = await res.blob();
+        const baseName = item.name ?? getFilename(url);
+        const urlExt = url.split('?')[0].split('.').pop()?.toLowerCase() ?? '';
+        const hasExt = baseName.includes('.');
+        const filename = hasExt ? baseName : (urlExt ? `${baseName}.${urlExt}` : baseName);
+        zip.file(filename, blob);
+      }));
+      const content = await zip.generateAsync({ type: 'blob' });
       const a = document.createElement('a');
-      a.href = url;
-      a.download = item.name ?? getFilename(url);
-      a.target = '_blank';
-      document.body.appendChild(a);
+      a.href = URL.createObjectURL(content);
+      a.download = speakerName ? `${speakerName} Content.zip` : 'content.zip';
       a.click();
-      document.body.removeChild(a);
-    });
+      URL.revokeObjectURL(a.href);
+    } catch {
+      toast({ title: 'Download failed', description: 'Could not fetch one or more files', variant: 'destructive' });
+    } finally {
+      setZipping(false);
+    }
   };
 
   const toggleHistory = (docId: string) => {
@@ -226,6 +253,7 @@ export default function SpeakerContentTab({ eventId, speakerId, showApprovals = 
     try {
       const docId = archiving.documentId ?? archiving.document_id ?? archiving.id;
       await archiveContent(speakerId, docId);
+      setLocalArchived(prev => [...prev, archiving]);
       queryClient.invalidateQueries({ queryKey: ['content', speakerId] });
       toast({ title: 'File archived' });
       setArchiving(null);
@@ -245,6 +273,7 @@ export default function SpeakerContentTab({ eventId, speakerId, showApprovals = 
       await createNewContentVersion(speakerId, restoring.documentId, { content: url, contentType });
       queryClient.invalidateQueries({ queryKey: ['content', speakerId] });
       queryClient.invalidateQueries({ queryKey: ['content', speakerId, restoring.documentId, 'history'] });
+      setLocalArchived(prev => prev.filter(i => (i.documentId ?? i.document_id ?? i.id) !== restoring.documentId));
       toast({ title: `Restored to v${restoring.version.version}` });
       setRestoring(null);
     } catch (err: any) {
@@ -255,27 +284,26 @@ export default function SpeakerContentTab({ eventId, speakerId, showApprovals = 
   };
 
   return (
-    <div className="space-y-5">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          {activeItems.length} file{activeItems.length !== 1 ? 's' : ''}
-          {archivedItems.length > 0 && ` · ${archivedItems.length} archived`}
-        </p>
-        <div className="flex items-center gap-2">
+    <div>
+      {/* Card header — matches Details panel */}
+      <div className="px-6 py-4 bg-muted/30 border-b border-border flex items-center justify-between">
+        <p className="text-sm font-medium text-foreground">Content</p>
+        <div className="flex items-center gap-1">
           {activeItems.length > 0 && (
-            <Button variant="outline" size="sm" title="Download all" onClick={handleDownloadAll}>
-              <Download className="h-4 w-4" />
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="Download all as zip" onClick={handleDownloadAll} disabled={zipping}>
+              <Download className="h-3.5 w-3.5" />
             </Button>
           )}
-          <Button size="sm" title="Upload file" onClick={() => { if (!readOnly) setUploadOpen(true); }} disabled={readOnly}>
-            <Upload className="h-4 w-4" />
-          </Button>
+          {!readOnly && (
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="Upload file" onClick={() => setUploadOpen(true)}>
+              <Upload className="h-3.5 w-3.5" />
+            </Button>
+          )}
         </div>
       </div>
 
-      {/* File list */}
-      <div className="rounded-lg border border-border overflow-hidden">
+      {/* File list — full-bleed, no inner card */}
+      <div>
         {isLoading ? (
           <div className="py-12 text-center text-sm text-muted-foreground">Loading files…</div>
         ) : activeItems.length === 0 ? (
@@ -291,10 +319,9 @@ export default function SpeakerContentTab({ eventId, speakerId, showApprovals = 
               <tr>
                 <th className="px-5 py-3 text-left text-xs font-medium text-muted-foreground">Name</th>
                 <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground w-16">Type</th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground w-12">Ver.</th>
                 <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground w-36">Uploaded</th>
-                <th className="px-3 py-3 text-center text-xs font-medium text-muted-foreground w-12">History</th>
-                <th className="px-5 py-3 w-24"></th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground w-20">Version</th>
+                <th className="px-5 py-3 w-28"></th>
               </tr>
             </thead>
             <tbody>
@@ -323,56 +350,56 @@ export default function SpeakerContentTab({ eventId, speakerId, showApprovals = 
                           {fileType}
                         </span>
                       </td>
-                      <td className="px-3 py-3.5 text-xs text-muted-foreground">v{item.version ?? 1}</td>
                       <td className="px-3 py-3.5 text-xs text-muted-foreground">{formatDate(item.createdAt)}</td>
-                      <td className="px-3 py-3.5 text-center">
+                      <td className="px-3 py-3.5">
                         <button
                           onClick={() => toggleHistory(docId)}
-                          className="text-muted-foreground/40 hover:text-muted-foreground transition-colors"
+                          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
                           title={historyOpen ? 'Hide history' : 'View history'}
                         >
-                          {historyOpen
-                            ? <ChevronDown className="h-4 w-4" />
-                            : <ChevronRight className="h-4 w-4" />}
+                          v{item.version ?? 1}
+                          {historyOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
                         </button>
                       </td>
                       <td className="px-5 py-3.5">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <button className="text-muted-foreground/40 hover:text-muted-foreground transition-colors p-1 rounded hover:bg-muted">
-                              <MoreVertical className="h-4 w-4" />
-                            </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            {url && (
-                              <DropdownMenuItem asChild>
-                                <a href={url} download>
-                                  <Download className="h-3.5 w-3.5 mr-2" />Download
-                                </a>
-                              </DropdownMenuItem>
-                            )}
-                            <DropdownMenuItem onClick={() => {
-                              if (readOnly) return;
-                              setReplacing(item);
-                              replaceInputRef.current?.click();
-                            }} disabled={readOnly}>
-                              <Upload className="h-3.5 w-3.5 mr-2" />Replace
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              className="text-destructive focus:text-destructive"
-                              onClick={() => { if (!readOnly) setArchiving(item); }}
-                              disabled={readOnly}
+                        <div className="flex items-center gap-1 justify-end">
+                          {url && (
+                            <a href={url} download title="Download" className="p-1 rounded text-muted-foreground/50 hover:text-primary hover:bg-muted transition-colors">
+                              <Download className="h-4 w-4" />
+                            </a>
+                          )}
+                          {!readOnly && (
+                            <button
+                              title="Replace"
+                              className="p-1 rounded text-muted-foreground/50 hover:text-primary hover:bg-muted transition-colors"
+                              onClick={() => { setReplacing(item); replaceInputRef.current?.click(); }}
                             >
-                              <Archive className="h-3.5 w-3.5 mr-2" />Archive
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                              <RefreshCw className="h-4 w-4" />
+                            </button>
+                          )}
+                          {!readOnly && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button className="p-1 rounded text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted transition-colors">
+                                  <MoreVertical className="h-4 w-4" />
+                                </button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  className="text-destructive focus:text-destructive"
+                                  onClick={() => setArchiving(item)}
+                                >
+                                  <Archive className="h-3.5 w-3.5 mr-2" />Archive
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
+                        </div>
                       </td>
                     </tr>
                     {historyOpen && (
                       <tr className="border-b border-border last:border-0">
-                        <td colSpan={6} className="p-0">
+                        <td colSpan={5} className="p-0">
                           <HistorySection
                             speakerId={speakerId}
                             documentId={docId}
@@ -391,14 +418,39 @@ export default function SpeakerContentTab({ eventId, speakerId, showApprovals = 
         )}
       </div>
 
-      {/* Archived section */}
-      {archivedItems.length > 0 && (
-        <div className="rounded-lg border border-border border-dashed overflow-hidden opacity-60">
-          <div className="px-5 py-3 bg-muted/20 text-xs text-muted-foreground font-medium">
-            Archived ({archivedItems.length})
-          </div>
+      {/* Archived files — session-only */}
+      {localArchived.length > 0 && (
+        <div className="px-5 py-4 border-t border-border">
+          <button
+            onClick={() => setShowArchived(v => !v)}
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {showArchived ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+            Archived files ({localArchived.length})
+          </button>
+          {showArchived && (
+            <div className="mt-2 rounded-lg border border-border border-dashed overflow-hidden">
+              {localArchived.map((item: any) => {
+                const url = item.content ?? item.url ?? item.publicUrl ?? item.public_url ?? '';
+                const name = item.name ?? getFilename(url);
+                const fileType = getFileTypeLabel(item.contentType ?? item.content_type ?? '', url);
+                return (
+                  <div key={item.id ?? item.documentId} className="flex items-center gap-3 px-4 py-2.5 border-b border-border/50 last:border-0 opacity-60 hover:opacity-100 transition-opacity">
+                    <span className="flex-1 text-sm text-muted-foreground truncate">{name}</span>
+                    <span className="text-xs font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0">{fileType}</span>
+                    {!readOnly && (
+                      <Button variant="ghost" size="sm" className="h-6 text-xs px-2 shrink-0" onClick={() => setRestoring({ version: { content: url, contentType: item.contentType ?? item.content_type, version: item.version ?? 1 }, documentId: item.documentId ?? item.document_id ?? item.id, itemName: name })}>
+                        <RotateCcw className="h-3 w-3 mr-1" />Restore
+                      </Button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
+
 
       {/* Hidden file inputs */}
       <input
@@ -507,9 +559,6 @@ export default function SpeakerContentTab({ eventId, speakerId, showApprovals = 
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Archive this file?</AlertDialogTitle>
-            <AlertDialogDescription>
-              <strong>{archiving?.name ?? 'This file'}</strong> will be hidden from technicians. You can restore it at any time.
-            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>

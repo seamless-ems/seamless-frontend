@@ -52,7 +52,15 @@ export default function FinishSignUp() {
     try {
       await signInWithEmailLink(auth, emailToUse, hrefRef.current);
       try { window.localStorage.removeItem('emailForSignIn'); } catch (e) {}
-      navigate(isOnboardingCompleted() ? '/organizer' : '/onboarding', { replace: true });
+      let dest = '/organizer';
+      try {
+        const stored = window.localStorage.getItem('seamless-post-login-redirect');
+        if (stored) { dest = stored; window.localStorage.removeItem('seamless-post-login-redirect'); }
+        else if (!isOnboardingCompleted()) dest = '/onboarding';
+      } catch (e) {
+        if (!isOnboardingCompleted()) dest = '/onboarding';
+      }
+      navigate(dest, { replace: true });
     } catch (err: any) {
       toast.error(String(err?.message || err || 'Failed to complete sign-in'));
       setStatus('needs-email');

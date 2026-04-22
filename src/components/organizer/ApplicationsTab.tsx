@@ -17,7 +17,7 @@ import { toast } from "@/hooks/use-toast";
 import { Check, ChevronRight, Copy, FileEdit, MoreVertical, Search } from "lucide-react";
 import { HelpTip } from "@/components/ui/HelpTip";
 
-type EmailDraft = {
+export type EmailDraft = {
   speaker: any;
   subject: string;
   body: string;
@@ -31,7 +31,7 @@ type EmailDraft = {
 const EMAIL_HEADER_ROW = "flex items-center gap-3 border-b border-border/50 py-2";
 const EMAIL_HEADER_LABEL = "text-xs font-medium text-muted-foreground w-16 shrink-0";
 
-function buildRejectionEmail(firstName: string, eventName: string) {
+export function buildRejectionEmail(firstName: string, eventName: string) {
   return {
     subject: `Your application to speak at ${eventName}`,
     body: `Thank you for taking the time to apply to speak at ${eventName}.\n\nAfter careful consideration, we're unfortunately unable to offer you a speaking slot on this occasion. \n\nWe hope you'll consider applying again in the future, we'd love to have you involved.\n\nThanks again for your interest, and we hope to see you at ${eventName}.\n\nBest regards,\nTeam ${eventName}`,
@@ -41,13 +41,13 @@ function buildRejectionEmail(firstName: string, eventName: string) {
 function buildApprovalEmail(firstName: string, eventName: string) {
   return {
     subject: `You're in! Complete your speaker profile for ${eventName}`,
-    body: `Congratulations! We're thrilled to let you know that your application to speak at ${eventName} has been accepted.\n\nTo get started, please complete your speaker profile using the link below. You'll need to log in or create a free Seamless account — this is where you'll manage your profile, view your speaker cards, and update your details.\n\nPlease try to complete this as soon as possible so we can promote your session.\n\nIf you have any questions, don't hesitate to get in touch.`,
+    body: `Congratulations! We're thrilled to let you know that your application to speak at ${eventName} has been accepted.\n\nComplete your speaker profile using the link below. You can update your details at any time by logging in to Seamless Events.\n\nPlease try to complete this as soon as possible so we can promote your session.\n\nIf you have any questions, don't hesitate to get in touch.`,
     signOff: `Best regards,\nTeam ${eventName}`,
     ctaLabel: "Complete your speaker profile",
   };
 }
 
-function buildEmailHtml(firstName: string, body: string, intakeUrl: string, ctaLabel: string | undefined, signOff?: string) {
+export function buildEmailHtml(firstName: string, body: string, intakeUrl: string, ctaLabel: string | undefined, signOff?: string) {
   const bodyHtml = body.split("\n\n").map(p =>
     `<p style="margin:0 0 16px 0;color:#374151;font-size:15px;line-height:1.6">${p.replace(/\n/g, "<br>")}</p>`
   ).join("");
@@ -104,7 +104,7 @@ function formatDate(dateStr: string | null | undefined) {
   }
 }
 
-function EmailComposer({
+export function EmailComposer({
   draft,
   title,
   intakeUrl,
@@ -156,12 +156,15 @@ function EmailComposer({
                 placeholder="Your name or team"
                 className="h-8 text-sm border-0 shadow-none p-0 focus-visible:ring-0 bg-transparent flex-1"
               />
+            </div>
+            <div className={EMAIL_HEADER_ROW}>
+              <span className={EMAIL_HEADER_LABEL}>Email</span>
               <Input
                 type="email"
                 value={draft.fromEmail}
                 onChange={(e) => { localStorage.setItem("seamless-email-from-email", e.target.value); onDraftChange({ fromEmail: e.target.value }); }}
                 placeholder="you@yourorg.com"
-                className="h-8 text-sm border-0 shadow-none p-0 focus-visible:ring-0 bg-transparent w-48"
+                className="h-8 text-sm border-0 shadow-none p-0 focus-visible:ring-0 bg-transparent flex-1"
               />
             </div>
             <div className={EMAIL_HEADER_ROW}>
@@ -652,10 +655,10 @@ export default function ApplicationsTab({ eventId, eventName = "", emailDefaults
         <EmailComposer
           draft={approvalEmail}
           title={`Send congratulations to ${approvalEmail.speaker.firstName}`}
-          intakeUrl={`${window.location.origin}/speaker-intake/${eventId}`}
+          intakeUrl={`${window.location.origin}/login`}
           onClose={() => setApprovalEmail(null)}
           onDraftChange={(patch) => setApprovalEmail(e => e ? { ...e, ...patch } : null)}
-          onSend={async () => { await handleSendEmail(approvalEmail, `${window.location.origin}/speaker-intake/${eventId}`); setApprovalEmail(null); }}
+          onSend={async () => { await handleSendEmail(approvalEmail, `${window.location.origin}/login`); setApprovalEmail(null); }}
         />
       )}
 
