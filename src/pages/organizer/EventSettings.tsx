@@ -77,7 +77,6 @@ export default function EventSettings() {
     fromName: "",
     fromEmail: "",
     replyToEmail: "",
-    emailSignature: "",
   });
 
   const [selectedModules, setSelectedModules] = useState<string[]>(["speaker", "content"]);
@@ -122,7 +121,6 @@ export default function EventSettings() {
       fromName: rawEvent.from_name ?? rawEvent.fromName ?? "",
       fromEmail: rawEvent.from_email ?? rawEvent.fromEmail ?? "",
       replyToEmail: rawEvent.reply_to_email ?? rawEvent.replyToEmail ?? "",
-      emailSignature: rawEvent.email_signature ?? rawEvent.emailSignature ?? "",
     }));
 
     // modules - support new object shape { speaker: true } or older array/string formats
@@ -165,7 +163,6 @@ export default function EventSettings() {
         from_email: formData.fromEmail || undefined,
         // If replyToEmail is not provided, default to fromEmail (trim and ignore empty strings)
         reply_to_email: (formData.replyToEmail && formData.replyToEmail.trim()) ? formData.replyToEmail.trim() : (formData.fromEmail && formData.fromEmail.trim() ? formData.fromEmail.trim() : undefined),
-        email_signature: formData.emailSignature || undefined,
       };
       if (selectedTeamId) payload.team_id = selectedTeamId;
       // Remove undefined or empty-string values so we don't send "" for optional fields
@@ -305,11 +302,6 @@ export default function EventSettings() {
                   <Input type="email" placeholder="Optional — defaults to From Email" value={formData.replyToEmail}
                     onChange={(e) => { setFormData((prev) => ({ ...prev, replyToEmail: e.target.value })); setIsDirty(true); }} />
                 </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Email Signature</Label>
-                <Textarea placeholder="Your default email signature…" value={formData.emailSignature}
-                  onChange={(e) => { setFormData((prev) => ({ ...prev, emailSignature: e.target.value })); setIsDirty(true); }} rows={3} />
               </div>
             </CardContent>
           </Card>

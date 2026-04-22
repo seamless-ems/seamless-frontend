@@ -13,7 +13,6 @@ export interface Event {
   modules: EventModule[];
   fromEmail?: string;
   replyToEmail?: string;
-  emailSignature?: string;
   googleDriveConnected: boolean;
   rootFolder?: string;
   trialEnded: boolean;

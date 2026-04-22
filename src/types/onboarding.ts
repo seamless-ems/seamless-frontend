@@ -32,7 +32,6 @@ export interface EventData {
   fromName?: string;
   fromEmail?: string;
   replyToEmail?: string;
-  emailSignature?: string;
   // modules enabled for the event
   modules?: string[];
   // optional media (url) or drive integration info

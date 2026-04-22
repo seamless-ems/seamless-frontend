@@ -95,7 +95,6 @@ export default function CreateEvent() {
 		fromName: "",
 		fromEmail: "",
 		replyToEmail: "",
-		emailSignature: "",
 		// googleDriveConnected: false, // TODO: Google Drive
 		// rootFolder: "",              // TODO: Google Drive
 		// integrationId: null,         // TODO: Google Drive
@@ -467,11 +466,6 @@ export default function CreateEvent() {
 								<Input id="replyToEmail" type="email" placeholder="Optional — defaults to From Email" value={formData.replyToEmail}
 									onChange={(e) => setFormData((prev) => ({ ...prev, replyToEmail: e.target.value }))} />
 							</div>
-						</div>
-						<div className="space-y-2">
-							<Label htmlFor="signature">Email Signature</Label>
-							<Textarea id="signature" placeholder="Your default email signature..." value={formData.emailSignature}
-								onChange={(e) => setFormData((prev) => ({ ...prev, emailSignature: e.target.value }))} rows={3} />
 						</div>
 					</CardContent>
 				</Card>

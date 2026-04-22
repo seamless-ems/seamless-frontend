@@ -175,6 +175,9 @@ Before any API-related changes, read `openapi.json` and verify endpoints, shapes
 ## Screenshots
 When James says "see screenshot", always read: `Screenshot/Screenshot.png` in the project root. No path needed in the message.
 
+## Tooling
+- **React DevTools** (Components panel) — James uses this to inspect the live component tree and props. Referenced as needed during debugging.
+
 ---
 
 ## Commands
