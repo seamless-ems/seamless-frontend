@@ -173,10 +173,11 @@ export const DEFAULT_FIELDS: FormFieldConfig[] = [
   },
   {
     id: "sample_content",
-    label: "Sample Content (e.g., Slide Deck, Video, etc.)",
+    label: "Sample Content",
     type: "file",
     required: false,
     enabled: false,
+    helpText: "Please add a description for each file you upload.",
   },
 ];
 
@@ -200,6 +201,10 @@ export const FIELD_MIGRATIONS: Record<string, Partial<FormFieldConfig>> = {
     label: "Talk / Session Topic",
   },
   talk_title: { sectionStart: "Talk / Session" },
+  sample_content: {
+    label: "Sample Content",
+    helpText: "Please add a description for each file you upload.",
+  },
 };
 
 const RESERVED_FIELD_IDS = new Set([
@@ -243,6 +248,7 @@ export function mergeWithDefaults(saved: FormFieldConfig[]): FormFieldConfig[] {
 
 const CFS_OVERRIDES: Record<string, Partial<FormFieldConfig>> = {
   talk_topic: { enabled: true, required: true },
+  sample_content: { enabled: true, required: true },
   company_role: { enabled: true, required: true },
   company_name: { enabled: true, required: true },
   headshot: { enabled: false },
@@ -266,7 +272,7 @@ function getDefaultsForFormType(ft: string): FormFieldConfig[] {
   return applyFormTypeOverrides(DEFAULT_FIELDS, ft);
 }
 
-const FORM_SECTIONS: Record<
+export const FORM_SECTIONS: Record<
   string,
   { id: string; label: string | null; fieldIds: string[] }[]
 > = {
@@ -412,12 +418,6 @@ const SpeakerFormBuilder = forwardRef<
               );
               const show = res.showTitle ?? res.metadata?.showTitle;
               setShowFormTitle(typeof show === "boolean" ? show : true);
-              // content uploads toggle may be persisted in metadata
-              const cu =
-                res.contentUploadsEnabled ??
-                res.metadata?.contentUploadsEnabled;
-              if (typeof cu === "boolean")
-                setContentUploadsEnabled(Boolean(cu));
             } else if (res.config && typeof res.config === "object") {
               const cfg = res.config as any;
               const fieldsFromCfg = Array.isArray(cfg.fields)
@@ -436,15 +436,6 @@ const SpeakerFormBuilder = forwardRef<
                   ? cfg.metadata.showTitle
                   : true,
               );
-              // read persisted content uploads toggle from metadata
-              if (
-                cfg.metadata &&
-                typeof cfg.metadata.contentUploadsEnabled === "boolean"
-              ) {
-                setContentUploadsEnabled(
-                  Boolean(cfg.metadata.contentUploadsEnabled),
-                );
-              }
             } else {
               setFields(getDefaultsForFormType(formType ?? "speaker-info"));
             }
@@ -626,8 +617,6 @@ const SpeakerFormBuilder = forwardRef<
     FORM_SECTIONS[formType ?? "speaker-info"] ?? FORM_SECTIONS["speaker-info"];
 
   // Content uploads toggle (controls presence of `content` file field)
-  const [contentUploadsEnabled, setContentUploadsEnabled] =
-    useState<boolean>(true);
   const [previewContentItems, setPreviewContentItems] = useState<any[]>([{ id: 'content-1', file: null, preview: null, name: '', contentType: null }]);
 
   const handleCopyLink = () => {
@@ -667,7 +656,6 @@ const SpeakerFormBuilder = forwardRef<
           title: formTitle,
           subtitle: formSubtitle,
           showTitle: showFormTitle,
-          contentUploadsEnabled,
         },
       };
       await createFormConfig({
@@ -694,6 +682,18 @@ const SpeakerFormBuilder = forwardRef<
   useImperativeHandle(ref, () => ({ save: handleSave, isDirty }));
 
   const enabledFields = fields.filter((f) => f.enabled);
+
+  const sectionOrderedIds = sections.flatMap((s) => s.fieldIds);
+  const previewFields = [...enabledFields]
+    .filter((f) => !f.formTypes || f.formTypes.includes(formType ?? "speaker-info"))
+    .sort((a, b) => {
+      const ai = sectionOrderedIds.indexOf(a.id);
+      const bi = sectionOrderedIds.indexOf(b.id);
+      if (ai === -1 && bi === -1) return 0;
+      if (ai === -1) return 1;
+      if (bi === -1) return -1;
+      return ai - bi;
+    });
 
   return (
     <div className="space-y-6">
@@ -902,46 +902,6 @@ const SpeakerFormBuilder = forwardRef<
               })}
             </div>
 
-            {/* Speaker content uploads toggle (available for both form types). */}
-            <div className="mt-3 pt-3 border-t border-border">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  {(() => {
-                    const sampleField = fields.find((f) => f.id === "sample_content");
-                    if (sampleField) {
-                      return (
-                        <div>
-                          <p className="text-sm font-medium">{sampleField.label}</p>
-                          {sampleField.helpText ? (
-                            <p className="text-xs text-muted-foreground">{sampleField.helpText}</p>
-                          ) : (
-                            <p className="text-xs text-muted-foreground">Ask speakers to upload their materials — slides, video, or any file format.</p>
-                          )}
-                        </div>
-                      );
-                    }
-                    return (
-                      <div>
-                        <p className="text-sm font-medium">Talk / Session Content</p>
-                        <p className="text-xs text-muted-foreground">Ask speakers to upload their materials — slides, video, or any file format.</p>
-                      </div>
-                    );
-                  })()}
-                </div>
-                <div>
-                  <Switch
-                    checked={contentUploadsEnabled}
-                    onCheckedChange={(val) => {
-                      const enabled = Boolean(val);
-                      setContentUploadsEnabled(enabled);
-                      // Only update the sample_content field rather than all fields
-                      setFields((prev) => prev.map((f) => (f.id === "sample_content" ? { ...f, enabled: enabled } : f)));
-                      markDirty();
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
           </Card>
 
           {/* Custom Fields */}
@@ -1269,7 +1229,7 @@ const SpeakerFormBuilder = forwardRef<
         <div className="lg:col-span-2 space-y-4 lg:sticky lg:top-4 lg:self-start">
           <Card className="p-6 bg-white">
             <div className="space-y-6">
-              {enabledFields.map((field) => {
+              {previewFields.map((field) => {
                 if (field.id === "sample_content") {
                   return (
                     <div key={field.id} className="space-y-2">
@@ -1388,7 +1348,7 @@ const SpeakerFormBuilder = forwardRef<
                 );
               })}
 
-              {enabledFields.length === 0 && (
+              {previewFields.length === 0 && (
                 <p
                   className="text-center text-muted-foreground py-8"
                   style={{ fontSize: "var(--font-body)" }}
@@ -1398,7 +1358,7 @@ const SpeakerFormBuilder = forwardRef<
                 </p>
               )}
 
-              {enabledFields.length > 0 && (
+              {previewFields.length > 0 && (
                 <div className="pt-4">
                   <Button className="w-full" disabled>
                     Submit Information

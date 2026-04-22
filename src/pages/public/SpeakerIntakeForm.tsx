@@ -32,7 +32,7 @@ import { useState } from "react";
 import React from "react";
 import { CircleLoader } from 'react-spinners';
 import ContentUploads from "@/components/speaker/ContentUploads";
-import { type FormFieldConfig, DEFAULT_FIELDS, mergeWithDefaults } from "@/components/SpeakerFormBuilder";
+import { type FormFieldConfig, DEFAULT_FIELDS, mergeWithDefaults, FORM_SECTIONS } from "@/components/SpeakerFormBuilder";
 import { ImageCropDialog } from "@/components/ImageCropDialog";
 import { useRef } from "react";
 import { generateUuid } from "@/lib/utils";
@@ -108,6 +108,7 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
   const [customFilePreviews, setCustomFilePreviews] = useState<Record<string, string | null>>({});
   const [contentItems, setContentItems] = useState<any[]>([{ id: 'content-1', file: null, preview: null, name: '', contentType: null }]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [contentValidationShown, setContentValidationShown] = useState(false);
   const [formConfig, setFormConfig] = useState<FormFieldConfig[]>(DEFAULT_FIELDS);
   const [formTitle, setFormTitle] = useState<string | null>(null);
   const [formSubtitle, setFormSubtitle] = useState<string | null>(null);
@@ -425,6 +426,17 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
         return;
       }
 
+      // Validate content items — any row with a file must have a description
+      const contentFieldEnabled = formConfig.some(f => f.enabled && f.id === "sample_content");
+      if (contentFieldEnabled) {
+        const missingName = contentItems.some(it => it.file && !it.name.trim());
+        if (missingName) {
+          setContentValidationShown(true);
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
       const submittedEmail = String(data.email ?? "").trim().toLowerCase();
       const isValidSubmittedEmail = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(submittedEmail);
       const originalEmail = String((fetchedSpeaker as any)?.email ?? "").trim().toLowerCase();
@@ -498,8 +510,7 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
           const res = await uploadFile(companyLogo, speakerId, eventId!, speakerDisplayName);
           const logoUrl = res?.public_url ?? res?.publicUrl ?? res?.url ?? null;
           
-          // Backend expects companyLogo (camelCase) as the alias
-          payload.companyLogo = logoUrl;
+          payload.companyLogoColour = logoUrl;
         } catch (err) {
           console.error("Failed to upload company logo:", err);
         }
@@ -595,7 +606,17 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
     }
   );
 
-  const enabledFields = formConfig.filter(f => f.enabled);
+  const sectionOrderedIds = (FORM_SECTIONS[backendFormType] ?? FORM_SECTIONS["speaker-info"]).flatMap(s => s.fieldIds);
+  const enabledFields = formConfig
+    .filter(f => f.enabled)
+    .sort((a, b) => {
+      const ai = sectionOrderedIds.indexOf(a.id);
+      const bi = sectionOrderedIds.indexOf(b.id);
+      if (ai === -1 && bi === -1) return 0;
+      if (ai === -1) return 1;
+      if (bi === -1) return -1;
+      return ai - bi;
+    });
 
   return (
     <div className="min-h-screen bg-background">
@@ -628,7 +649,7 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
                             {field.label}{field.required && <span className="text-destructive ml-1">*</span>}
                           </label>
                           {field.helpText && <p className="text-xs text-muted-foreground">{field.helpText}</p>}
-                          <ContentUploads items={contentItems} setItems={setContentItems} readOnly={false} />
+                          <ContentUploads items={contentItems} setItems={setContentItems} readOnly={false} showValidation={contentValidationShown} />
                         </div>
                       );
                     }
@@ -657,12 +678,18 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
                             className="w-full flex items-center gap-2.5 px-3 h-10 rounded-md border border-input bg-background hover:border-primary text-sm text-muted-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
-                            <span>{uploading ? "Uploading…" : preview ? "Change file" : "Choose file"}</span>
+                            <span>{uploading ? "Uploading…" : preview ? "Replace" : "Choose file"}</span>
                           </button>
                           {isImagePreview && preview && (
-                            <div className={`overflow-hidden border border-border ${isHeadshot ? "w-12 h-12 rounded-full" : "w-16 h-10 rounded-md"}`}>
-                              <img src={preview} alt={field.label} className="w-full h-full object-cover" />
-                            </div>
+                            isHeadshot ? (
+                              <div className="w-12 h-12 rounded-md overflow-hidden border border-border shrink-0">
+                                <img src={preview} alt={field.label} className="w-full h-full object-cover" />
+                              </div>
+                            ) : (
+                              <div className="w-full rounded-md border border-border bg-muted/20 flex items-center justify-center p-3">
+                                <img src={preview} alt={field.label} className="max-h-16 object-contain" />
+                              </div>
+                            )
                           )}
                           {!isImagePreview && preview && (
                             <p className="text-xs text-muted-foreground mt-1 truncate">{preview}</p>
