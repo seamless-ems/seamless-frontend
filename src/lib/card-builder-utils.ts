@@ -34,7 +34,7 @@ export const QUICK_SWATCHES = [
 ];
 
 export const SIDEBAR_ELEM_BTN =
-  "w-full flex flex-col items-center gap-1 p-2 rounded-lg transition-colors cursor-move";
+  "w-full flex flex-row items-center gap-2 px-3 py-2 rounded-lg border border-border transition-colors cursor-move min-w-0";
 export const CTX_MENU_BTN =
   "w-full text-left px-3 py-1.5 hover:bg-accent flex items-center gap-2";
 export const TOOLBAR_ICON_BTN =
@@ -277,11 +277,14 @@ export const shouldShowElementFromFields = (fieldsArray: any[], elementKey: stri
     title: ['company_role'],
     company: ['company_name'],
     companyLogo: ['company_logo'],
+    companyLogoWhite: ['company_logo_white'],
+    bio: ['bio'],
+    linkedin: ['linkedin'],
   };
   const relatedFields = fieldMapping[elementKey] || [];
   return relatedFields.some((fieldId) => {
     const field = fieldsArray.find((f: any) => f.id === fieldId);
-    return field?.showInCardBuilder === true;
+    return field?.enabled === true;
   });
 };
 
@@ -308,6 +311,9 @@ export const DEFAULT_FIELD_IDS = [
   "company_name",
   "company_role",
   "company_logo",
+  "company_logo_white",
+  "linkedin",
+  "bio",
 ];
 
 export const NAME_TITLE_FIELDS = ['firstName', 'lastName', 'title'] as const;

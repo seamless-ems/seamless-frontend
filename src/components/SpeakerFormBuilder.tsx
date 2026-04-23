@@ -99,7 +99,7 @@ export const DEFAULT_FIELDS: FormFieldConfig[] = [
   },
   {
     id: "company_logo",
-    label: "Company Logo — Colour",
+    label: "Company Logo | Colour",
     type: "file",
     required: true,
     enabled: true,
@@ -107,7 +107,7 @@ export const DEFAULT_FIELDS: FormFieldConfig[] = [
   },
   {
     id: "company_logo_white",
-    label: "Company Logo — White",
+    label: "Company Logo | White",
     type: "file",
     required: true,
     enabled: true,
@@ -187,7 +187,7 @@ export const FIELD_MIGRATIONS: Record<string, Partial<FormFieldConfig>> = {
   email: { locked: true },
   headshot: { required: true },
   company_logo: {
-    label: "Company Logo — Colour",
+    label: "Company Logo | Colour",
     helpText: "Please submit on a transparent background.",
     required: true,
   },
@@ -1402,7 +1402,7 @@ const SpeakerFormBuilder = forwardRef<
                 <li className="flex items-start gap-2">
                   <span className="text-destructive mt-1">•</span>
                   <span>
-                    <strong>Company Logo — Colour</strong> - Needed for branding
+                    <strong>Company Logo | Colour</strong> - Needed for branding
                     on cards
                   </span>
                 </li>

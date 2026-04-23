@@ -531,7 +531,7 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
 
                     {fieldEnabled('company_logo') && (
                     <div className="flex flex-col items-center gap-1.5 w-full">
-                      <p className="text-xs font-medium text-muted-foreground self-start mb-1">Company Logo — Colour</p>
+                      <p className="text-xs font-medium text-muted-foreground self-start mb-1">Company Logo | Colour</p>
                       <div className="w-full h-[64px] rounded-lg border border-border bg-white flex items-center justify-center p-2.5">
                         {(s?.companyLogoColour ?? s?.companyLogo)
                           ? <img src={s?.companyLogoColour ?? s?.companyLogo} alt="Logo" className="max-w-full max-h-full object-contain" />
@@ -558,7 +558,7 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
 
                     {(fieldEnabled('company_logo_white') || s?.companyLogoWhite) && (
                     <div className="flex flex-col items-center gap-1.5 w-full">
-                      <p className="text-xs font-medium text-muted-foreground self-start mb-1">Company Logo — White</p>
+                      <p className="text-xs font-medium text-muted-foreground self-start mb-1">Company Logo | White</p>
                       <div className="w-full h-[64px] rounded-lg border border-border flex items-center justify-center p-2.5" style={{ background: '#1f2937' }}>
                         {s?.companyLogoWhite
                           ? <img src={s.companyLogoWhite} alt="Logo (white)" className="max-w-full max-h-full object-contain" />

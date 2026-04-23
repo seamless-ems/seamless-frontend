@@ -76,3 +76,12 @@ Items the backend team needs to ship. Each entry notes the exact frontend wiring
 - If all required speaker info fields are present → status: `Pending Approval`
 - If info is missing → status: `Info Pending`
 **Frontend wiring:** Verify status badges in `SpeakersTable.tsx` reflect the new statuses correctly.
+
+---
+
+## Card Builder
+
+### 11. Dynamic text elements — substitute speaker field data in renderer
+**Backend:** Card config stores `type: "dynamic-text"` elements with a `fieldId` (e.g. `"talk_title"`, `"talk_description"`). The HTML renderer must substitute `speaker[fieldId]` for these elements, the same way it substitutes `speaker.firstName`/`speaker.lastName` for the built-in name fields.
+**Why it matters:** Currently the rendered card shows the field label ("Talk / Session Title") instead of the speaker's actual content.
+**Frontend wiring:** None required — config already correctly stores `fieldId` on every dynamic-text element. Once backend renders correctly, verify end-to-end for Talk Title and Talk Description fields.

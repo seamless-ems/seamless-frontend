@@ -10,6 +10,17 @@ import {
 } from "@/lib/card-builder-utils";
 import type { CardConfig } from "@/lib/card-builder-utils";
 
+function createLogoPlaceholder(elementKey: string, variantLabel: string, cfg: any): fabric.Group {
+  const width = cfg.width || cfg.size || 60;
+  const height = cfg.height || cfg.size || 60;
+  const fs = Math.min(Math.max(9, width / 12), 12);
+  const fillRect = new fabric.Rect({ left: 0, top: 0, width, height, fill: "#e5e7eb", strokeWidth: 0, rx: 4, ry: 4, selectable: false, evented: false });
+  const borderRect = new fabric.Rect({ left: 2, top: 2, width: width - 4, height: height - 4, fill: "transparent", stroke: "#9ca3af", strokeWidth: 1.5, strokeDashArray: [5, 5], strokeUniform: true, rx: 3, ry: 3, selectable: false, evented: false });
+  const label = new fabric.Text("Company Logo", { left: width / 2, top: height / 2 - fs * 0.8, fontSize: fs, fill: "#6b7280", fontFamily: "Inter", originX: "center", originY: "center", textAlign: "center", selectable: false, evented: false });
+  const variant = new fabric.Text(variantLabel, { left: width / 2, top: height / 2 + fs * 0.8, fontSize: fs, fontWeight: 700, fill: "#6b7280", fontFamily: "Inter", originX: "center", originY: "center", textAlign: "center", selectable: false, evented: false });
+  return new fabric.Group([fillRect, borderRect, label, variant], { left: cfg.x, top: cfg.y, selectable: true, hasControls: true, lockRotation: true, subTargetCheck: false, data: { elementKey } });
+}
+
 type RenderParams = {
   fabricCanvasRef: React.RefObject<fabric.Canvas | null>;
   renderGenRef: React.MutableRefObject<number>;
@@ -18,6 +29,7 @@ type RenderParams = {
   templateUrl: string | null;
   testHeadshot: string | null;
   testLogo: string | null;
+  testLogoWhite: string | null;
   testEventLogo: string | null;
   bgGradient: { from: string; to: string } | null;
   bgColor: string;
@@ -36,6 +48,7 @@ export async function renderAllElements(params: RenderParams) {
     templateUrl,
     testHeadshot,
     testLogo,
+    testLogoWhite,
     testEventLogo,
     bgGradient,
     bgColor,
@@ -303,19 +316,32 @@ export async function renderAllElements(params: RenderParams) {
         canvas.add(fabricImg);
         elementRefs.current.companyLogo = fabricImg;
       } else {
-        const width = cfg.width || cfg.size || 60;
-        const height = cfg.height || cfg.size || 60;
-
-        const fillRect = new fabric.Rect({ left: 0, top: 0, width: width, height: height, fill: "#e5e7eb", strokeWidth: 0, rx: 4, ry: 4, selectable: false, evented: false });
-
-        const borderRect = new fabric.Rect({ left: 2, top: 2, width: width - 4, height: height - 4, fill: "transparent", stroke: "#9ca3af", strokeWidth: 1.5, strokeDashArray: [5, 5], strokeUniform: true, rx: 3, ry: 3, selectable: false, evented: false });
-
-        const text = new fabric.Text(`Company Logo\nColour`, { left: width / 2, top: height / 2, fontSize: Math.min(Math.max(9, width / 12), 12), fill: "#6b7280", fontFamily: "Inter", originX: "center", originY: "center", textAlign: "center", lineHeight: 1.4, selectable: false, evented: false });
-
-        const group = new fabric.Group([fillRect, borderRect, text], { left: cfg.x, top: cfg.y, selectable: true, hasControls: true, lockRotation: true, subTargetCheck: false, data: { elementKey: "companyLogo" } });
-
+        const group = createLogoPlaceholder("companyLogo", "Colour", cfg);
         canvas.add(group);
         elementRefs.current.companyLogo = group;
+      }
+    } else if (key === "companyLogoWhite") {
+      let img: HTMLImageElement | null = null;
+      if (testLogoWhite) {
+        try { img = await loadImagePromise(testLogoWhite); } catch (_) { /* failed to load — fall through to placeholder */ }
+      }
+      if (img) {
+        const fabricImg = new fabric.Image(img, { left: cfg.x, top: cfg.y, opacity: cfg.opacity ?? 1, selectable: true, hasControls: true, lockRotation: true, lockUniScaling: false, data: { elementKey: "companyLogoWhite" } });
+        const dropW = cfg.width || cfg.size;
+        const dropH = cfg.height || cfg.size;
+        const naturalW = (fabricImg.width as number) || 1;
+        const naturalH = (fabricImg.height as number) || 1;
+        const scale = Math.min(dropW / naturalW, dropH / naturalH);
+        fabricImg.set({ scaleX: scale, scaleY: scale });
+        const scaledW = naturalW * scale;
+        const scaledH = naturalH * scale;
+        fabricImg.set({ left: cfg.x + (dropW - scaledW) / 2, top: cfg.y + (dropH - scaledH) / 2 });
+        canvas.add(fabricImg);
+        elementRefs.current.companyLogoWhite = fabricImg;
+      } else {
+        const group = createLogoPlaceholder("companyLogoWhite", "White", cfg);
+        canvas.add(group);
+        elementRefs.current.companyLogoWhite = group;
       }
     } else if (key === "eventLogo") {
       const eventLogoSrc = testEventLogo || (cfg.url as string | undefined) || null;
@@ -407,7 +433,7 @@ export async function renderAllElements(params: RenderParams) {
 
       canvas.add(text);
       elementRefs.current[key] = text;
-    } else if (key.startsWith("dynamic_")) {
+    } else if (key.startsWith("dynamic_") || ["linkedin", "bio"].includes(key)) {
       if (cfg.type === "icon-link") {
         const color = ICON_COLORS[cfg.iconType] || "#666666";
         const textVal = ICON_TEXT[cfg.iconType] || "🔗";

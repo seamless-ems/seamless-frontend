@@ -36,6 +36,13 @@ export const getPresetsForShape = (
 
 export default {};
 
+const deriveInheritedStyle = (template: any, config: any) => {
+  const isTextEl = !template.type || template.type === "dynamic-text";
+  const refEl = isTextEl ? (config.title || config.firstName || config.lastName || config.company) : null;
+  if (!refEl) return {};
+  return { color: refEl.color, fontFamily: refEl.fontFamily };
+};
+
 // ------- CardBuilder handlers exported for reuse in the component -------
 export const handleDragStart = (e: React.DragEvent, elementKey: string) => {
   e.dataTransfer.effectAllowed = "copy";
@@ -122,6 +129,7 @@ export const handleDrop = (
       ...prev,
       [elementKey]: {
         ...template,
+        ...deriveInheritedStyle(template, prev),
         x: adjustedX,
         y: adjustedY,
         zIndex: maxZ + 1,
@@ -251,6 +259,7 @@ export const addElementToCanvas = (
       ...prev,
       [elementKey]: {
         ...template,
+        ...deriveInheritedStyle(template, prev),
         ...params.customProps,
         x: params.customProps?.x !== undefined ? params.customProps.x : posX,
         y: params.customProps?.y !== undefined ? params.customProps.y : posY,
@@ -840,6 +849,33 @@ export const handleLogoUpload = (
   params.setCropDialogOpen(true);
 };
 
+export const handleLogoWhiteUpload = (
+  e: React.ChangeEvent<HTMLInputElement>,
+  params: {
+    setCropImageUrl: (u: string) => void;
+    setCropMode: (m: any) => void;
+    setCropDialogOpen: (v: boolean) => void;
+    toast: (o: any) => void;
+  },
+) => {
+  const file = e.target.files?.[0];
+  const allowed = ["image/png", "image/jpeg"];
+  if (!file) return;
+  if (!allowed.includes(file.type)) {
+    params.toast({
+      title: "Invalid file type",
+      description: "Logo must be PNG or JPEG",
+      variant: "destructive",
+    });
+    e.target.value = "";
+    return;
+  }
+  const url = URL.createObjectURL(file);
+  params.setCropImageUrl(url);
+  params.setCropMode("logo-white");
+  params.setCropDialogOpen(true);
+};
+
 export const handleEventLogoUpload = (
   e: React.ChangeEvent<HTMLInputElement>,
   params: {
@@ -875,6 +911,7 @@ export const handleCropComplete = async (
     setBgIsGenerated: (v: boolean) => void;
     setTestHeadshot: (u: string | null) => void;
     setTestLogo: (u: string | null) => void;
+    setTestLogoWhite: (u: string | null) => void;
     setTestEventLogo: (u: string | null) => void;
     config: any;
     addElementToCanvas: (k: string, p?: any, pr?: any) => void;
@@ -904,6 +941,9 @@ export const handleCropComplete = async (
     params.setTestLogo(dataUrl);
     if (!params.config.companyLogo) params.addElementToCanvas("companyLogo");
     params.toast({ title: "Test logo uploaded" });
+  } else if (params.cropMode === "logo-white") {
+    params.setTestLogoWhite(dataUrl);
+    params.toast({ title: "Test white logo uploaded" });
   } else if (params.cropMode === "event-logo") {
     params.setTestEventLogo(dataUrl);
     if (!params.config.eventLogo) params.addElementToCanvas("eventLogo");

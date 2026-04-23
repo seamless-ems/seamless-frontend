@@ -20,6 +20,7 @@ import {
   Briefcase,
   ImageIcon,
   Globe,
+  Link,
   Layers,
   Eye,
   EyeOff,
@@ -80,6 +81,7 @@ import {
   handleBackgroundUpload as hb_handleBackgroundUpload,
   handleHeadshotUpload as hb_handleHeadshotUpload,
   handleLogoUpload as hb_handleLogoUpload,
+  handleLogoWhiteUpload as hb_handleLogoWhiteUpload,
   handleEventLogoUpload as hb_handleEventLogoUpload,
   handleCropComplete as hb_handleCropComplete,
   handleSave as hb_handleSave,
@@ -173,6 +175,8 @@ interface ElementConfig {
   [key: string]: unknown;
 }
 
+const CARD_BUILDER_EXCLUDED = ['email', 'sample_content'];
+
 export default function CardBuilder({
   eventId,
   fullscreen = false,
@@ -212,6 +216,7 @@ export default function CardBuilder({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const headshotInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
+  const logoWhiteInputRef = useRef<HTMLInputElement>(null);
   const eventLogoInputRef = useRef<HTMLInputElement>(null);
   const elementRefs = useRef<{ [key: string]: fabric.Object }>({});
   // Skip full canvas rebuild when only position/size changed via Fabric drag (avoids flicker)
@@ -229,6 +234,7 @@ export default function CardBuilder({
   // Test images — preview only, never saved to server
   const [testHeadshot, setTestHeadshot] = useState<string | null>(null);
   const [testLogo, setTestLogo] = useState<string | null>(null);
+  const [testLogoWhite, setTestLogoWhite] = useState<string | null>(null);
   const [testEventLogo, setTestEventLogo] = useState<string | null>(null);
 
   const [layersPanelOpen, setLayersPanelOpen] = useState(false);
@@ -291,7 +297,7 @@ export default function CardBuilder({
     setShowCanvasTip(true);
   };
   const [showSidebarTip, setShowSidebarTip] = useState(false);
-  const [sidebarWidth, setSidebarWidth] = useState(144);
+  const [sidebarWidth, setSidebarWidth] = useState(200);
   const sidebarDragging = useRef(false);
   const sidebarDragStartX = useRef(0);
   const sidebarDragStartW = useRef(144);
@@ -338,9 +344,9 @@ export default function CardBuilder({
   const cardBuilderFields = _fieldsArray.filter(
     (field) =>
       field &&
-      (field as FormFieldConfig).showInCardBuilder &&
       (field as FormFieldConfig).enabled &&
-      !DEFAULT_FIELD_IDS.includes((field as FormFieldConfig).id),
+      !DEFAULT_FIELD_IDS.includes((field as FormFieldConfig).id) &&
+      !CARD_BUILDER_EXCLUDED.includes((field as FormFieldConfig).id),
   );
 
   // Helper to check if a hardcoded element should be shown based on form config
@@ -617,6 +623,7 @@ export default function CardBuilder({
         templateUrl,
         testHeadshot,
         testLogo,
+        testLogoWhite,
         testEventLogo,
         bgGradient,
         bgColor,
@@ -644,6 +651,7 @@ export default function CardBuilder({
       templateUrl,
       testHeadshot,
       testLogo,
+      testLogoWhite,
       testEventLogo,
       bgGradient,
       bgColor,
@@ -1008,7 +1016,7 @@ export default function CardBuilder({
       // the wrong type), don't wipe the canvas — just leave it blank/empty.
       if (!serverConfig || typeof serverConfig !== "object") return;
 
-      const KNOWN_ELEMENT_KEYS = ["headshot", "firstName", "lastName", "title", "company", "companyLogo", "eventLogo", "gradientOverlay"];
+      const KNOWN_ELEMENT_KEYS = ["headshot", "firstName", "lastName", "title", "company", "companyLogo", "companyLogoWhite", "eventLogo", "gradientOverlay", "bio", "linkedin"];
       const hasContent =
         Object.keys(serverConfig).some(
           (k) =>
@@ -1281,6 +1289,11 @@ export default function CardBuilder({
       });
     }
 
+  const handleLogoWhiteUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (isReadOnly) { toast({ title: "Event is read-only", variant: "destructive" }); return; }
+    hb_handleLogoWhiteUpload(e, { setCropImageUrl, setCropMode, setCropDialogOpen, toast });
+  };
+
   const handleEventLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) =>
     {
       if (isReadOnly) { toast({ title: "Event is read-only", variant: "destructive" }); return; }
@@ -1302,6 +1315,7 @@ export default function CardBuilder({
       setBgIsGenerated,
       setTestHeadshot,
       setTestLogo,
+      setTestLogoWhite,
       setTestEventLogo,
       config,
       addElementToCanvas,
@@ -1415,6 +1429,9 @@ export default function CardBuilder({
       title: ["company_role"],
       company: ["company_name"],
       companyLogo: ["company_logo"],
+      companyLogoWhite: ["company_logo_white"],
+      bio: ["bio"],
+      linkedin: ["linkedin"],
     };
     const fieldIds = fieldMapping[elementKey] || [];
     for (const fid of fieldIds) {
@@ -1538,7 +1555,7 @@ export default function CardBuilder({
         imageUrl={cropImageUrl}
         onCropComplete={handleCropComplete}
         aspectRatio={
-          cropMode === "logo" || cropMode === "event-logo"
+          cropMode === "logo" || cropMode === "logo-white" || cropMode === "event-logo"
             ? NaN // Free-form: logos come in all shapes
             : cropMode === "headshot"
               ? 1
@@ -2625,10 +2642,10 @@ export default function CardBuilder({
                   setOnboardingShowTemplates(true);
                   setShowOnboarding(true);
                 }}
-                className="w-full flex flex-col items-center gap-1 p-2 rounded-lg transition-colors hover:bg-accent"
+                className="w-full flex flex-row items-center gap-2 px-3 py-2 rounded-lg transition-colors hover:bg-accent"
                 title="Starter Templates"
               >
-                <Layers className="h-5 w-5" />
+                <Layers className="h-4 w-4" />
                 <span className="text-xs">Templates</span>
               </button>
             </div>
@@ -2642,7 +2659,7 @@ export default function CardBuilder({
             />
 
             {shouldShowElement("headshot") && (
-              <div className="relative w-full px-2">
+              <div className="relative w-full">
                 <button
                   draggable
                   onDragStart={(e) => handleDragStart(e, "headshot")}
@@ -2658,10 +2675,10 @@ export default function CardBuilder({
                   data-popover="true"
                 >
                   <Users
-                    className={`h-5 w-5 ${config.headshot ? "text-primary" : ""}`}
+                    className={`h-4 w-4 shrink-0 ${config.headshot ? "text-primary" : ""}`}
                   />
                   <span
-                    className={`text-xs ${config.headshot ? "text-primary font-semibold" : ""}`}
+                    className={`text-xs truncate ${config.headshot ? "text-primary font-semibold" : ""}`}
                   >
                     {getFieldLabel("headshot", "Headshot")}
                   </span>
@@ -2728,8 +2745,8 @@ export default function CardBuilder({
                 className={`${SIDEBAR_ELEM_BTN} ${config.firstName ? "bg-primary/10 border-2 border-primary/30" : "hover:bg-accent"}`}
                 title={config.firstName ? "Click to remove" : "Drag to canvas or click to add"}
               >
-                <Type className={`h-5 w-5 ${config.firstName ? "text-primary" : ""}`} />
-                <span className={`text-xs ${config.firstName ? "text-primary font-semibold" : ""}`}>{getFieldLabel("firstName", "First Name")}</span>
+                <Type className={`h-4 w-4 shrink-0 ${config.firstName ? "text-primary" : ""}`} />
+                <span className={`text-xs truncate ${config.firstName ? "text-primary font-semibold" : ""}`}>{getFieldLabel("firstName", "First Name")}</span>
               </button>
             )}
 
@@ -2741,8 +2758,8 @@ export default function CardBuilder({
                 className={`${SIDEBAR_ELEM_BTN} ${config.lastName ? "bg-primary/10 border-2 border-primary/30" : "hover:bg-accent"}`}
                 title={config.lastName ? "Click to remove" : "Drag to canvas or click to add"}
               >
-                <Type className={`h-5 w-5 ${config.lastName ? "text-primary" : ""}`} />
-                <span className={`text-xs ${config.lastName ? "text-primary font-semibold" : ""}`}>{getFieldLabel("lastName", "Last Name")}</span>
+                <Type className={`h-4 w-4 shrink-0 ${config.lastName ? "text-primary" : ""}`} />
+                <span className={`text-xs truncate ${config.lastName ? "text-primary font-semibold" : ""}`}>{getFieldLabel("lastName", "Last Name")}</span>
               </button>
             )}
 
@@ -2752,18 +2769,10 @@ export default function CardBuilder({
                 onDragStart={(e) => handleDragStart(e, "title")}
                 onClick={() => toggleElement("title")}
                 className={`${SIDEBAR_ELEM_BTN} ${config.title ? "bg-primary/10 border-2 border-primary/30" : "hover:bg-accent"}`}
-                title={
-                  config.title
-                    ? "Click to remove"
-                    : "Drag to canvas or click to add"
-                }
+                title={config.title ? "Click to remove" : "Drag to canvas or click to add"}
               >
-                <Type
-                  className={`h-5 w-5 ${config.title ? "text-primary" : ""}`}
-                />
-                <span
-                  className={`text-xs ${config.title ? "text-primary font-semibold" : ""}`}
-                >
+                <Type className={`h-4 w-4 shrink-0 ${config.title ? "text-primary" : ""}`} />
+                <span className={`text-xs truncate ${config.title ? "text-primary font-semibold" : ""}`}>
                   {getFieldLabel("title", "Title")}
                 </span>
               </button>
@@ -2775,18 +2784,10 @@ export default function CardBuilder({
                 onDragStart={(e) => handleDragStart(e, "company")}
                 onClick={() => toggleElement("company")}
                 className={`${SIDEBAR_ELEM_BTN} ${config.company ? "bg-primary/10 border-2 border-primary/30" : "hover:bg-accent"}`}
-                title={
-                  config.company
-                    ? "Click to remove"
-                    : "Drag to canvas or click to add"
-                }
+                title={config.company ? "Click to remove" : "Drag to canvas or click to add"}
               >
-                <Briefcase
-                  className={`h-5 w-5 ${config.company ? "text-primary" : ""}`}
-                />
-                <span
-                  className={`text-xs ${config.company ? "text-primary font-semibold" : ""}`}
-                >
+                <Briefcase className={`h-4 w-4 shrink-0 ${config.company ? "text-primary" : ""}`} />
+                <span className={`text-xs truncate ${config.company ? "text-primary font-semibold" : ""}`}>
                   {getFieldLabel("company", "Company")}
                 </span>
               </button>
@@ -2798,27 +2799,65 @@ export default function CardBuilder({
                 onDragStart={(e) => handleDragStart(e, "companyLogo")}
                 onClick={() => toggleElement("companyLogo")}
                 className={`${SIDEBAR_ELEM_BTN} ${config.companyLogo ? "bg-primary/10 border-2 border-primary/30" : "hover:bg-accent"}`}
-                title={
-                  config.companyLogo
-                    ? "Click to remove"
-                    : "Drag to canvas or click to add"
-                }
+                title={config.companyLogo ? "Click to remove" : "Drag to canvas or click to add"}
               >
-                <ImageIcon
-                  className={`h-5 w-5 ${config.companyLogo ? "text-primary" : ""}`}
-                />
-                <span
-                  className={`text-xs ${config.companyLogo ? "text-primary font-semibold" : ""}`}
-                >
-                  {getFieldLabel("companyLogo", "Company Logo")}
+                <ImageIcon className={`h-4 w-4 shrink-0 ${config.companyLogo ? "text-primary" : ""}`} />
+                <span className={`text-xs truncate ${config.companyLogo ? "text-primary font-semibold" : ""}`}>
+                  {getFieldLabel("companyLogo", "Company Logo | Colour")}
                 </span>
               </button>
             )}
 
+            {shouldShowElement("companyLogoWhite") && (
+              <button
+                draggable
+                onDragStart={(e) => handleDragStart(e, "companyLogoWhite")}
+                onClick={() => toggleElement("companyLogoWhite")}
+                className={`${SIDEBAR_ELEM_BTN} ${config.companyLogoWhite ? "bg-primary/10 border-2 border-primary/30" : "hover:bg-accent"}`}
+                title={config.companyLogoWhite ? "Click to remove" : "Drag to canvas or click to add"}
+              >
+                <ImageIcon className={`h-4 w-4 shrink-0 ${config.companyLogoWhite ? "text-primary" : ""}`} />
+                <span className={`text-xs truncate ${config.companyLogoWhite ? "text-primary font-semibold" : ""}`}>
+                  {getFieldLabel("companyLogoWhite", "Company Logo | White")}
+                </span>
+              </button>
+            )}
+
+            {shouldShowElement("linkedin") && (
+              <button
+                draggable
+                onDragStart={(e) => handleDragStart(e, "linkedin")}
+                onClick={() => toggleElement("linkedin")}
+                className={`${SIDEBAR_ELEM_BTN} ${config.linkedin ? "bg-primary/10 border-2 border-primary/30" : "hover:bg-accent"}`}
+                title={config.linkedin ? "Click to remove" : "Drag to canvas or click to add"}
+              >
+                <Link className={`h-4 w-4 shrink-0 ${config.linkedin ? "text-primary" : ""}`} />
+                <span className={`text-xs truncate ${config.linkedin ? "text-primary font-semibold" : ""}`}>
+                  {getFieldLabel("linkedin", "LinkedIn")}
+                </span>
+              </button>
+            )}
+
+            {shouldShowElement("bio") && (
+              <button
+                draggable
+                onDragStart={(e) => handleDragStart(e, "bio")}
+                onClick={() => toggleElement("bio")}
+                className={`${SIDEBAR_ELEM_BTN} ${config.bio ? "bg-primary/10 border-2 border-primary/30" : "hover:bg-accent"}`}
+                title={config.bio ? "Click to remove" : "Drag to canvas or click to add"}
+              >
+                <Type className={`h-4 w-4 shrink-0 ${config.bio ? "text-primary" : ""}`} />
+                <span className={`text-xs truncate ${config.bio ? "text-primary font-semibold" : ""}`}>
+                  {getFieldLabel("bio", "Bio")}
+                </span>
+              </button>
+            )}
+
+
             {/* Dynamic fields from form builder */}
             {cardBuilderFields.length > 0 && (
               <>
-                <div className="h-px w-12 bg-border" />
+                <div className="h-px w-full bg-border" />
                 {cardBuilderFields.map((field) => {
                   const Icon = getFieldIcon(field.id);
                   const fieldKey = `dynamic_${field.id}`;
@@ -2860,10 +2899,10 @@ export default function CardBuilder({
                       }
                     >
                       <Icon
-                        className={`h-5 w-5 ${isActive ? "text-primary" : ""}`}
+                        className={`h-4 w-4 shrink-0 ${isActive ? "text-primary" : ""}`}
                       />
                       <span
-                        className={`text-xs line-clamp-1 w-full text-center ${isActive ? "text-primary font-semibold" : ""}`}
+                        className={`text-xs line-clamp-1 ${isActive ? "text-primary font-semibold" : ""}`}
                       >
                         {field.label}
                       </span>
@@ -3079,46 +3118,73 @@ export default function CardBuilder({
               )}
             </div>
 
-            {/* Logo */}
-            <div>
-              <Label className="text-xs font-medium mb-1.5 block">
-                Company Logo
-              </Label>
-              <input
-                ref={logoInputRef}
-                type="file"
-                accept="image/png,image/jpeg"
-                onChange={handleLogoUpload}
-                className="hidden"
-              />
-              {testLogo ? (
-                <div className="relative rounded-lg overflow-hidden border border-border bg-muted/30">
-                  <img
-                    src={testLogo}
-                    alt="Test logo"
-                    className="w-full h-16 object-contain p-2"
-                  />
+            {/* Logo — Colour */}
+            {shouldShowElement("companyLogo") && (
+              <div>
+                <Label className="text-xs font-medium mb-1.5 block">Company Logo | Colour</Label>
+                <input ref={logoInputRef} type="file" accept="image/png,image/jpeg" onChange={handleLogoUpload} className="hidden" />
+                {testLogo ? (
+                  <div className="relative rounded-lg overflow-hidden border border-border bg-muted/30">
+                    <img src={testLogo} alt="Test logo" className="w-full h-16 object-contain p-2" />
+                    <button onClick={() => setTestLogo(null)} className="absolute top-1.5 right-1.5 p-1 bg-background/90 rounded-full shadow text-muted-foreground hover:text-foreground" title="Remove">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ) : (
                   <button
-                    onClick={() => setTestLogo(null)}
-                    className="absolute top-1.5 right-1.5 p-1 bg-background/90 rounded-full shadow text-muted-foreground hover:text-foreground"
-                    title="Remove"
+                    onClick={() => logoInputRef.current?.click()}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const file = e.dataTransfer.files[0];
+                      if (!file) return;
+                      if (!['image/png', 'image/jpeg'].includes(file.type)) { toast({ title: 'Invalid file type', description: 'Logo must be PNG or JPEG', variant: 'destructive' }); return; }
+                      setCropImageUrl(URL.createObjectURL(file));
+                      setCropMode('logo');
+                      setCropDialogOpen(true);
+                    }}
+                    className="w-full h-16 flex flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-border hover:border-primary/50 hover:bg-primary/5 transition-colors text-muted-foreground hover:text-primary"
                   >
-                    <X className="h-3 w-3" />
+                    <Upload className="h-4 w-4" />
+                    <span className="text-xs">Colour — click or drop</span>
                   </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => logoInputRef.current?.click()}
-                  className="w-full h-16 flex flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-border hover:border-primary/50 hover:bg-primary/5 transition-colors text-muted-foreground hover:text-primary"
-                >
-                  <Upload className="h-4 w-4" />
-                  <span className="text-xs">Upload logo</span>
-                </button>
-              )}
-              <p className="text-[10px] text-muted-foreground mt-1.5 leading-snug">
-                Logos are free-crop — any aspect ratio.
-              </p>
-            </div>
+                )}
+              </div>
+            )}
+
+            {/* Logo — White */}
+            {shouldShowElement("companyLogoWhite") && (
+              <div>
+                <Label className="text-xs font-medium mb-1.5 block">Company Logo | White</Label>
+                <input ref={logoWhiteInputRef} type="file" accept="image/png,image/jpeg" onChange={handleLogoWhiteUpload} className="hidden" />
+                {testLogoWhite ? (
+                  <div className="relative rounded-lg overflow-hidden border border-border bg-muted/30">
+                    <img src={testLogoWhite} alt="Test white logo" className="w-full h-16 object-contain p-2" />
+                    <button onClick={() => setTestLogoWhite(null)} className="absolute top-1.5 right-1.5 p-1 bg-background/90 rounded-full shadow text-muted-foreground hover:text-foreground" title="Remove">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => logoWhiteInputRef.current?.click()}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const file = e.dataTransfer.files[0];
+                      if (!file) return;
+                      if (!['image/png', 'image/jpeg'].includes(file.type)) { toast({ title: 'Invalid file type', description: 'Logo must be PNG or JPEG', variant: 'destructive' }); return; }
+                      setCropImageUrl(URL.createObjectURL(file));
+                      setCropMode('logo-white');
+                      setCropDialogOpen(true);
+                    }}
+                    className="w-full h-16 flex flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-border hover:border-primary/50 hover:bg-primary/5 transition-colors text-muted-foreground hover:text-primary"
+                  >
+                    <Upload className="h-4 w-4" />
+                    <span className="text-xs">White — click or drop</span>
+                  </button>
+                )}
+              </div>
+            )}
 
             {/* Tip */}
             <div className="rounded-lg bg-muted/40 p-3">
@@ -3239,6 +3305,22 @@ export default function CardBuilder({
                   >
                     <Upload className="h-3.5 w-3.5" />
                     Upload Test Logo
+                  </button>
+                  <div className="border-t border-border my-1" />
+                </>
+              )}
+              {contextMenu.elementKey === "companyLogoWhite" && (
+                <>
+                  <button
+                    className={CTX_MENU_BTN}
+                    onClick={() => {
+                      if (isReadOnly) { toast({ title: "Event is read-only", variant: "destructive" }); setContextMenu(null); return; }
+                      logoWhiteInputRef.current?.click();
+                      setContextMenu(null);
+                    }}
+                  >
+                    <Upload className="h-3.5 w-3.5" />
+                    Upload Test Logo (White)
                   </button>
                   <div className="border-t border-border my-1" />
                 </>
