@@ -625,28 +625,20 @@ export default function SpeakerModule() {
             </DialogHeader>
             {editingForm === "call-for-speakers" ? (
               <>
-                <p className="text-sm text-muted-foreground">Your form is ready. Share the link so speakers can apply, then set up your Intake form for approved speakers.</p>
+                <p className="text-sm text-muted-foreground">Your form is ready. Share the link so speakers can apply.</p>
                 <div className="flex gap-2 pt-2">
                   <Button
                     variant="outline"
                     onClick={() => {
-                      const url = `${window.location.origin}/call-for-speakers/${id}`;
-                      navigator.clipboard.writeText(url);
+                      navigator.clipboard.writeText(`${window.location.origin}/call-for-speakers/${id}`);
                       setCopiedFormLink(true);
                       toast({ title: "Link copied!" });
                       setTimeout(() => setCopiedFormLink(false), 2000);
                     }}
                   >
-                    {copiedFormLink ? <><Check className="h-4 w-4 mr-2" />Copied</> : <><Copy className="h-4 w-4 mr-2" />Copy Link</>}
+                    {copiedFormLink ? <><Check className="h-4 w-4 mr-2" />Copied</> : <><Copy className="h-4 w-4 mr-2" />Copy link</>}
                   </Button>
-                  <Button
-                    onClick={() => { setFormSaved(false); setEditingForm("speaker-info"); setCopiedFormLink(false); }}
-                  >
-                    Set Up Speaker Intake Form
-                  </Button>
-                  <Button variant="outline" onClick={() => { setFormSaved(false); setEditingForm(null); }}>
-                    Done
-                  </Button>
+                  <Button variant="outline" onClick={() => { setFormSaved(false); setEditingForm(null); }}>Done</Button>
                 </div>
               </>
             ) : (
@@ -657,16 +649,12 @@ export default function SpeakerModule() {
                     variant="outline"
                     onClick={() => { setFormSaved(false); setEditingForm(null); setAddSpeakerOpen(true); }}
                   >
-                    Add Speaker
+                    <Plus className="h-4 w-4 mr-2" />Add Speaker
                   </Button>
-                  <Button
-                    onClick={() => { setFormSaved(false); setEditingForm(null); navigate(`/organizer/event/${id}/website-card-builder`); }}
-                  >
+                  <Button onClick={() => { setFormSaved(false); setEditingForm(null); navigate(`/organizer/event/${id}/website-card-builder`); }}>
                     Build Speaker Card Template
                   </Button>
-                  <Button variant="outline" onClick={() => { setFormSaved(false); setEditingForm(null); }}>
-                    Done
-                  </Button>
+                  <Button variant="outline" onClick={() => { setFormSaved(false); setEditingForm(null); }}>Done</Button>
                 </div>
               </>
             )}

@@ -42,6 +42,7 @@ Use these exact terms everywhere (UI labels, tooltips, dialogs, HelpTips, copy):
 - **CardDescriptions:** only add one if the heading is genuinely ambiguous without it.
 
 ## Working rules
+- **Speaker forms parity:** `speaker-info` and `call-for-speakers` form builders are intentionally separate configs but must always present identical field options and UI. Any change to `SpeakerFormBuilder.tsx` fields, labels, or sections applies to both. Never add a field or section to one without the other.
 - **CardBuilder:** frontend and backend rendering must match exactly. No frontend-only visual styles (e.g. text stroke) unless also in the backend HTML renderer. See `example-speaker-website-card.html` and `corresponding-config-speaker-website-card.json`.
 - **Frontend-only:** no backend changes. Flag gaps verbally and ask the user — only James writes to `API_GAPS.md`.
 - **Mock data:** only with explicit approval; mark with `// TODO: Replace with API data`.

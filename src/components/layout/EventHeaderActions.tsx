@@ -58,13 +58,26 @@ export default function EventHeaderActions({ eventData, id }: Props) {
 
     return (
       <div className="h-14 flex items-center gap-3 pr-2">
-        <Button
-          size="sm"
-          onClick={handleUpgrade}
-          className={`h-8 px-3 ${trialEnded ? 'bg-destructive text-white' : ''}`}
-        >
-          {title} <span className="mx-2">|</span> Upgrade
-        </Button>
+        {trialEnded ? (
+          <div className="relative inline-flex">
+            <span className="absolute -top-1 -right-1 h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-60" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-destructive" />
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleUpgrade}
+              className="h-8 px-3 bg-destructive/10 text-destructive border-destructive/30 hover:bg-destructive/15 hover:text-destructive"
+            >
+              {title} <span className="mx-2 opacity-40">|</span> Upgrade now
+            </Button>
+          </div>
+        ) : (
+          <Button size="sm" onClick={handleUpgrade} className="h-8 px-3">
+            {title} <span className="mx-2">|</span> Upgrade
+          </Button>
+        )}
       </div>
     );
   })();

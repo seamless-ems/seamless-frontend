@@ -82,7 +82,8 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
     { id: 'company_role', label: 'Title', type: 'text', enabled: true, required: false },
     { id: 'company_name', label: 'Company', type: 'text', enabled: true, required: false },
     { id: 'linkedin', label: 'LinkedIn', type: 'url', enabled: true, required: false },
-    { id: 'talk_topic', label: 'Talk / Session Topic', type: 'text', enabled: true, required: false },
+    { id: 'talk_title', label: 'Talk Title', type: 'text', enabled: true, required: false },
+    { id: 'talk_description', label: 'Talk Description', type: 'textarea', enabled: true, required: false },
     { id: 'bio', label: 'Bio', type: 'textarea', enabled: true, required: false },
   ];
   const editFormFields = configFields.length > 0 ? configFields : DEFAULT_EDIT_FIELDS;
@@ -381,7 +382,7 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
 
             // All enabled fields not in the hardcoded core set
             // `sample_content` is handled by the SpeakerContentTab component now
-            const CORE_IDS = new Set(['first_name', 'last_name', 'company_role', 'company_name', 'email', 'linkedin', 'bio', 'headshot', 'company_logo', 'company_logo_white', 'talk_topic', 'talk_title', 'talk_description', 'sample_content']);
+            const CORE_IDS = new Set(['first_name', 'last_name', 'company_role', 'company_name', 'email', 'linkedin', 'bio', 'headshot', 'company_logo', 'company_logo_white', 'talk_title', 'talk_description', 'sample_content']);
             // Inline: text/url/email/radio/checkbox fields shown in the 2-col grid
             const extraInlineFields = configFields.filter(f => f.enabled && !CORE_IDS.has(f.id) && f.type !== 'file' && f.type !== 'textarea');
             // Block: textarea fields shown as full-width blocks (like bio)
@@ -406,7 +407,7 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
                         s?.companyName && `Company: ${s.companyName}`,
                         s?.email && `Email: ${s.email}`,
                         s?.linkedin && `LinkedIn: ${s.linkedin}`,
-                        s?.talkTopic && `Talk / Session Topic: ${s.talkTopic}`,
+                        s?.talkTitle && `Talk Title: ${s.talkTitle}`,
                         s?.bio && `Bio: ${s.bio}`,
                       ].filter(Boolean).join('\n');
                       navigator.clipboard.writeText(lines);
@@ -429,9 +430,6 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
                       {fieldEnabled('company_name') && <Field label="Company" value={s?.companyName} />}
                       {fieldEnabled('email') && <Field label="Email" value={s?.email} href={s?.email ? `mailto:${s.email}` : undefined} />}
                       {fieldEnabled('linkedin') && s?.linkedin && <Field label="LinkedIn" value={s.linkedin} href={s.linkedin} />}
-                      {(fieldEnabled('talk_topic') || s?.talkTopic) && (
-                        <Field label="Talk / Session Topic" value={s?.talkTopic} />
-                      )}
                       {(fieldEnabled('talk_title') || s?.talkTitle) && (
                         <Field label="Talk Title" value={s?.talkTitle} />
                       )}
@@ -666,7 +664,6 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
               companyRole: s?.companyRole ?? '',
               linkedin: s?.linkedin ?? '',
               bio: s?.bio ?? '',
-              talkTopic: s?.talkTopic ?? '',
               talkTitle: s?.talkTitle ?? '',
               talkDescription: s?.talkDescription ?? '',
               ...(() => {
@@ -686,7 +683,7 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
             onSubmit={async (values) => {
               if (!id || !spkId) return;
               try {
-                const standardKeys = ['firstName', 'lastName', 'email', 'companyName', 'companyRole', 'linkedin', 'bio', 'talkTopic', 'talkTitle', 'talkDescription'];
+                const standardKeys = ['firstName', 'lastName', 'email', 'companyName', 'companyRole', 'linkedin', 'bio', 'talkTitle', 'talkDescription'];
                 const customFields: Record<string, any> = {};
                 Object.keys(values).forEach(key => {
                   if (!standardKeys.includes(key)) customFields[key] = values[key];
@@ -697,7 +694,7 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
                     : field.id === 'last_name' ? 'lastName'
                     : field.id === 'company_name' ? 'companyName'
                     : field.id === 'company_role' ? 'companyRole'
-                    : field.id === 'talk_topic' ? 'talkTopic'
+                    : field.id === 'talk_topic' ? 'talkTitle'
                     : field.id === 'talk_title' ? 'talkTitle'
                     : field.id === 'talk_description' ? 'talkDescription'
                     : field.id;
@@ -713,7 +710,6 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
                   companyRole: (values as any).companyRole || null,
                   linkedin: (values as any).linkedin || null,
                   bio: (values as any).bio || null,
-                  talkTopic: (values as any).talkTopic || null,
                   talkTitle: (values as any).talkTitle || null,
                   talkDescription: (values as any).talkDescription || null,
                   formType: s?.formType || 'speaker-info',
@@ -769,7 +765,7 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
                   const cf = payload.customFields as Record<string, any>;
                   if (cf["company_logo_white"]) { payload.companyLogoWhite = cf["company_logo_white"]; delete cf["company_logo_white"]; }
                   if (cf["companylogowhite"]) { payload.companyLogoWhite = cf["companylogowhite"]; delete cf["companylogowhite"]; }
-                  if (cf["talk_topic"]) { payload.talkTopic = cf["talk_topic"]; delete cf["talk_topic"]; }
+                  if (cf["talk_topic"]) { payload.talkTitle = cf["talk_topic"]; delete cf["talk_topic"]; }
                   if (cf["talk_title"]) { payload.talkTitle = cf["talk_title"]; delete cf["talk_title"]; }
                   if (cf["talk_description"]) { payload.talkDescription = cf["talk_description"]; delete cf["talk_description"]; }
                   if (Object.keys(cf).length === 0) delete payload.customFields;

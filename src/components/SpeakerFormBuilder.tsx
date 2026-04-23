@@ -146,34 +146,22 @@ export const DEFAULT_FIELDS: FormFieldConfig[] = [
   // --- Talk / Session (off by default) ---
   {
     id: "talk_title",
-    label: "Talk / Session Title",
+    label: "Talk Title",
     type: "text",
     required: false,
     enabled: false,
-    formTypes: ["speaker-info"],
     sectionStart: "Talk / Session",
   },
   {
     id: "talk_description",
-    label: "Talk / Session Description",
+    label: "Talk Description",
     type: "textarea",
     required: false,
     enabled: false,
-    formTypes: ["speaker-info"],
-  },
-  // --- Call for Speakers only ---
-  {
-    id: "talk_topic",
-    label: "Talk / Session Topic",
-    type: "text",
-    required: false,
-    enabled: false,
-    formTypes: ["call-for-speakers"],
-    sectionStart: "Talk / Session",
   },
   {
     id: "sample_content",
-    label: "Content",
+    label: "Talk Content",
     type: "file",
     required: false,
     enabled: false,
@@ -195,14 +183,10 @@ export const FIELD_MIGRATIONS: Record<string, Partial<FormFieldConfig>> = {
     helpText: "Please submit on a transparent background.",
     required: true,
   },
-  talk_topic: {
-    formTypes: ["call-for-speakers"],
-    sectionStart: "Talk / Session",
-    label: "Talk / Session Topic",
-  },
-  talk_title: { sectionStart: "Talk / Session" },
+  talk_title: { label: "Talk Title", sectionStart: "Talk / Session", formTypes: undefined },
+  talk_description: { label: "Talk Description", formTypes: undefined },
   sample_content: {
-    label: "Content",
+    label: "Talk Content",
     helpText: "Please add a description for each file you upload.",
   },
 };
@@ -221,109 +205,76 @@ const normalize = (s: string | undefined) =>
     .toLowerCase()
     .replace(/[^a-z0-9]/g, "");
 
+// Fields that have been removed from the schema and must be pruned from saved configs
+const OBSOLETE_FIELD_IDS = new Set(['talk_topic']);
+
 export function mergeWithDefaults(saved: FormFieldConfig[]): FormFieldConfig[] {
   const patched = saved
     .filter((f) => {
-      // only filter out custom fields that clash with reserved ids/labels
-      if (!f.custom) return true;
-      if (
-        RESERVED_FIELD_IDS.has(f.id) ||
-        RESERVED_FIELD_IDS.has((f as any).name)
-      )
-        return false;
-      const nid = normalize(f.id);
-      const nlabel = normalize(f.label);
-      for (const rid of RESERVED_FIELD_IDS) {
-        if (normalize(rid) === nid || normalize(rid) === nlabel) return false;
+      // Drop explicitly obsolete fields regardless of custom flag
+      if (OBSOLETE_FIELD_IDS.has(f.id)) return false;
+      // Drop custom fields that clash with reserved ids/labels
+      if (f.custom) {
+        if (RESERVED_FIELD_IDS.has(f.id) || RESERVED_FIELD_IDS.has((f as any).name)) return false;
+        const nid = normalize(f.id);
+        const nlabel = normalize(f.label);
+        for (const rid of RESERVED_FIELD_IDS) {
+          if (normalize(rid) === nid || normalize(rid) === nlabel) return false;
+        }
       }
       return true;
     })
-    .map((f) =>
-      FIELD_MIGRATIONS[f.id] ? { ...f, ...FIELD_MIGRATIONS[f.id] } : f,
-    );
+    .map((f) => FIELD_MIGRATIONS[f.id] ? { ...f, ...FIELD_MIGRATIONS[f.id] } : f);
+
   const savedIds = new Set(patched.map((f) => f.id));
   const newDefaults = DEFAULT_FIELDS.filter((f) => !savedIds.has(f.id));
-  return [...patched, ...newDefaults];
+  const merged = [...patched, ...newDefaults];
+
+  // Sort standard fields into canonical DEFAULT_FIELDS order; custom fields stay at end
+  const canonicalOrder = new Map(DEFAULT_FIELDS.map((f, i) => [f.id, i]));
+  const standard = merged.filter((f) => !f.custom).sort((a, b) => {
+    const ai = canonicalOrder.get(a.id) ?? 999;
+    const bi = canonicalOrder.get(b.id) ?? 999;
+    return ai - bi;
+  });
+  const custom = merged.filter((f) => f.custom);
+  return [...standard, ...custom];
 }
 
-const CFS_OVERRIDES: Record<string, Partial<FormFieldConfig>> = {
-  talk_topic: { enabled: true, required: true },
-  sample_content: { enabled: true, required: true },
-  company_role: { enabled: true, required: true },
-  company_name: { enabled: true, required: true },
-  headshot: { enabled: false },
-  company_logo: { enabled: false },
-  company_logo_white: { enabled: false },
-};
-
-function applyFormTypeOverrides(
-  fields: FormFieldConfig[],
-  ft: string,
-): FormFieldConfig[] {
-  if (ft !== "call-for-speakers") return fields;
-  return fields.map((f) =>
-    Object.prototype.hasOwnProperty.call(CFS_OVERRIDES, f.id)
-      ? { ...f, ...CFS_OVERRIDES[f.id] }
-      : f,
-  );
+function getDefaultsForFormType(_ft: string): FormFieldConfig[] {
+  return DEFAULT_FIELDS;
 }
 
-function getDefaultsForFormType(ft: string): FormFieldConfig[] {
-  return applyFormTypeOverrides(DEFAULT_FIELDS, ft);
-}
+const SHARED_SECTIONS = [
+  {
+    id: "info",
+    label: null,
+    fieldIds: [
+      "first_name",
+      "last_name",
+      "email",
+      "company_role",
+      "company_name",
+      "headshot",
+      "company_logo",
+      "company_logo_white",
+      "linkedin",
+      "bio",
+    ],
+  },
+  {
+    id: "talk",
+    label: "Talk / Session",
+    fieldIds: ["talk_title", "talk_description", "sample_content"],
+  },
+];
 
 export const FORM_SECTIONS: Record<
   string,
   { id: string; label: string | null; fieldIds: string[] }[]
 > = {
-  "call-for-speakers": [
-    {
-      id: "info",
-      label: null,
-      fieldIds: [
-        "first_name",
-        "last_name",
-        "email",
-        "company_role",
-        "company_name",
-      ],
-    },
-    { id: "talk", label: "Talk / Session", fieldIds: ["talk_topic", "sample_content"] },
-    {
-      id: "media",
-      label: null,
-      fieldIds: [
-        "headshot",
-        "company_logo",
-        "company_logo_white",
-        "linkedin",
-        "bio",
-      ],
-    },
-  ],
-  "speaker-info": [
-    {
-      id: "info",
-      label: null,
-      fieldIds: [
-        "first_name",
-        "last_name",
-        "email",
-        "company_role",
-        "company_name",
-        "headshot",
-        "company_logo",
-        "company_logo_white",
-        "linkedin",
-        "bio",
-      ],
-    },
-    {
-      id: "talk",
-      label: "Talk / Session",
-      fieldIds: ["talk_title", "talk_description", "sample_content"],
-    },
-  ],
+  "speaker-info": SHARED_SECTIONS,
+  "call-for-speakers": SHARED_SECTIONS,
 };
 
 const SpeakerFormBuilder = forwardRef<
@@ -400,10 +351,7 @@ const SpeakerFormBuilder = forwardRef<
             // - new: config is an object { fields: [...], metadata: { title, subtitle, showTitle } }
             if (Array.isArray(res.config)) {
               setFields(
-                applyFormTypeOverrides(
-                  mergeWithDefaults(res.config as FormFieldConfig[]),
-                  formType ?? "speaker-info",
-                ),
+                mergeWithDefaults(res.config as FormFieldConfig[]),
               );
               // backward-compatible metadata may live at top-level or in res.metadata
               setFormTitle(
@@ -424,10 +372,7 @@ const SpeakerFormBuilder = forwardRef<
                 ? cfg.fields
                 : getDefaultsForFormType(formType ?? "speaker-info");
               setFields(
-                applyFormTypeOverrides(
-                  mergeWithDefaults(fieldsFromCfg as FormFieldConfig[]),
-                  formType ?? "speaker-info",
-                ),
+                mergeWithDefaults(fieldsFromCfg as FormFieldConfig[]),
               );
               setFormTitle(resolveTitle(cfg.metadata?.title as string));
               setFormSubtitle((cfg.metadata?.subtitle as string) || "");
@@ -610,9 +555,7 @@ const SpeakerFormBuilder = forwardRef<
   };
 
   // Fields filtered by formType
-  const visibleFields = fields.filter(
-    (f) => !f.formTypes || f.formTypes.includes(formType ?? "speaker-info"),
-  );
+  const visibleFields = fields;
   const sections =
     FORM_SECTIONS[formType ?? "speaker-info"] ?? FORM_SECTIONS["speaker-info"];
 
@@ -683,9 +626,7 @@ const SpeakerFormBuilder = forwardRef<
 
   const enabledFields = fields.filter((f) => f.enabled);
 
-  const previewFields = enabledFields.filter(
-    (f) => !f.formTypes || f.formTypes.includes(formType ?? "speaker-info"),
-  );
+  const previewFields = enabledFields;
 
   return (
     <div className="space-y-6">
@@ -739,9 +680,9 @@ const SpeakerFormBuilder = forwardRef<
             <div className="space-y-1">
               {sections.map((section, sIdx) => {
                 const sectionIdSet = new Set(section.fieldIds);
-                const sectionFields = visibleFields.filter(
-                  (f) => !f.custom && sectionIdSet.has(f.id),
-                );
+                const sectionFields = visibleFields
+                  .filter((f) => !f.custom && sectionIdSet.has(f.id))
+                  .sort((a, b) => section.fieldIds.indexOf(a.id) - section.fieldIds.indexOf(b.id));
 
                 if (sectionFields.length === 0) return null;
 

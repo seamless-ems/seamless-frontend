@@ -75,7 +75,7 @@ export default function TrialOverlay() {
               onClick={handleUpgrade}
               className={trialEnded ? 'bg-white border border-destructive text-destructive hover:bg-white' : undefined}
             >
-              {trialEnded ? 'Upgrade to restore access' : 'Upgrade'}
+              {trialEnded ? 'Upgrade now' : 'Upgrade'}
             </Button>
           </div>
         </div>

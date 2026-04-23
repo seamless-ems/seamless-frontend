@@ -208,12 +208,24 @@ export function EventCard({ event, index = 0, onDelete }: EventCardProps) {
         <div>{event.location}</div>
       </div>
 
-          {trialEnded && isOrganizer && !paid && (
-        <div className="mb-4 p-3 rounded-md border-l-4 border-destructive/30 bg-destructive/10">
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-destructive">Your free trial for this event has ended. Everything is now read-only.</div>
-            <Button size="sm" onClick={handlePayNow} disabled={creatingCheckout}>
-              {creatingCheckout ? 'Processing…' : 'Upgrade to restore access'}
+      {trialEnded && isOrganizer && !paid && (
+        <div className="mb-4 rounded-md border border-destructive/25 bg-destructive/10 p-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <div className="relative flex h-2 w-2 shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-60" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-destructive" />
+              </div>
+              <span className="text-sm text-destructive">Your free trial has ended. This event is now read-only.</span>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handlePayNow}
+              disabled={creatingCheckout}
+              className="shrink-0 bg-destructive/10 text-destructive border-destructive/30 hover:bg-destructive/15 hover:text-destructive"
+            >
+              {creatingCheckout ? 'Processing…' : 'Upgrade now'}
             </Button>
           </div>
         </div>

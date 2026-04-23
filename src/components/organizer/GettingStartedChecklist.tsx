@@ -1,6 +1,17 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Check, ChevronDown, ChevronUp, X } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  ChevronUp,
+  X,
+  ClipboardList,
+  FileText,
+  LayoutTemplate,
+  Image,
+  Monitor,
+  UserPlus,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -45,7 +56,6 @@ export default function GettingStartedChecklist({
   hasSpeakers,
   onEditForm,
   onAddSpeaker,
-  activeStep,
 }: Props) {
   const navigate = useNavigate();
 
@@ -66,34 +76,52 @@ export default function GettingStartedChecklist({
     saveSkipped(eventId, next);
   };
 
-  const steps: { label: string; done: boolean; action: () => void }[] = [
+  const steps: {
+    label: string;
+    cta: string;
+    icon: React.ElementType;
+    done: boolean;
+    action: () => void;
+  }[] = [
     {
-      label: "Set up your Application form",
+      label: "Application Form",
+      cta: "Set up",
+      icon: ClipboardList,
       done: applicationFormConfigured || skipped.has(0),
       action: () => onEditForm("call-for-speakers"),
     },
     {
-      label: "Set up your Speaker Intake Form",
+      label: "Intake Form",
+      cta: "Set up",
+      icon: FileText,
       done: intakeFormConfigured || skipped.has(1),
       action: () => onEditForm("speaker-info"),
     },
     {
-      label: "Build your Speaker Card template",
+      label: "Speaker Card",
+      cta: "Build",
+      icon: LayoutTemplate,
       done: websiteCardConfigured || skipped.has(2),
       action: () => navigate(`/organizer/event/${eventId}/website-card-builder`),
     },
     {
-      label: "Build your Social Card template",
+      label: "Social Card",
+      cta: "Build",
+      icon: Image,
       done: promoCardConfigured || skipped.has(3),
       action: () => navigate(`/organizer/event/${eventId}/promo-card-builder`),
     },
     {
-      label: "Set up your Speaker Wall",
+      label: "Speaker Wall",
+      cta: "Set up",
+      icon: Monitor,
       done: embedVisited || skipped.has(4),
       action: () => navigate(`/organizer/event/${eventId}/speakers/embed`),
     },
     {
-      label: "Add your first speaker",
+      label: "Add a Speaker",
+      cta: "Add",
+      icon: UserPlus,
       done: !!hasSpeakers || skipped.has(5),
       action: () => onAddSpeaker?.(),
     },
@@ -101,6 +129,13 @@ export default function GettingStartedChecklist({
 
   const completedCount = steps.filter((s) => s.done).length;
   const allDone = completedCount === steps.length;
+
+  // Auto-dismiss 2 seconds after all steps complete
+  React.useEffect(() => {
+    if (!allDone || dismissed) return;
+    const t = setTimeout(() => dismiss(), 2000);
+    return () => clearTimeout(t);
+  }, [allDone, dismissed]);
 
   const toggleCollapsed = () => {
     const next = !collapsed;
@@ -119,114 +154,85 @@ export default function GettingStartedChecklist({
     return (
       <div className="rounded-lg border border-success/30 bg-success/5 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-5 w-5 items-center justify-center rounded-full bg-success text-white shrink-0">
-            <Check className="h-3 w-3" />
-          </div>
-          <span className="text-sm font-medium text-foreground">
-            All set — your event is fully configured.
-          </span>
+          <Check className="h-4 w-4 text-success shrink-0" />
+          <span className="text-sm font-medium text-foreground">All set — your event is fully configured.</span>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground shrink-0"
-          onClick={dismiss}
-        >
+        <button className="text-muted-foreground/50 hover:text-muted-foreground transition-colors" onClick={dismiss}>
           <X className="h-3.5 w-3.5" />
-        </Button>
+        </button>
       </div>
     );
   }
 
   return (
-    <div className="rounded-lg border border-primary/20 bg-primary/5">
+    <div className="rounded-lg border border-border bg-muted/20">
+      {/* Header */}
       <button
         onClick={toggleCollapsed}
-        className="w-full flex items-center justify-between px-4 py-3 text-left"
+        className="w-full flex items-center justify-between px-4 py-2.5 text-left"
       >
-        <span className="text-sm font-semibold text-primary">Get started</span>
+        <div className="flex items-center gap-2.5">
+          <span className="text-sm font-medium text-foreground">Get started</span>
+          <span className="text-xs text-muted-foreground/60">{completedCount} of {steps.length}</span>
+        </div>
         {collapsed
-          ? <ChevronDown className="h-4 w-4 text-primary/60 shrink-0" />
-          : <ChevronUp className="h-4 w-4 text-primary/60 shrink-0" />
+          ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
+          : <ChevronUp className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
         }
       </button>
 
-      {!collapsed && (
-        <div className="px-4 pb-4">
-          {/* Progress bar */}
-          <div className="h-1 bg-primary/10 rounded-full overflow-hidden mb-4">
-            <div
-              className="h-full bg-primary rounded-full transition-all duration-500"
-              style={{ width: `${(completedCount / steps.length) * 100}%` }}
-            />
-          </div>
+      {/* Progress bar */}
+      <div className="h-px w-full bg-border">
+        <div
+          className="h-px bg-primary/50 transition-all duration-500"
+          style={{ width: `${(completedCount / steps.length) * 100}%` }}
+        />
+      </div>
 
-          <div className="space-y-1">
-            {steps.map((step, i) => {
-              const isSkipped = skipped.has(i);
-              return (
-                <div
-                  key={i}
-                  className={cn(
-                    "flex items-center justify-between py-2 gap-3",
-                    i < steps.length - 1 && "border-b border-primary/10",
-                    activeStep === i && !step.done && "bg-primary/5 -mx-1 px-1 rounded-md"
-                  )}
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div
-                      className={cn(
-                        "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-xs font-medium",
-                        step.done && !isSkipped
-                          ? "bg-primary border-primary text-primary-foreground"
-                          : isSkipped
-                          ? "bg-muted border-muted-foreground/30 text-muted-foreground"
-                          : "border-primary/30 text-primary/60"
-                      )}
-                    >
-                      {step.done && !isSkipped ? (
-                        <Check className="h-3 w-3" />
-                      ) : isSkipped ? (
-                        <span>–</span>
-                      ) : (
-                        <span>{i + 1}</span>
-                      )}
-                    </div>
-                    <span
-                      className={cn(
-                        "text-sm",
-                        step.done
-                          ? "line-through text-muted-foreground"
-                          : "text-foreground"
-                      )}
-                    >
-                      {step.label}
-                    </span>
-                  </div>
-                  {!step.done && (
-                    <div className="flex items-center gap-1 shrink-0">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 text-xs text-primary hover:text-primary hover:bg-primary/10 px-2"
-                        onClick={step.action}
-                      >
-                        Let's Go
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 text-xs text-muted-foreground hover:text-muted-foreground hover:bg-muted px-2"
-                        onClick={() => skipStep(i)}
-                      >
-                        Skip
-                      </Button>
-                    </div>
-                  )}
+      {!collapsed && (
+        <div className="grid grid-cols-6 divide-x divide-border">
+          {steps.map((step, i) => {
+            const Icon = step.icon;
+            return (
+              <div
+                key={i}
+                className={cn(
+                  "flex flex-col gap-2 px-4 py-3.5",
+                  step.done ? "opacity-40" : ""
+                )}
+              >
+                {/* Icon + label */}
+                <div className="flex items-center gap-2">
+                  {step.done
+                    ? <Check className="h-3.5 w-3.5 shrink-0 text-success" />
+                    : <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" />
+                  }
+                  <span className="text-xs font-medium text-foreground leading-tight">
+                    {step.label}
+                  </span>
                 </div>
-              );
-            })}
-          </div>
+
+                {/* CTA + Skip */}
+                {!step.done && (
+                  <div className="flex items-center gap-1.5 pl-[1.375rem]">
+                    <button
+                      className="text-xs font-medium text-primary hover:text-primary/70 transition-colors"
+                      onClick={step.action}
+                    >
+                      {step.cta}
+                    </button>
+                    <span className="text-muted-foreground/30 select-none">·</span>
+                    <button
+                      className="text-xs text-muted-foreground/40 hover:text-muted-foreground transition-colors"
+                      onClick={() => skipStep(i)}
+                    >
+                      Skip
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

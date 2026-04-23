@@ -56,7 +56,7 @@ function buildDynamicSchema(fields: FormFieldConfig[]): z.ZodSchema {
         fieldSchema = z.string().email("Invalid email address");
         break;
       case "textarea":
-        fieldSchema = z.string().min(10, `${field.label} must be at least 10 characters`).max(500);
+        fieldSchema = z.string().min(10, `${field.label} must be at least 10 characters`);
         break;
       case "radio":
         fieldSchema = z.string();
@@ -145,7 +145,6 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
   const pageType: "speaker-intake" | "call-for-speakers" = formPageType
     ?? (location.pathname.includes("/call-for-speakers") ? "call-for-speakers" : (location.pathname.includes("/speaker-intake") ? "speaker-intake" : "speaker-intake"));
 
-  // Map the page type to the backend formType value
   const backendFormType = pageType === "speaker-intake" ? "speaker-info" : "call-for-speakers";
 
   // Load form config from backend for this event (fall back to defaults on error)
@@ -487,8 +486,6 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
             payload.talkTitle = val;
           } else if (fid === "talk_description") {
             payload.talkDescription = val;
-          } else if (fid === "talk_topic") {
-            payload.talkTopic = val;
           } else {
             customFields[field.id] = val;
           }
@@ -598,11 +595,11 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
         toast.success("Submission received successfully.");
       }
 
-      // Send confirmation email — fire and forget
+      // Send confirmation email — fire and forget (speaker-intake only)
       const recipientEmail = String(payload.email ?? data.email ?? "").trim();
       const recipientFirstName = String(payload.firstName ?? data.first_name ?? "").trim();
       const eventLabel = resolvedEventName || "the event";
-      if (recipientEmail && confirmedSpeakerId) {
+      if (pageType === "speaker-intake" && recipientEmail && confirmedSpeakerId) {
         const loginUrl = `${window.location.origin}/login`;
         const html = buildEmailHtml(
           recipientFirstName,
@@ -676,6 +673,31 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
       toast.error(String(err?.message || err || "Failed to send sign-in link"));
     }
   };
+
+  if (submitted && pageType === "call-for-speakers") {
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ background: "linear-gradient(135deg, hsl(var(--primary-subtle)) 0%, hsl(var(--bg-app)) 100%)" }}
+      >
+        <div className="w-[90%] max-w-[440px] bg-card rounded-lg p-12 text-center" style={{ boxShadow: "0 4px 6px rgba(0,0,0,0.1)" }}>
+          <div className="flex justify-center mb-4">
+            <CheckCircle2 className="h-10 w-10 text-success" />
+          </div>
+          <h2 className="text-xl font-semibold mb-2">
+            Thank you for your submission{resolvedEventName ? ` to ${resolvedEventName}` : ""}
+          </h2>
+          <p className="text-sm text-muted-foreground mb-8">We will be in touch.</p>
+          <p className="text-xs text-muted-foreground/60">
+            Powered by{" "}
+            <a href="https://seamlessevents.io/" target="_blank" rel="noopener noreferrer" className="underline hover:text-muted-foreground transition-colors">
+              Seamless Events
+            </a>
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (submitted) {
     return (

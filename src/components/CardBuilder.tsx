@@ -105,7 +105,7 @@ import {
 import { ImageCropDialog } from "@/components/ImageCropDialog";
 import ShadowContainer from "@/components/ShadowContainer";
 import { toast } from "@/hooks/use-toast";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import useEventAccess from "@/contexts/EventAccessContext";
 import MissingFormDialog from "@/components/MissingFormDialog";
 import {
@@ -185,6 +185,9 @@ export default function CardBuilder({
   const location = useLocation();
   const navigate = useNavigate();
   const [postSavedOpen, setPostSavedOpen] = useState(false);
+  const cardSavedKey = eventId ? `seamless-card-saved-${cardType}-${eventId}` : null;
+  const isFirstSave = () => !cardSavedKey || !localStorage.getItem(cardSavedKey);
+  const markCardSaved = () => { if (cardSavedKey) { try { localStorage.setItem(cardSavedKey, "1"); } catch {} } };
   const [cardType, setCardType] = useState<CardType>(() =>
     deriveInitialCardType(location?.pathname),
   );
@@ -306,6 +309,7 @@ export default function CardBuilder({
   const [missingLogoDialogOpen, setMissingLogoDialogOpen] = useState(false);
   const [blankCanvasConfirmOpen, setBlankCanvasConfirmOpen] = useState(false);
   const skipLogoWarningRef = useRef(false);
+  const queryClient = useQueryClient();
 
   const { data: formConfig } = useQuery<{ config: FormFieldConfig[] }>({
     queryKey: ["formConfig", eventId, "speaker-info"],
@@ -950,7 +954,13 @@ export default function CardBuilder({
         setHasUnsavedChanges,
         toast,
       });
-      if (!silent) setPostSavedOpen(true);
+      if (eventId) {
+        queryClient.invalidateQueries({ queryKey: ["event", eventId, "card-config", cardType] });
+      }
+      if (!silent && isFirstSave()) {
+        markCardSaved();
+        setPostSavedOpen(true);
+      }
     },
     [
       config,
@@ -967,6 +977,7 @@ export default function CardBuilder({
       setBgIsGenerated,
       setHasUnsavedChanges,
       toast,
+      queryClient,
     ],
   );
 
@@ -1471,7 +1482,7 @@ export default function CardBuilder({
                 >
                   Build Social Card Template
                 </Button>
-                <Button variant="outline" onClick={() => setPostSavedOpen(false)}>Done</Button>
+                <Button variant="outline" onClick={() => { setPostSavedOpen(false); onBack?.(); }}>Done</Button>
               </>
             ) : (
               <>
@@ -1480,7 +1491,7 @@ export default function CardBuilder({
                 >
                   Set Up Speaker Wall
                 </Button>
-                <Button variant="outline" onClick={() => setPostSavedOpen(false)}>Done</Button>
+                <Button variant="outline" onClick={() => { setPostSavedOpen(false); onBack?.(); }}>Done</Button>
               </>
             )}
           </div>

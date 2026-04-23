@@ -83,9 +83,11 @@ export default function FormsTab({ eventId }: { eventId: string | undefined }) {
 
   if (editingForm) {
     const editingFormData = forms.find(f => f.id === editingForm);
+    const formLink = editingForm === "call-for-speakers"
+      ? `${window.location.origin}/call-for-speakers/${eventId}`
+      : `${window.location.origin}/speaker-intake/${eventId}`;
     return (
       <div className="fixed inset-0 z-50 bg-background flex flex-col">
-        {/* Standard sub-page header */}
         <header className="sticky top-0 z-30 h-14 flex items-center gap-3 border-b border-border bg-card/95 px-4 shrink-0">
           <button
             onClick={() => { setEditingForm(null); setFormSaved(false); }}
@@ -94,9 +96,7 @@ export default function FormsTab({ eventId }: { eventId: string | undefined }) {
             <ArrowLeft className="h-4 w-4" />
           </button>
           <div className="flex items-baseline gap-1.5 leading-none select-none">
-            <span className="text-sm font-semibold text-primary" style={{ letterSpacing: "-0.01em" }}>
-              Seamless
-            </span>
+            <span className="text-sm font-semibold text-primary" style={{ letterSpacing: "-0.01em" }}>Seamless</span>
             <span className="text-xs font-normal text-muted-foreground">Forms</span>
           </div>
           {editingFormData && (
@@ -106,9 +106,7 @@ export default function FormsTab({ eventId }: { eventId: string | undefined }) {
             </>
           )}
           <div className="ml-auto flex items-center gap-2">
-            <Button size="sm" onClick={() => formBuilderRef.current?.save()}>
-              Save Changes
-            </Button>
+            <Button size="sm" onClick={() => formBuilderRef.current?.save()}>Save Changes</Button>
           </div>
         </header>
         <div className="flex-1 overflow-y-auto">
@@ -125,55 +123,30 @@ export default function FormsTab({ eventId }: { eventId: string | undefined }) {
           </div>
         </div>
 
-        {/* Post-save dialog */}
         <Dialog open={formSaved} onOpenChange={(v) => { if (!v) setFormSaved(false); }}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>Form saved</DialogTitle>
             </DialogHeader>
-            {editingForm === "call-for-speakers" ? (
-              <>
-                <p className="text-sm text-muted-foreground">Your application form is ready. Share the link with potential speakers.</p>
-                <div className="flex gap-2 pt-2">
-                  <Button
-                    className="flex-1"
-                    onClick={() => {
-                      const url = `${window.location.origin}/call-for-speakers/${eventId}`;
-                      navigator.clipboard.writeText(url);
-                      setCopiedLink(true);
-                      toast({ title: "Link copied!" });
-                      setTimeout(() => setCopiedLink(false), 2000);
-                    }}
-                  >
-                    {copiedLink ? <><Check className="h-4 w-4 mr-2" />Copied</> : <><Copy className="h-4 w-4 mr-2" />Copy form link</>}
-                  </Button>
-                  <Button variant="outline" onClick={() => { setFormSaved(false); setEditingForm(null); }}>
-                    Done
-                  </Button>
-                </div>
-              </>
-            ) : (
-              <>
-                <p className="text-sm text-muted-foreground">Your intake form is ready. Copy the link to share with speakers.</p>
-                <div className="flex gap-2 pt-2">
-                  <Button
-                    className="flex-1"
-                    onClick={() => {
-                      const url = `${window.location.origin}/speaker-intake/${eventId}`;
-                      navigator.clipboard.writeText(url);
-                      setCopiedLink(true);
-                      toast({ title: "Link copied!" });
-                      setTimeout(() => setCopiedLink(false), 2000);
-                    }}
-                  >
-                    {copiedLink ? <><Check className="h-4 w-4 mr-2" />Copied</> : <><Copy className="h-4 w-4 mr-2" />Copy form link</>}
-                  </Button>
-                  <Button variant="outline" onClick={() => { setFormSaved(false); setEditingForm(null); }}>
-                    Done
-                  </Button>
-                </div>
-              </>
-            )}
+            <p className="text-sm text-muted-foreground">
+              {editingForm === "call-for-speakers"
+                ? "Your application form is ready. Share the link with potential speakers."
+                : "Your intake form is ready. Copy the link to share with speakers."}
+            </p>
+            <div className="flex gap-2 pt-2">
+              <Button
+                className="flex-1"
+                onClick={() => {
+                  navigator.clipboard.writeText(formLink);
+                  setCopiedLink(true);
+                  toast({ title: "Link copied!" });
+                  setTimeout(() => setCopiedLink(false), 2000);
+                }}
+              >
+                {copiedLink ? <><Check className="h-4 w-4 mr-2" />Copied</> : <><Copy className="h-4 w-4 mr-2" />Copy link</>}
+              </Button>
+              <Button variant="outline" onClick={() => { setFormSaved(false); setEditingForm(null); }}>Done</Button>
+            </div>
           </DialogContent>
         </Dialog>
       </div>
