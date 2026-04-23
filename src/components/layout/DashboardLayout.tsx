@@ -86,7 +86,7 @@ export function DashboardLayout({ children, eventId, mode: propMode }: Dashboard
       <header className="fixed top-0 left-0 right-0 z-30 flex h-16 items-center justify-between border-b border-border bg-card/95 px-6">
         <div className="flex items-center gap-4">
           <Link to={mode === "speaker" ? "/speaker" : "/organizer"} className="flex items-baseline gap-1.5 leading-none">
-            <span className="text-[20px] font-semibold text-primary" style={{ letterSpacing: '-0.01em' }}>
+            <span className="text-[20px] font-semibold text-accent" style={{ letterSpacing: '-0.01em' }}>
               Seamless
             </span>
             <span className="text-[16px] font-normal text-muted-foreground">
@@ -96,19 +96,19 @@ export function DashboardLayout({ children, eventId, mode: propMode }: Dashboard
 
           {showBreadcrumbs && (
             <div className="flex items-center gap-2 ml-2 text-sm text-muted-foreground">
-              <Link to="/organizer" className="text-primary hover:text-primary-hover no-underline">
+              <Link to="/organizer" className="text-accent hover:text-accent-hover no-underline">
                 {orgName}
               </Link>
               <span>›</span>
               {subPageName ? (
                 <>
-                  <Link to={`/organizer/event/${eventId}`} className="text-primary hover:text-primary-hover no-underline">
+                  <Link to={`/organizer/event/${eventId}`} className="text-accent hover:text-accent-hover no-underline">
                     {eventName}
                   </Link>
                   <span>›</span>
                   {speakerName ? (
                     <>
-                      <Link to={`/organizer/event/${eventId}/speakers`} className="text-primary hover:text-primary-hover no-underline">
+                      <Link to={`/organizer/event/${eventId}/speakers`} className="text-accent hover:text-accent-hover no-underline">
                         {subPageName}
                       </Link>
                       <span>›</span>

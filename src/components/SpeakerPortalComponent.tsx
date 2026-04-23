@@ -275,7 +275,7 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
   const tabClass = (tab: string) =>
     `py-3 border-b-2 transition-colors text-sm font-medium whitespace-nowrap ${
       activeTab === tab
-        ? 'border-primary text-foreground'
+        ? 'border-accent text-foreground'
         : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
     }`;
 
@@ -298,7 +298,7 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
-        <span className="text-[17px] font-semibold text-primary shrink-0" style={{ letterSpacing: '-0.01em' }}>Seamless</span>
+        <span className="text-[17px] font-semibold text-accent shrink-0" style={{ letterSpacing: '-0.01em' }}>Seamless</span>
         <span className="text-sm text-muted-foreground shrink-0">Events</span>
         {fullName && (
           <>
@@ -359,7 +359,7 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
               <div>
                 <p className="text-xs font-medium text-muted-foreground mb-0.5">{label}</p>
                 {href && value ? (
-                  <a href={href} target="_blank" rel="noreferrer" className="text-sm text-primary hover:underline truncate block">{value}</a>
+                  <a href={href} target="_blank" rel="noreferrer" className="text-sm text-accent hover:underline truncate block">{value}</a>
                 ) : (
                   <p className="text-sm text-foreground">{value || <span className="text-muted-foreground/40">—</span>}</p>
                 )}
@@ -450,7 +450,7 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
                           {s.bio.length > 300 ? `${s.bio.substring(0, 300)}…` : s.bio}
                         </p>
                         {s.bio.length > 300 && (
-                          <button className="text-xs text-primary hover:underline mt-1" onClick={() => setBioOpen(true)}>
+                          <button className="text-xs text-accent hover:underline mt-1" onClick={() => setBioOpen(true)}>
                             Read more
                           </button>
                         )}
@@ -484,7 +484,7 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
                       <div className="flex items-center justify-between mb-1.5">
                         <p className="text-xs font-medium text-muted-foreground">Internal Notes <span className="font-normal opacity-60">(not visible to speaker)</span></p>
                         <button
-                          className="text-xs text-primary hover:underline"
+                          className="text-xs text-accent hover:underline"
                           onClick={() => { setInternalNotes(s?.internalNotes || ''); setNotesOpen(true); }}
                         >
                           {s?.internalNotes ? 'Edit' : 'Add'}
@@ -511,14 +511,14 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
                       </div>
                       <div className="flex items-center gap-2">
                         <button
-                          className="text-xs text-muted-foreground hover:text-primary transition-colors"
+                          className="text-xs text-muted-foreground hover:text-accent transition-colors"
                           onClick={() => { if (!effectiveReadOnly) headshotInputRef.current?.click(); }}
                           disabled={uploadingHeadshot || effectiveReadOnly}
                         >
                           {uploadingHeadshot ? 'Uploading…' : headshotUrl ? 'Replace' : 'Upload'}
                         </button>
                         {headshotUrl && (
-                          <button title="Download headshot" className="text-muted-foreground hover:text-primary transition-colors" onClick={() => window.open(headshotUrl, '_blank')}>
+                          <button title="Download headshot" className="text-muted-foreground hover:text-accent transition-colors" onClick={() => window.open(headshotUrl, '_blank')}>
                             <Download className="h-3.5 w-3.5" />
                           </button>
                         )}
@@ -538,14 +538,14 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
                       </div>
                       <div className="flex items-center gap-2">
                         <button
-                          className="text-xs text-muted-foreground hover:text-primary transition-colors"
+                          className="text-xs text-muted-foreground hover:text-accent transition-colors"
                           onClick={() => { if (!effectiveReadOnly) logoInputRef.current?.click(); }}
                           disabled={uploadingLogo || effectiveReadOnly}
                         >
                           {uploadingLogo ? 'Uploading…' : (s?.companyLogoColour ?? s?.companyLogo) ? 'Replace' : 'Upload'}
                         </button>
                         {(s?.companyLogoColour ?? s?.companyLogo) && (
-                          <button title="Download logo" className="text-muted-foreground hover:text-primary transition-colors" onClick={() => window.open(s?.companyLogoColour ?? s?.companyLogo, '_blank')}>
+                          <button title="Download logo" className="text-muted-foreground hover:text-accent transition-colors" onClick={() => window.open(s?.companyLogoColour ?? s?.companyLogo, '_blank')}>
                             <Download className="h-3.5 w-3.5" />
                           </button>
                         )}
@@ -565,14 +565,14 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
                       </div>
                       <div className="flex items-center gap-2">
                         <button
-                          className="text-xs text-muted-foreground hover:text-primary transition-colors"
+                          className="text-xs text-muted-foreground hover:text-accent transition-colors"
                           onClick={() => { if (!effectiveReadOnly) logoWhiteInputRef.current?.click(); }}
                           disabled={uploadingLogoWhite || effectiveReadOnly}
                         >
                           {uploadingLogoWhite ? 'Uploading…' : s?.companyLogoWhite ? 'Replace' : 'Upload'}
                         </button>
                         {s?.companyLogoWhite && (
-                          <button title="Download white logo" className="text-muted-foreground hover:text-primary transition-colors" onClick={() => window.open(s.companyLogoWhite, '_blank')}>
+                          <button title="Download white logo" className="text-muted-foreground hover:text-accent transition-colors" onClick={() => window.open(s.companyLogoWhite, '_blank')}>
                             <Download className="h-3.5 w-3.5" />
                           </button>
                         )}
@@ -601,7 +601,7 @@ export default function SpeakerPortalComponent({ eventId, speakerId, initialOpen
                           ) : (
                             <div className="w-full rounded-lg border border-border bg-muted/20 px-3 py-2">
                               {val
-                                ? <a href={val} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">Download file</a>
+                                ? <a href={val} target="_blank" rel="noreferrer" className="text-xs text-accent hover:underline">Download file</a>
                                 : <span className="text-xs text-muted-foreground/50">Not uploaded</span>
                               }
                             </div>

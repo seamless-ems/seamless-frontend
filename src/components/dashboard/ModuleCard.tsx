@@ -87,7 +87,7 @@ export function ModuleCard({
 
       <div
         className={cn(
-          "flex h-14 w-14 items-center justify-center rounded-xl mb-4 text-primary-foreground transition-transform group-hover:scale-110",
+          "flex h-14 w-14 items-center justify-center rounded-xl mb-4 text-accent-foreground transition-transform group-hover:scale-110",
           styles.icon
         )}
       >

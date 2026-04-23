@@ -117,7 +117,7 @@ export default function SpeakerCardTab({ type, s, isApproved, canApprove, onTogg
               onClick={handleDownload}
               disabled={downloading}
               title={downloading ? 'Downloading…' : `Download ${label}`}
-              className="text-muted-foreground/50 hover:text-primary transition-colors disabled:opacity-40"
+              className="text-muted-foreground/50 hover:text-accent transition-colors disabled:opacity-40"
             >
               <Download className="h-4 w-4" />
             </button>

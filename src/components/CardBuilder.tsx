@@ -185,13 +185,13 @@ export default function CardBuilder({
   const location = useLocation();
   const navigate = useNavigate();
   const [postSavedOpen, setPostSavedOpen] = useState(false);
-  const cardSavedKey = eventId ? `seamless-card-saved-${cardType}-${eventId}` : null;
-  const isFirstSave = () => !cardSavedKey || !localStorage.getItem(cardSavedKey);
-  const markCardSaved = () => { if (cardSavedKey) { try { localStorage.setItem(cardSavedKey, "1"); } catch {} } };
   const [cardType, setCardType] = useState<CardType>(() =>
     deriveInitialCardType(location?.pathname),
   );
   const isPromo = cardType === "promo";
+  const cardSavedKey = eventId ? `seamless-card-saved-${cardType}-${eventId}` : null;
+  const isFirstSave = () => !cardSavedKey || !localStorage.getItem(cardSavedKey);
+  const markCardSaved = () => { if (cardSavedKey) { try { localStorage.setItem(cardSavedKey, "1"); } catch {} } };
   const [config, setConfig] = useState<CardConfig>({});
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
   const [multiSelectActive, setMultiSelectActive] = useState(false);
@@ -1610,10 +1610,10 @@ export default function CardBuilder({
                   <div className="grid grid-cols-2 gap-3">
                     <button
                       onClick={() => setOnboardingShowTemplates(true)}
-                      className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-border hover:border-primary hover:bg-primary/5 transition-all group"
+                      className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-border hover:border-accent hover:bg-accent/5 transition-all group"
                     >
-                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                        <Layers className="h-5 w-5 text-primary" />
+                      <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
+                        <Layers className="h-5 w-5 text-accent" />
                       </div>
                       <span className="font-semibold text-sm">
                         Use a template
@@ -1676,7 +1676,7 @@ export default function CardBuilder({
                             setQuickHeadshotShape(preset.allowedHeadshotShapes[0] ?? "circle");
                             setOnboardingQuickSetup(true);
                           }}
-                          className={`${aspectClass} w-full rounded-xl border-2 border-border hover:border-primary hover:shadow-lg transition-all overflow-hidden focus:outline-none focus:ring-2 focus:ring-primary`}
+                          className={`${aspectClass} w-full rounded-xl border-2 border-border hover:border-accent hover:shadow-lg transition-all overflow-hidden focus:outline-none focus:ring-2 focus:ring-primary`}
                         >
                           <TemplateThumbnail type={preset.thumbnail} />
                         </button>
@@ -1854,7 +1854,7 @@ export default function CardBuilder({
                               setBgGradientStyle(style);
                             }
                           }}
-                          className={`flex flex-col items-center gap-1.5 py-2 px-1.5 rounded-lg border-2 transition-all ${isActive ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"}`}
+                          className={`flex flex-col items-center gap-1.5 py-2 px-1.5 rounded-lg border-2 transition-all ${isActive ? "border-accent bg-accent/5" : "border-border hover:border-accent/40"}`}
                         >
                           <div
                             className="w-full rounded h-6 border border-border/30"
@@ -1888,7 +1888,7 @@ export default function CardBuilder({
                             key={shape}
                             type="button"
                             onClick={() => setQuickHeadshotShape(shape)}
-                            className={`px-3 py-1.5 text-xs rounded-lg border-2 font-medium transition-all ${isActive ? "border-primary bg-primary/5 text-primary" : "border-border hover:border-primary/40"}`}
+                            className={`px-3 py-1.5 text-xs rounded-lg border-2 font-medium transition-all ${isActive ? "border-accent bg-accent/5 text-accent" : "border-border hover:border-accent/40"}`}
                           >
                             {label}
                           </button>
@@ -1922,7 +1922,7 @@ export default function CardBuilder({
                     setPendingPreset(null);
                     tryShowCanvasTip();
                   }}
-                  className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 transition-colors"
+                  className="w-full py-2.5 rounded-xl bg-primary text-accent-foreground font-semibold text-sm hover:bg-accent/90 transition-colors"
                 >
                   Apply &amp; Start Designing
                 </button>
@@ -1956,7 +1956,7 @@ export default function CardBuilder({
                 </>
               )}
               <div className="flex items-center gap-1.5 select-none">
-                <span className="text-sm font-semibold text-primary" style={{ letterSpacing: "-0.01em" }}>Seamless</span>
+                <span className="text-sm font-semibold text-accent" style={{ letterSpacing: "-0.01em" }}>Seamless</span>
                 <span className="text-sm font-normal text-muted-foreground">
                   {cardType === "promo" ? "Social Card Builder" : "Speaker Card Builder"}
                 </span>
@@ -2142,7 +2142,7 @@ export default function CardBuilder({
                 disabled={isReadOnly}
                 size="sm"
                 variant="outline"
-                className={`relative h-7 text-xs font-semibold ${hasUnsavedChanges ? "border-primary text-primary hover:bg-primary/5" : ""}`}
+                className={`relative h-7 text-xs font-semibold ${hasUnsavedChanges ? "border-accent text-accent hover:bg-accent/5" : ""}`}
               >
                 <Save className="h-3 w-3 mr-1" />
                 Save
@@ -2216,7 +2216,7 @@ export default function CardBuilder({
                     <div className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Background image</div>
                     <button
                       onClick={() => { if (isReadOnly) { toast({ title: "Event is read-only", variant: "destructive" }); return; } fileInputRef.current?.click(); }}
-                      className={`w-full flex items-center gap-1.5 px-2 py-1.5 rounded border text-xs transition-colors ${templateUrl ? "border-primary/40 bg-primary/5 text-primary" : "border-border hover:bg-accent"}`}
+                      className={`w-full flex items-center gap-1.5 px-2 py-1.5 rounded border text-xs transition-colors ${templateUrl ? "border-accent/40 bg-accent/5 text-accent" : "border-border hover:bg-accent"}`}
                     >
                       <Upload className="h-3 w-3 shrink-0" />
                       <span className="truncate">{templateUrl ? "Replace image" : "Upload image"}</span>
@@ -2237,7 +2237,7 @@ export default function CardBuilder({
                         <button
                           key={c}
                           onClick={() => { setBgColor(c); setBgGradient(null); setBgGradientStyle(null); setHasUnsavedChanges(true); }}
-                          className={`w-5 h-5 rounded border-2 transition-transform hover:scale-110 ${!bgGradient && bgColor === c ? "border-primary" : "border-border/60"}`}
+                          className={`w-5 h-5 rounded border-2 transition-transform hover:scale-110 ${!bgGradient && bgColor === c ? "border-accent" : "border-border/60"}`}
                           style={{ backgroundColor: c }}
                           title={c}
                         />
@@ -2271,7 +2271,7 @@ export default function CardBuilder({
                           <button
                             key={style}
                             onClick={() => applyGradientStyle(style)}
-                            className={`flex flex-col items-center gap-1 py-1.5 rounded border-2 transition-colors capitalize text-[10px] ${isActive ? "border-primary bg-primary/5 text-primary" : "border-border hover:border-primary/40"}`}
+                            className={`flex flex-col items-center gap-1 py-1.5 rounded border-2 transition-colors capitalize text-[10px] ${isActive ? "border-accent bg-accent/5 text-accent" : "border-border hover:border-accent/40"}`}
                           >
                             <div className="w-full rounded-sm h-5" style={{ background: `linear-gradient(135deg, ${preview.from}, ${preview.to})` }} />
                             {style}
@@ -2313,7 +2313,7 @@ export default function CardBuilder({
                   ) : (
                     <button
                       onClick={() => eventLogoInputRef.current?.click()}
-                      className="w-full h-12 flex flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-border hover:border-primary/50 hover:bg-primary/5 transition-colors text-muted-foreground hover:text-primary"
+                      className="w-full h-12 flex flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-border hover:border-accent/50 hover:bg-accent/5 transition-colors text-muted-foreground hover:text-accent"
                     >
                       <Upload className="h-3.5 w-3.5" />
                       <span className="text-xs">Upload logo</span>
@@ -2327,7 +2327,7 @@ export default function CardBuilder({
                         toggleElement("eventLogo");
                       }
                     }}
-                    className={`w-full flex items-center justify-between px-2 py-1.5 rounded border text-xs transition-colors ${config.eventLogo ? "border-primary/40 bg-primary/5 text-primary" : "border-border hover:bg-accent text-muted-foreground"}`}
+                    className={`w-full flex items-center justify-between px-2 py-1.5 rounded border text-xs transition-colors ${config.eventLogo ? "border-accent/40 bg-accent/5 text-accent" : "border-border hover:bg-accent text-muted-foreground"}`}
                   >
                     <span>{config.eventLogo ? "On canvas" : "Add to canvas"}</span>
                     {config.eventLogo ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
@@ -2598,7 +2598,7 @@ export default function CardBuilder({
           >
             {/* Drag-to-resize handle */}
             <div
-              className="absolute top-0 right-0 w-1.5 h-full cursor-col-resize z-10 hover:bg-primary/20 transition-colors"
+              className="absolute top-0 right-0 w-1.5 h-full cursor-col-resize z-10 hover:bg-accent/20 transition-colors"
               onMouseDown={(e) => {
                 sidebarDragging.current = true;
                 sidebarDragStartX.current = e.clientX;
@@ -2613,7 +2613,7 @@ export default function CardBuilder({
             {/* First-run getting started tip */}
             {showSidebarTip && cardType === "website" && (
               <div className="w-full px-2">
-                <div className="rounded-lg border border-primary/25 bg-primary/5 p-2.5 relative">
+                <div className="rounded-lg border border-accent/25 bg-accent/5 p-2.5 relative">
                   <button
                     onClick={() => {
                       setShowSidebarTip(false);
@@ -2623,7 +2623,7 @@ export default function CardBuilder({
                   >
                     <X className="h-3 w-3" />
                   </button>
-                  <p className="text-[10px] font-semibold text-primary mb-2 pr-4">
+                  <p className="text-[10px] font-semibold text-accent mb-2 pr-4">
                     Getting started
                   </p>
                   <div className="space-y-1.5 pr-3">
@@ -2633,7 +2633,7 @@ export default function CardBuilder({
                       "Test photos — right panel",
                     ].map((tip, i) => (
                       <div key={i} className="flex items-start gap-1.5">
-                        <span className="text-[9px] font-bold text-primary mt-px leading-none">
+                        <span className="text-[9px] font-bold text-accent mt-px leading-none">
                           {i + 1}
                         </span>
                         <p className="text-[10px] text-muted-foreground leading-tight">
@@ -2681,15 +2681,15 @@ export default function CardBuilder({
                     setShapePopupPosition({ x: rect.right + 8, y: rect.top });
                     setShapePopupOpen(!shapePopupOpen);
                   }}
-                  className={`${SIDEBAR_ELEM_BTN} ${config.headshot ? "bg-primary/10 border-2 border-primary/30" : "hover:bg-accent"}`}
+                  className={`${SIDEBAR_ELEM_BTN} ${config.headshot ? "bg-accent/10 border-2 border-accent/30" : "hover:bg-accent"}`}
                   title="Drag to canvas or click for options"
                   data-popover="true"
                 >
                   <Users
-                    className={`h-4 w-4 shrink-0 ${config.headshot ? "text-primary" : ""}`}
+                    className={`h-4 w-4 shrink-0 ${config.headshot ? "text-accent" : ""}`}
                   />
                   <span
-                    className={`text-xs truncate ${config.headshot ? "text-primary font-semibold" : ""}`}
+                    className={`text-xs truncate ${config.headshot ? "text-accent font-semibold" : ""}`}
                   >
                     {getFieldLabel("headshot", "Headshot")}
                   </span>
@@ -2753,11 +2753,11 @@ export default function CardBuilder({
                 draggable
                 onDragStart={(e) => handleDragStart(e, "firstName")}
                 onClick={() => toggleElement("firstName")}
-                className={`${SIDEBAR_ELEM_BTN} ${config.firstName ? "bg-primary/10 border-2 border-primary/30" : "hover:bg-accent"}`}
+                className={`${SIDEBAR_ELEM_BTN} ${config.firstName ? "bg-accent/10 border-2 border-accent/30" : "hover:bg-accent"}`}
                 title={config.firstName ? "Click to remove" : "Drag to canvas or click to add"}
               >
-                <Type className={`h-4 w-4 shrink-0 ${config.firstName ? "text-primary" : ""}`} />
-                <span className={`text-xs truncate ${config.firstName ? "text-primary font-semibold" : ""}`}>{getFieldLabel("firstName", "First Name")}</span>
+                <Type className={`h-4 w-4 shrink-0 ${config.firstName ? "text-accent" : ""}`} />
+                <span className={`text-xs truncate ${config.firstName ? "text-accent font-semibold" : ""}`}>{getFieldLabel("firstName", "First Name")}</span>
               </button>
             )}
 
@@ -2766,11 +2766,11 @@ export default function CardBuilder({
                 draggable
                 onDragStart={(e) => handleDragStart(e, "lastName")}
                 onClick={() => toggleElement("lastName")}
-                className={`${SIDEBAR_ELEM_BTN} ${config.lastName ? "bg-primary/10 border-2 border-primary/30" : "hover:bg-accent"}`}
+                className={`${SIDEBAR_ELEM_BTN} ${config.lastName ? "bg-accent/10 border-2 border-accent/30" : "hover:bg-accent"}`}
                 title={config.lastName ? "Click to remove" : "Drag to canvas or click to add"}
               >
-                <Type className={`h-4 w-4 shrink-0 ${config.lastName ? "text-primary" : ""}`} />
-                <span className={`text-xs truncate ${config.lastName ? "text-primary font-semibold" : ""}`}>{getFieldLabel("lastName", "Last Name")}</span>
+                <Type className={`h-4 w-4 shrink-0 ${config.lastName ? "text-accent" : ""}`} />
+                <span className={`text-xs truncate ${config.lastName ? "text-accent font-semibold" : ""}`}>{getFieldLabel("lastName", "Last Name")}</span>
               </button>
             )}
 
@@ -2779,11 +2779,11 @@ export default function CardBuilder({
                 draggable
                 onDragStart={(e) => handleDragStart(e, "title")}
                 onClick={() => toggleElement("title")}
-                className={`${SIDEBAR_ELEM_BTN} ${config.title ? "bg-primary/10 border-2 border-primary/30" : "hover:bg-accent"}`}
+                className={`${SIDEBAR_ELEM_BTN} ${config.title ? "bg-accent/10 border-2 border-accent/30" : "hover:bg-accent"}`}
                 title={config.title ? "Click to remove" : "Drag to canvas or click to add"}
               >
-                <Type className={`h-4 w-4 shrink-0 ${config.title ? "text-primary" : ""}`} />
-                <span className={`text-xs truncate ${config.title ? "text-primary font-semibold" : ""}`}>
+                <Type className={`h-4 w-4 shrink-0 ${config.title ? "text-accent" : ""}`} />
+                <span className={`text-xs truncate ${config.title ? "text-accent font-semibold" : ""}`}>
                   {getFieldLabel("title", "Title")}
                 </span>
               </button>
@@ -2794,11 +2794,11 @@ export default function CardBuilder({
                 draggable
                 onDragStart={(e) => handleDragStart(e, "company")}
                 onClick={() => toggleElement("company")}
-                className={`${SIDEBAR_ELEM_BTN} ${config.company ? "bg-primary/10 border-2 border-primary/30" : "hover:bg-accent"}`}
+                className={`${SIDEBAR_ELEM_BTN} ${config.company ? "bg-accent/10 border-2 border-accent/30" : "hover:bg-accent"}`}
                 title={config.company ? "Click to remove" : "Drag to canvas or click to add"}
               >
-                <Briefcase className={`h-4 w-4 shrink-0 ${config.company ? "text-primary" : ""}`} />
-                <span className={`text-xs truncate ${config.company ? "text-primary font-semibold" : ""}`}>
+                <Briefcase className={`h-4 w-4 shrink-0 ${config.company ? "text-accent" : ""}`} />
+                <span className={`text-xs truncate ${config.company ? "text-accent font-semibold" : ""}`}>
                   {getFieldLabel("company", "Company")}
                 </span>
               </button>
@@ -2809,11 +2809,11 @@ export default function CardBuilder({
                 draggable
                 onDragStart={(e) => handleDragStart(e, "companyLogo")}
                 onClick={() => toggleElement("companyLogo")}
-                className={`${SIDEBAR_ELEM_BTN} ${config.companyLogo ? "bg-primary/10 border-2 border-primary/30" : "hover:bg-accent"}`}
+                className={`${SIDEBAR_ELEM_BTN} ${config.companyLogo ? "bg-accent/10 border-2 border-accent/30" : "hover:bg-accent"}`}
                 title={config.companyLogo ? "Click to remove" : "Drag to canvas or click to add"}
               >
-                <ImageIcon className={`h-4 w-4 shrink-0 ${config.companyLogo ? "text-primary" : ""}`} />
-                <span className={`text-xs truncate ${config.companyLogo ? "text-primary font-semibold" : ""}`}>
+                <ImageIcon className={`h-4 w-4 shrink-0 ${config.companyLogo ? "text-accent" : ""}`} />
+                <span className={`text-xs truncate ${config.companyLogo ? "text-accent font-semibold" : ""}`}>
                   {getFieldLabel("companyLogo", "Company Logo | Colour")}
                 </span>
               </button>
@@ -2824,11 +2824,11 @@ export default function CardBuilder({
                 draggable
                 onDragStart={(e) => handleDragStart(e, "companyLogoWhite")}
                 onClick={() => toggleElement("companyLogoWhite")}
-                className={`${SIDEBAR_ELEM_BTN} ${config.companyLogoWhite ? "bg-primary/10 border-2 border-primary/30" : "hover:bg-accent"}`}
+                className={`${SIDEBAR_ELEM_BTN} ${config.companyLogoWhite ? "bg-accent/10 border-2 border-accent/30" : "hover:bg-accent"}`}
                 title={config.companyLogoWhite ? "Click to remove" : "Drag to canvas or click to add"}
               >
-                <ImageIcon className={`h-4 w-4 shrink-0 ${config.companyLogoWhite ? "text-primary" : ""}`} />
-                <span className={`text-xs truncate ${config.companyLogoWhite ? "text-primary font-semibold" : ""}`}>
+                <ImageIcon className={`h-4 w-4 shrink-0 ${config.companyLogoWhite ? "text-accent" : ""}`} />
+                <span className={`text-xs truncate ${config.companyLogoWhite ? "text-accent font-semibold" : ""}`}>
                   {getFieldLabel("companyLogoWhite", "Company Logo | White")}
                 </span>
               </button>
@@ -2839,11 +2839,11 @@ export default function CardBuilder({
                 draggable
                 onDragStart={(e) => handleDragStart(e, "linkedin")}
                 onClick={() => toggleElement("linkedin")}
-                className={`${SIDEBAR_ELEM_BTN} ${config.linkedin ? "bg-primary/10 border-2 border-primary/30" : "hover:bg-accent"}`}
+                className={`${SIDEBAR_ELEM_BTN} ${config.linkedin ? "bg-accent/10 border-2 border-accent/30" : "hover:bg-accent"}`}
                 title={config.linkedin ? "Click to remove" : "Drag to canvas or click to add"}
               >
-                <Link className={`h-4 w-4 shrink-0 ${config.linkedin ? "text-primary" : ""}`} />
-                <span className={`text-xs truncate ${config.linkedin ? "text-primary font-semibold" : ""}`}>
+                <Link className={`h-4 w-4 shrink-0 ${config.linkedin ? "text-accent" : ""}`} />
+                <span className={`text-xs truncate ${config.linkedin ? "text-accent font-semibold" : ""}`}>
                   {getFieldLabel("linkedin", "LinkedIn")}
                 </span>
               </button>
@@ -2854,11 +2854,11 @@ export default function CardBuilder({
                 draggable
                 onDragStart={(e) => handleDragStart(e, "bio")}
                 onClick={() => toggleElement("bio")}
-                className={`${SIDEBAR_ELEM_BTN} ${config.bio ? "bg-primary/10 border-2 border-primary/30" : "hover:bg-accent"}`}
+                className={`${SIDEBAR_ELEM_BTN} ${config.bio ? "bg-accent/10 border-2 border-accent/30" : "hover:bg-accent"}`}
                 title={config.bio ? "Click to remove" : "Drag to canvas or click to add"}
               >
-                <Type className={`h-4 w-4 shrink-0 ${config.bio ? "text-primary" : ""}`} />
-                <span className={`text-xs truncate ${config.bio ? "text-primary font-semibold" : ""}`}>
+                <Type className={`h-4 w-4 shrink-0 ${config.bio ? "text-accent" : ""}`} />
+                <span className={`text-xs truncate ${config.bio ? "text-accent font-semibold" : ""}`}>
                   {getFieldLabel("bio", "Bio")}
                 </span>
               </button>
@@ -2902,7 +2902,7 @@ export default function CardBuilder({
                           addElementToCanvas(fieldKey, undefined, template);
                         }
                       }}
-                      className={`${SIDEBAR_ELEM_BTN} ${isActive ? "bg-primary/10 border-2 border-primary/30" : "hover:bg-accent"}`}
+                      className={`${SIDEBAR_ELEM_BTN} ${isActive ? "bg-accent/10 border-2 border-accent/30" : "hover:bg-accent"}`}
                       title={
                         isActive
                           ? "Click to remove"
@@ -2910,10 +2910,10 @@ export default function CardBuilder({
                       }
                     >
                       <Icon
-                        className={`h-4 w-4 shrink-0 ${isActive ? "text-primary" : ""}`}
+                        className={`h-4 w-4 shrink-0 ${isActive ? "text-accent" : ""}`}
                       />
                       <span
-                        className={`text-xs line-clamp-1 ${isActive ? "text-primary font-semibold" : ""}`}
+                        className={`text-xs line-clamp-1 ${isActive ? "text-accent font-semibold" : ""}`}
                       >
                         {field.label}
                       </span>
@@ -3000,8 +3000,8 @@ export default function CardBuilder({
                         : "Hit Save, then approve each Speaker Card individually from the Speakers tab",
                     ].map((tip, i) => (
                       <div key={i} className="flex gap-3 items-start">
-                        <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                          <span className="text-[10px] font-bold text-primary">{i + 1}</span>
+                        <div className="w-6 h-6 rounded-full bg-accent/10 flex items-center justify-center shrink-0 mt-0.5">
+                          <span className="text-[10px] font-bold text-accent">{i + 1}</span>
                         </div>
                         <p className="text-xs">{tip}</p>
                       </div>
@@ -3026,7 +3026,7 @@ export default function CardBuilder({
                         }
                         setShowCanvasTip(false);
                       }}
-                      className="px-4 py-1.5 text-xs font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                      className="px-4 py-1.5 text-xs font-semibold rounded-lg bg-primary text-accent-foreground hover:bg-accent/90 transition-colors"
                     >
                       Got it
                     </button>
@@ -3049,7 +3049,7 @@ export default function CardBuilder({
                       setOnboardingShowTemplates(true);
                       setShowOnboarding(true);
                     }}
-                    className="px-3 py-1.5 text-xs font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                    className="px-3 py-1.5 text-xs font-medium rounded-lg bg-primary text-accent-foreground hover:bg-accent/90 transition-colors"
                   >
                     Browse templates
                   </button>
@@ -3121,7 +3121,7 @@ export default function CardBuilder({
               ) : (
                 <button
                   onClick={() => { if (isReadOnly) { toast({ title: "Event is read-only", variant: "destructive" }); return; } headshotInputRef.current?.click(); }}
-                  className="w-full h-20 flex flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-border hover:border-primary/50 hover:bg-primary/5 transition-colors text-muted-foreground hover:text-primary"
+                  className="w-full h-20 flex flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-border hover:border-accent/50 hover:bg-accent/5 transition-colors text-muted-foreground hover:text-accent"
                 >
                   <Upload className="h-4 w-4" />
                   <span className="text-xs">Upload headshot</span>
@@ -3154,7 +3154,7 @@ export default function CardBuilder({
                       setCropMode('logo');
                       setCropDialogOpen(true);
                     }}
-                    className="w-full h-16 flex flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-border hover:border-primary/50 hover:bg-primary/5 transition-colors text-muted-foreground hover:text-primary"
+                    className="w-full h-16 flex flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-border hover:border-accent/50 hover:bg-accent/5 transition-colors text-muted-foreground hover:text-accent"
                   >
                     <Upload className="h-4 w-4" />
                     <span className="text-xs">Colour — click or drop</span>
@@ -3188,7 +3188,7 @@ export default function CardBuilder({
                       setCropMode('logo-white');
                       setCropDialogOpen(true);
                     }}
-                    className="w-full h-16 flex flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-border hover:border-primary/50 hover:bg-primary/5 transition-colors text-muted-foreground hover:text-primary"
+                    className="w-full h-16 flex flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-border hover:border-accent/50 hover:bg-accent/5 transition-colors text-muted-foreground hover:text-accent"
                   >
                     <Upload className="h-4 w-4" />
                     <span className="text-xs">White — click or drop</span>

@@ -244,7 +244,7 @@ export default function EventSettings() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2" style={{ fontSize: 'var(--font-h3)', fontWeight: 600 }}>
-                <Calendar className="h-5 w-5 text-primary" />
+                <Calendar className="h-5 w-5 text-accent" />
                 Event Details
               </CardTitle>
             </CardHeader>
@@ -281,7 +281,7 @@ export default function EventSettings() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2" style={{ fontSize: 'var(--font-h3)', fontWeight: 600 }}>
-                <Mail className="h-5 w-5 text-primary" />
+                <Mail className="h-5 w-5 text-accent" />
                 Email Settings
               </CardTitle>
             </CardHeader>
@@ -320,10 +320,10 @@ export default function EventSettings() {
                   return (
                     <div
                       key={module.id}
-                      className="rounded-lg border p-3 border-primary bg-primary/5"
+                      className="rounded-lg border p-3 border-accent bg-accent/5"
                     >
                       <div className="flex items-center justify-between mb-2">
-                        <div className="flex h-8 w-8 items-center justify-center rounded bg-primary text-primary-foreground">
+                        <div className="flex h-8 w-8 items-center justify-center rounded bg-primary text-accent-foreground">
                           <Icon className="h-4 w-4" />
                         </div>
                       </div>

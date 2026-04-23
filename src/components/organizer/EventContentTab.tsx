@@ -108,9 +108,6 @@ async function fetchBlob(url: string): Promise<{ blob: Blob; contentType?: strin
     const res = await fetch(url);
     if (!res.ok) return null;
     const blob = await res.blob();
-    // return blob plus headers info via properties on the Blob object is not ideal,
-    // so return a small object instead when callers need headers. We'll keep compatibility by
-    // returning an object with { blob, contentType, filenameFromHeader }.
     return { blob, contentType: res.headers.get("content-type") ?? undefined, filenameFromHeader: res.headers.get("content-disposition") ?? undefined } as any;
   } catch {
     return null;
@@ -162,7 +159,7 @@ function SpeakerContentRow({ speaker, items, eventId, defaultExpanded = false }:
         <td className="px-5 py-3 text-right">
           <button
             onClick={(e) => { e.stopPropagation(); navigate(contentUrl); }}
-            className="text-xs text-muted-foreground hover:text-primary transition-colors"
+            className="text-xs text-muted-foreground hover:text-accent transition-colors"
           >
             Open
           </button>
@@ -205,7 +202,7 @@ function SpeakerContentRow({ speaker, items, eventId, defaultExpanded = false }:
                         a.href = url; a.download = name; a.target = "_blank";
                         document.body.appendChild(a); a.click(); document.body.removeChild(a);
                       }}
-                      className="inline-flex items-center justify-center rounded p-1 text-muted-foreground hover:text-primary hover:bg-primary/8 transition-colors"
+                      className="inline-flex items-center justify-center rounded p-1 text-muted-foreground hover:text-accent hover:bg-accent/8 transition-colors"
                     >
                       <Download className="h-3.5 w-3.5" />
                     </button>
@@ -276,7 +273,6 @@ export default function EventContentTab({ eventId }: Props) {
         contentType: uploadFileObj.type || undefined,
         name: uploadName.trim(),
       });
-      // Invalidate both per-speaker and event-level caches
       queryClient.invalidateQueries({ queryKey: ["content", uploadSpeakerId] });
       queryClient.invalidateQueries({ queryKey: ["event", eventId, "content"] });
       toast({ title: "File uploaded" });
@@ -293,10 +289,8 @@ export default function EventContentTab({ eventId }: Props) {
   const handleDownloadAll = async () => {
     setDownloadingAll(true);
     try {
-      // Fetch all content from the new event-level endpoint
       const res = await getEventContent(eventId);
       const allItems: any[] = Array.isArray(res) ? res : [];
-      // populate per-speaker caches for any downstream consumers
       const bySpeaker: Record<string, any[]> = {};
       allItems.forEach((it: any) => {
         const sid = it.speakerId ?? it.speaker_id ?? it.speaker ?? null;
@@ -408,44 +402,34 @@ export default function EventContentTab({ eventId }: Props) {
         </DialogContent>
       </Dialog>
 
-      {/* Toolbar */}
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground flex items-center gap-2">
-          {speakers.length > 0
-            ? `${speakers.length} speaker${speakers.length !== 1 ? "s" : ""}`
-            : isFetching ? "Loading…" : "No speakers yet"}
-        </p>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" title="Upload content" onClick={() => setUploadOpen(true)} disabled={speakers.length === 0}>
-            <Upload className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-1.5"
-            disabled={downloadingAll || speakers.length === 0}
-            onClick={handleDownloadAll}
-          >
-            <Download className="h-3.5 w-3.5" />{downloadingAll ? "Preparing…" : "Download All"}
-          </Button>
-        </div>
-      </div>
-
       {/* Table */}
       <div className="rounded-lg border border-border overflow-hidden">
         <table className="w-full">
-          <thead className="bg-secondary/30 border-b border-border">
-            <tr>
+          <thead className="border-b border-border">
+            <tr className="h-11 bg-muted/20">
               <th className="w-8" />
-              <th className="px-3 py-2.5 text-left text-xs font-medium text-muted-foreground" colSpan={2}>Name</th>
-              <th className="px-5 py-2.5 text-left text-xs font-medium text-muted-foreground">Content</th>
-              <th className="px-5 py-2.5 w-[80px]" />
+              <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground" colSpan={2}>
+                {speakers.length > 0
+                  ? `${speakers.length} speaker${speakers.length !== 1 ? "s" : ""}`
+                  : isFetching ? "Loading…" : "Speakers"}
+              </th>
+              <th className="px-5 py-2 text-left text-xs font-medium text-muted-foreground">Content</th>
+              <th className="px-4 py-2 w-[160px] text-right">
+                <div className="flex items-center justify-end gap-1.5">
+                  <Button variant="outline" size="sm" className="h-7 w-7 p-0" title="Upload content" onClick={() => setUploadOpen(true)} disabled={speakers.length === 0}>
+                    <Upload className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs px-2.5" disabled={downloadingAll || speakers.length === 0} onClick={handleDownloadAll}>
+                    <Download className="h-3.5 w-3.5" />{downloadingAll ? "Preparing…" : "Download All"}
+                  </Button>
+                </div>
+              </th>
             </tr>
           </thead>
           <tbody>
             {speakers.length === 0 ? (
               <tr>
-                <td colSpan={4} className="py-16 text-center text-sm text-muted-foreground">
+                <td colSpan={5} className="py-16 text-center text-sm text-muted-foreground">
                   {isFetching ? "Loading…" : "No speakers yet"}
                 </td>
               </tr>

@@ -64,11 +64,11 @@ export default function SpeakerInfoCard({ s, formConfig, onEdit, onViewBio, onVi
           <div style={{ fontSize: 'var(--font-small)', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '4px' }}>
             {field.label}
           </div>
-          <div style={{ fontSize: 'var(--font-body)', color: 'var(--text-primary)', marginBottom: '8px' }}>
+          <div style={{ fontSize: 'var(--font-body)', color: 'var(--text-accent)', marginBottom: '8px' }}>
             {preview || "-"}
           </div>
           {hasMore && (
-            <Button variant="ghost" size="sm" className="h-auto p-0 text-primary hover:underline" onClick={onViewBio}>
+            <Button variant="ghost" size="sm" className="h-auto p-0 text-accent hover:underline" onClick={onViewBio}>
               View More
             </Button>
           )}
@@ -100,7 +100,7 @@ export default function SpeakerInfoCard({ s, formConfig, onEdit, onViewBio, onVi
         <div style={{ fontSize: 'var(--font-small)', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '4px' }}>
           {field.label}
         </div>
-        <div style={{ fontSize: 'var(--font-body)', color: 'var(--text-primary)' }}>
+        <div style={{ fontSize: 'var(--font-body)', color: 'var(--text-accent)' }}>
           {value || "-"}
         </div>
       </div>
@@ -124,13 +124,13 @@ export default function SpeakerInfoCard({ s, formConfig, onEdit, onViewBio, onVi
 
           return (
             <>
-              <div style={{ fontSize: 'var(--font-body)', color: 'var(--text-primary)', marginBottom: '8px' }}>
+              <div style={{ fontSize: 'var(--font-body)', color: 'var(--text-accent)', marginBottom: '8px' }}>
                 {preview || "-"}
               </div>
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-auto p-0 text-primary hover:underline"
+                className="h-auto p-0 text-accent hover:underline"
                 onClick={onViewNotes}
               >
                 {hasContent ? (hasMore ? "View More" : "Edit") : "Add Notes"}

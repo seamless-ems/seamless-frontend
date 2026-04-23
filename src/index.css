@@ -6,9 +6,9 @@
 
 @layer base {
   :root {
-    /* Slate Blue Design System - Seamless Events */
-    /* Primary: Slate Blue */
-    --primary: 231 36% 48%; /* #4E5BA6 */
+    /* Seamless Events Design System */
+    /* Primary: slate #526070 */
+    --primary: 210 15% 38%;
     --primary-foreground: 0 0% 100%;
 
     /* Backgrounds */
@@ -21,11 +21,11 @@
     --popover: 0 0% 100%;
     --popover-foreground: 220 39% 11%;
 
-    /* Accent - keeping for compatibility */
+    /* Accent - brand indigo #4E5BA6, used for highlights, badges, active states */
     --accent: 231 36% 48%;
     --accent-foreground: 0 0% 100%;
 
-    --secondary: 231 53% 90%; /* #E8EAF6 - Primary Subtle */
+    --secondary: 231 53% 90%; /* #E8EAF6 - brand lavender tint */
     --secondary-foreground: 220 39% 11%;
 
     --muted: 220 14% 95%;
@@ -54,16 +54,16 @@
     /* Sidebar */
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 220 39% 11%;
-    --sidebar-primary: 231 36% 48%;
+    --sidebar-primary: 210 15% 38%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 231 53% 90%;
     --sidebar-accent-foreground: 220 39% 11%;
     --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 231 36% 48%;
+    --sidebar-ring: 210 15% 38%;
 
     /* Design System Tokens */
-    --primary-hover: 231 36% 40%; /* #3D4A8F */
-    --primary-subtle: 231 53% 90%; /* #E8EAF6 */
+    --primary-hover: 210 15% 30%;
+    --primary-subtle: 231 53% 90%; /* brand lavender tint — unchanged */
 
     --bg-app: 0 0% 98%;
     --bg-surface: 0 0% 100%;
@@ -107,10 +107,10 @@
     --popover: 200 15% 14%;
     --popover-foreground: 30 20% 95%;
 
-    --primary: 231 36% 52%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 0 0% 93%;
+    --primary-foreground: 222 20% 10%;
 
-    --accent: 231 36% 52%;
+    --accent: 231 50% 58%;
     --accent-foreground: 0 0% 100%;
 
     --secondary: 200 15% 18%;
@@ -128,12 +128,12 @@
 
     --sidebar-background: 200 15% 12%;
     --sidebar-foreground: 30 20% 90%;
-    --sidebar-primary: 231 36% 52%;
-    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-primary: 0 0% 93%;
+    --sidebar-primary-foreground: 222 20% 10%;
     --sidebar-accent: 200 15% 18%;
     --sidebar-accent-foreground: 30 20% 95%;
     --sidebar-border: 200 15% 20%;
-    --sidebar-ring: 231 36% 52%;
+    --sidebar-ring: 0 0% 93%;
   }
 }
 

@@ -184,7 +184,7 @@ export default function GettingStartedChecklist({
       {/* Progress bar */}
       <div className="h-px w-full bg-border">
         <div
-          className="h-px bg-primary/50 transition-all duration-500"
+          className="h-px bg-accent/60 transition-all duration-500"
           style={{ width: `${(completedCount / steps.length) * 100}%` }}
         />
       </div>
@@ -216,7 +216,7 @@ export default function GettingStartedChecklist({
                 {!step.done && (
                   <div className="flex items-center gap-1.5 pl-[1.375rem]">
                     <button
-                      className="text-xs font-medium text-primary hover:text-primary/70 transition-colors"
+                      className="text-xs font-medium text-accent hover:text-accent/70 transition-colors"
                       onClick={step.action}
                     >
                       {step.cta}

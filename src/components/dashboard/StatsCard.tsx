@@ -47,7 +47,7 @@ export function StatsCard({
         <div
           className={cn(
             "flex h-12 w-12 items-center justify-center rounded-xl",
-            variant === "primary" && "bg-primary/10 text-primary",
+            variant === "primary" && "bg-accent/10 text-accent",
             variant === "accent" && "bg-accent/10 text-accent",
             variant === "default" && "bg-secondary text-secondary-foreground"
           )}

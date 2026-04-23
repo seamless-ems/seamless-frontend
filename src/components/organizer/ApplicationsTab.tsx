@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getJson, getFormConfigForEvent, updateSpeaker, emailSpeaker } from "@/lib/api";
+import { getJson, updateSpeaker, emailSpeaker } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,8 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "@/hooks/use-toast";
-import { Check, ChevronRight, Copy, FileEdit, MoreVertical, Search } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Check, ChevronRight, Copy, FileEdit, MoreVertical } from "lucide-react";
 import { HelpTip } from "@/components/ui/HelpTip";
 
 export type EmailDraft = {
@@ -78,17 +79,11 @@ export function buildEmailHtml(firstName: string, body: string, intakeUrl: strin
 }
 
 function resolveAppStatus(speaker: any) {
-  const s =
-    speaker.callForSpeakersStatus ??
-    speaker.call_for_speakers_status ??
-    "pending";
-  if (s === "approved")
-    return { label: "Approved", cls: "bg-success/10 text-success border-success/30" };
-  if (s === "rejected")
-    return { label: "Rejected", cls: "bg-destructive/10 text-destructive border-destructive/30" };
-  if (s === "submitted")
-    return { label: "Submitted", cls: "bg-blue-500/10 text-blue-600 border-blue-500/30" };
-  return { label: "Pending", cls: "bg-warning/10 text-warning border-warning/30" };
+  const s = speaker.callForSpeakersStatus ?? speaker.call_for_speakers_status ?? "pending";
+  if (s === "approved")  return { label: "Approved",  cls: "bg-transparent text-foreground border-success/50" };
+  if (s === "rejected")  return { label: "Rejected",  cls: "bg-transparent text-foreground border-destructive/40" };
+  if (s === "submitted") return { label: "Submitted", cls: "bg-transparent text-foreground border-blue-500/40" };
+  return                        { label: "Pending",   cls: "bg-transparent text-foreground border-warning/50" };
 }
 
 function formatDate(dateStr: string | null | undefined) {
@@ -191,7 +186,7 @@ export function EmailComposer({
                 e.currentTarget.style.height = "auto";
                 e.currentTarget.style.height = e.currentTarget.scrollHeight + "px";
               }}
-              className="text-sm resize-none overflow-hidden border border-slate-200 bg-transparent shadow-none leading-relaxed focus-visible:border-primary/40"
+              className="text-sm resize-none overflow-hidden border border-slate-200 bg-transparent shadow-none leading-relaxed focus-visible:border-accent/40"
             />
             {draft.ctaLabel && intakeUrl && (
               <div>
@@ -210,7 +205,7 @@ export function EmailComposer({
                   e.currentTarget.style.height = "auto";
                   e.currentTarget.style.height = e.currentTarget.scrollHeight + "px";
                 }}
-                className="text-sm resize-none overflow-hidden border border-slate-200 bg-transparent shadow-none leading-relaxed focus-visible:border-primary/40"
+                className="text-sm resize-none overflow-hidden border border-slate-200 bg-transparent shadow-none leading-relaxed focus-visible:border-accent/40"
               />
             )}
             <div className="border-t border-gray-100 pt-3 text-center">
@@ -263,40 +258,6 @@ export default function ApplicationsTab({ eventId, eventName = "", emailDefaults
 
   const [approvalEmail, setApprovalEmail] = useState<EmailDraft | null>(null);
   const [rejectionEmail, setRejectionEmail] = useState<EmailDraft | null>(null);
-
-  // Fetch call-for-speakers form config to know which columns to show
-  const { data: rawFormConfig } = useQuery<any>({
-    queryKey: ["event", eventId, "form-config", "call-for-speakers"],
-    queryFn: async () => {
-      try {
-        const res = await getFormConfigForEvent(eventId!, "call-for-speakers");
-        if (!res?.config) return null;
-        if (Array.isArray(res.config)) return res.config;
-        if (Array.isArray(res.config.fields)) return res.config.fields;
-        return null;
-      } catch {
-        return null;
-      }
-    },
-    enabled: Boolean(eventId),
-  });
-
-  const formConfig: any[] | null = rawFormConfig ?? null;
-  const fieldEnabled = (fieldId: string) => {
-    if (!formConfig) return true; // no form config -> show field by default
-    // Normalize unexpected shapes (defensive): prefer array, otherwise try .fields
-    const cfgArray = Array.isArray(formConfig)
-      ? formConfig
-      : (Array.isArray((formConfig as any).fields) ? (formConfig as any).fields : null);
-    if (!cfgArray) return true; // unknown shape -> show field
-    return cfgArray.some((f: any) => f.id === fieldId && f.enabled);
-  };
-
-  const showHeadshot = fieldEnabled("headshot");
-  const showCompany = fieldEnabled("company_name");
-  const showRole = fieldEnabled("company_role");
-  const showBio = fieldEnabled("bio");
-  const showEmail = fieldEnabled("email");
 
   // Fetch applications
   const { data: rawApplications, isLoading } = useQuery<any>({
@@ -394,7 +355,6 @@ export default function ApplicationsTab({ eventId, eventName = "", emailDefaults
         });
       }
     } catch (err: any) {
-      console.error("updateSpeaker error:", err);
       toast({
         title: "Failed to update status",
         description: err?.message || err?.responseText || "Unknown error",
@@ -405,252 +365,186 @@ export default function ApplicationsTab({ eventId, eventName = "", emailDefaults
     }
   };
 
-    const handleSendEmail = async (draft: EmailDraft | null, intakeUrl?: string) => {
-      console.log("handleSendEmail", { draft, intakeUrl });
-      if (!draft) return;
-      try {
-        const html = buildEmailHtml(draft.speaker.firstName ?? draft.speaker.name ?? "", draft.body, intakeUrl ?? "", draft.ctaLabel, draft.signOff);
-        const payload = {
-          recipientEmail: draft.speaker.email,
-          recipientName: draft.speaker.firstName ?? draft.speaker.name ?? "",
-          subject: draft.subject,
-          htmlContent: html,
-          userName: draft.fromName || "",
-          userEmail: draft.fromEmail || "",
-        };
-
-        await emailSpeaker(eventId!, draft.speaker.id, payload);
-        toast({ title: "Email sent", description: `Message sent to ${payload.recipientEmail}` });
-        queryClient.invalidateQueries({ queryKey: ["event", eventId, "applications"] });
-        queryClient.invalidateQueries({ queryKey: ["event", eventId, "speakers"] });
-      } catch (err: any) {
-        console.error("sendEmail error:", err);
-        toast({
-          title: "Failed to send email",
-          description: err?.message || err?.responseText || "Unknown error",
-          variant: "destructive",
-        });
-        throw err;
+  const handleSendEmail = async (draft: EmailDraft | null, intakeUrl?: string) => {
+    if (!draft) return;
+    try {
+      const html = buildEmailHtml(draft.speaker.firstName ?? draft.speaker.name ?? "", draft.body, intakeUrl ?? "", draft.ctaLabel, draft.signOff);
+      const payload = {
+        recipientEmail: draft.speaker.email,
+        recipientName: draft.speaker.firstName ?? draft.speaker.name ?? "",
+        subject: draft.subject,
+        htmlContent: html,
+        userName: draft.fromName || "",
+        userEmail: draft.fromEmail || "",
+      };
+      await emailSpeaker(eventId!, draft.speaker.id, payload);
+      toast({ title: "Email sent", description: `Message sent to ${payload.recipientEmail}` });
+      queryClient.invalidateQueries({ queryKey: ["event", eventId, "applications"] });
+      queryClient.invalidateQueries({ queryKey: ["event", eventId, "speakers"] });
+    } catch (err: any) {
+      toast({
+        title: "Failed to send email",
+        description: err?.message || err?.responseText || "Unknown error",
+        variant: "destructive",
+      });
+      throw err;
       }
     };
 
-  const filterBtnClass = (f: typeof statusFilter) =>
-    `px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-      statusFilter === f
-        ? "bg-primary text-primary-foreground"
-        : "bg-muted/50 text-muted-foreground hover:bg-muted"
-    }`;
-
   return (
-    <div className="space-y-4 pt-6">
-      {/* Single header row: search + filters left, actions right */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input
-              placeholder="Search applicants…"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-8 h-8 text-sm w-[180px]"
-            />
-          </div>
-          <div className="flex items-center gap-1.5">
-            <button className={filterBtnClass("all")} onClick={() => setStatusFilter("all")}>
-              All <span className="ml-1 opacity-60">{counts.all}</span>
-            </button>
-            <button className={filterBtnClass("submitted")} onClick={() => setStatusFilter("submitted")}>
-              Submitted <span className="ml-1 opacity-60">{counts.submitted}</span>
-            </button>
-            <button className={filterBtnClass("pending")} onClick={() => setStatusFilter("pending")}>
-              Pending <span className="ml-1 opacity-60">{counts.pending}</span>
-            </button>
-            <button className={filterBtnClass("approved")} onClick={() => setStatusFilter("approved")}>
-              Approved <span className="ml-1 opacity-60">{counts.approved}</span>
-            </button>
-            <button className={filterBtnClass("rejected")} onClick={() => setStatusFilter("rejected")}>
-              Rejected <span className="ml-1 opacity-60">{counts.rejected}</span>
-            </button>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={onEditForm}>
-            <FileEdit className="h-3.5 w-3.5" />Edit Application Form
-          </Button>
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={onCopyFormLink}>
-            {copiedLink ? <><Check className="h-3.5 w-3.5" />Copied</> : <><Copy className="h-3.5 w-3.5" />Copy Link</>}
-          </Button>
-          <HelpTip title="Call for Speakers" side="bottom" align="end" compact>
-            <p>Share the form link so speakers can apply. Approve to move them to your <span className="font-medium text-foreground">Speakers</span> tab; reject to dismiss (optional rejection email included).</p>
-          </HelpTip>
-        </div>
-      </div>
-
-      {/* Table */}
+    <div className="pt-6">
       <div className="rounded-lg border border-border overflow-hidden">
-        {isLoading ? (
-          <div className="py-12 text-center text-sm text-muted-foreground">Loading applications…</div>
-        ) : filtered.length === 0 ? (
-          <div className="py-12 text-center text-sm text-muted-foreground">
-            {allApplications.length === 0 ? "No applications yet" : "No applications match your filters"}
-          </div>
-        ) : (
-          <table className="w-full">
-            <thead className="border-b border-border bg-secondary/30">
-              <tr>
-                <th className="px-5 py-4 text-left text-xs font-medium text-muted-foreground">Applicant</th>
-                {showEmail && <th className="px-5 py-4 text-left text-xs font-medium text-muted-foreground">Email</th>}
-                {showCompany && <th className="px-5 py-4 text-left text-xs font-medium text-muted-foreground">Company</th>}
-                {showBio && <th className="px-5 py-4 text-left text-xs font-medium text-muted-foreground max-w-[200px]">Bio</th>}
-                <th className="px-5 py-4 text-left text-xs font-medium text-muted-foreground w-[130px]">Status</th>
-                <th className="px-5 py-4 text-left text-xs font-medium text-muted-foreground w-[120px]">Submitted</th>
-                <th className="px-5 py-4 text-right text-xs font-medium text-muted-foreground w-[160px]">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((applicant) => {
-                const initials = applicant.name
-                  .split(" ")
-                  .map((p: string) => p?.[0])
-                  .filter(Boolean)
-                  .slice(0, 2)
-                  .join("");
-                const status = resolveAppStatus(applicant);
-                const isApproved = applicant.callForSpeakersStatus === "approved";
-                const isRejected = applicant.callForSpeakersStatus === "rejected";
-                const isApproving = approvingId === applicant.id;
+        <table className="w-full table-fixed">
+          <colgroup>
+            <col />
+            <col style={{ width: '110px' }} />
+            <col style={{ width: '270px' }} />
+          </colgroup>
+          <thead className="border-b border-border bg-muted/20">
+            <tr className="h-11">
+              <th className="px-4 py-2">
+                <div className="flex items-center gap-1.5">
+                  <Input
+                    placeholder="Search applicants…"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-[160px] h-7 text-sm"
+                  />
+                  <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
+                    <SelectTrigger className="w-[130px] h-7 text-sm"><SelectValue placeholder="All" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All <span className="text-muted-foreground ml-1">{counts.all}</span></SelectItem>
+                      <SelectItem value="submitted">Submitted <span className="text-muted-foreground ml-1">{counts.submitted}</span></SelectItem>
+                      <SelectItem value="pending">Pending <span className="text-muted-foreground ml-1">{counts.pending}</span></SelectItem>
+                      <SelectItem value="approved">Approved <span className="text-muted-foreground ml-1">{counts.approved}</span></SelectItem>
+                      <SelectItem value="rejected">Rejected <span className="text-muted-foreground ml-1">{counts.rejected}</span></SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <div className="h-3.5 w-px bg-border shrink-0" />
+                  <Button variant="outline" size="sm" className="gap-1.5 h-7 bg-muted/50 hover:bg-muted text-foreground hover:text-foreground whitespace-nowrap" onClick={onEditForm}>
+                    <FileEdit className="h-3.5 w-3.5" />Edit Application Form
+                  </Button>
+                  <Button variant="outline" size="sm" className="gap-1.5 h-7 bg-muted/50 hover:bg-muted text-foreground hover:text-foreground whitespace-nowrap" onClick={onCopyFormLink}>
+                    {copiedLink ? <><Check className="h-3.5 w-3.5" />Copied</> : <><Copy className="h-3.5 w-3.5" />Copy Application Form</>}
+                  </Button>
+                </div>
+              </th>
+              <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Submitted</th>
+              <th className="px-4 py-2 text-right">
+                <HelpTip title="Call for Speakers" side="bottom" align="end" compact>
+                  <p>Share the form link so speakers can apply. Approve to move them to your <span className="font-medium text-foreground">Speakers</span> tab; reject to dismiss.</p>
+                </HelpTip>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {isLoading ? (
+              <tr><td colSpan={3} className="py-12 text-center text-sm text-muted-foreground">Loading applications…</td></tr>
+            ) : filtered.length === 0 ? (
+              <tr><td colSpan={3} className="py-12 text-center text-sm text-muted-foreground">
+                {allApplications.length === 0 ? "No applications yet" : "No applications match your filters"}
+              </td></tr>
+            ) : filtered.map((applicant) => {
+              const status = resolveAppStatus(applicant);
+              const isApproved = applicant.callForSpeakersStatus === "approved";
+              const isRejected = applicant.callForSpeakersStatus === "rejected";
+              const isApproving = approvingId === applicant.id;
+              const subtitle = [applicant.companyRole, applicant.company].filter(Boolean).join(" · ");
 
-                return (
-                  <tr
-                    key={applicant.id}
-                    className="border-b border-border hover:bg-muted/40 transition-colors group"
-                  >
-                    {/* Name + inline avatar */}
-                    <td className="px-5 py-4">
-                      <div className="flex items-center gap-2">
-                        {applicant.avatarUrl ? (
-                          <img src={applicant.avatarUrl} alt="" className="h-7 w-7 rounded-md object-cover shrink-0" />
-                        ) : (
-                          <div className="h-7 w-7 rounded-md bg-muted flex items-center justify-center text-xs font-medium text-muted-foreground shrink-0">
-                            {(applicant.name || "S")[0].toUpperCase()}
-                          </div>
-                        )}
-                        <div>
-                          <div
-                            className="flex items-center gap-1 cursor-pointer group/name"
-                            onClick={() => window.location.href = `/organizer/event/${eventId}/speakers/${applicant.id}`}
-                          >
-                            <span className="text-sm font-semibold text-foreground group-hover/name:text-primary transition-colors leading-tight">
-                              {applicant.name}
-                            </span>
-                            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30 group-hover/name:text-muted-foreground/70 transition-colors flex-shrink-0" />
-                          </div>
-                          {showRole && applicant.companyRole && (
-                            <div className="text-xs text-muted-foreground mt-0.5 leading-tight">
-                              {applicant.companyRole}
-                            </div>
-                          )}
+              return (
+                <tr
+                  key={applicant.id}
+                  className="border-b border-border hover:bg-muted/40 transition-colors group cursor-pointer"
+                  onClick={() => window.location.href = `/organizer/event/${eventId}/speakers/${applicant.id}`}
+                >
+                  {/* Name + avatar + role · company */}
+                  <td className="pl-4 pr-3 py-3 overflow-hidden">
+                    <div className="flex items-center gap-2 min-w-0">
+                      {applicant.avatarUrl ? (
+                        <img src={applicant.avatarUrl} alt="" className="h-7 w-7 rounded-md object-cover shrink-0" />
+                      ) : (
+                        <div className="h-7 w-7 rounded-md bg-muted flex items-center justify-center text-xs font-medium text-muted-foreground shrink-0">
+                          {(applicant.name || "S")[0].toUpperCase()}
                         </div>
+                      )}
+                      <div className="min-w-0">
+                        <div className="flex items-center">
+                          <span className="text-sm font-semibold text-foreground leading-tight truncate">{applicant.name}</span>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground/20 group-hover:text-muted-foreground/70 transition-colors ml-0.5 shrink-0" />
+                        </div>
+                        {subtitle && (
+                          <div className="text-xs text-muted-foreground mt-0.5 leading-tight truncate">{subtitle}</div>
+                        )}
                       </div>
-                    </td>
+                    </div>
+                  </td>
 
-                    {showEmail && (
-                      <td className="px-5 py-4">
-                        <span className="text-sm text-muted-foreground">{applicant.email}</span>
-                      </td>
-                    )}
+                  {/* Submitted date */}
+                  <td className="px-4 py-3">
+                    <span className="text-xs text-muted-foreground">
+                      {formatDate(applicant.submittedAt) ?? <span className="text-muted-foreground/30">—</span>}
+                    </span>
+                  </td>
 
-                    {showCompany && (
-                      <td className="px-5 py-4">
-                        <span className="text-sm text-muted-foreground">{applicant.company || <span className="text-muted-foreground/30">—</span>}</span>
-                      </td>
-                    )}
-
-                    {showBio && (
-                      <td className="px-5 py-4 max-w-[200px]">
-                        <span className="text-xs text-muted-foreground line-clamp-2">
-                          {applicant.bio || <span className="text-muted-foreground/30">—</span>}
-                        </span>
-                      </td>
-                    )}
-
-                    {/* Status */}
-                    <td className="px-5 py-4">
-                      <Badge variant="outline" className={`text-xs font-medium whitespace-nowrap ${status.cls}`}>
-                        {status.label}
-                      </Badge>
-                    </td>
-
-                    {/* Submitted date */}
-                    <td className="px-5 py-4">
-                      <span className="text-xs text-muted-foreground">
-                        {formatDate(applicant.submittedAt) ?? <span className="text-muted-foreground/30">—</span>}
-                      </span>
-                    </td>
-
-                    {/* Actions */}
-                    <td className="px-5 py-4">
-                      <div className="flex items-center justify-end gap-2">
-                        {isApproved && (
-                          <span className="text-xs text-success font-medium flex items-center gap-1">
-                            <Check className="h-3 w-3" />Approved
-                          </span>
-                        )}
-                        {isRejected && (
-                          <span className="text-xs text-destructive font-medium">Rejected</span>
-                        )}
-                        {!isApproved && !isRejected && (
-                          <>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-7 text-xs text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
-                              onClick={() => handleUpdateStatus(applicant, "rejected")}
-                              disabled={isApproving}
-                            >
-                              Reject
-                            </Button>
-                            <Button
-                              size="sm"
-                              className="h-7 text-xs"
-                              onClick={() => handleUpdateStatus(applicant, "approved")}
-                              disabled={isApproving}
-                            >
-                              {isApproving ? "Approving…" : <><Check className="h-3 w-3 mr-1" />Approve</>}
-                            </Button>
-                          </>
-                        )}
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <button className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors opacity-0 group-hover:opacity-100">
-                              <MoreVertical className="h-4 w-4" />
-                            </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => window.location.href = `/organizer/event/${eventId}/speakers/${applicant.id}`}>
-                              View application
+                  {/* Status + Actions merged */}
+                  <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-end gap-2">
+                      {(isApproved || isRejected) && (
+                        <Badge variant="outline" className={`text-xs font-medium whitespace-nowrap ${status.cls}`}>
+                          {status.label}
+                        </Badge>
+                      )}
+                      {!isApproved && !isRejected && (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs text-destructive border-destructive/30 hover:bg-destructive/5 hover:text-destructive whitespace-nowrap"
+                            onClick={() => handleUpdateStatus(applicant, "rejected")}
+                            disabled={isApproving}
+                          >
+                            Reject
+                          </Button>
+                          <Button
+                            size="sm"
+                            className="h-7 text-xs whitespace-nowrap"
+                            onClick={() => handleUpdateStatus(applicant, "approved")}
+                            disabled={isApproving}
+                          >
+                            {isApproving ? "…" : <><Check className="h-3 w-3 mr-1" />Approve</>}
+                          </Button>
+                        </>
+                      )}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button className="p-1 rounded text-muted-foreground/40 hover:text-muted-foreground hover:bg-muted transition-colors opacity-0 group-hover:opacity-100">
+                            <MoreVertical className="h-4 w-4" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => window.location.href = `/organizer/event/${eventId}/speakers/${applicant.id}`}>
+                            View application
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          {!isApproved && (
+                            <DropdownMenuItem onClick={() => handleUpdateStatus(applicant, "approved")}>
+                              Approve
                             </DropdownMenuItem>
-                            {!isApproved && <DropdownMenuSeparator />}
-                            {isApproved && (
-                              <DropdownMenuItem className="text-destructive" onClick={() => handleUpdateStatus(applicant, "rejected")}>
-                                Reject
-                              </DropdownMenuItem>
-                            )}
-                            {isRejected && (
-                              <DropdownMenuItem onClick={() => handleUpdateStatus(applicant, "approved")}>
-                                Approve
-                              </DropdownMenuItem>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
+                          )}
+                          {!isRejected && (
+                            <DropdownMenuItem className="text-destructive" onClick={() => handleUpdateStatus(applicant, "rejected")}>
+                              Reject
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
 
       {approvalEmail && (

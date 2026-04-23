@@ -97,11 +97,11 @@ export function EventCard({ event, index = 0, onDelete }: EventCardProps) {
   return (
     <Link
       to={targetLink}
-      className="group block rounded-lg border border-border bg-card p-6 transition-all duration-200 hover:border-primary hover:shadow-sm"
+      className="group block rounded-lg border border-border bg-card p-6 transition-all duration-200 hover:border-accent hover:shadow-sm"
       style={{ animationDelay: `${index * 100}ms` }}
     >
       <div className="flex items-start justify-between mb-3">
-        <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors flex items-center gap-2" style={{ fontSize: 'var(--font-h2)' }}>
+        <h3 className="font-semibold text-foreground group-hover:text-accent transition-colors flex items-center gap-2" style={{ fontSize: 'var(--font-h2)' }}>
           <span>{event.title}</span>
           {paid ? (
             <Badge variant="outline" className="text-success">Paid</Badge>
@@ -112,7 +112,7 @@ export function EventCard({ event, index = 0, onDelete }: EventCardProps) {
             <Badge
               variant="outline"
               className={`ml-1 text-xs ${
-                event.userRole === 'organizer' ? 'text-primary' : event.userRole === 'speaker' ? 'text-blue-600' : 'text-muted-foreground'
+                event.userRole === 'organizer' ? 'text-accent' : event.userRole === 'speaker' ? 'text-blue-600' : 'text-muted-foreground'
               }`}
             >
               {String(event.userRole).charAt(0).toUpperCase() + String(event.userRole).slice(1)}

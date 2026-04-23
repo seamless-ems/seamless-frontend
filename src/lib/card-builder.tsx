@@ -88,7 +88,7 @@ export function QuickColorPicker({ value, onChange, label }: { value: string; on
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="w-7 h-7 rounded border-2 border-border hover:border-primary transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-primary"
+          className="w-7 h-7 rounded border-2 border-border hover:border-accent transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-primary"
           style={{ backgroundColor: value }}
           title={label ?? "Pick colour"}
         />

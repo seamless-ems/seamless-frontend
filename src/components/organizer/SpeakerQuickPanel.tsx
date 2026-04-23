@@ -157,13 +157,13 @@ export default function SpeakerQuickPanel({ speaker, eventId, view, onClose }: P
     </Dialog>
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center gap-2 px-4 py-2 border-b border-border shrink-0">
+      <div className="flex items-center gap-2 px-4 border-b border-border flex-none bg-muted/20 h-11">
         <span className="text-xs font-medium text-muted-foreground flex-1">
           {currentView === 'social-card' ? 'Social Card' : 'Speaker Card'}
         </span>
         <Link
           to={`/organizer/event/${eventId}/speakers/${speaker.id}`}
-          className="text-muted-foreground/40 hover:text-primary transition-colors"
+          className="text-muted-foreground/40 hover:text-accent transition-colors"
           title="Open full profile"
         >
           <ArrowUpRight className="h-3.5 w-3.5" />
@@ -266,7 +266,7 @@ function InfoView({ speaker, eventId }: { speaker: any; eventId: string }) {
 
       <Link
         to={`/organizer/event/${eventId}/speakers/${speaker.id}`}
-        className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
+        className="inline-flex items-center gap-1.5 text-sm text-accent hover:underline"
       >
         View full profile <ArrowUpRight className="h-3.5 w-3.5" />
       </Link>
@@ -337,7 +337,7 @@ function SpeakerWallView({ speaker, eventId, embedEnabled, websiteApproved, togg
             <button
               onClick={downloadCard}
               title="Download Speaker Card"
-              className="text-muted-foreground/50 hover:text-primary transition-colors"
+              className="text-muted-foreground/50 hover:text-accent transition-colors"
             >
               <Download className="h-4 w-4" />
             </button>

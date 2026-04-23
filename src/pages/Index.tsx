@@ -60,7 +60,7 @@ export default function Index() {
             onClick={() => setActiveTab("current")}
             className={`pb-3 border-b-2 transition-colors ${
               activeTab === "current"
-                ? "border-primary text-primary font-medium"
+                ? "border-accent text-accent font-medium"
                 : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
             style={{ fontSize: 'var(--font-body)' }}
@@ -71,7 +71,7 @@ export default function Index() {
             onClick={() => setActiveTab("past")}
             className={`pb-3 border-b-2 transition-colors ${
               activeTab === "past"
-                ? "border-primary text-primary font-medium"
+                ? "border-accent text-accent font-medium"
                 : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
             style={{ fontSize: 'var(--font-body)' }}

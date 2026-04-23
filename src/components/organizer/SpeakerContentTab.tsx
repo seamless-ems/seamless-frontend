@@ -118,7 +118,7 @@ function HistorySection({ speakerId, documentId, currentVersion, itemName, onRes
                 <a
                   href={url}
                   download
-                  className="p-1 rounded text-muted-foreground/50 hover:text-primary hover:bg-muted transition-colors"
+                  className="p-1 rounded text-muted-foreground/50 hover:text-accent hover:bg-muted transition-colors"
                   title="Download this version"
                 >
                   <Download className="h-3.5 w-3.5" />
@@ -355,7 +355,7 @@ export default function SpeakerContentTab({ eventId, speakerId, speakerName, rea
                           href={url}
                           target="_blank"
                           rel="noreferrer"
-                          className="text-sm font-medium text-foreground hover:text-primary transition-colors"
+                          className="text-sm font-medium text-foreground hover:text-accent transition-colors"
                         >
                           {description || filename}
                         </a>
@@ -382,14 +382,14 @@ export default function SpeakerContentTab({ eventId, speakerId, speakerName, rea
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-1 justify-end">
                           {url && (
-                            <a href={url} download title="Download" className="p-1 rounded text-muted-foreground/50 hover:text-primary hover:bg-muted transition-colors">
+                            <a href={url} download title="Download" className="p-1 rounded text-muted-foreground/50 hover:text-accent hover:bg-muted transition-colors">
                               <Download className="h-4 w-4" />
                             </a>
                           )}
                           {!readOnly && (
                             <button
                               title="Replace"
-                              className="p-1 rounded text-muted-foreground/50 hover:text-primary hover:bg-muted transition-colors"
+                              className="p-1 rounded text-muted-foreground/50 hover:text-accent hover:bg-muted transition-colors"
                               onClick={() => { setReplacing(item); replaceInputRef.current?.click(); }}
                             >
                               <RefreshCw className="h-4 w-4" />

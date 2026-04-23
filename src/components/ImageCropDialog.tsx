@@ -130,7 +130,7 @@ export function ImageCropDialog({
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
 
-        <div className="p-3 bg-primary/5 rounded-lg border border-primary/20">
+        <div className="p-3 bg-accent/5 rounded-lg border border-accent/20">
           <p style={{ fontSize: 'var(--font-small)', color: 'var(--primary)' }}>
             {instructions}
           </p>

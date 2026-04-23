@@ -761,7 +761,7 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
               </div>
 
               {loginEmailCheck?.exists && loginEmailCheck.providers?.includes("google.com") && (
-                <div className="p-3 rounded border border-border bg-primary/5">
+                <div className="p-3 rounded border border-border bg-accent/5">
                   <div className="flex items-center justify-between gap-3">
                     <div className="font-medium text-sm">This account uses Google</div>
                     <Button
@@ -879,7 +879,7 @@ export default function SpeakerIntakeForm(props: { formPageType?: "speaker-intak
                               else (document.getElementById(`custom-file-${field.id}`) as HTMLInputElement | null)?.click();
                             }}
                             disabled={uploading}
-                            className="w-full flex items-center gap-2.5 px-3 h-10 rounded-md border border-input bg-background hover:border-primary text-sm text-muted-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full flex items-center gap-2.5 px-3 h-10 rounded-md border border-input bg-background hover:border-accent text-sm text-muted-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
                             <span>{uploading ? "Uploading…" : preview ? "Replace" : "Choose file"}</span>

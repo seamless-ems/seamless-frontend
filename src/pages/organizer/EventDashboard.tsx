@@ -137,7 +137,7 @@ export default function EventDashboard() {
 								variant="outline"
 								size="sm"
 								asChild
-								className="border-primary border-2"
+								className="border-accent border-2"
 							>
 								<Link to={module.url}>{module.name}</Link>
 							</Button>
@@ -150,7 +150,7 @@ export default function EventDashboard() {
 							variant="outline"
 							size="sm"
 							disabled={!isEnabled}
-							className={isEnabled ? "border-primary border-2" : "opacity-40"}
+							className={isEnabled ? "border-accent border-2" : "opacity-40"}
 						>
 							{module.name}
 							{module.comingSoon && (
@@ -215,7 +215,7 @@ export default function EventDashboard() {
 							</div>
 						</div>
 
-						<div className="p-3 bg-primary/5 rounded-md border-l-4 border-primary">
+						<div className="p-3 bg-accent/5 rounded-md border-l-4 border-accent">
 							<div className="font-semibold mb-1" style={{ fontSize: 'var(--font-body)' }}>
 								Published Embeds
 							</div>

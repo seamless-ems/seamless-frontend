@@ -154,7 +154,7 @@ export default function GoogleDriveFolderPicker({
                     <Button 
                         variant="outline" 
                         size="sm" 
-                        className={cn("h-8 px-2 transition-all", isAdding && "bg-primary text-primary-foreground hover:bg-primary/90")}
+                        className={cn("h-8 px-2 transition-all", isAdding && "bg-primary text-accent-foreground hover:bg-accent/90")}
                         onClick={() => setIsAdding(!isAdding)}
                     >
                         {isAdding ? <X className="h-4 w-4 mr-1" /> : <Plus className="h-4 w-4 mr-1" />}
@@ -182,7 +182,7 @@ export default function GoogleDriveFolderPicker({
             <nav className="flex items-center flex-wrap gap-1 text-[11px] font-medium text-muted-foreground bg-muted/40 p-2 rounded-md border border-border/50">
                 <button 
                     onClick={() => setSelectedFolderPath([])}
-                    className={cn("hover:text-primary transition-colors uppercase tracking-wider", selectedFolderPath.length === 0 && "text-primary font-bold")}
+                    className={cn("hover:text-accent transition-colors uppercase tracking-wider", selectedFolderPath.length === 0 && "text-accent font-bold")}
                 >
                     My Drive
                 </button>
@@ -191,7 +191,7 @@ export default function GoogleDriveFolderPicker({
                         <ChevronRight className="h-3 w-3 opacity-50" />
                         <button 
                             onClick={() => jumpToBreadcrumb(idx)}
-                            className={cn("hover:text-primary transition-colors truncate max-w-[120px]", idx === selectedFolderPath.length - 1 && "text-primary font-bold")}
+                            className={cn("hover:text-accent transition-colors truncate max-w-[120px]", idx === selectedFolderPath.length - 1 && "text-accent font-bold")}
                         >
                             {findFolderById(driveFolders, id)?.name || "..."}
                         </button>
@@ -204,8 +204,8 @@ export default function GoogleDriveFolderPicker({
                 <div className="p-1 space-y-0.5">
                     {/* Inline Creation Input */}
                     {isAdding && (
-                        <div className="flex items-center gap-2 p-2 bg-primary/5 border border-primary/20 rounded-sm mb-1 animate-in fade-in slide-in-from-top-1">
-                            <FolderPlus className="h-4 w-4 text-primary shrink-0" />
+                        <div className="flex items-center gap-2 p-2 bg-accent/5 border border-accent/20 rounded-sm mb-1 animate-in fade-in slide-in-from-top-1">
+                            <FolderPlus className="h-4 w-4 text-accent shrink-0" />
                             <Input
                                 ref={inputRef}
                                 placeholder="Name your folder..."

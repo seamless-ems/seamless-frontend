@@ -723,7 +723,7 @@ const SpeakerFormBuilder = forwardRef<
                             setDragIndex(null);
                             setDragOverIndex(null);
                           }}
-                          className={`rounded transition-colors ${isDraggingOver ? "bg-primary/10 ring-1 ring-primary/30" : ""}`}
+                          className={`rounded transition-colors ${isDraggingOver ? "bg-accent/10 ring-1 ring-primary/30" : ""}`}
                         >
                           <div
                             className={`group flex items-center gap-2 py-1.5 px-2 rounded ${!isDraggingOver ? "hover:bg-muted/50" : ""}`}
@@ -755,7 +755,7 @@ const SpeakerFormBuilder = forwardRef<
                                 <button
                                   type="button"
                                   onClick={() => toggleRequired(field.id)}
-                                  className={`text-xs px-1.5 py-0.5 rounded shrink-0 transition-colors ${field.required ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted"}`}
+                                  className={`text-xs px-1.5 py-0.5 rounded shrink-0 transition-colors ${field.required ? "bg-accent/10 text-accent" : "text-muted-foreground hover:bg-muted"}`}
                                 >
                                   {field.required ? "Required" : "Optional"}
                                 </button>
@@ -820,7 +820,7 @@ const SpeakerFormBuilder = forwardRef<
                                       ),
                                     )
                                   }
-                                  className="text-xs text-muted-foreground hover:text-primary transition-colors"
+                                  className="text-xs text-muted-foreground hover:text-accent transition-colors"
                                 >
                                   + Add a note
                                 </button>
@@ -1055,7 +1055,7 @@ const SpeakerFormBuilder = forwardRef<
                           setDragIndex(null);
                           setDragOverIndex(null);
                         }}
-                        className={`rounded transition-colors ${isDraggingOver ? "bg-primary/10 ring-1 ring-primary/30" : ""}`}
+                        className={`rounded transition-colors ${isDraggingOver ? "bg-accent/10 ring-1 ring-primary/30" : ""}`}
                       >
                         <div
                           className={`group flex items-center gap-2 py-1.5 px-2 rounded ${!isDraggingOver ? "hover:bg-muted/50" : ""}`}
@@ -1078,7 +1078,7 @@ const SpeakerFormBuilder = forwardRef<
                             <button
                               type="button"
                               onClick={() => toggleRequired(field.id)}
-                              className={`text-xs px-1.5 py-0.5 rounded shrink-0 transition-colors ${field.required ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted"}`}
+                              className={`text-xs px-1.5 py-0.5 rounded shrink-0 transition-colors ${field.required ? "bg-accent/10 text-accent" : "text-muted-foreground hover:bg-muted"}`}
                             >
                               {field.required ? "Required" : "Optional"}
                             </button>
@@ -1143,7 +1143,7 @@ const SpeakerFormBuilder = forwardRef<
                                     ),
                                   )
                                 }
-                                className="text-xs text-muted-foreground hover:text-primary transition-colors"
+                                className="text-xs text-muted-foreground hover:text-accent transition-colors"
                               >
                                 + Add a note
                               </button>

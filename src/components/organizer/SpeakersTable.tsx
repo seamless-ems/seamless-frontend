@@ -7,7 +7,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { useQueryClient } from "@tanstack/react-query";
 import { deleteSpeaker, updateSpeaker, emailSpeaker } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
-import { Download, Copy, Check, ChevronRight, Trash, MoreVertical, ArrowUpDown, X, Mail } from "lucide-react";
+import { Download, Copy, Check, ChevronRight, Trash, MoreVertical, ArrowUpDown, X, Mail, FileEdit, Plus, Mic2 } from "lucide-react";
 import { API_BASE } from "@/lib/api";
 import { HelpTip } from "@/components/ui/HelpTip";
 import {
@@ -41,12 +41,15 @@ type Props = {
   eventName?: string;
   emailDefaults?: { fromName: string; fromEmail: string; replyToEmail: string };
   // Controls
-  searchQuery?: string;
-  setSearchQuery?: (s: string) => void;
+  searchInput?: string;
+  setSearchInput?: (s: string) => void;
   statusFilter?: string;
   setStatusFilter?: (s: string) => void;
   sortBy?: string;
   setSortBy?: (s: string) => void;
+  hasAnySpeakers?: boolean;
+  onEditIntakeForm?: () => void;
+  onAddSpeaker?: () => void;
   totalCount?: number;
   pendingCount?: number;
   page?: number;
@@ -71,7 +74,7 @@ function CopyButton({ text }: { text: string }) {
           setTimeout(() => setCopied(false), 1500);
         });
       }}
-      className="ml-1.5 opacity-0 group-hover:opacity-100 transition-opacity rounded p-0.5 text-muted-foreground/50 hover:text-primary hover:bg-primary/8 cursor-pointer"
+      className="ml-1.5 opacity-0 group-hover:opacity-100 transition-opacity rounded p-0.5 text-muted-foreground/50 hover:text-accent hover:bg-accent/8 cursor-pointer"
     >
       {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
     </button>
@@ -87,32 +90,32 @@ function getInfoStatus(speaker: any) {
 
 function resolveSpeakerCardStatus(speaker: any) {
   if (getInfoStatus(speaker))
-    return { label: "Info Pending", cls: "bg-warning/10 text-warning border-warning/30", tooltip: "Waiting for the speaker to submit their information" };
+    return { label: "Info Pending", cls: "bg-transparent text-foreground border-warning/50", tooltip: "Waiting for the speaker to submit their information" };
   const websiteApproved = speaker.websiteCardApproved ?? speaker.website_card_approved ?? false;
   const embedEnabled = speaker.embedEnabled ?? speaker.embed_enabled ?? false;
   if (!websiteApproved)
-    return { label: "Pending Approval", cls: "bg-blue-500/10 text-blue-600 border-blue-500/30", tooltip: "Review and approve this speaker's Speaker Card" };
+    return { label: "Pending Approval", cls: "bg-transparent text-foreground border-blue-500/40", tooltip: "Review and approve this speaker's Speaker Card" };
   if (!embedEnabled)
-    return { label: "Ready to Publish", cls: "bg-blue-500/10 text-blue-600 border-blue-500/30", tooltip: "Approved — toggle live in Speaker Wall to publish" };
-  return { label: "Published", cls: "bg-success/10 text-success border-success/30", tooltip: "Live on your Speaker Wall" };
+    return { label: "Ready to Publish", cls: "bg-transparent text-foreground border-blue-500/40", tooltip: "Approved — toggle live in Speaker Wall to publish" };
+  return { label: "Published", cls: "bg-transparent text-foreground border-success/50", tooltip: "Live on your Speaker Wall" };
 }
 
 function resolveSocialCardStatus(speaker: any) {
   if (getInfoStatus(speaker))
-    return { label: "Info Pending", cls: "bg-warning/10 text-warning border-warning/30", tooltip: "Waiting for the speaker to submit their information" };
+    return { label: "Info Pending", cls: "bg-transparent text-foreground border-warning/50", tooltip: "Waiting for the speaker to submit their information" };
   const promoApproved = speaker.promoCardApproved ?? speaker.promo_card_approved ?? false;
   if (!promoApproved)
-    return { label: "Pending Approval", cls: "bg-blue-500/10 text-blue-600 border-blue-500/30", tooltip: "Review and approve this speaker's Social Card" };
-  return { label: "Ready to Download", cls: "bg-success/10 text-success border-success/30", tooltip: "Approved — download available" };
+    return { label: "Pending Approval", cls: "bg-transparent text-foreground border-blue-500/40", tooltip: "Review and approve this speaker's Social Card" };
+  return { label: "Ready to Download", cls: "bg-transparent text-foreground border-success/50", tooltip: "Approved — download available" };
 }
 
 function resolveApplicationStatus(speaker: any) {
   const appStatus = speaker.callForSpeakersStatus ?? speaker.call_for_speakers_status ?? "pending";
   if (appStatus === "approved" || appStatus === "cards_approved")
-    return { label: "Approved", cls: "bg-success/10 text-success border-success/30", tooltip: "Application approved" };
+    return { label: "Approved", cls: "bg-transparent text-foreground border-success/50", tooltip: "Application approved" };
   if (appStatus === "submitted")
-    return { label: "Submitted", cls: "bg-blue-500/10 text-blue-600 border-blue-500/30", tooltip: "Review this application and approve or decline" };
-  return { label: "Pending Review", cls: "bg-warning/10 text-warning border-warning/30", tooltip: "Awaiting application submission" };
+    return { label: "Submitted", cls: "bg-transparent text-foreground border-blue-500/40", tooltip: "Review this application and approve or decline" };
+  return { label: "Pending Review", cls: "bg-transparent text-foreground border-warning/50", tooltip: "Awaiting application submission" };
 }
 
 function formatDate(dateStr: string | null | undefined) {
@@ -146,11 +149,10 @@ function buildReminderHtml(
   return html;
 }
 
-export default function SpeakersTable({ speakers, isLoading, eventId, eventName = "the event", emailDefaults, selectedTab, formConfig, websiteCardConfigured = false, promoCardConfigured = false, searchQuery, setSearchQuery, statusFilter, setStatusFilter, sortBy, setSortBy, totalCount, pendingCount, page, pageSize, setPage, setPageSize, onBadgeClick, selectedSpeakerId }: Props) {
+export default function SpeakersTable({ speakers, isLoading, eventId, eventName = "the event", emailDefaults, selectedTab, formConfig, websiteCardConfigured = false, promoCardConfigured = false, searchInput, setSearchInput, statusFilter, setStatusFilter, sortBy, setSortBy, totalCount, pendingCount, page, pageSize, setPage, setPageSize, onBadgeClick, selectedSpeakerId, hasAnySpeakers, onEditIntakeForm, onAddSpeaker }: Props) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const eventUuid = eventId ?? "";
-  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmTarget, setConfirmTarget] = useState<{ id: string; name: string } | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -158,6 +160,9 @@ export default function SpeakersTable({ speakers, isLoading, eventId, eventName 
   const [bulkPublishOpen, setBulkPublishOpen] = useState(false);
   const [bulkPublishIds, setBulkPublishIds] = useState<string[]>([]);
   const [bulkUnpublishOpen, setBulkUnpublishOpen] = useState(false);
+  const [bulkEmailOpen, setBulkEmailOpen] = useState(false);
+  const [bulkEmailSending, setBulkEmailSending] = useState(false);
+  const [bulkEmailProgress, setBulkEmailProgress] = useState(0);
   const selectAllRef = useRef<HTMLInputElement>(null);
 
   // Reminder email state
@@ -222,6 +227,46 @@ export default function SpeakersTable({ speakers, isLoading, eventId, eventName 
     } finally {
       setReminderSending(false);
     }
+  };
+
+  const openBulkEmail = () => {
+    setReminderFromName(emailDefaults?.fromName || "");
+    setReminderFromEmail(emailDefaults?.fromEmail || "");
+    setReminderReplyTo(emailDefaults?.replyToEmail || "");
+    setReminderSubject(`Your speaker details for ${eventName}`);
+    setReminderIntro(DEFAULT_INTRO(eventName));
+    setReminderClosing(DEFAULT_CLOSING(eventName));
+    setBulkEmailProgress(0);
+    setBulkEmailOpen(true);
+  };
+
+  const handleBulkEmail = async () => {
+    if (!eventId || selectedIds.size === 0) return;
+    const targets = speakers.filter(s => selectedIds.has(s.id));
+    setBulkEmailSending(true);
+    setBulkEmailProgress(0);
+    let sent = 0;
+    for (const speaker of targets) {
+      const firstName = speaker.firstName ?? speaker.name?.split(" ")[0] ?? "";
+      const intakeUrl = `${window.location.origin}/speaker-intake/${eventUuid}?speakerId=${speaker.id}`;
+      const html = buildReminderHtml(firstName, reminderIntro, reminderClosing, intakeUrl, reminderFromEmail, reminderFromName, reminderReplyTo, speaker.email ?? "", reminderSubject);
+      try {
+        await emailSpeaker(eventId, speaker.id, {
+          recipient_email: speaker.email ?? "",
+          recipient_name: speaker.name || `${speaker.firstName ?? ""} ${speaker.lastName ?? ""}`.trim(),
+          subject: reminderSubject,
+          html_content: html,
+          userName: reminderFromName || reminderFromEmail || `Team ${eventName}`,
+          userEmail: reminderFromEmail,
+        });
+        sent++;
+      } catch {}
+      setBulkEmailProgress(sent);
+    }
+    setBulkEmailSending(false);
+    toast({ title: `Sent ${sent} of ${targets.length} reminder${targets.length !== 1 ? "s" : ""}` });
+    setBulkEmailOpen(false);
+    setSelectedIds(new Set());
   };
 
   const isSelectionActive = selectedIds.size > 0;
@@ -361,11 +406,8 @@ export default function SpeakersTable({ speakers, isLoading, eventId, eventName 
     }
   };
 
-  // Determine which optional columns to show based on form config.
-  // If config not yet loaded, default to showing all.
   const fieldEnabled = (fieldId: string) =>
     !formConfig || formConfig.some((f) => f.id === fieldId && f.enabled);
-  const showControls = !!setSearchQuery;
 
   const approvedSocialSpeakers = speakers.filter(s => s.promoCardApproved ?? s.promo_card_approved ?? false);
 
@@ -395,48 +437,6 @@ export default function SpeakersTable({ speakers, isLoading, eventId, eventName 
     }
   };
 
-  if (isLoading) {
-    return <div className="py-12 text-center text-sm text-muted-foreground">Loading speakers…</div>;
-  }
-
-  if (!showControls && (!speakers || speakers.length === 0)) {
-    return <div className="py-12 text-center text-sm text-muted-foreground">No speakers found</div>;
-  }
-
-  if (showControls && speakers.length === 0) {
-    return (
-      <div>
-        <div className="border-b border-border px-4 py-2 flex items-center gap-1.5">
-          <Input placeholder="Search…" value={searchQuery ?? ""} onChange={(e) => setSearchQuery?.(e.target.value)} className="w-[160px] h-8 text-sm" />
-          <Select value={statusFilter ?? "all"} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[140px] h-8 text-sm"><SelectValue placeholder="All" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              <SelectItem value="pending">Info Pending</SelectItem>
-              <SelectItem value="submitted">Pending Approval</SelectItem>
-              <SelectItem value="cards_approved">Ready to Publish</SelectItem>
-              <SelectItem value="published">Published</SelectItem>
-              <SelectItem value="archived">Archived</SelectItem>
-            </SelectContent>
-          </Select>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button title={`Sort: ${sortBy === 'name' ? 'Name A–Z' : sortBy === 'oldest' ? 'Oldest first' : 'Newest first'}`} className="h-8 w-8 flex items-center justify-center rounded-md border border-input bg-background hover:bg-muted transition-colors shrink-0">
-                <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-40">
-              <DropdownMenuItem onClick={() => setSortBy?.('newest')}>{(sortBy ?? 'newest') === 'newest' ? <Check className="h-3 w-3 mr-2 text-primary" /> : <span className="h-3 w-3 mr-2 inline-block" />}Newest first</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setSortBy?.('oldest')}>{sortBy === 'oldest' ? <Check className="h-3 w-3 mr-2 text-primary" /> : <span className="h-3 w-3 mr-2 inline-block" />}Oldest first</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setSortBy?.('name')}>{sortBy === 'name' ? <Check className="h-3 w-3 mr-2 text-primary" /> : <span className="h-3 w-3 mr-2 inline-block" />}Name A–Z</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-        <div className="py-12 text-center text-sm text-muted-foreground">No speakers match your search.</div>
-      </div>
-    );
-  }
-
   return (
     <>
       <table className="w-full table-fixed">
@@ -445,9 +445,9 @@ export default function SpeakersTable({ speakers, isLoading, eventId, eventName 
         <col key="reminder" style={{ width: '52px' }} />,
         <col key="website" style={{ width: '148px' }} />,
         <col key="promo" style={{ width: '148px' }} />,
-        <col key="actions" style={{ width: '36px' }} />]}</colgroup>
-      <thead className="border-b border-border">
-        <tr>
+        <col key="actions" style={{ width: '40px' }} />]}</colgroup>
+      <thead className="border-b border-border bg-muted/20">
+        <tr className="h-11">
           <th className="pl-4 py-2 w-9" onClick={(e) => e.stopPropagation()}>
             {isSelectionActive && (
               <input
@@ -470,30 +470,37 @@ export default function SpeakersTable({ speakers, isLoading, eventId, eventName 
                 <button
                   onClick={() => handleBulkApprove('website')}
                   disabled={isBulkApproving}
-                  className="h-7 px-2.5 text-xs font-medium rounded-md border border-success/40 text-foreground bg-background hover:bg-success/5 transition-colors whitespace-nowrap disabled:opacity-50"
+                  className="h-7 px-2.5 text-xs font-medium rounded-md border border-success/40 text-success/80 bg-background hover:bg-success/5 transition-colors whitespace-nowrap disabled:opacity-50"
                 >
                   Approve Speaker Cards
                 </button>
                 <button
                   onClick={() => handleBulkApprove('promo')}
                   disabled={isBulkApproving}
-                  className="h-7 px-2.5 text-xs font-medium rounded-md border border-success/40 text-foreground bg-background hover:bg-success/5 transition-colors whitespace-nowrap disabled:opacity-50"
+                  className="h-7 px-2.5 text-xs font-medium rounded-md border border-success/40 text-success/80 bg-background hover:bg-success/5 transition-colors whitespace-nowrap disabled:opacity-50"
                 >
                   Approve Social Cards
                 </button>
                 <button
                   onClick={() => setBulkUnpublishOpen(true)}
                   disabled={isBulkApproving}
-                  className="h-7 px-2.5 text-xs font-medium rounded-md border border-destructive/30 text-foreground bg-background hover:bg-destructive/5 transition-colors whitespace-nowrap disabled:opacity-50"
+                  className="h-7 px-2.5 text-xs font-medium rounded-md border border-destructive/30 text-destructive/70 bg-background hover:bg-destructive/5 transition-colors whitespace-nowrap disabled:opacity-50"
                 >
                   Unpublish Speaker Cards
                 </button>
                 <button
                   onClick={handleBulkUnapprovePromo}
                   disabled={isBulkApproving}
-                  className="h-7 px-2.5 text-xs font-medium rounded-md border border-destructive/30 text-foreground bg-background hover:bg-destructive/5 transition-colors whitespace-nowrap disabled:opacity-50"
+                  className="h-7 px-2.5 text-xs font-medium rounded-md border border-destructive/30 text-destructive/70 bg-background hover:bg-destructive/5 transition-colors whitespace-nowrap disabled:opacity-50"
                 >
                   Unapprove Social Cards
+                </button>
+                <button
+                  onClick={openBulkEmail}
+                  className="h-7 px-2.5 text-xs font-medium rounded-md border border-border text-foreground bg-background hover:bg-muted transition-colors whitespace-nowrap flex items-center gap-1.5"
+                >
+                  <Mail className="h-3 w-3" />
+                  Email {selectedIds.size}
                 </button>
                 <button
                   onClick={() => setSelectedIds(new Set())}
@@ -501,6 +508,46 @@ export default function SpeakersTable({ speakers, isLoading, eventId, eventName 
                 >
                   <X className="h-3 w-3" />Clear
                 </button>
+              </div>
+            ) : searchInput !== undefined ? (
+              <div className="flex items-center gap-1.5">
+                <Input placeholder="Search…" value={searchInput} onChange={(e) => setSearchInput?.(e.target.value)} className="w-[160px] h-7 text-sm" />
+                <Select value={statusFilter ?? "all"} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-[140px] h-7 text-sm"><SelectValue placeholder="All" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="pending">Info Pending</SelectItem>
+                    <SelectItem value="submitted">Pending Approval</SelectItem>
+                    <SelectItem value="cards_approved">Ready to Publish</SelectItem>
+                    <SelectItem value="published">Published</SelectItem>
+                    <SelectItem value="archived">Archived</SelectItem>
+                  </SelectContent>
+                </Select>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button title={`Sort: ${sortBy === 'name' ? 'Name A–Z' : sortBy === 'oldest' ? 'Oldest first' : 'Newest first'}`} className="h-7 w-7 flex items-center justify-center rounded-md border border-input bg-background hover:bg-muted transition-colors shrink-0">
+                      <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-40">
+                    <DropdownMenuItem onClick={() => setSortBy?.('newest')}>{(sortBy ?? 'newest') === 'newest' ? <Check className="h-3 w-3 mr-2 text-accent" /> : <span className="h-3 w-3 mr-2 inline-block" />}Newest first</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setSortBy?.('oldest')}>{sortBy === 'oldest' ? <Check className="h-3 w-3 mr-2 text-accent" /> : <span className="h-3 w-3 mr-2 inline-block" />}Oldest first</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setSortBy?.('name')}>{sortBy === 'name' ? <Check className="h-3 w-3 mr-2 text-accent" /> : <span className="h-3 w-3 mr-2 inline-block" />}Name A–Z</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                {onEditIntakeForm && (
+                  <>
+                    <div className="h-3.5 w-px bg-border shrink-0" />
+                    <Button variant="outline" size="sm" className="gap-1.5 h-7 bg-muted/50 hover:bg-muted text-foreground hover:text-foreground whitespace-nowrap" onClick={onEditIntakeForm}>
+                      <FileEdit className="h-3.5 w-3.5" />Edit Intake Form
+                    </Button>
+                    {onAddSpeaker && (
+                      <Button size="sm" className="gap-1.5 h-7 whitespace-nowrap" onClick={onAddSpeaker}>
+                        <Plus className="h-3.5 w-3.5" />Add Speaker
+                      </Button>
+                    )}
+                  </>
+                )}
               </div>
             ) : null}
           </th>
@@ -513,24 +560,51 @@ export default function SpeakersTable({ speakers, isLoading, eventId, eventName 
               <div className="flex items-center gap-1.5">
                 <span>Social Card</span>
                 {approvedSocialSpeakers.length > 0 && (
-                  <button onClick={handleDownloadAllSocialCards} title={`Download all ${approvedSocialSpeakers.length} social cards`} className="text-muted-foreground/40 hover:text-primary transition-colors">
+                  <button onClick={handleDownloadAllSocialCards} title={`Download all ${approvedSocialSpeakers.length} social cards`} className="text-muted-foreground/40 hover:text-accent transition-colors">
                     <Download className="h-3 w-3" />
                   </button>
                 )}
               </div>
             )}
           </th>
-          <th className="w-10" />
+          <th className="px-2 py-2 w-9 text-right">
+            {!isSelectionActive && onEditIntakeForm && (
+              <HelpTip title="How speakers work" side="bottom" align="end" compact>
+                <ul className="space-y-1 list-disc list-inside">
+                  <li>Add speakers manually or approve them from <span className="font-medium text-foreground">Applications</span></li>
+                  <li>Send each speaker their intake form to collect headshot, bio, and logo</li>
+                  <li>Approve their <span className="font-medium text-foreground">Speaker Card</span> and <span className="font-medium text-foreground">Social Card</span> from their profile</li>
+                  <li>Publish live via <span className="font-medium text-foreground">Speaker Wall</span></li>
+                </ul>
+              </HelpTip>
+            )}
+          </th>
         </tr>
       </thead>
 
       <tbody>
-        {speakers.map((speaker) => {
+        {isLoading ? (
+          <tr><td colSpan={6} className="py-12 text-center text-sm text-muted-foreground">Loading speakers…</td></tr>
+        ) : speakers.length === 0 && !hasAnySpeakers && onAddSpeaker ? (
+          <tr>
+            <td colSpan={6}>
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <Mic2 className="h-10 w-10 text-muted-foreground/20 mb-3" />
+                <p className="text-sm font-medium text-foreground mb-1">No speakers yet</p>
+                <p className="text-xs text-muted-foreground mb-4">Add your first speaker to get started.</p>
+                <Button size="sm" onClick={onAddSpeaker}>
+                  <Plus className="h-3.5 w-3.5 mr-1.5" />Add Speaker
+                </Button>
+              </div>
+            </td>
+          </tr>
+        ) : speakers.length === 0 ? (
+          <tr><td colSpan={6} className="py-12 text-center text-sm text-muted-foreground">No speakers match your filter.</td></tr>
+        ) : null}
+        {!isLoading && speakers.map((speaker) => {
           const speakerName = speaker.name || `${speaker.firstName ?? ""} ${speaker.lastName ?? ""}`.trim() || speaker.email || "Speaker";
 
-          // Card embed URLs — backend renders these as HTML embeds.
           // TODO: replace with direct PNG download URLs once backend exposes them (see API_GAPS.md)
-          const websiteCardUrl = `${API_BASE}/embed/${eventUuid}/speaker/${speaker.id}`;
           const promoCardUrl = `${API_BASE}/promo-cards/${eventUuid}/speaker/${speaker.id}`;
 
           const websiteApproved = speaker.websiteCardApproved ?? speaker.website_card_approved ?? false;
@@ -545,7 +619,7 @@ export default function SpeakersTable({ speakers, isLoading, eventId, eventName 
               key={speaker.id}
               className={`border-b border-border transition-colors group cursor-pointer ${
                 selectedSpeakerId === speaker.id
-                  ? 'bg-primary/5 hover:bg-primary/8'
+                  ? 'bg-accent/5 hover:bg-accent/8'
                   : 'hover:bg-muted/40'
               }`}
               onClick={() => navigate(`/organizer/event/${eventId}/speakers/${speaker.id}`)}
@@ -593,7 +667,7 @@ export default function SpeakersTable({ speakers, isLoading, eventId, eventName 
                 <button
                   title="Send reminder"
                   onClick={() => openReminder(speaker)}
-                  className="rounded p-1 text-muted-foreground/40 hover:text-primary hover:bg-primary/8 opacity-0 group-hover:opacity-100 transition-all"
+                  className="rounded p-1 text-muted-foreground/30 hover:text-accent hover:bg-accent/8 group-hover:text-muted-foreground/60 transition-all"
                 >
                   <Mail className="h-4 w-4" />
                 </button>
@@ -678,13 +752,6 @@ export default function SpeakersTable({ speakers, isLoading, eventId, eventName 
             </tr>
           );
         })}
-        {speakers.length === 0 && (
-          <tr>
-            <td colSpan={6} className="py-12 text-center text-sm text-muted-foreground">
-              No speakers found
-            </td>
-          </tr>
-        )}
       </tbody>
     </table>
     {/* Bulk publish dialog — shown after bulk speaker card approval */}
@@ -799,13 +866,13 @@ export default function SpeakersTable({ speakers, isLoading, eventId, eventName 
                 </div>
                 <div className="rounded-b-lg border border-t-0 border-border bg-white px-8 pt-5 pb-4 space-y-3">
                   <p className="text-sm text-gray-700">Hi {firstName || "…"},</p>
-                  <Textarea value={reminderIntro} rows={1} ref={(el) => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; } }} onChange={(e) => { setReminderIntro(e.target.value); e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }} className="text-sm resize-none overflow-hidden border border-slate-200 bg-transparent shadow-none leading-relaxed focus-visible:border-primary/40" />
+                  <Textarea value={reminderIntro} rows={1} ref={(el) => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; } }} onChange={(e) => { setReminderIntro(e.target.value); e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }} className="text-sm resize-none overflow-hidden border border-slate-200 bg-transparent shadow-none leading-relaxed focus-visible:border-accent/40" />
                   <div>
                     <span style={{ display: "inline-block", background: "#4F46E5", color: "#fff", fontSize: 14, fontWeight: 600, padding: "11px 22px", borderRadius: 6, cursor: "default", whiteSpace: "nowrap" }}>
                       Submit your speaker details
                     </span>
                   </div>
-                  <Textarea value={reminderClosing} rows={1} ref={(el) => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; } }} onChange={(e) => { setReminderClosing(e.target.value); e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }} className="text-sm resize-none overflow-hidden border border-slate-200 bg-transparent shadow-none leading-relaxed focus-visible:border-primary/40" />
+                  <Textarea value={reminderClosing} rows={1} ref={(el) => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; } }} onChange={(e) => { setReminderClosing(e.target.value); e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }} className="text-sm resize-none overflow-hidden border border-slate-200 bg-transparent shadow-none leading-relaxed focus-visible:border-accent/40" />
                   <div className="border-t border-gray-100 pt-3 text-center">
                     <span className="text-[11px] text-gray-400">Powered by <span className="font-medium">Seamless Events</span></span>
                   </div>
@@ -825,6 +892,65 @@ export default function SpeakersTable({ speakers, isLoading, eventId, eventName 
       </DialogContent>
     </Dialog>
 
+    {/* Bulk email dialog */}
+    <Dialog open={bulkEmailOpen} onOpenChange={(v) => { if (!v) setBulkEmailOpen(false); }}>
+      <DialogContent className="sm:max-w-3xl">
+        <DialogHeader>
+          <DialogTitle>Send reminder to {selectedIds.size} speaker{selectedIds.size !== 1 ? "s" : ""}</DialogTitle>
+          <DialogDescription>Each speaker receives a personalised email with their intake link.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-0 pt-1">
+          <div className="rounded-t-lg border border-border bg-muted/20 px-4">
+            {[
+              { label: "From name", value: reminderFromName, setter: setReminderFromName, placeholder: `${eventName} Speaker Team`, type: "text" },
+              { label: "From email", value: reminderFromEmail, setter: setReminderFromEmail, placeholder: "you@yourorg.com", type: "email" },
+              { label: "Reply-to", value: reminderReplyTo, setter: setReminderReplyTo, placeholder: reminderFromEmail || "defaults to From email", type: "email" },
+            ].map(({ label, value, setter, placeholder, type }) => (
+              <div key={label} className="flex items-center gap-3 border-b border-border/50 py-2">
+                <span className="text-xs font-medium text-muted-foreground w-16 shrink-0">{label}</span>
+                <Input type={type} value={value} onChange={(e) => setter(e.target.value)} placeholder={placeholder} className="h-8 text-sm border-0 shadow-none p-0 focus-visible:ring-0 bg-transparent flex-1" />
+              </div>
+            ))}
+            <div className="flex items-center gap-3 border-b border-border/50 py-2">
+              <span className="text-xs font-medium text-muted-foreground w-16 shrink-0">To</span>
+              <span className="text-sm text-foreground">{selectedIds.size} speaker{selectedIds.size !== 1 ? "s" : ""}</span>
+            </div>
+            <div className="flex items-center gap-3 py-2">
+              <span className="text-xs font-medium text-muted-foreground w-16 shrink-0">Subject</span>
+              <Input value={reminderSubject} onChange={(e) => setReminderSubject(e.target.value)} className="h-8 text-sm border-0 shadow-none p-0 focus-visible:ring-0 bg-transparent flex-1" />
+            </div>
+          </div>
+          <div className="rounded-b-lg border border-t-0 border-border bg-white px-8 pt-5 pb-4 space-y-3">
+            <p className="text-sm text-gray-700">Hi [Name],</p>
+            <Textarea value={reminderIntro} rows={1} ref={(el) => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; } }} onChange={(e) => { setReminderIntro(e.target.value); e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }} className="text-sm resize-none overflow-hidden border border-slate-200 bg-transparent shadow-none leading-relaxed focus-visible:border-accent/40" />
+            <div>
+              <span style={{ display: "inline-block", background: "#4F46E5", color: "#fff", fontSize: 14, fontWeight: 600, padding: "11px 22px", borderRadius: 6, cursor: "default", whiteSpace: "nowrap" }}>
+                Submit your speaker details
+              </span>
+            </div>
+            <Textarea value={reminderClosing} rows={1} ref={(el) => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; } }} onChange={(e) => { setReminderClosing(e.target.value); e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }} className="text-sm resize-none overflow-hidden border border-slate-200 bg-transparent shadow-none leading-relaxed focus-visible:border-accent/40" />
+            <div className="border-t border-gray-100 pt-3 text-center">
+              <span className="text-[11px] text-gray-400">Powered by <span className="font-medium">Seamless Events</span></span>
+            </div>
+          </div>
+        </div>
+        {bulkEmailSending && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground pt-1">
+            <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+              <div className="h-full bg-accent transition-all duration-300 rounded-full" style={{ width: `${(bulkEmailProgress / selectedIds.size) * 100}%` }} />
+            </div>
+            <span className="text-xs shrink-0">{bulkEmailProgress} / {selectedIds.size}</span>
+          </div>
+        )}
+        <div className="flex gap-2 pt-1">
+          <Button variant="outline" onClick={() => setBulkEmailOpen(false)} disabled={bulkEmailSending}>Cancel</Button>
+          <Button className="flex-1" onClick={handleBulkEmail} disabled={bulkEmailSending}>
+            {bulkEmailSending ? `Sending… ${bulkEmailProgress}/${selectedIds.size}` : `Send to ${selectedIds.size} speaker${selectedIds.size !== 1 ? "s" : ""}`}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+
     {/* Danger confirmation modal for deletions */}
     <AlertDialog open={confirmOpen} onOpenChange={(open) => { if (!open) { setConfirmTarget(null); } setConfirmOpen(open); }}>
       <AlertDialogContent>
@@ -840,16 +966,13 @@ export default function SpeakersTable({ speakers, isLoading, eventId, eventName 
             className="bg-red-600 hover:bg-red-700 text-white"
             onClick={async () => {
               if (!eventId || !confirmTarget) return;
-              const id = confirmTarget.id;
               try {
-                setDeletingId(id);
-                await deleteSpeaker(eventId, id);
+                await deleteSpeaker(eventId, confirmTarget.id);
                 queryClient.invalidateQueries({ queryKey: ["event", eventId, "speakers"] });
                 toast({ title: "Speaker deleted" });
               } catch (err: any) {
                 toast({ title: "Failed to delete speaker", description: String(err?.message || err) });
               } finally {
-                setDeletingId(null);
                 setConfirmOpen(false);
                 setConfirmTarget(null);
               }

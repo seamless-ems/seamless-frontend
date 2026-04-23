@@ -96,7 +96,7 @@ export default function FormsTab({ eventId }: { eventId: string | undefined }) {
             <ArrowLeft className="h-4 w-4" />
           </button>
           <div className="flex items-baseline gap-1.5 leading-none select-none">
-            <span className="text-sm font-semibold text-primary" style={{ letterSpacing: "-0.01em" }}>Seamless</span>
+            <span className="text-sm font-semibold text-accent" style={{ letterSpacing: "-0.01em" }}>Seamless</span>
             <span className="text-xs font-normal text-muted-foreground">Forms</span>
           </div>
           {editingFormData && (
@@ -161,7 +161,7 @@ export default function FormsTab({ eventId }: { eventId: string | undefined }) {
 
       <div className="grid gap-6 md:grid-cols-2">
         {forms.map((form) => (
-          <Card key={form.id} className="hover:shadow-sm hover:border-primary transition-all duration-200 cursor-pointer">
+          <Card key={form.id} className="hover:shadow-sm hover:border-accent transition-all duration-200 cursor-pointer">
             <CardContent className="pt-6">
               <div className="space-y-4">
                 <div className="flex justify-between items-start gap-3">

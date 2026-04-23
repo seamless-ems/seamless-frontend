@@ -26,7 +26,7 @@ export default function SpeakerAssets({ s, headshotInputRef, logoInputRef, uploa
             <img src={s.headshot} alt="Headshot" className="w-full h-full object-cover" />
           ) : (
             <Avatar className="w-24 h-24">
-              <AvatarFallback className="bg-primary/10 text-primary text-2xl">{s?.firstName?.[0] ?? "?"}</AvatarFallback>
+              <AvatarFallback className="bg-accent/10 text-accent text-2xl">{s?.firstName?.[0] ?? "?"}</AvatarFallback>
             </Avatar>
           )}
         </div>

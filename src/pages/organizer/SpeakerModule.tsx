@@ -4,12 +4,8 @@ import { Button } from "@/components/ui/button";
 import EventHeaderActions from "@/components/layout/EventHeaderActions";
 import { useQuery } from "@tanstack/react-query";
 import { getJson, getFormConfigForEvent, getPromoConfigForEvent } from "@/lib/api";
-import { ArrowLeft, Check, Copy, FileEdit, Download, ArrowUpDown, Mic2, Plus } from "lucide-react";
-import JSZip from "jszip";
+import { ArrowLeft, Check, Copy, Plus } from "lucide-react";
 import AddSpeakerDialog from "@/components/organizer/AddSpeakerDialog";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import SpeakerQuickPanel, { type PanelView } from "@/components/organizer/SpeakerQuickPanel";
 import SpeakersTable from "@/components/organizer/SpeakersTable";
 import EmbedBuilder from "@/components/organizer/EmbedBuilder";
@@ -20,7 +16,6 @@ import GettingStartedChecklist from "@/components/organizer/GettingStartedCheckl
 import EventContentTab from "@/components/organizer/EventContentTab";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
-import { HelpTip } from "@/components/ui/HelpTip";
 import { UnsavedChangesDialog } from "@/components/ui/UnsavedChangesDialog";
 
 export default function SpeakerModule() {
@@ -41,57 +36,12 @@ export default function SpeakerModule() {
   const [formSaved, setFormSaved] = useState(false);
   const [copiedFormLink, setCopiedFormLink] = useState(false);
   const [confirmFormLeave, setConfirmFormLeave] = useState(false);
-  const [isDownloadingAll, setIsDownloadingAll] = useState(false);
   const formBuilderRef = useRef<SpeakerFormBuilderHandle>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setSearchQuery(searchInput), 300);
     return () => clearTimeout(t);
   }, [searchInput]);
-
-  async function handleDownloadAllAssets() {
-    const assets: { url: string; filename: string }[] = [];
-    for (const speaker of speakerList) {
-      const name = (speaker.name || speaker.email || "speaker").replace(/\s+/g, "-").toLowerCase();
-      const headshotUrl = speaker.headshotDownloadUrl || speaker.headshot || speaker.headshotUrl || speaker.headshot_url || null;
-      const logoUrl = speaker.logoDownloadUrl || speaker.companyLogo || speaker.company_logo || null;
-      if (headshotUrl) assets.push({ url: headshotUrl, filename: `${name}-headshot.jpg` });
-      if (logoUrl) assets.push({ url: logoUrl, filename: `${name}-logo.png` });
-    }
-    if (assets.length === 0) {
-      toast({ title: "No assets to download", description: "None of your speakers have uploaded a headshot or logo yet." });
-      return;
-    }
-    setIsDownloadingAll(true);
-    const zip = new JSZip();
-    let failed = 0;
-    await Promise.all(
-      assets.map(async (asset) => {
-        try {
-          const res = await fetch(asset.url);
-          if (!res.ok) throw new Error("fetch failed");
-          const blob = await res.blob();
-          zip.file(asset.filename, blob);
-        } catch {
-          failed++;
-        }
-      })
-    );
-    const zipBlob = await zip.generateAsync({ type: "blob" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(zipBlob);
-    a.download = `${eventName.replace(/\s+/g, "-").toLowerCase() || "speakers"}-assets.zip`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(a.href);
-    setIsDownloadingAll(false);
-    if (failed === 0) {
-      toast({ title: `Zipped ${assets.length} asset${assets.length !== 1 ? "s" : ""}` });
-    } else {
-      toast({ title: `Zipped ${assets.length - failed} of ${assets.length} assets`, description: `${failed} failed — check CORS settings.`, variant: "destructive" });
-    }
-  }
 
   // Derive active tab from URL path
   const pathname = location.pathname;
@@ -320,7 +270,7 @@ export default function SpeakerModule() {
   const tabClass = (tab: string) =>
     `py-3 border-b-2 transition-colors text-sm font-medium whitespace-nowrap ${
       activeTab === tab
-        ? "border-primary text-foreground"
+        ? "border-accent text-foreground"
         : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
     }`;
 
@@ -346,7 +296,7 @@ export default function SpeakerModule() {
       {!isCardBuilder && (
         <header className="sticky top-0 z-30 h-14 border-b border-border bg-card/95 flex items-end px-4 gap-0">
           <Link to="/organizer" className="flex items-center gap-1.5 py-3 border-b-2 border-transparent shrink-0 mr-6">
-            <span className="text-sm font-semibold text-primary" style={{ letterSpacing: '-0.01em' }}>Seamless</span>
+            <span className="text-sm font-semibold text-accent" style={{ letterSpacing: '-0.01em' }}>Seamless</span>
             <span className="text-sm font-normal text-muted-foreground">Events</span>
           </Link>
           <div className="flex items-end h-full gap-6 flex-1">
@@ -390,64 +340,9 @@ export default function SpeakerModule() {
               activeStep={1}
             />
           )}
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-1.5">
-              <Input placeholder="Search…" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} className="w-[180px] h-8 text-sm" />
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[150px] h-8 text-sm"><SelectValue placeholder="All" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="pending">Info Pending</SelectItem>
-                  <SelectItem value="submitted">Pending Approval</SelectItem>
-                  <SelectItem value="cards_approved">Ready to Publish</SelectItem>
-                  <SelectItem value="published">Published</SelectItem>
-                  <SelectItem value="archived">Archived</SelectItem>
-                </SelectContent>
-              </Select>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button title={`Sort: ${sortBy === 'name' ? 'Name A–Z' : sortBy === 'oldest' ? 'Oldest first' : 'Newest first'}`} className="h-8 w-8 flex items-center justify-center rounded-md border border-input bg-background hover:bg-muted transition-colors shrink-0">
-                    <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-40">
-                  <DropdownMenuItem onClick={() => setSortBy('newest')}>{(sortBy ?? 'newest') === 'newest' ? <Check className="h-3 w-3 mr-2 text-primary" /> : <span className="h-3 w-3 mr-2 inline-block" />}Newest first</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setSortBy('oldest')}>{sortBy === 'oldest' ? <Check className="h-3 w-3 mr-2 text-primary" /> : <span className="h-3 w-3 mr-2 inline-block" />}Oldest first</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setSortBy('name')}>{sortBy === 'name' ? <Check className="h-3 w-3 mr-2 text-primary" /> : <span className="h-3 w-3 mr-2 inline-block" />}Name A–Z</DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" className="gap-1.5 bg-muted/50 hover:bg-muted text-foreground hover:text-foreground" onClick={() => { setEditingForm("speaker-info"); setFormSaved(false); }}>
-                <FileEdit className="h-3.5 w-3.5" />Edit Intake Form
-              </Button>
-              <AddSpeakerDialog eventId={id} eventName={eventName} emailDefaults={emailDefaults} open={addSpeakerOpen} onOpenChange={setAddSpeakerOpen} />
-              <HelpTip title="How speakers work" side="bottom" align="end" compact>
-                <ul className="space-y-1 list-disc list-inside">
-                  <li>Add speakers manually or approve them from <span className="font-medium text-foreground">Applications</span></li>
-                  <li>Send each speaker their intake form to collect headshot, bio, and logo</li>
-                  <li>Approve their <span className="font-medium text-foreground">Speaker Card</span> and <span className="font-medium text-foreground">Social Card</span> from their profile</li>
-                  <li>Publish live via <span className="font-medium text-foreground">Speaker Wall</span></li>
-                </ul>
-              </HelpTip>
-            </div>
-          </div>
-
-          {/* Empty state — no speakers at all */}
-          {speakerList.length === 0 && !isLoading && (
-            <div className="rounded-lg border border-border flex flex-col items-center justify-center py-16 text-center">
-              <Mic2 className="h-10 w-10 text-muted-foreground/20 mb-3" />
-              <p className="text-sm font-medium text-foreground mb-1">No speakers yet</p>
-              <p className="text-xs text-muted-foreground mb-4">Add your first speaker to get started.</p>
-              <Button size="sm" onClick={() => setAddSpeakerOpen(true)}>
-                <Plus className="h-3.5 w-3.5 mr-1.5" />Add Speaker
-              </Button>
-            </div>
-          )}
-
           {/* Split layout: table + persistent quick panel */}
-          {(speakerList.length > 0 || isLoading) && (
-          <div className="flex items-start divide-x divide-border">
+          <AddSpeakerDialog eventId={id} eventName={eventName} emailDefaults={emailDefaults} open={addSpeakerOpen} onOpenChange={setAddSpeakerOpen} />
+          <div className="rounded-lg border border-border overflow-hidden flex items-start divide-x divide-border">
             <div className="flex-1 min-w-0 overflow-hidden">
               <SpeakersTable
                 speakers={filteredSpeakers}
@@ -459,8 +354,12 @@ export default function SpeakerModule() {
                 formConfig={formConfig}
                 websiteCardConfigured={!!websiteCardConfig}
                 promoCardConfigured={!!promoCardConfig}
+                searchInput={searchInput}
+                setSearchInput={setSearchInput}
                 statusFilter={statusFilter}
+                setStatusFilter={setStatusFilter}
                 sortBy={sortBy}
+                setSortBy={setSortBy}
                 totalCount={totalCount}
                 page={page}
                 pageSize={pageSize}
@@ -469,11 +368,14 @@ export default function SpeakerModule() {
                 pendingCount={pendingCount}
                 onBadgeClick={handleBadgeClick}
                 selectedSpeakerId={selectedSpeaker?.id}
+                hasAnySpeakers={speakerList.length > 0}
+                onEditIntakeForm={() => { setEditingForm("speaker-info"); setFormSaved(false); }}
+                onAddSpeaker={() => setAddSpeakerOpen(true)}
               />
             </div>
 
             {/* Quick panel — always visible, blank until a badge is clicked */}
-            <div className="w-[600px] shrink-0 overflow-hidden sticky top-4 max-h-[calc(100vh-140px)]">
+            <div className="w-[720px] shrink-0 overflow-hidden self-stretch flex flex-col">
               {panelSpeaker && panelView ? (
                 <SpeakerQuickPanel
                   speaker={panelSpeaker}
@@ -488,7 +390,6 @@ export default function SpeakerModule() {
               )}
             </div>
           </div>
-          )}
         </div>
       )}
 
@@ -589,7 +490,7 @@ export default function SpeakerModule() {
               <ArrowLeft className="h-4 w-4" />
             </button>
             <div className="flex items-baseline gap-1.5 leading-none select-none">
-              <span className="text-sm font-semibold text-primary" style={{ letterSpacing: "-0.01em" }}>Seamless</span>
+              <span className="text-sm font-semibold text-accent" style={{ letterSpacing: "-0.01em" }}>Seamless</span>
               <span className="text-xs font-normal text-muted-foreground">Forms</span>
             </div>
             <span className="text-border">|</span>

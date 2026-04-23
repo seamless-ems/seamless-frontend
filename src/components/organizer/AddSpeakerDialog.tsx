@@ -290,12 +290,14 @@ export default function AddSpeakerDialog({ eventId, eventName = "the event", ema
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
-        <Button size="sm" variant="outline" className="gap-1.5 bg-muted/50 hover:bg-muted text-foreground hover:text-foreground">
-          <Plus className="h-4 w-4" />
-          Add Speaker
-        </Button>
-      </DialogTrigger>
+      {open === undefined && (
+        <DialogTrigger asChild>
+          <Button size="sm" variant="outline" className="gap-1.5 bg-muted/50 hover:bg-muted text-foreground hover:text-foreground">
+            <Plus className="h-4 w-4" />
+            Add Speaker
+          </Button>
+        </DialogTrigger>
+      )}
 
       <DialogContent className={dialogWidth}>
 
@@ -310,14 +312,14 @@ export default function AddSpeakerDialog({ eventId, eventName = "the event", ema
               {/* Send to Speaker */}
               <button
                 onClick={() => setStep("add")}
-                className="flex flex-col items-start gap-3 rounded-lg border border-border bg-card p-5 text-left hover:border-primary hover:shadow-sm transition-all"
+                className="flex flex-col items-start gap-3 rounded-lg border border-border bg-card p-5 text-left hover:border-accent hover:shadow-sm transition-all"
               >
-                <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10">
-                  <Mail className="h-4.5 w-4.5 text-primary" />
+                <div className="flex h-9 w-9 items-center justify-center rounded-md bg-accent/10">
+                  <Mail className="h-4.5 w-4.5 text-accent" />
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-foreground mb-1">Send to Speaker</p>
-                  <span className="text-[10px] font-semibold uppercase tracking-wide text-primary bg-primary/10 px-1.5 py-0.5 rounded inline-block mb-2">Recommended</span>
+                  <span className="text-[10px] font-semibold uppercase tracking-wide text-accent bg-accent/10 px-1.5 py-0.5 rounded inline-block mb-2">Recommended</span>
                   <p className="text-xs text-muted-foreground leading-snug">
                     Share the form link. When they submit, an account is created automatically so they can log in to edit their profile and upload content.
                   </p>
@@ -331,7 +333,7 @@ export default function AddSpeakerDialog({ eventId, eventName = "the event", ema
                   reset();
                   navigate(`/speaker-intake/${eventId}`);
                 }}
-                className="flex flex-col items-start gap-3 rounded-lg border border-border bg-card p-5 text-left hover:border-primary hover:shadow-sm transition-all"
+                className="flex flex-col items-start gap-3 rounded-lg border border-border bg-card p-5 text-left hover:border-accent hover:shadow-sm transition-all"
               >
                 <div className="flex h-9 w-9 items-center justify-center rounded-md bg-muted">
                   <ClipboardList className="h-4.5 w-4.5 text-muted-foreground" />
@@ -490,7 +492,7 @@ export default function AddSpeakerDialog({ eventId, eventName = "the event", ema
                     e.target.style.height = "auto";
                     e.target.style.height = e.target.scrollHeight + "px";
                   }}
-                  className="text-sm resize-none overflow-hidden border border-slate-200 bg-transparent shadow-none leading-relaxed focus-visible:border-primary/40"
+                  className="text-sm resize-none overflow-hidden border border-slate-200 bg-transparent shadow-none leading-relaxed focus-visible:border-accent/40"
                 />
 
                 <div>
@@ -520,7 +522,7 @@ export default function AddSpeakerDialog({ eventId, eventName = "the event", ema
                     e.target.style.height = "auto";
                     e.target.style.height = e.target.scrollHeight + "px";
                   }}
-                  className="text-sm resize-none overflow-hidden border border-slate-200 bg-transparent shadow-none leading-relaxed focus-visible:border-primary/40"
+                  className="text-sm resize-none overflow-hidden border border-slate-200 bg-transparent shadow-none leading-relaxed focus-visible:border-accent/40"
                 />
 
                 <div className="border-t border-gray-100 pt-3 text-center">

@@ -128,7 +128,7 @@ export default function Settings() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="text-lg flex items-center gap-2">
-                <User className="h-5 w-5 text-primary" />
+                <User className="h-5 w-5 text-accent" />
                 Profile
               </CardTitle>
               <div className="flex items-center gap-2">

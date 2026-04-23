@@ -148,7 +148,7 @@ export default function ShareDialog({
           <p className="text-xs text-muted-foreground">General access</p>
           <div className="flex items-center gap-3 rounded-lg border border-border px-4 py-3">
             {linkAccess === "anyone"
-              ? <Globe className="h-4 w-4 text-primary shrink-0" />
+              ? <Globe className="h-4 w-4 text-accent shrink-0" />
               : <Lock className="h-4 w-4 text-muted-foreground shrink-0" />
             }
             <div className="flex-1 flex items-center gap-2 min-w-0">
@@ -165,7 +165,7 @@ export default function ShareDialog({
                 <>
                   <span className="text-xs text-muted-foreground">·</span>
                   <Select value={linkRole} onValueChange={(v) => setLinkRole(v as Role)}>
-                    <SelectTrigger className="w-auto h-auto p-0 border-0 shadow-none text-xs text-primary hover:text-primary/80 focus:ring-0 [&>svg]:ml-0.5">
+                    <SelectTrigger className="w-auto h-auto p-0 border-0 shadow-none text-xs text-accent hover:text-accent/80 focus:ring-0 [&>svg]:ml-0.5">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>

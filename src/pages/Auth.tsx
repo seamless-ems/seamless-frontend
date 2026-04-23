@@ -194,7 +194,7 @@ const Auth: React.FC = () => {
         />
 
         {emailCheck?.exists && emailCheck.providers?.includes("google.com") && (
-          <div className="p-3 rounded border border-border bg-primary/5">
+          <div className="p-3 rounded border border-border bg-accent/5">
             <div className="flex items-center justify-between gap-3">
               <div className="font-medium">This account uses Google</div>
               <Button

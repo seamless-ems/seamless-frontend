@@ -64,7 +64,7 @@ export default function HelpWidget() {
       <div className="fixed right-4 bottom-4 z-50">
         <button
           onClick={() => setOpen(true)}
-          className="h-10 w-10 rounded-full bg-primary text-primary-foreground shadow-md flex items-center justify-center hover:bg-primary/90 transition-colors text-base font-semibold"
+          className="h-10 w-10 rounded-full bg-primary text-accent-foreground shadow-md flex items-center justify-center hover:bg-accent/90 transition-colors text-base font-semibold"
           aria-label="Help"
         >
           ?

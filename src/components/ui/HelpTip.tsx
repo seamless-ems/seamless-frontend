@@ -36,15 +36,15 @@ export function HelpTip({
         ) : (
           <button
             type="button"
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-secondary/50 border border-secondary text-primary/60 hover:bg-secondary hover:text-primary transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-secondary/50 border border-secondary text-accent/60 hover:bg-secondary hover:text-accent transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           >
             <HelpCircle className="h-3 w-3" />
             {label}
           </button>
         )}
       </PopoverTrigger>
-      <PopoverContent side={side} align={align} className={cn("w-max max-w-lg p-0 overflow-hidden border border-primary/25 shadow-lg", className)}>
-        <div className="h-1 bg-primary/50 w-full" />
+      <PopoverContent side={side} align={align} className={cn("w-max max-w-lg p-0 overflow-hidden border border-accent/25 shadow-lg", className)}>
+        <div className="h-1 bg-accent/50 w-full" />
         <div className="p-4">
           {title && (
             <p className="text-sm font-semibold text-foreground mb-3">{title}</p>

@@ -24,7 +24,7 @@ export default function EventLayout({ children }: { children: ReactNode }) {
         className={`sticky top-0 z-30 h-14 flex items-center gap-3 border-b border-border bg-card/95 px-4 shrink-0 ${(isCardBuilder || isOnSpeakerModule) ? 'hidden' : ''}`}
       >
         <Link to="/organizer" className="flex items-center gap-2 leading-none shrink-0">
-          <span className="text-[17px] font-semibold text-primary" style={{ letterSpacing: '-0.01em' }}>Seamless</span>
+          <span className="text-[17px] font-semibold text-accent" style={{ letterSpacing: '-0.01em' }}>Seamless</span>
           <span className="text-xs font-normal text-muted-foreground ml-2">Events</span>
         </Link>
 

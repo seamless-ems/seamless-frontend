@@ -21,7 +21,7 @@ function ColPicker({ options, value, onChange, size = "sm" }: {
     <div className="flex rounded-md border border-border overflow-hidden">
       {options.map(n => (
         <button key={n} type="button" onClick={() => onChange(n)}
-          className={`${btnCls} font-medium transition-colors border-r border-border last:border-r-0 ${value === n ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}>
+          className={`${btnCls} font-medium transition-colors border-r border-border last:border-r-0 ${value === n ? 'bg-accent text-accent-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}>
           {n}
         </button>
       ))}
@@ -31,7 +31,7 @@ function ColPicker({ options, value, onChange, size = "sm" }: {
 
 export default function EmbedBuilder({ eventId, onAddSpeaker }: { eventId: string | undefined; onAddSpeaker?: () => void }) {
   const queryClient = useQueryClient();
-  const [copiedEmbed, setCopiedEmbed] = useState<"iframe" | "url" | null>(null);
+  const [copiedEmbed, setCopiedEmbed] = useState<"iframe" | "url" | "autoresize" | null>(null);
   const [toggling, setToggling] = useState<string | null>(null);
 
   const colsKey = eventId ? `seamless-embed-cols-${eventId}` : null;
@@ -87,7 +87,6 @@ export default function EmbedBuilder({ eventId, onAddSpeaker }: { eventId: strin
       company: s.company_name ?? s.company ?? s.companyName ?? "",
       avatarUrl: s.headshot ?? s.headshot_url ?? s.avatar_url ?? null,
       websiteCardApproved: s.website_card_approved ?? s.websiteCardApproved ?? false,
-      promoCardApproved: s.promo_card_approved ?? s.promoCardApproved ?? false,
       embedEnabled: s.embed_enabled ?? s.embedEnabled ?? false,
     }));
   })();
@@ -97,9 +96,27 @@ export default function EmbedBuilder({ eventId, onAddSpeaker }: { eventId: strin
   const liveSpeakers = eligibleSpeakers.filter(s => s.embedEnabled);
 
   const embedUrl = `${API_BASE}/embed/${eventId}?column_amount=${desktopCols}&column_amount_mobile=${mobileCols}`;
-  const iframeSnippet = `<iframe src="${embedUrl}" width="100%" height="600" frameborder="0" allowtransparency="true" style="border:none;border-radius:8px;background:transparent;"></iframe>`;
+  const iframeId = `seamless-wall-${eventId}`;
 
-  const copyText = (text: string, key: "iframe" | "url") => {
+  // Basic iframe — fixed fallback height. Works everywhere, no JS required.
+  const iframeSnippet = `<iframe id="${iframeId}" src="${embedUrl}" loading="lazy" style="width:100%;height:800px;border:none;border-radius:8px;display:block;"></iframe>`;
+
+  // Auto-resize iframe — adjusts height to content via postMessage.
+  // TODO (backend): the embed page must broadcast its height on load + resize:
+  //   window.addEventListener('load', send); window.addEventListener('resize', send);
+  //   function send() { window.parent.postMessage({ type: 'seamless:resize', height: document.body.scrollHeight }, '*'); }
+  // TODO (backend): add responsive CSS so speaker cards scale to container width instead of rendering at native resolution (600×600 / 900×600).
+  const autoResizeSnippet = `<iframe id="${iframeId}" src="${embedUrl}" loading="lazy" style="width:100%;border:none;border-radius:8px;display:block;"></iframe>
+<script>
+window.addEventListener('message', function(e) {
+  if (e.data && e.data.type === 'seamless:resize') {
+    var f = document.getElementById('${iframeId}');
+    if (f) f.style.height = e.data.height + 'px';
+  }
+});
+</script>`;
+
+  const copyText = (text: string, key: "iframe" | "url" | "autoresize") => {
     navigator.clipboard.writeText(text);
     setCopiedEmbed(key);
     setTimeout(() => setCopiedEmbed(null), 2000);
@@ -141,7 +158,7 @@ export default function EmbedBuilder({ eventId, onAddSpeaker }: { eventId: strin
           <DialogHeader>
             <DialogTitle>Set up your Speaker Wall</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-muted-foreground">Choose how many speaker cards to show per row. You can adjust this any time from the toolbar above.</p>
+          <p className="text-sm text-muted-foreground">Choose how many speaker cards to show per row. You can adjust this any time from the table header.</p>
           <div className="space-y-4 py-2">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-foreground">Desktop columns</span>
@@ -174,80 +191,84 @@ export default function EmbedBuilder({ eventId, onAddSpeaker }: { eventId: strin
         </DialogContent>
       </Dialog>
 
-      {/* Toolbar */}
-      <div className="flex items-center gap-4 flex-wrap">
-        <div className="flex items-center gap-3">
-          <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">Desktop</span>
-          <ColPicker options={[2, 3, 4]} value={desktopCols} onChange={setDesktopCols} />
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">Mobile</span>
-          <ColPicker options={[1, 2]} value={mobileCols} onChange={setMobileCols} />
-        </div>
-        <div className="flex items-center gap-2 ml-auto">
-          <Button variant="outline" size="sm" className="gap-1.5 h-8" onClick={() => window.open(embedUrl, "_blank", "noopener")}>
-            <ExternalLink className="h-3.5 w-3.5" />Preview
-          </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button size="sm" className="gap-1.5 h-8">
-                {copiedEmbed ? <><Check className="h-3.5 w-3.5" />Copied</> : <><Copy className="h-3.5 w-3.5" />Copy Embed Code</>}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => copyText(iframeSnippet, "iframe")}>
-                {copiedEmbed === "iframe" ? <Check className="h-3.5 w-3.5 mr-2" /> : <Copy className="h-3.5 w-3.5 mr-2" />}
-                iFrame snippet <span className="text-muted-foreground ml-1.5 text-xs">transparent bg</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => copyText(embedUrl, "url")}>
-                {copiedEmbed === "url" ? <Check className="h-3.5 w-3.5 mr-2" /> : <Copy className="h-3.5 w-3.5 mr-2" />}
-                Direct URL <span className="text-muted-foreground ml-1.5 text-xs">white bg</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <HelpTip title="How Speaker Wall works" side="bottom" align="end">
-            <ul className="space-y-1 list-disc list-inside">
-              <li>Toggle speakers on or off — your wall updates instantly</li>
-              <li>Only speakers with an approved <span className="font-medium text-foreground">Speaker Card</span> appear here</li>
-              <li>Paste the embed code into your website once — no changes needed after that</li>
-            </ul>
-          </HelpTip>
-        </div>
-      </div>
-
-      {/* Speaker list */}
       <div className="rounded-lg border border-border overflow-hidden">
-        <div className="bg-secondary/30 border-b border-border px-5 py-2.5 flex items-center justify-between">
-          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Speakers</span>
-          {eligibleSpeakers.length > 0 && (
-            <span className="text-xs text-muted-foreground">
-              <span className="font-medium text-foreground">{liveSpeakers.length}</span> of {eligibleSpeakers.length} live
-            </span>
-          )}
-        </div>
-
-        {isLoading ? (
-          <div className="py-10 text-center text-sm text-muted-foreground">Loading speakers…</div>
-        ) : eligibleSpeakers.length === 0 ? (
-          <div className="py-12 text-center space-y-1">
-            <p className="text-sm font-medium text-foreground">No speakers ready yet</p>
-            <p className="text-sm text-muted-foreground">
-              Approve a speaker's cards in the{" "}
-              <Link to={`/organizer/event/${eventId}/speakers`} className="text-foreground underline underline-offset-2 hover:text-primary transition-colors">Speakers</Link>
-              {" "}tab to make them available here.
-            </p>
-          </div>
-        ) : (
-          <table className="w-full">
-            <tbody>
-              {eligibleSpeakers.map((speaker) => {
+        <table className="w-full">
+          <thead className="border-b border-border">
+            <tr className="h-11 bg-muted/20">
+              <th className="px-4 py-2" colSpan={3}>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">Desktop</span>
+                    <ColPicker options={[2, 3, 4]} value={desktopCols} onChange={setDesktopCols} />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">Mobile</span>
+                    <ColPicker options={[1, 2]} value={mobileCols} onChange={setMobileCols} />
+                  </div>
+                  <div className="h-3.5 w-px bg-border mx-1 shrink-0" />
+                  <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs px-2.5" onClick={() => window.open(embedUrl, "_blank", "noopener")}>
+                    <ExternalLink className="h-3.5 w-3.5" />Preview
+                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button size="sm" className="h-7 gap-1.5 text-xs px-2.5">
+                        {copiedEmbed ? <><Check className="h-3.5 w-3.5" />Copied</> : <><Copy className="h-3.5 w-3.5" />Copy Embed Code</>}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => copyText(autoResizeSnippet, "autoresize")}>
+                        {copiedEmbed === "autoresize" ? <Check className="h-3.5 w-3.5 mr-2" /> : <Copy className="h-3.5 w-3.5 mr-2" />}
+                        Auto-resize snippet <span className="text-muted-foreground ml-1.5 text-xs">recommended</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => copyText(iframeSnippet, "iframe")}>
+                        {copiedEmbed === "iframe" ? <Check className="h-3.5 w-3.5 mr-2" /> : <Copy className="h-3.5 w-3.5 mr-2" />}
+                        Basic iFrame <span className="text-muted-foreground ml-1.5 text-xs">fixed 800px height</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => copyText(embedUrl, "url")}>
+                        {copiedEmbed === "url" ? <Check className="h-3.5 w-3.5 mr-2" /> : <Copy className="h-3.5 w-3.5 mr-2" />}
+                        Direct URL <span className="text-muted-foreground ml-1.5 text-xs">white bg</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  {eligibleSpeakers.length > 0 && (
+                    <span className="text-xs text-muted-foreground">
+                      <span className="font-medium text-foreground">{liveSpeakers.length}</span> / {eligibleSpeakers.length} live
+                    </span>
+                  )}
+                  <div className="ml-auto">
+                    <HelpTip title="How Speaker Wall works" side="bottom" align="end" compact>
+                      <ul className="space-y-1 list-disc list-inside">
+                        <li>Toggle speakers on or off — your wall updates instantly</li>
+                        <li>Only speakers with an approved <span className="font-medium text-foreground">Speaker Card</span> appear here</li>
+                        <li>Paste the embed code into your website once — no changes needed after that</li>
+                      </ul>
+                    </HelpTip>
+                  </div>
+                </div>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {isLoading ? (
+              <tr>
+                <td colSpan={3} className="py-10 text-center text-sm text-muted-foreground">Loading speakers…</td>
+              </tr>
+            ) : eligibleSpeakers.length === 0 ? (
+              <tr>
+                <td colSpan={3} className="py-12 text-center">
+                  <p className="text-sm font-medium text-foreground">No speakers ready yet</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Approve a speaker's cards in the{" "}
+                    <Link to={`/organizer/event/${eventId}/speakers`} className="text-foreground underline underline-offset-2 hover:text-accent transition-colors">Speakers</Link>
+                    {" "}tab to make them available here.
+                  </p>
+                </td>
+              </tr>
+            ) : (
+              eligibleSpeakers.map((speaker) => {
                 const isLive = speaker.embedEnabled;
-
                 return (
-                  <tr
-                    key={speaker.id}
-                    className="border-b border-border last:border-0 hover:bg-muted/40 transition-colors"
-                  >
+                  <tr key={speaker.id} className="border-b border-border last:border-0 hover:bg-muted/40 transition-colors">
                     <td className="px-5 py-3.5 w-14">
                       <Switch
                         checked={isLive}
@@ -265,7 +286,7 @@ export default function EmbedBuilder({ eventId, onAddSpeaker }: { eventId: strin
                     </td>
                     <td className="px-5 py-3.5 text-right w-24">
                       {isLive ? (
-                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-success/10 text-success border border-success/20">
+                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-transparent text-foreground border border-success/50">
                           <span className="h-1.5 w-1.5 rounded-full bg-success" />
                           Live
                         </span>
@@ -275,10 +296,10 @@ export default function EmbedBuilder({ eventId, onAddSpeaker }: { eventId: strin
                     </td>
                   </tr>
                 );
-              })}
-            </tbody>
-          </table>
-        )}
+              })
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   );
