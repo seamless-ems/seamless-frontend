@@ -4,7 +4,6 @@ import { API_BASE, getJson, updateSpeaker } from "@/lib/api";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Check, Copy, ExternalLink } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
@@ -29,30 +28,48 @@ function ColPicker({ options, value, onChange, size = "sm" }: {
   );
 }
 
+function ZoomPicker({ value, onChange }: { value: number; onChange: (n: number) => void }) {
+  return (
+    <div className="flex rounded-md border border-border overflow-hidden">
+      {[30, 40, 50, 60, 70, 80].map(n => (
+        <button key={n} type="button" onClick={() => onChange(n)}
+          className={`h-8 px-3 text-sm font-medium transition-colors border-r border-border last:border-r-0 ${value === n ? 'bg-accent text-accent-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}>
+          {n}%
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function EmbedBuilder({ eventId, onAddSpeaker }: { eventId: string | undefined; onAddSpeaker?: () => void }) {
   const queryClient = useQueryClient();
   const [copiedEmbed, setCopiedEmbed] = useState<"iframe" | "url" | "autoresize" | null>(null);
   const [toggling, setToggling] = useState<string | null>(null);
+  const [embedModalOpen, setEmbedModalOpen] = useState(false);
 
   const colsKey = eventId ? `seamless-embed-cols-${eventId}` : null;
   const setupKey = eventId ? `seamless-embed-setup-done-${eventId}` : null;
 
   const readCols = (key: string | null) => {
-    if (!key) return { desktop: 2, mobile: 1 };
+    if (!key) return { desktop: 2, mobile: 1, zoom: 60 };
     try {
       const saved = localStorage.getItem(key);
-      if (saved) return JSON.parse(saved) as { desktop: number; mobile: number };
+      if (saved) return JSON.parse(saved) as { desktop: number; mobile: number; zoom: number };
     } catch {}
-    return { desktop: 2, mobile: 1 };
+    return { desktop: 2, mobile: 1, zoom: 60 };
   };
 
   const [desktopCols, setDesktopCols] = useState(() => readCols(colsKey).desktop);
   const [mobileCols, setMobileCols] = useState(() => readCols(colsKey).mobile);
+  const [embedZoom, setEmbedZoom] = useState(() => {
+    const saved = readCols(colsKey).zoom;
+    return [30, 40, 50, 60, 70, 80].includes(saved) ? saved : 60;
+  });
 
   useEffect(() => {
     if (!colsKey) return;
-    try { localStorage.setItem(colsKey, JSON.stringify({ desktop: desktopCols, mobile: mobileCols })); } catch {}
-  }, [colsKey, desktopCols, mobileCols]);
+    try { localStorage.setItem(colsKey, JSON.stringify({ desktop: desktopCols, mobile: mobileCols, zoom: embedZoom })); } catch {}
+  }, [colsKey, desktopCols, mobileCols, embedZoom]);
 
   const [setupOpen, setSetupOpen] = useState(false);
   const [postSetupOpen, setPostSetupOpen] = useState(false);
@@ -91,27 +108,44 @@ export default function EmbedBuilder({ eventId, onAddSpeaker }: { eventId: strin
     }));
   })();
 
-  // Only speakers whose Speaker Card is approved are eligible for the embed
   const eligibleSpeakers = allSpeakers.filter(s => s.websiteCardApproved);
   const liveSpeakers = eligibleSpeakers.filter(s => s.embedEnabled);
 
   const embedUrl = `${API_BASE}/embed/${eventId}?column_amount=${desktopCols}&column_amount_mobile=${mobileCols}`;
   const iframeId = `seamless-wall-${eventId}`;
+  const containerId = `seamless-container-${eventId}`;
 
-  // Basic iframe — fixed fallback height. Works everywhere, no JS required.
-  const iframeSnippet = `<iframe id="${iframeId}" src="${embedUrl}" loading="lazy" style="width:100%;height:800px;border:none;border-radius:8px;display:block;"></iframe>`;
+  const zoom = embedZoom / 100;
+  const scaleInv = 1 / zoom;
+  const widthPct = `${parseFloat((scaleInv * 100).toFixed(2))}%`;
+  const scaleInvStr = parseFloat(scaleInv.toFixed(4)).toString();
+  const containerH = Math.round(800 * zoom);
 
-  // Auto-resize iframe — adjusts height to content via postMessage.
-  // TODO (backend): the embed page must broadcast its height on load + resize:
-  //   window.addEventListener('load', send); window.addEventListener('resize', send);
-  //   function send() { window.parent.postMessage({ type: 'seamless:resize', height: document.body.scrollHeight }, '*'); }
-  // TODO (backend): add responsive CSS so speaker cards scale to container width instead of rendering at native resolution (600×600 / 900×600).
-  const autoResizeSnippet = `<iframe id="${iframeId}" src="${embedUrl}" loading="lazy" style="width:100%;border:none;border-radius:8px;display:block;"></iframe>
+  // ─── Backend TODO (embed page) ───────────────────────────────────────────
+  // 1. ZOOM — accept ?zoom=0.x and apply `body { zoom: X }` so content scales
+  //    properly inside the iframe. Replaces the current CSS transform approach,
+  //    which clips content due to overflow clipping on layout (not visual) coords.
+  // 2. RESPONSIVE LAYOUT — remove any max-width / margin:auto centering so the
+  //    card grid fills whatever width the iframe is given (fluid columns).
+  // 3. AUTO-RESIZE HEIGHT — broadcast scrollHeight via postMessage on load + resize:
+  //    function send() { window.parent.postMessage({ type:'seamless:resize', height:document.body.scrollHeight },'*'); }
+  //    window.addEventListener('load', send); window.addEventListener('resize', send);
+  // ─────────────────────────────────────────────────────────────────────────
+
+  // Basic iframe — fixed 800px content height, zoom via CSS transform (see TODO 1).
+  const iframeSnippet = `<div style="width:100%;height:${containerH}px;overflow:hidden;border-radius:8px;"><iframe id="${iframeId}" src="${embedUrl}" loading="lazy" style="width:${widthPct};height:800px;transform:scale(${zoom});transform-origin:0 0;border:none;display:block;"></iframe></div>`;
+
+  // Auto-resize — falls back to 800px; height auto-adjusts once backend ships TODO 3.
+  const autoResizeSnippet = `<div id="${containerId}" style="width:100%;height:${containerH}px;overflow:hidden;border-radius:8px;">
+  <iframe id="${iframeId}" src="${embedUrl}" loading="lazy" style="width:${widthPct};height:800px;transform:scale(${zoom});transform-origin:0 0;border:none;display:block;"></iframe>
+</div>
 <script>
 window.addEventListener('message', function(e) {
   if (e.data && e.data.type === 'seamless:resize') {
     var f = document.getElementById('${iframeId}');
-    if (f) f.style.height = e.data.height + 'px';
+    var c = document.getElementById('${containerId}');
+    if (f) f.style.height = Math.ceil(e.data.height * ${scaleInvStr}) + 'px';
+    if (c) c.style.height = e.data.height + 'px';
   }
 });
 </script>`;
@@ -150,6 +184,16 @@ window.addEventListener('message', function(e) {
     setPostSetupOpen(true);
   };
 
+  const SNIPPETS: { key: "autoresize" | "iframe" | "url"; label: string; note: string; text: string }[] = [
+    { key: "autoresize", label: "Auto-resize snippet", note: "recommended", text: autoResizeSnippet },
+    { key: "iframe",     label: "Basic iFrame",        note: "fixed height",  text: iframeSnippet },
+    { key: "url",        label: "Direct URL",           note: "white bg",      text: embedUrl },
+  ];
+
+  // Preview iframe dimensions — fills the modal preview area at the chosen zoom
+  const previewH = 400;
+  const previewIframeH = Math.round(previewH / zoom);
+
   return (
     <div className="space-y-4 pt-6">
       {/* First-visit setup modal */}
@@ -181,12 +225,60 @@ window.addEventListener('message', function(e) {
           </DialogHeader>
           <p className="text-sm text-muted-foreground">Your column layout is saved. Ready to add your first speaker?</p>
           <div className="flex gap-2 pt-1">
-            <Button onClick={() => { setPostSetupOpen(false); onAddSpeaker?.(); }}>
-              Add Speaker
-            </Button>
-            <Button variant="outline" onClick={() => setPostSetupOpen(false)}>
-              Done
-            </Button>
+            <Button onClick={() => { setPostSetupOpen(false); onAddSpeaker?.(); }}>Add Speaker</Button>
+            <Button variant="outline" onClick={() => setPostSetupOpen(false)}>Done</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Get Embed Code modal */}
+      <Dialog open={embedModalOpen} onOpenChange={(open) => { setEmbedModalOpen(open); if (!open) setCopiedEmbed(null); }}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Get Embed Code</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {/* Live preview */}
+            <div
+              className="w-full rounded-lg border border-border overflow-hidden bg-muted/20"
+              style={{ height: previewH }}
+            >
+              <iframe
+                key={embedUrl}
+                src={embedUrl}
+                style={{
+                  width: widthPct,
+                  height: previewIframeH,
+                  transform: `scale(${zoom})`,
+                  transformOrigin: '0 0',
+                  border: 'none',
+                  display: 'block',
+                }}
+              />
+            </div>
+
+            {/* Zoom picker */}
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-foreground">Zoom</span>
+              <ZoomPicker value={embedZoom} onChange={setEmbedZoom} />
+            </div>
+
+            {/* Copy options */}
+            <div className="rounded-lg border border-border overflow-hidden">
+              {SNIPPETS.map(({ key, label, note, text }) => (
+                <div key={key} className="flex items-center justify-between px-4 py-3 border-b border-border last:border-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-foreground">{label}</span>
+                    <span className="text-xs text-muted-foreground">{note}</span>
+                  </div>
+                  <Button size="sm" variant="outline" className="h-7 gap-1.5 text-xs px-2.5 shrink-0" onClick={() => copyText(text, key)}>
+                    {copiedEmbed === key ? <><Check className="h-3.5 w-3.5" />Copied</> : <><Copy className="h-3.5 w-3.5" />Copy</>}
+                  </Button>
+                </div>
+              ))}
+            </div>
+
+            <p className="text-xs text-muted-foreground">Paste once. If you change zoom later, return here and replace the snippet on your site.</p>
           </div>
         </DialogContent>
       </Dialog>
@@ -209,27 +301,9 @@ window.addEventListener('message', function(e) {
                   <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs px-2.5" onClick={() => window.open(embedUrl, "_blank", "noopener")}>
                     <ExternalLink className="h-3.5 w-3.5" />Preview
                   </Button>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button size="sm" className="h-7 gap-1.5 text-xs px-2.5">
-                        {copiedEmbed ? <><Check className="h-3.5 w-3.5" />Copied</> : <><Copy className="h-3.5 w-3.5" />Copy Embed Code</>}
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => copyText(autoResizeSnippet, "autoresize")}>
-                        {copiedEmbed === "autoresize" ? <Check className="h-3.5 w-3.5 mr-2" /> : <Copy className="h-3.5 w-3.5 mr-2" />}
-                        Auto-resize snippet <span className="text-muted-foreground ml-1.5 text-xs">recommended</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => copyText(iframeSnippet, "iframe")}>
-                        {copiedEmbed === "iframe" ? <Check className="h-3.5 w-3.5 mr-2" /> : <Copy className="h-3.5 w-3.5 mr-2" />}
-                        Basic iFrame <span className="text-muted-foreground ml-1.5 text-xs">fixed 800px height</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => copyText(embedUrl, "url")}>
-                        {copiedEmbed === "url" ? <Check className="h-3.5 w-3.5 mr-2" /> : <Copy className="h-3.5 w-3.5 mr-2" />}
-                        Direct URL <span className="text-muted-foreground ml-1.5 text-xs">white bg</span>
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <Button size="sm" className="h-7 gap-1.5 text-xs px-2.5" onClick={() => setEmbedModalOpen(true)}>
+                    <Copy className="h-3.5 w-3.5" />Get Embed Code
+                  </Button>
                   {eligibleSpeakers.length > 0 && (
                     <span className="text-xs text-muted-foreground">
                       <span className="font-medium text-foreground">{liveSpeakers.length}</span> / {eligibleSpeakers.length} live
