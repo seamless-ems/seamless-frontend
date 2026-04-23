@@ -375,7 +375,7 @@ export default function SpeakerModule() {
             </div>
 
             {/* Quick panel — always visible, blank until a badge is clicked */}
-            <div className="w-[720px] shrink-0 overflow-hidden self-stretch flex flex-col">
+            <div className="w-[560px] shrink-0 overflow-hidden self-stretch flex flex-col">
               {panelSpeaker && panelView ? (
                 <SpeakerQuickPanel
                   speaker={panelSpeaker}
