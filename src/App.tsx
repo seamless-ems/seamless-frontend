@@ -27,6 +27,7 @@ import PromoEmbed from "./pages/public/PromoEmbed";
 import PromoCardBuilderPage from "./pages/organizer/PromoCardBuilderPage";
 import WebsiteCardBuilderPage from "./pages/organizer/WebsiteCardBuilderPage";
 import Onboarding from "./components/onboarding/Onboarding";
+import FakeLandingPage from "./pages/FakeLandingPage";
 
 // Helper component for root redirect
 function RootRedirect() {
@@ -305,6 +306,12 @@ const App = () => {
                     <SpeakerProfile />
                   </DashboardLayout>
                 </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/fake-landing"
+              element={
+                <FakeLandingPage />
               }
             />
 

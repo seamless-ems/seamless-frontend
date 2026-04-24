@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { getJson } from "@/lib/api";
 import { Speaker } from "@/types/event";
+import { CircleLoader } from "react-spinners";
 
 // Minimal website-card embed for a single speaker (for iframe).
 export default function SpeakerEmbedSingle() {
@@ -22,7 +23,9 @@ export default function SpeakerEmbedSingle() {
   return (
     <div className="min-h-screen bg-white text-black p-6">
       {isLoading ? (
-        <p>Loading…</p>
+        <div className="col-span-full flex justify-center py-8">
+            <CircleLoader size={40} color="#4e5ca6" />
+          </div>
       ) : error ? (
         <p className="text-red-600">Failed to load speaker: {String(error.message)}</p>
       ) : (

@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { CircleLoader } from "react-spinners";
 
 type Props = {
   speakers: any[];
@@ -584,7 +585,13 @@ export default function SpeakersTable({ speakers, isLoading, eventId, eventName 
 
       <tbody>
         {isLoading ? (
-          <tr><td colSpan={6} className="py-12 text-center text-sm text-muted-foreground">Loading speakers…</td></tr>
+          <tr>
+            <td colSpan={6}>
+              <div className="flex justify-center py-8">
+                <CircleLoader size={40} color="#4e5ca6" />
+              </div>
+            </td>
+          </tr>
         ) : speakers.length === 0 && !hasAnySpeakers && onAddSpeaker ? (
           <tr>
             <td colSpan={6}>

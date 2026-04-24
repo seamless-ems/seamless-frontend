@@ -14,6 +14,7 @@ import { Link } from "react-router-dom";
 import { Event } from "@/types/event";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getJson, deleteEvent } from "@/lib/api";
+import { CircleLoader } from "react-spinners";
 
 // Fetch events from API
 
@@ -101,7 +102,9 @@ export default function Events() {
 
         {/* Events Grid */}
         {isLoading ? (
-          <div className="py-16 text-center">Loading events…</div>
+          <div className="col-span-full flex justify-center py-8">
+            <CircleLoader size={40} color="#4e5ca6" />
+          </div>
         ) : error ? (
           <div className="py-16 text-center text-destructive">Error loading events: {String(error.message)}</div>
         ) : filteredEvents.length > 0 ? (

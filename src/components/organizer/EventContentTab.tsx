@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChevronRight, Download, Upload } from "lucide-react";
+import { CircleLoader } from 'react-spinners';
 import { toast } from "@/hooks/use-toast";
 
 interface Props {
@@ -411,7 +412,7 @@ export default function EventContentTab({ eventId }: Props) {
               <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground" colSpan={2}>
                 {speakers.length > 0
                   ? `${speakers.length} speaker${speakers.length !== 1 ? "s" : ""}`
-                  : isFetching ? "Loading…" : "Speakers"}
+                  : isFetching ? <span className="inline-flex items-center gap-2"><CircleLoader size={16} color="#4e5ca6" />Loading…</span> : "Speakers"}
               </th>
               <th className="px-5 py-2 text-left text-xs font-medium text-muted-foreground">Content</th>
               <th className="px-4 py-2 w-[160px] text-right">
@@ -430,8 +431,8 @@ export default function EventContentTab({ eventId }: Props) {
             {speakers.length === 0 ? (
               <tr>
                 <td colSpan={5} className="py-16 text-center text-sm text-muted-foreground">
-                  {isFetching ? "Loading…" : "No speakers yet"}
-                </td>
+                      {isFetching ? <div className="flex justify-center"><CircleLoader size={40} color="#4e5ca6" /></div> : "No speakers yet"}
+                    </td>
               </tr>
             ) : (
               speakers.map((s) => (

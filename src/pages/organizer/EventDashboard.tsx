@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { createCheckout } from '@/lib/api';
 import React, { useState } from 'react';
 import { Badge } from "@/components/ui/badge";
+import { CircleLoader } from "react-spinners";
 export default function EventDashboard() {
 	const { id } = useParams();
 
@@ -78,7 +79,9 @@ export default function EventDashboard() {
 	const speakerPaid = isModulePaid(modules.speaker);
 
 	if (isLoading) {
-		return <div className="py-16 text-center">Loading event…</div>;
+		return <div className="col-span-full flex justify-center py-8">
+            <CircleLoader size={40} color="#4e5ca6" />
+          </div>;
 	}
 
 	if (error) {

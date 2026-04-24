@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getJson, getMe } from "@/lib/api";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { CircleLoader } from 'react-spinners';
 import { Link } from "react-router-dom";
 
 async function fetchEvents(): Promise<Event[]> {
@@ -84,7 +85,9 @@ export default function Index() {
       {/* Events Grid */}
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
         {isLoading ? (
-          <div>Loading...</div>
+          <div className="col-span-full flex justify-center py-8">
+            <CircleLoader size={40} color="#4e5ca6" />
+          </div>
         ) : displayEvents.length > 0 ? (
           displayEvents.map((event, index) => {
             // Resolve speakerId from `me` for this event, if present

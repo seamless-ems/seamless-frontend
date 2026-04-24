@@ -3,6 +3,7 @@ import { useParams, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { getJson } from "@/lib/api";
 import { Speaker } from "@/types/event";
+import { CircleLoader } from "react-spinners";
 
 // Minimal embed page that shows promo card previews for all speakers in an event.
 export default function SpeakerEmbed() {
@@ -50,7 +51,9 @@ export default function SpeakerEmbed() {
     <div className="min-h-screen bg-white text-black p-4">
       <div className="mx-auto max-w-6xl">
         {isLoading ? (
-          <p>Loading…</p>
+          <div className="col-span-full flex justify-center py-8">
+            <CircleLoader size={40} color="#4e5ca6" />
+          </div>
         ) : error ? (
           <p className="text-red-600">Failed to load speakers: {String(error.message)}</p>
         ) : visibleSpeakers.length === 0 ? (
