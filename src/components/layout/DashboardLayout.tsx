@@ -1,11 +1,6 @@
 import { ReactNode, useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
-import {
-  Users,
-  Settings,
-  CreditCard,
-  ChevronDown,
-} from "lucide-react";
+import { Users, Settings, CreditCard, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -27,15 +22,25 @@ interface DashboardLayoutProps {
   mode?: "organizer" | "speaker";
 }
 
-export function DashboardLayout({ children, eventId, mode: propMode }: DashboardLayoutProps) {
+export function DashboardLayout({
+  children,
+  eventId,
+  mode: propMode,
+}: DashboardLayoutProps) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { data: me } = useQuery<any>({ queryKey: ["me"], queryFn: () => getMe() });
-  const { data: teams } = useQuery<any[]>({ queryKey: ["teams"], queryFn: () => getTeam() });
+  const { data: me } = useQuery<any>({
+    queryKey: ["me"],
+    queryFn: () => getMe(),
+  });
+  const { data: teams } = useQuery<any[]>({
+    queryKey: ["teams"],
+    queryFn: () => getTeam(),
+  });
   const { data: eventData } = useQuery<any>({
     queryKey: ["event", eventId],
-    queryFn: () => eventId ? getJson<any>(`/events/${eventId}`) : null,
-    enabled: !!eventId
+    queryFn: () => (eventId ? getJson<any>(`/events/${eventId}`) : null),
+    enabled: !!eventId,
   });
 
   // Extract speakerId from URL if we're on a speaker page
@@ -44,15 +49,26 @@ export function DashboardLayout({ children, eventId, mode: propMode }: Dashboard
 
   const { data: speakerData } = useQuery<any>({
     queryKey: ["event", eventId, "speaker", speakerId],
-    queryFn: () => speakerId && eventId ? getJson<any>(`/events/${eventId}/speakers/${speakerId}`) : null,
-    enabled: !!(eventId && speakerId)
+    queryFn: () =>
+      speakerId && eventId
+        ? getJson<any>(`/events/${eventId}/speakers/${speakerId}`)
+        : null,
+    enabled: !!(eventId && speakerId),
   });
 
-  const [mode, setMode] = useState<"organizer" | "speaker">(propMode ?? "organizer");
+  const [mode, setMode] = useState<"organizer" | "speaker">(
+    propMode ?? "organizer",
+  );
 
   function Header() {
-    const orgName = me?.organization?.name || me?.organization_name || "Team Seamless";
-    const showBreadcrumbs = eventId || location.pathname.includes("/settings") || location.pathname.includes("/team") || location.pathname.includes("/subscription") || location.pathname.includes("/events/new");
+    const orgName =
+      me?.organization?.name || me?.organization_name || "Team Seamless";
+    const showBreadcrumbs =
+      eventId ||
+      location.pathname.includes("/settings") ||
+      location.pathname.includes("/team") ||
+      location.pathname.includes("/subscription") ||
+      location.pathname.includes("/events/new");
 
     let eventName = "";
     let subPageName = "";
@@ -65,7 +81,8 @@ export function DashboardLayout({ children, eventId, mode: propMode }: Dashboard
         subPageName = "Speakers";
 
         if (speakerId && speakerData) {
-          const firstName = speakerData.firstName || speakerData.first_name || "";
+          const firstName =
+            speakerData.firstName || speakerData.first_name || "";
           const lastName = speakerData.lastName || speakerData.last_name || "";
           speakerName = `${firstName} ${lastName}`.trim() || "Speaker";
         }
@@ -85,8 +102,14 @@ export function DashboardLayout({ children, eventId, mode: propMode }: Dashboard
     return (
       <header className="fixed top-0 left-0 right-0 z-30 flex h-16 items-center justify-between border-b border-border bg-card/95 px-6">
         <div className="flex items-center gap-4">
-          <Link to={mode === "speaker" ? "/speaker" : "/organizer"} className="flex items-baseline gap-1.5 leading-none">
-            <span className="text-[20px] font-semibold text-accent" style={{ letterSpacing: '-0.01em' }}>
+          <Link
+            to={mode === "speaker" ? "/speaker" : "/organizer"}
+            className="flex items-baseline gap-1.5 leading-none"
+          >
+            <span
+              className="text-[20px] font-semibold text-accent"
+              style={{ letterSpacing: "-0.01em" }}
+            >
               Seamless
             </span>
             <span className="text-[16px] font-normal text-muted-foreground">
@@ -96,67 +119,95 @@ export function DashboardLayout({ children, eventId, mode: propMode }: Dashboard
 
           {showBreadcrumbs && (
             <div className="flex items-center gap-2 ml-2 text-sm text-muted-foreground">
-              <Link to="/organizer" className="text-accent hover:text-accent-hover no-underline">
+              <Link
+                to="/organizer"
+                className="text-accent hover:text-accent-hover no-underline"
+              >
                 {orgName}
               </Link>
               <span>›</span>
               {subPageName ? (
                 <>
-                  <Link to={`/organizer/event/${eventId}`} className="text-accent hover:text-accent-hover no-underline">
+                  <Link
+                    to={`/organizer/event/${eventId}`}
+                    className="text-accent hover:text-accent-hover no-underline"
+                  >
                     {eventName}
                   </Link>
                   <span>›</span>
                   {speakerName ? (
                     <>
-                      <Link to={`/organizer/event/${eventId}/speakers`} className="text-accent hover:text-accent-hover no-underline">
+                      <Link
+                        to={`/organizer/event/${eventId}/speakers`}
+                        className="text-accent hover:text-accent-hover no-underline"
+                      >
                         {subPageName}
                       </Link>
                       <span>›</span>
-                      <span className="text-foreground font-semibold">{speakerName}</span>
+                      <span className="text-foreground font-semibold">
+                        {speakerName}
+                      </span>
                     </>
                   ) : (
-                    <span className="text-foreground font-semibold">{subPageName}</span>
+                    <span className="text-foreground font-semibold">
+                      {subPageName}
+                    </span>
                   )}
                 </>
               ) : (
-                <span className="text-foreground font-semibold">{eventName}</span>
+                <span className="text-foreground font-semibold">
+                  {eventName}
+                </span>
               )}
             </div>
           )}
         </div>
 
         <div className="ml-auto flex items-center gap-2">
-          <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-8 w-8">
-            <Settings className="h-4 w-4 text-muted-foreground" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-44">
-          <DropdownMenuItem asChild>
-            <Link to="/organizer/settings">
-              <Settings className="h-4 w-4 mr-2" />
-              Settings
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            className="text-destructive"
-            onSelect={async () => {
-              try {
-                await firebaseSignOut();
-              } catch (e) {
-                try { clearTokenAndNotify(); } catch {}
-              }
-              navigate('/login');
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setMode("organizer");
+              if (typeof window !== "undefined")
+                window.localStorage.setItem("dashboardMode", "organizer");
+              navigate("/organizer/settings");
             }}
           >
-            Sign Out
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+            Invite Team Member
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <Settings className="h-4 w-4 text-muted-foreground" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              <DropdownMenuItem asChild>
+                <Link to="/organizer/settings">
+                  <Settings className="h-4 w-4 mr-2" />
+                  Settings
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive"
+                onSelect={async () => {
+                  try {
+                    await firebaseSignOut();
+                  } catch (e) {
+                    try {
+                      clearTokenAndNotify();
+                    } catch {}
+                  }
+                  navigate("/login");
+                }}
+              >
+                Sign Out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-
       </header>
     );
   }
@@ -164,18 +215,24 @@ export function DashboardLayout({ children, eventId, mode: propMode }: Dashboard
   useEffect(() => {
     if (propMode) {
       setMode(propMode);
-      if (typeof window !== "undefined") window.localStorage.setItem("dashboardMode", propMode);
+      if (typeof window !== "undefined")
+        window.localStorage.setItem("dashboardMode", propMode);
       return;
     }
 
-    const stored = typeof window !== "undefined" ? window.localStorage.getItem("dashboardMode") : null;
+    const stored =
+      typeof window !== "undefined"
+        ? window.localStorage.getItem("dashboardMode")
+        : null;
     if (stored === "organizer" || stored === "speaker") {
       setMode(stored as "organizer" | "speaker");
       return;
     }
 
     if (me) {
-      const isSpeaker = Array.isArray(me.roles) ? me.roles.includes("speaker") : (me.role === "speaker");
+      const isSpeaker = Array.isArray(me.roles)
+        ? me.roles.includes("speaker")
+        : me.role === "speaker";
       setMode(isSpeaker ? "speaker" : "organizer");
     }
   }, [propMode, me]);

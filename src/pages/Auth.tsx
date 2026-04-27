@@ -217,6 +217,12 @@ const Auth: React.FC = () => {
         )}
       </div>
 
+      {/* need help with logging in div */}
+      <div className="mt-6 text-center">
+        <span className="text-sm text-muted-foreground">Need help logging in?</span>
+        <a href="https://seamlessevents.io/contact" className="text-sm text-primary underline underline-offset-4 ml-1">Contact us</a>
+      </div>
+
       <div className="flex items-center my-6">
         <div className="flex-1 h-px bg-border" />
         <span className="px-4 text-sm text-muted-foreground">or continue with</span>

@@ -344,58 +344,84 @@ export default function TeamSection() {
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
-                            <select
-                              value={pendingRoles[m.id] ?? m.role}
-                              onChange={(e) =>
-                                setPendingRoles((prev) => ({
-                                  ...prev,
-                                  [m.id]: e.target.value,
-                                }))
-                              }
-                              className="border rounded px-2 py-1 text-sm"
-                            >
-                              {(roles || []).map((r: any) => {
-                                const value = typeof r === "string" ? r : r.id || r;
-                                return (
-                                  <option key={value} value={value}>
-                                    {roleLabel(r)}
-                                  </option>
-                                );
-                              })}
-                            </select>
-                            {pendingRoles[m.id] &&
-                            pendingRoles[m.id] !== m.role ? (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                  roleMut.mutate({
-                                    id: m.id,
-                                    role: pendingRoles[m.id],
-                                  });
-                                  setPendingRoles((prev) => {
-                                    const n = { ...prev };
-                                    delete n[m.id];
-                                    return n;
-                                  });
-                                }}
-                              >
-                                Update Role
-                              </Button>
-                            ) : (
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => {
-                                  setConfirmRemoveMemberName(
-                                    m.name ?? m.email ?? "this member",
-                                  );
-                                  setConfirmRemoveMemberId(m.id);
-                                }}
-                              >
-                                Remove
-                              </Button>
-                            )}
+                            {(() => {
+                              const currentRole = m.role || "";
+                              const existingValues = new Set(
+                                (roles || []).map((r: any) =>
+                                  typeof r === "string" ? r : r.id || r,
+                                ),
+                              );
+                              const isOwner = currentRole === "owner";
+
+                              return (
+                                <>
+                                  <select
+                                    value={pendingRoles[m.id] ?? currentRole}
+                                    onChange={(e) =>
+                                      setPendingRoles((prev) => ({
+                                        ...prev,
+                                        [m.id]: e.target.value,
+                                      }))
+                                    }
+                                    className="border rounded px-2 py-1 text-sm"
+                                    disabled={isOwner}
+                                  >
+                                    {!existingValues.has(currentRole) && currentRole && (
+                                      <option key={currentRole} value={currentRole}>
+                                        {roleLabel(currentRole)}
+                                      </option>
+                                    )}
+                                    {(roles || []).map((r: any) => {
+                                      const value = typeof r === "string" ? r : r.id || r;
+                                      return (
+                                        <option key={value} value={value}>
+                                          {roleLabel(r)}
+                                        </option>
+                                      );
+                                    })}
+                                  </select>
+                                  {isOwner && (
+                                    <span className="text-xs text-muted-foreground ml-1">
+                                      Owner (not editable)
+                                    </span>
+                                  )}
+
+                                  {!isOwner && pendingRoles[m.id] &&
+                                  pendingRoles[m.id] !== m.role ? (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => {
+                                        roleMut.mutate({
+                                          id: m.id,
+                                          role: pendingRoles[m.id],
+                                        });
+                                        setPendingRoles((prev) => {
+                                          const n = { ...prev };
+                                          delete n[m.id];
+                                          return n;
+                                        });
+                                      }}
+                                    >
+                                      Update Role
+                                    </Button>
+                                  ) : (
+                                    <Button
+                                      variant="destructive"
+                                      size="sm"
+                                      onClick={() => {
+                                        setConfirmRemoveMemberName(
+                                          m.name ?? m.email ?? "this member",
+                                        );
+                                        setConfirmRemoveMemberId(m.id);
+                                      }}
+                                    >
+                                      Remove
+                                    </Button>
+                                  )}
+                                </>
+                              );
+                            })()}
                           </div>
                         </div>
                       ))

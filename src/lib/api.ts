@@ -207,7 +207,7 @@ export function acceptTeamInvite(token: string): Promise<any> {
 
 export function updateTeamMember(memberId: string, role: string): Promise<any> {
   // role is a required query param per spec; use PATCH
-  return patchJson<{}, any>(`/account/team/${encodeURIComponent(memberId)}?role=${encodeURIComponent(role)}`, {});
+  return patchJson<{}, any>(`/account/team/member/${encodeURIComponent(memberId)}?role=${encodeURIComponent(role)}`, {});
 }
 
 // Update team-level details (name/description)
