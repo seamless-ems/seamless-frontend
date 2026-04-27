@@ -220,7 +220,7 @@ const Auth: React.FC = () => {
       {/* need help with logging in div */}
       <div className="mt-6 text-center">
         <span className="text-sm text-muted-foreground">Need help logging in?</span>
-        <a href="https://seamlessevents.io/contact" className="text-sm text-primary underline underline-offset-4 ml-1">Contact us</a>
+        <a href="https://seamlessevents.io/contact" target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline underline-offset-4 ml-1">Contact us</a>
       </div>
 
       <div className="flex items-center my-6">
