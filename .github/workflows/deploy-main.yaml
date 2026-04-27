@@ -1,0 +1,125 @@
+name: Deploy Production
+
+on:
+  push:
+    branches:
+      - 'main'
+      - 'main/**'
+  pull_request:
+    # trigger on PRs where the head or base are main branches
+    branches:
+      - 'main'
+      - 'main/**'
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '22'
+
+jobs:
+  deploy-main:
+    name: Deploy Firebase production for main branch
+    runs-on: ubuntu-latest
+    concurrency:
+      group: firebase-deploy-main-${{ github.ref }}
+      cancel-in-progress: true
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        # add all the VITE_ env vars if using Vite
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+        run: npm run build --if-present
+
+      - name: Ensure jq is available
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Configure Firebase service account
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          echo "Writing Firebase service account to file"
+          printf "%s" "$FIREBASE_SERVICE_ACCOUNT" | base64 --decode > "${{ github.workspace }}/firebase-service-account.json" 2>/dev/null || printf "%s" "$FIREBASE_SERVICE_ACCOUNT" > "${{ github.workspace }}/firebase-service-account.json"
+          echo "firebase-service-account.json written"
+
+      - name: Export credentials for Firebase tooling
+        run: echo "GOOGLE_APPLICATION_CREDENTIALS=${{ github.workspace }}/firebase-service-account.json" >> $GITHUB_ENV
+
+      - name: Determine branch and channel name
+        id: channel
+        run: |
+          EVENT_NAME=${GITHUB_EVENT_NAME}
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            BRANCH_NAME="${GITHUB_HEAD_REF}"
+          else
+            BRANCH_NAME="${GITHUB_REF#refs/heads/}"
+          fi
+          # For production we use a stable production channel name.
+          CHANNEL="production"
+          echo "channel=$CHANNEL" >> $GITHUB_OUTPUT
+          echo "branch=$BRANCH_NAME" >> $GITHUB_OUTPUT
+
+      - name: Deploy to Firebase Hosting (production)
+        env:
+          FIREBASE_PROJECT: ${{ secrets.FIREBASE_PROJECT_ID_MAIN }}
+        run: |
+          set -euo pipefail
+          if [ -z "$FIREBASE_PROJECT" ]; then
+            echo "Missing secret FIREBASE_PROJECT_ID_MAIN. Set this to your production Firebase project id." >&2
+            exit 1
+          fi
+          echo "Deploying to project $FIREBASE_PROJECT (production)"
+          echo "Installing firebase-tools"
+          npm install -g firebase-tools@latest
+
+          DEPLOY_OUT=deploy.json
+          DEPLOY_LOG=deploy.log
+          echo "Running firebase-tools with debug output"
+          # Perform a live production deploy to hosting. Ensure the service account
+          # used by the workflow has permission to update production hosting.
+          if npx firebase-tools deploy --only hosting --project "$FIREBASE_PROJECT" --json --debug >"$DEPLOY_OUT" 2>"$DEPLOY_LOG"; then
+            echo "Deploy command exited successfully"
+          else
+            echo "Deploy command failed; dumping logs for debugging" >&2
+            echo "---- deploy.json ----"
+            [ -f "$DEPLOY_OUT" ] && sed -n '1,200p' "$DEPLOY_OUT" || echo "(no deploy.json)"
+            echo "---- deploy.log ----"
+            [ -f "$DEPLOY_LOG" ] && sed -n '1,400p' "$DEPLOY_LOG" || echo "(no deploy.log)"
+            echo "Failing the step" >&2
+            exit 1
+          fi
+
+          echo "---- deploy.json ----"
+          sed -n '1,200p' "$DEPLOY_OUT" || true
+          echo "---- deploy.log ----"
+          sed -n '1,400p' "$DEPLOY_LOG" || true
+
+          # Indicate success to the workflow outputs; we don't have a preview URL for live deploys.
+          echo "deploy_success=true" >> $GITHUB_OUTPUT
+
+      - name: Comment production deploy on PR
+        if: ${{ github.event_name == 'pull_request' && success() }}
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ✅ Production hosting updated for branch `${{ steps.channel.outputs.branch }}`
+
+            This workflow performed a live production deploy to the project configured in `FIREBASE_PROJECT_ID_MAIN`.
