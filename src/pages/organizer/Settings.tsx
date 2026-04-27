@@ -9,7 +9,7 @@ import React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
-import { getMe, updateMe, getSettings, updateSettings, getTeam, getBillingPortal } from "@/lib/api";
+import { getMe, updateMe, getTeam, getBillingPortal } from "@/lib/api";
 import { HELP_WIDGET_OPEN_EVENT } from "@/components/ui/HelpWidget";
 import {
   User,
@@ -25,7 +25,6 @@ export default function Settings() {
   const qc = useQueryClient();
 
   const { data: me } = useQuery<any, Error>({ queryKey: ["me"], queryFn: () => getMe() });
-  const { data: settings } = useQuery<any, Error>({ queryKey: ["settings"], queryFn: () => getSettings(), enabled: !!me });
   const { data: teams } = useQuery<any[]>({ queryKey: ["teams"], queryFn: () => getTeam(), enabled: !!me });
 
   const [editingName, setEditingName] = React.useState(false);
@@ -45,18 +44,7 @@ export default function Settings() {
     onError: (err: any) => {
       toast.error(String(err));
     },
-  });
-
-  const updateSettingsMut = useMutation({
-    mutationFn: (body: any) => updateSettings(body),
-    onSuccess: () => {
-      toast.success("Settings updated");
-      qc.invalidateQueries({ queryKey: ["settings"] });
-    },
-    onError: (err: any) => {
-      toast.error(String(err));
-    },
-  });
+  });2
 
   const form = useForm<any>({
     defaultValues: {
@@ -73,16 +61,8 @@ export default function Settings() {
       createdAt: me?.createdAt ? new Date(me.createdAt).toLocaleDateString() : "",
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [me, settings]);
+  }, [me]);
 
-  const onSave = form.handleSubmit(async (vals) => {
-    try {
-      await updateMeMut.mutateAsync({ name: vals.name, email: vals.email });
-      await updateSettingsMut.mutateAsync(vals.notifications ?? settings ?? {});
-    } catch (e) {
-      // handled by mutation onError
-    }
-  });
 
   // Billing portal
   const billingMut = useMutation({

@@ -3431,6 +3431,22 @@
               "default": true,
               "title": "Include Bio Modal"
             }
+          },
+          {
+            "name": "bg_color",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bg Color"
+            }
           }
         ],
         "responses": {
@@ -3668,6 +3684,58 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HelpSchema"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mail/event/{event_id}": {
+      "post": {
+        "tags": [
+          "Email"
+        ],
+        "summary": "Email Potential Speaker",
+        "operationId": "email_potential_speaker_mail_event__event_id__post",
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Event Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailPayloadSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailPayloadSchema"
                 }
               }
             }
@@ -4140,6 +4208,28 @@
               }
             ],
             "title": "Companylogowhite"
+          },
+          "talkTitle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Talktitle"
+          },
+          "talkDescription": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Talkdescription"
           },
           "registeredAt": {
             "anyOf": [
@@ -4816,6 +4906,17 @@
               "attendee": false
             }
           },
+          "fromName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fromname"
+          },
           "fromEmail": {
             "anyOf": [
               {
@@ -5044,6 +5145,17 @@
               "content": false,
               "attendee": false
             }
+          },
+          "fromName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fromname"
           },
           "fromEmail": {
             "anyOf": [

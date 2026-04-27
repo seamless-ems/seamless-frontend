@@ -378,7 +378,7 @@ export async function renderAllElements(params: RenderParams) {
         canvas.add(group);
         elementRefs.current.eventLogo = group;
       }
-    } else if (["name", "title", "company", "firstName", "lastName"].includes(key)) {
+    } else if (["name", "title", "company", "firstName", "lastName", "talkTitle", "talkDescription"].includes(key)) {
       let displayText = cfg.text || cfg.label;
       // Backwards compat: single `name` element using two-line format
       if (key === "name" && cfg.nameFormat === "two-line") {
@@ -391,9 +391,10 @@ export async function renderAllElements(params: RenderParams) {
       text.set({ scaleX: 1, scaleY: 1 });
 
       // When using separate `firstName`/`lastName`, allow only 1 line each; keep title at up to 2 lines
-      if (key === "name" || key === "title" || key === "firstName" || key === "lastName") {
-        const maxLines = key === "title" ? 2 : 1;
-        const minFontSize = key === "title" ? 14 : 20;
+      if (key === "name" || key === "title" || key === "firstName" || key === "lastName" || key === "talk_title" || key === "talk_description") {
+        // For talk fields allow slightly larger title/description sizes
+        const maxLines = key === "title" || key === "talk_title" ? 2 : key === "talk_description" ? 3 : 1;
+        const minFontSize = key === "title" || key === "talk_title" ? 14 : key === "talk_description" ? 12 : 20;
         const boxWidth = cfg.width || 300;
         let fs = cfg.fontSize;
 

@@ -41,8 +41,9 @@ import {
 } from "@/components/ui/tooltip";
 import { CircleLoader } from "react-spinners";
 
-function roleLabel(role: string): string {
-  const stripped = role.replace(/^[^:]+:/, "");
+function roleLabel(role: any): string {
+  const val = typeof role === "string" ? role : role?.id ?? String(role || "");
+  const stripped = val.replace(/^[^:]+:/, "");
   return stripped.charAt(0).toUpperCase() + stripped.slice(1);
 }
 
@@ -73,7 +74,7 @@ export default function TeamSection() {
   const [creatingTeam, setCreatingTeam] = React.useState(false);
   const [inviteForTeam, setInviteForTeam] = React.useState<string | null>(null);
   const [inviteEmail, setInviteEmail] = React.useState("");
-  const [inviteRole, setInviteRole] = React.useState("member");
+  const [inviteRole, setInviteRole] = React.useState<string>("");
   const [editingTeamId, setEditingTeamId] = React.useState<string | null>(null);
   const [editingTeamName, setEditingTeamName] = React.useState("");
   const [pendingRoles, setPendingRoles] = React.useState<
@@ -140,7 +141,7 @@ export default function TeamSection() {
 
   // Default invite role to first available
   React.useEffect(() => {
-    if (roles && roles.length > 0 && inviteRole === "member") {
+    if (roles && roles.length > 0 && inviteRole === "") {
       setInviteRole(roles[0].id || roles[0]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -353,9 +354,14 @@ export default function TeamSection() {
                               }
                               className="border rounded px-2 py-1 text-sm"
                             >
-                              <option value="team:admin">Admin</option>
-                              <option value="team:member">Member</option>
-                              <option value="team:viewer">Viewer</option>
+                              {(roles || []).map((r: any) => {
+                                const value = typeof r === "string" ? r : r.id || r;
+                                return (
+                                  <option key={value} value={value}>
+                                    {roleLabel(r)}
+                                  </option>
+                                );
+                              })}
                             </select>
                             {pendingRoles[m.id] &&
                             pendingRoles[m.id] !== m.role ? (
@@ -414,9 +420,14 @@ export default function TeamSection() {
                               onChange={(e) => setInviteRole(e.target.value)}
                               className="border rounded px-2 py-1 text-sm"
                             >
-                              <option value="team:admin">Admin</option>
-                              <option value="team:member">Member</option>
-                              <option value="team:viewer">Viewer</option>
+                              {(roles || []).map((r: any) => {
+                                const value = typeof r === "string" ? r : r.id || r;
+                                return (
+                                  <option key={value} value={value}>
+                                    {roleLabel(r)}
+                                  </option>
+                                );
+                              })}
                             </select>
                             <TooltipProvider delayDuration={100}>
                               <Tooltip>
@@ -504,9 +515,14 @@ export default function TeamSection() {
                         }
                         className="border rounded px-2 py-1 text-sm"
                       >
-                        <option value="team:admin">Admin</option>
-                        <option value="team:member">Member</option>
-                        <option value="team:viewer">Viewer</option>
+                        {(roles || []).map((r: any) => {
+                          const value = typeof r === "string" ? r : r.id || r;
+                          return (
+                            <option key={value} value={value}>
+                              {roleLabel(r)}
+                            </option>
+                          );
+                        })}
                       </select>
                       <Button
                         variant="destructive"

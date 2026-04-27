@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { getJson } from "@/lib/api";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { createSpeaker, emailSpeaker, checkSpeakerExistsForEvent } from "@/lib/api";
+import { createSpeaker, emailSpeaker, checkSpeakerExistsForEvent, emailEvent } from "@/lib/api";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
 import { Check, Copy, Mail, Plus, ClipboardList } from "lucide-react";
@@ -111,9 +113,17 @@ export default function AddSpeakerDialog({ eventId, eventName = "the event", ema
   const [introText, setIntroText] = useState("");
   const [closingText, setClosingText] = useState("");
 
-  const intakeUrl = createdSpeakerId
-    ? `${window.location.origin}/speaker-intake/${eventId}?speakerId=${createdSpeakerId}`
-    : `${window.location.origin}/speaker-intake/${eventId}`;
+  const intakeUrl = (() => {
+    if (createdSpeakerId) return `${window.location.origin}/speaker-intake/${eventId}?speakerId=${createdSpeakerId}`;
+    const params = new URLSearchParams();
+    if (fields.firstName) params.set("firstName", fields.firstName);
+    if (fields.lastName) params.set("lastName", fields.lastName);
+    if (fields.email) params.set("email", fields.email);
+    // include a flag so the intake form can make the email read-only when present
+    if (fields.email) params.set("readonly_email", "1");
+    const qs = params.toString();
+    return `${window.location.origin}/speaker-intake/${eventId}${qs ? `?${qs}` : ""}`;
+  })();
 
   const reset = () => {
     setStep("choose");
@@ -136,6 +146,24 @@ export default function AddSpeakerDialog({ eventId, eventName = "the event", ema
       if (emailCheckTimeoutRef.current) window.clearTimeout(emailCheckTimeoutRef.current);
     };
   }, []);
+
+  // Load event defaults for email headers if available and not already set
+  const { data: eventData } = useQuery({
+    queryKey: ["event", eventId],
+    queryFn: () => getJson<any>(`/events/${eventId}`),
+    enabled: Boolean(eventId),
+  });
+
+  useEffect(() => {
+    const ev = eventData;
+    if (!ev) return;
+    const apiFromName = ev.fromName ?? ev.from_name ?? null;
+    const apiFromEmail = ev.fromEmail ?? ev.from_email ?? null;
+    const apiReplyTo = ev.replyToEmail ?? ev.reply_to_email ?? null;
+    if (!fromName && apiFromName) setFromName(apiFromName);
+    if (!fromEmail && apiFromEmail) setFromEmail(apiFromEmail);
+    if (!replyTo && apiReplyTo) setReplyTo(apiReplyTo);
+  }, [eventData]);
 
   useEffect(() => {
     if (step !== "add" || !eventId) {
@@ -212,9 +240,9 @@ export default function AddSpeakerDialog({ eventId, eventName = "the event", ema
   const handleSendForm = async () => {
     setCreating(true);
     try {
-      const speakerId = await doCreate();
-      if (!speakerId) return;
-      setCreatedSpeakerId(speakerId);
+      // Do NOT create a speaker record here. Instead include name/email in the intake URL
+      // so the public intake form can pre-populate fields and avoid creating a speaker until they submit.
+      setCreatedSpeakerId(null);
       setEmailSubject(`Your speaker details for ${eventName}`);
       setIntroText(DEFAULT_INTRO(eventName));
       setClosingText(DEFAULT_CLOSING(eventName));
@@ -252,10 +280,6 @@ export default function AddSpeakerDialog({ eventId, eventName = "the event", ema
       toast({ title: "Missing event id" });
       return;
     }
-    if (!createdSpeakerId) {
-      toast({ title: "Missing speaker id" });
-      return;
-    }
 
     const { headerMeta, html } = buildHtml(
       fields.firstName, introText, closingText, intakeUrl, ctaLabel,
@@ -263,22 +287,27 @@ export default function AddSpeakerDialog({ eventId, eventName = "the event", ema
     );
 
     const body = {
-      recipient_email: fields.email,
-      recipient_name: `${fields.firstName} ${fields.lastName}`.trim(),
+      recipientEmail: fields.email,
+      recipientName: `${fields.firstName} ${fields.lastName}`.trim(),
       subject: emailSubject || `Your speaker details for ${eventName}`,
-      html_content: html,
+      htmlContent: html,
       userName: fromName || fromEmail || `Team ${eventName}`,
       userEmail: fromEmail,
     };
 
-    try {
-      await emailSpeaker(eventId, createdSpeakerId, body);
+    if (createdSpeakerId) {
+      await emailSpeaker(eventId, createdSpeakerId, body as any);
       toast({ title: "Email sent" });
       setOpen(false);
       reset();
-    } catch (err: any) {
-      toast({ title: "Failed to send email", description: String(err?.message || err) });
+      return;
     }
+
+    // Use the new event-level mail endpoint to email a potential speaker without creating a speaker record
+    await emailEvent(eventId, body as any);
+    toast({ title: "Email sent" });
+    setOpen(false);
+    reset();
   };
 
   const isStep1Valid = fields.firstName.trim() && fields.lastName.trim() && fields.email.trim();

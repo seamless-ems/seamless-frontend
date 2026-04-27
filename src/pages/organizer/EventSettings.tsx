@@ -3,24 +3,15 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useWarnOnLeave } from "@/hooks/useWarnOnLeave";
 import { UnsavedChangesDialog } from "@/components/ui/UnsavedChangesDialog";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getJson, updateEvent, getTeam, createCheckout } from "@/lib/api";
+import { getJson, updateEvent, getTeam, createCheckout, getBillingPortal } from "@/lib/api";
 import { getLocaleAndCurrency } from "@/lib/locale";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "@/components/ui/select";
 import { Calendar, FileText, Mail, Mic2, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
 import { CircleLoader } from "react-spinners";
 
 const activeModules = [
@@ -241,6 +232,35 @@ export default function EventSettings() {
     await doSave();
   };
 
+  const [billingLoading, setBillingLoading] = useState(false);
+  const isEventPaid = (ev: any) => {
+    if (!ev) return false;
+    if (ev.paid === true || ev.is_paid === true || ev.paid === "true") return true;
+    if (ev.paid_until || ev.paidUntil || ev.purchase_id || ev.purchaseId) return true;
+    if (ev.subscription || ev.billing || (ev.purchase && typeof ev.purchase === "object")) return true;
+    return false;
+  };
+
+  const openBillingPortal = async () => {
+    if (!id) return;
+    try {
+      setBillingLoading(true);
+      const res = await getBillingPortal();
+      const url = res?.url || res?.portalUrl || res?.portal_url || null;
+      if (url) {
+        window.location.href = url;
+        return;
+      }
+      toast({ title: "Billing portal did not return a URL" });
+    } catch (err: any) {
+      toast({ title: "Failed to open billing portal", description: String(err?.message || err) });
+    } finally {
+      setBillingLoading(false);
+    }
+  };
+
+  const paidNow = isEventPaid(rawEvent);
+
   if (!rawEvent && isLoading)
     return (
       <div className="col-span-full flex justify-center py-8">
@@ -283,63 +303,76 @@ export default function EventSettings() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Billing / Checkout */}
-        {id && selectedModules.includes("speaker") && (
-          <Card>
-            <CardHeader>
-              <CardTitle
-                style={{ fontSize: "var(--font-h3)", fontWeight: 600 }}
-              >
-                Billing
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Pay for the Speakers &amp; Content module for this event for
-                full access forever.
-              </p>
-              <div className="flex items-center gap-2 justify-end">
-                <Button
-                  variant="outline"
-                  type="button"
-                  onClick={async () => {
-                    if (!id) return;
-                    try {
-                      const { locale, currency } = getLocaleAndCurrency();
-                      const res = await createCheckout("speaker", id, {
-                        currency,
-                        locale,
-                      });
-                      const url =
-                        res?.url ||
-                        res?.checkout_url ||
-                        res?.redirect_url ||
-                        res?.checkoutUrl ||
-                        (typeof res === "string" ? res : undefined) ||
-                        res?.data?.url;
-                      if (url) {
-                        window.location.href = url;
-                        return;
-                      }
-                      toast({
-                        title: "Checkout created",
-                        description:
-                          "No redirect URL returned; please check your billing dashboard.",
-                      });
-                    } catch (err: any) {
-                      toast({
-                        title: "Checkout failed",
-                        description: String(err?.message || err),
-                      });
-                    }
-                  }}
+          {/* Billing / Checkout */}
+          {id && selectedModules.includes("speaker") && (
+            <Card>
+              <CardHeader>
+                <CardTitle
+                  style={{ fontSize: "var(--font-h3)", fontWeight: 600 }}
                 >
-                  Pay Now
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+                  Billing
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {!paidNow ? (
+                  <>
+                    <p className="text-sm text-muted-foreground">
+                      Pay for the Speakers &amp; Content module for this event for
+                      full access forever.
+                    </p>
+                    <div className="flex items-center gap-2 justify-end">
+                      <Button
+                        variant="outline"
+                        type="button"
+                        onClick={async () => {
+                          if (!id) return;
+                          try {
+                            const { locale, currency } = getLocaleAndCurrency();
+                            const res = await createCheckout("speaker", id, {
+                              currency,
+                              locale,
+                            });
+                            const url =
+                              res?.url ||
+                              res?.checkout_url ||
+                              res?.redirect_url ||
+                              res?.checkoutUrl ||
+                              (typeof res === "string" ? res : undefined) ||
+                              res?.data?.url;
+                            if (url) {
+                              window.location.href = url;
+                              return;
+                            }
+                            toast({
+                              title: "Checkout created",
+                              description:
+                                "No redirect URL returned; please check your billing dashboard.",
+                            });
+                          } catch (err: any) {
+                            toast({
+                              title: "Checkout failed",
+                              description: String(err?.message || err),
+                            });
+                          }
+                        }}
+                      >
+                        Pay Now
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm text-muted-foreground">You have paid for this event.</p>
+                    <div className="flex items-center gap-2 justify-end">
+                      <Button variant="outline" type="button" onClick={openBillingPortal} disabled={billingLoading}>
+                        {billingLoading ? "Opening…" : "Customer Portal"}
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
         {/* Basic Info */}
         <Card>
@@ -562,7 +595,7 @@ export default function EventSettings() {
                 setShowLeaveDialog(true);
                 return;
               }
-              navigate(`/organizer/event/${id}`);
+              navigate(`/`);
             }}
           >
             Cancel

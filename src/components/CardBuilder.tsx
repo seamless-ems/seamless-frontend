@@ -288,6 +288,40 @@ export default function CardBuilder({
     .map((f) => (f.includes(" ") ? `'${f}'` : f))
     .join(", ");
   const injectStylesString = `@import url('https://fonts.googleapis.com/css2?${googleFamilies}&display=swap'); :host{all:initial;display:block;font-family:${fontFamilyList}, sans-serif;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;} *{box-sizing:border-box;} canvas{display:block;} .card-root{background-color:#f5f5f5;}`;
+  // Eagerly load Google fonts into the main document to ensure the font
+  // list in dropdowns and previews is available immediately (avoid lazy
+  // loading inside shadow DOM which can delay availability).
+  useEffect(() => {
+    if (!_fonts || _fonts.length === 0) return;
+    try {
+      const href = `https://fonts.googleapis.com/css2?${googleFamilies}&display=swap`;
+      // avoid duplicating link tags
+      if (!document.querySelector(`link[href="${href}"]`)) {
+        const pre1 = document.querySelector('link[rel="preconnect"][href="https://fonts.googleapis.com/"]') as HTMLLinkElement | null;
+        if (!pre1) {
+          const p1 = document.createElement('link');
+          p1.rel = 'preconnect';
+          p1.href = 'https://fonts.googleapis.com/';
+          document.head.appendChild(p1);
+        }
+        const pre2 = document.querySelector('link[rel="preconnect"][href="https://fonts.gstatic.com/"]') as HTMLLinkElement | null;
+        if (!pre2) {
+          const p2 = document.createElement('link');
+          p2.rel = 'preconnect';
+          p2.href = 'https://fonts.gstatic.com/';
+          p2.crossOrigin = 'anonymous';
+          document.head.appendChild(p2);
+        }
+        const l = document.createElement('link');
+        l.rel = 'stylesheet';
+        l.href = href;
+        document.head.appendChild(l);
+      }
+    } catch (e) {
+      // fail silently — fonts are non-critical
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const canvasTipStorageKey = `seamless-canvas-tip-dismissed-${cardType}`;
   const canvasTipDismissedRef = useRef(() => {
     try { return localStorage.getItem(`seamless-canvas-tip-dismissed-${cardType}`) === 'true'; } catch { return false; }
@@ -1027,7 +1061,7 @@ export default function CardBuilder({
       // the wrong type), don't wipe the canvas — just leave it blank/empty.
       if (!serverConfig || typeof serverConfig !== "object") return;
 
-      const KNOWN_ELEMENT_KEYS = ["headshot", "firstName", "lastName", "title", "company", "companyLogo", "companyLogoWhite", "eventLogo", "gradientOverlay", "bio", "linkedin"];
+      const KNOWN_ELEMENT_KEYS = ["headshot", "firstName", "lastName", "title", "company", "companyLogo", "companyLogoWhite", "eventLogo", "gradientOverlay", "bio", "linkedin", "talkTitle", "talkDescription"];
       const hasContent =
         Object.keys(serverConfig).some(
           (k) =>

@@ -17,7 +17,7 @@ const app = initializeApp(firebaseConfig as Record<string, any>);
 export const auth = getAuth(app);
 
 // Centralized token handling function
-async function handleAuthToken(user: { getIdToken: () => Promise<string> } | null): Promise<boolean> {
+async function handleAuthToken(user: { getIdToken: () => Promise<string> } | null): Promise<any | null> {
   
 
   if (!user) {
@@ -40,19 +40,19 @@ async function handleAuthToken(user: { getIdToken: () => Promise<string> } | nul
   }
 
   try {
-    
     const backendToken = await exchangeFirebaseToken(idToken);
-    
+
     // support various backend shapes: access_token, accessToken, token
     const tokenFromBackend = backendToken && ((backendToken as any).access_token || (backendToken as any).accessToken || (backendToken as any).token || (backendToken as any).accessToken);
     if (tokenFromBackend) {
       try {
-        
       } catch (e) {
         // ignore logging length errors
       }
       setTokenAndNotify(tokenFromBackend as string);
-      return true;
+      // If backend returned a full user object, return it so callers can use it.
+      if ((backendToken as any).user) return backendToken;
+      return {};
     }
   } catch (e) {
   }
@@ -64,28 +64,33 @@ async function handleAuthToken(user: { getIdToken: () => Promise<string> } | nul
 
 // Listen for token changes and mirror ID token into localStorage
 onIdTokenChanged(auth, (user) => {
-  
   if (!user) {
-    
     clearTokenAndNotify();
     clearUserAndNotify();
     return;
   }
 
   handleAuthToken(user)
-    .then((success) => {
+    .then((backendResp) => {
       try {
+        // If the backend provided a user object, prefer it (contains canonical name/email)
+        if (backendResp && (backendResp as any).user) {
+          setUserAndNotify((backendResp as any).user);
+          return;
+        }
+
+        // Fallback to Firebase profile
         const profile = {
           id: (user as any).uid,
           email: (user as any).email || '',
           name: (user as any).displayName || undefined,
           avatar: (user as any).photoURL || undefined,
         };
-        if (success) {
-          
+
+        // If token exchange succeeded (we set a token), keep the user; otherwise clear
+        if (backendResp !== null) {
           setUserAndNotify(profile);
         } else {
-          
           clearUserAndNotify();
         }
       } catch (e) {

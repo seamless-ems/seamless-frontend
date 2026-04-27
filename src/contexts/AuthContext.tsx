@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { setCurrentToken, setTokenAndNotify, clearTokenAndNotify, setUserAndNotify, clearUserAndNotify } from '@/lib/session';
+import UpdateNameDialog from '@/components/account/UpdateNameDialog';
+import { updateMe } from '@/lib/api';
 
 interface User {
   id: string;
@@ -23,6 +25,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showUpdateName, setShowUpdateName] = useState(false);
+  const skipKey = (uid?: string | null) => `seamless-skip-update-name`;
+  const isSkipped = (uid?: string | null) => {
+    try {
+      return !!localStorage.getItem(skipKey(uid));
+    } catch (e) {
+      return false;
+    }
+  };
 
   useEffect(() => {
     // Check for existing session
@@ -34,7 +45,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setToken(storedToken);
         // Keep in-memory session in sync for non-react consumers
         setCurrentToken(storedToken);
-        setUser(JSON.parse(storedUser));
+        const parsed = JSON.parse(storedUser);
+        setUser(parsed);
+        const displayName = (parsed?.name || '').trim();
+        if ((!displayName || displayName === 'Seamless User') && !isSkipped(parsed?.id)) setShowUpdateName(true);
       } catch {
         // Invalid stored data, clear it
         localStorage.removeItem('auth_token');
@@ -56,7 +70,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const u = localStorage.getItem('auth_user');
       if (u) {
         try {
-          setUser(JSON.parse(u));
+          const parsed = JSON.parse(u);
+          setUser(parsed);
+          const displayName = (parsed?.name || '').trim();
+          if ((!displayName || displayName === 'Seamless User') && !isSkipped(parsed?.id)) setShowUpdateName(true);
         } catch {
           setUser(null);
         }
@@ -80,6 +97,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Keep session helpers in sync (writes localStorage + notifies listeners)
     setTokenAndNotify(newToken);
     setUserAndNotify(newUser);
+    // If this account has no display name yet (or backend default), prompt the user to add one.
+    const displayName = (newUser?.name || '').trim();
+    try {
+      const skipped = !!localStorage.getItem(skipKey(newUser?.id));
+      if ((!displayName || displayName === 'Seamless User') && !skipped) {
+        setShowUpdateName(true);
+      }
+    } catch (e) {
+      if (!displayName || displayName === 'Seamless User') setShowUpdateName(true);
+    }
   };
 
   const logout = () => {
@@ -101,6 +128,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }}
     >
       {children}
+      <UpdateNameDialog
+        open={showUpdateName}
+        onOpenChange={(open) => setShowUpdateName(open)}
+        initialName={user?.name || ''}
+        userId={user?.id}
+        onSave={async (name) => {
+          try {
+            const res = await updateMe({ name });
+            const updated = { ...(user as User), name: res?.name || name };
+            setUser(updated);
+            setUserAndNotify(updated);
+            setShowUpdateName(false);
+          } catch (e) {
+            console.error('Failed to update name', e);
+            throw e;
+          }
+        }}
+      />
     </AuthContext.Provider>
   );
 }

@@ -1,5 +1,6 @@
 import type { StarterPreset } from "@/types/card-builder";
 import { createPromoConfig, uploadFile } from "@/lib/api";
+import { deepCamel } from "@/lib/utils";
 import { FIXED_KEYS } from "@/lib/card-builder-utils";
 
 export type CardType = "promo" | "website";
@@ -1088,10 +1089,12 @@ export const handleSave = async (
       bgGradient: params.bgGradient ?? undefined,
       bgIsGenerated,
     };
+    // Normalize outgoing config keys to camelCase to avoid sending snake_case.
+    const normalizedPayload = deepCamel(payloadConfig);
     const saved = await createPromoConfig({
       eventId: params.eventId,
       promoType: params.cardType,
-      config: payloadConfig,
+      config: normalizedPayload,
     });
     const serverTemplateUrl =
       saved?.templateUrl ??

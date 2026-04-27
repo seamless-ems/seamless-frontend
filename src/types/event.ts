@@ -72,8 +72,6 @@ export interface TeamUser {
   firstName: string;
   lastName: string;
   email: string;
-  is_admin: boolean;
-  team_id: string;
   role: string | null;
 }
 

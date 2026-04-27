@@ -284,7 +284,23 @@ export function cancelSubscription(): Promise<any> {
 }
 
 export function getMe(): Promise<any> {
+  // Avoid calling the protected `/account/me` endpoint when there is no
+  // authentication token available. Public pages often mount components
+  // that call `getMe()` (e.g. help widgets); returning `null` here prevents
+  // unnecessary 401 responses from the backend.
+  try {
+    const token = getCurrentToken();
+    if (!token) return Promise.resolve(null);
+  } catch (e) {
+    // Defensive fallback — if session helper throws, continue to call the endpoint.
+  }
+
   return getJson<any>(`/account/me`);
+}
+
+// Update the current authenticated user's account details.
+export function updateMe(body: { name?: string; email?: string; avatar?: string }): Promise<any> {
+  return patchJson<typeof body, any>(`/account/me`, body);
 }
 
 // Return speakers associated with the current account (appearances)
@@ -318,10 +334,6 @@ export function getRoles(): Promise<any[]> {
   return getJson<any[]>(`/account/roles`);
 }
 
-export async function updateMe(body: any): Promise<any> {
-  return patchJson<any, any>(`/account/me`, body);
-}
-
 export async function deleteAccount(): Promise<void> {
   const res = await fetch(`${API_BASE}/account/me`, {
     method: "DELETE",
@@ -340,14 +352,6 @@ export function changePassword(oldPassword: string, newPassword: string): Promis
   return postJson<{}, any>(`/account/me/change-password?old_password=${encodeURIComponent(oldPassword)}&new_password=${encodeURIComponent(newPassword)}`, {});
 }
 
-export function getSettings(): Promise<any> {
-  return getJson<any>(`/account/settings`);
-}
-
-export function updateSettings(body: any): Promise<any> {
-  return postJson<any, any>(`/account/settings`, body);
-}
-
 // Check whether an email is registered and its providers (google.com etc.)
 export function checkFirebaseEmail(body: { email: string }): Promise<{ exists: boolean; providers: string[] }> {
   return postJson<typeof body, { exists: boolean; providers: string[] }>(`/auth/firebase/check-email`, body);
@@ -364,6 +368,11 @@ export function checkFirebaseEmail(body: { email: string }): Promise<{ exists: b
 // landing page the link should redirect to (e.g. https://app.example.com/finish-signup)
 export function sendFirebaseSignInLink(body: { email: string; url?: string }): Promise<any> {
   return postJson<typeof body, any>(`/auth/firebase/send-magic-link`, body);
+}
+
+// Send an event-level email (e.g. potential speaker outreach) without a speaker id
+export function emailEvent(eventId: string, payload: { recipientEmail: string; recipientName: string; subject: string; htmlContent: string; userName: string | null; userEmail: string | null; }) {
+  return postJson<typeof payload, any>(`/mail/event/${encodeURIComponent(eventId)}`, payload);
 }
 
 // Integrations
