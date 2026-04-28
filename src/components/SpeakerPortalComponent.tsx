@@ -30,6 +30,7 @@ import SpeakerForm from "@/components/SpeakerForm";
 import SpeakerCardTab from "@/components/organizer/SpeakerCardTab";
 import SpeakerContentTab from "@/components/organizer/SpeakerContentTab";
 import { toast } from "@/hooks/use-toast";
+import { downloadResource } from "@/lib/utils";
 import { CircleLoader } from "react-spinners";
 
 type Props = {
@@ -192,6 +193,7 @@ export default function SpeakerPortalComponent({
   const canApprove = Boolean(s?.headshot);
 
   const queryClient = useQueryClient();
+  // Use shared `downloadResource` from utils for file downloads.
   const [rejectionEmail, setRejectionEmail] = useState<EmailDraft | null>(null);
   const [editOpen, setEditOpen] = useState(
     () => initialOpenEdit ?? !!(location.state as any)?.openEdit,
@@ -495,7 +497,7 @@ export default function SpeakerPortalComponent({
         <div className="flex-1" />
         {isOrganizerView &&
           isApplication &&
-          s?.callForSpeakersStatus !== "approved" && (
+          s?.callForSpeakersStatus !== "accepted" && (
             <div className="flex items-center gap-2">
               {s?.callForSpeakersStatus === "rejected" ? (
                 <Button
@@ -532,7 +534,7 @@ export default function SpeakerPortalComponent({
           )}
         {isOrganizerView &&
           isApplication &&
-          s?.callForSpeakersStatus === "approved" && (
+          s?.callForSpeakersStatus === "accepted" && (
             <span className="text-sm text-success font-medium flex items-center gap-1.5">
               <Check className="h-4 w-4" />
               Approved
@@ -883,9 +885,10 @@ export default function SpeakerPortalComponent({
                                   <button
                                     title="Download headshot"
                                     className="text-muted-foreground hover:text-accent transition-colors"
-                                    onClick={() =>
-                                      window.open(headshotUrl, "_blank")
-                                    }
+                                    onClick={() => {
+                                      const dl = s?.headshotDownloadUrl ?? headshotUrl;
+                                      void downloadResource(dl, `${s?.firstName ?? 'headshot'}-headshot`);
+                                    }}
                                   >
                                     <Download className="h-3.5 w-3.5" />
                                   </button>
@@ -938,12 +941,10 @@ export default function SpeakerPortalComponent({
                                   <button
                                     title="Download logo"
                                     className="text-muted-foreground hover:text-accent transition-colors"
-                                    onClick={() =>
-                                      window.open(
-                                        s?.companyLogoColour ?? s?.companyLogo,
-                                        "_blank",
-                                      )
-                                    }
+                                    onClick={() => {
+                                      const dl = s?.colourLogoDownloadUrl ?? s?.companyLogoColour ?? s?.companyLogo;
+                                      void downloadResource(dl, `${s?.firstName ?? 'logo'}-logo`);
+                                    }}
                                   >
                                     <Download className="h-3.5 w-3.5" />
                                   </button>
@@ -1002,9 +1003,10 @@ export default function SpeakerPortalComponent({
                                   <button
                                     title="Download white logo"
                                     className="text-muted-foreground hover:text-accent transition-colors"
-                                    onClick={() =>
-                                      window.open(s.companyLogoWhite, "_blank")
-                                    }
+                                    onClick={() => {
+                                      const dl = s?.whiteLogoDownloadUrl ?? s.companyLogoWhite;
+                                      void downloadResource(dl, `${s?.firstName ?? 'logo'}-logo-white`);
+                                    }}
                                   >
                                     <Download className="h-3.5 w-3.5" />
                                   </button>
@@ -1061,14 +1063,12 @@ export default function SpeakerPortalComponent({
                                 ) : (
                                   <div className="w-full rounded-lg border border-border bg-muted/20 px-3 py-2">
                                     {val ? (
-                                      <a
-                                        href={val}
-                                        target="_blank"
-                                        rel="noreferrer"
+                                      <button
+                                        onClick={() => void downloadResource(val, `${s?.id ?? 'file'}-${field.id}`)}
                                         className="text-xs text-accent hover:underline"
                                       >
                                         Download file
-                                      </a>
+                                      </button>
                                     ) : (
                                       <span className="text-xs text-muted-foreground/50">
                                         Not uploaded

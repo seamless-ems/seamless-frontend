@@ -55,8 +55,8 @@ export interface Speaker {
   createdAt: string;
   updatedAt: string;
   headshotDownloadUrl?: string;
-  logoDownloadUrl?: string;
-
+  colourLogoDownloadUrl?: string;
+  whiteLogoDownloadUrl?: string;
 }
 
 export interface TeamMember {

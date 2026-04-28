@@ -2,6 +2,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { toast } from '@/hooks/use-toast';
+import { downloadResource } from '@/lib/utils';
 
 type Props = {
   s: any;
@@ -20,7 +21,7 @@ export default function SpeakerAssets({ s, headshotInputRef, logoInputRef, uploa
         <div style={{ fontSize: 'var(--font-small)', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px' }}>Headshot</div>
         <div
           className="relative w-[150px] h-[150px] rounded-lg border-2 border-border mb-2 overflow-hidden cursor-pointer bg-muted flex items-center justify-center"
-          onClick={() => s?.headshot && window.open(s.headshot, '_blank')}
+            onClick={() => s?.headshot && void downloadResource(s.headshot, `${s?.firstName ?? 'headshot'}-headshot`)}
         >
           {s?.headshot ? (
             <img src={s.headshot} alt="Headshot" className="w-full h-full object-cover" />
@@ -65,7 +66,7 @@ export default function SpeakerAssets({ s, headshotInputRef, logoInputRef, uploa
         <div style={{ fontSize: 'var(--font-small)', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px' }}>Logo</div>
         <div
           className="w-[150px] h-[150px] rounded-lg border-2 border-border mb-2 bg-white flex items-center justify-center p-4 cursor-pointer"
-          onClick={() => s?.companyLogo && window.open(s.companyLogo, '_blank')}
+          onClick={() => s?.companyLogo && void downloadResource(s.companyLogo, `${s?.companyName ?? 'logo'}-logo`)}
         >
           {s?.companyLogo ? (
             <img src={s.companyLogo} alt="Company Logo" className="max-w-full max-h-full object-contain" />

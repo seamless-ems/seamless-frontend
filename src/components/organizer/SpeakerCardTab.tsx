@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -7,8 +7,10 @@ import {
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { AlertCircle, CheckCircle, Download } from 'lucide-react';
+import { CircleLoader } from 'react-spinners';
 import { toast } from '@/hooks/use-toast';
 import { API_BASE } from '@/lib/api';
+import { downloadResource } from '@/lib/utils';
 import SpeakerPreviews from './SpeakerPreviews';
 
 type Props = {
@@ -26,6 +28,14 @@ export default function SpeakerCardTab({ type, s, isApproved, canApprove, onTogg
   const { id: eventId } = useParams();
   const [downloading, setDownloading] = useState(false);
 
+  useEffect(() => {
+    // Prevent background scroll while modal is open
+    const prev = document.body.style.overflow;
+    if (downloading) document.body.style.overflow = 'hidden';
+    else document.body.style.overflow = prev;
+    return () => { document.body.style.overflow = prev; };
+  }, [downloading]);
+
   const cardUrl = type === 'website'
     ? `${API_BASE}/embed/${encodeURIComponent(eventId ?? '')}/speaker/${encodeURIComponent(s?.id ?? '')}`
     : `${API_BASE}/promo-cards/${encodeURIComponent(eventId ?? '')}/speaker/${encodeURIComponent(s?.id ?? '')}`;
@@ -33,17 +43,24 @@ export default function SpeakerCardTab({ type, s, isApproved, canApprove, onTogg
   const handleDownload = async () => {
     setDownloading(true);
     try {
-      const resp = await fetch(cardUrl);
-      if (!resp.ok) throw new Error(`${resp.status}`);
-      const blob = await resp.blob();
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = `${s?.name ?? 'speaker'}-${type === 'website' ? 'speaker-card' : 'social-card'}.html`;
-      a.click();
-      URL.revokeObjectURL(a.href);
-    } catch {
-      // fallback — open in new tab if download fails
-      window.open(cardUrl, '_blank', 'noopener,noreferrer');
+      const pngUrl = type === 'website'
+        ? `${API_BASE}/embed/${encodeURIComponent(eventId ?? '')}/speaker/${encodeURIComponent(s?.id ?? '')}/download`
+        : `${API_BASE}/promo-cards/${encodeURIComponent(eventId ?? '')}/speaker/${encodeURIComponent(s?.id ?? '')}/download`;
+
+      await downloadResource(
+        pngUrl,
+        `${s?.firstName ?? 'speaker'}-${type === 'website' ? 'speaker-card' : 'social-card'}.png`,
+      );
+    } catch (err) {
+      // If PNG endpoint fails, fall back to previous HTML download
+      try {
+        await downloadResource(
+          cardUrl,
+          `${s?.firstName ?? 'speaker'}-${type === 'website' ? 'speaker-card' : 'social-card'}.html`,
+        );
+      } catch (e) {
+        toast({ title: 'Download failed', description: String(err || e || 'Unknown error') });
+      }
     } finally {
       setDownloading(false);
     }
@@ -110,7 +127,15 @@ export default function SpeakerCardTab({ type, s, isApproved, canApprove, onTogg
           )}
           {type === 'website' && isApproved ? (
             <Button variant="outline" size="sm" className="gap-1.5" onClick={handleDownload} disabled={downloading}>
-              <Download className="h-3.5 w-3.5" />{downloading ? 'Downloading…' : 'Download'}
+              {downloading ? (
+                <span className="inline-flex items-center gap-2">
+                  <CircleLoader size={14} color="#4e5ca6" />Downloading…
+                </span>
+              ) : (
+                <>
+                  <Download className="h-3.5 w-3.5" />Download
+                </>
+              )}
             </Button>
           ) : (
             <button
@@ -119,7 +144,7 @@ export default function SpeakerCardTab({ type, s, isApproved, canApprove, onTogg
               title={downloading ? 'Downloading…' : `Download ${label}`}
               className="text-muted-foreground/50 hover:text-accent transition-colors disabled:opacity-40"
             >
-              <Download className="h-4 w-4" />
+              {downloading ? <CircleLoader size={14} color="#4e5ca6" /> : <Download className="h-4 w-4" />}
             </button>
           )}
         </div>
@@ -166,6 +191,17 @@ export default function SpeakerCardTab({ type, s, isApproved, canApprove, onTogg
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Blocking modal shown while downloading to prevent interaction */}
+      {downloading && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-card p-6 rounded-lg flex flex-col items-center gap-3 shadow-lg">
+            <CircleLoader size={48} color="#4e5ca6" />
+            <div className="text-lg font-medium">Preparing download…</div>
+            <div className="text-sm text-muted-foreground">This may take a moment. Please don’t close this window.</div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
