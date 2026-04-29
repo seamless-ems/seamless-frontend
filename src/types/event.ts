@@ -47,6 +47,7 @@ export interface Speaker {
   formType?: string;
   speakerInformationStatus?: 'info_pending' | 'info_approved' | 'info_rejected';
   callForSpeakersStatus?: 'submitted' | 'accepted' | 'rejected';
+  unauthenticatedEditEnabled?: boolean;
   customFields?: Record<string, any>;
   websiteCardApproved: boolean;
   promoCardApproved: boolean;

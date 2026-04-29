@@ -53,6 +53,7 @@ import {
 import { ImageCropDialog } from "@/components/ImageCropDialog";
 import { useRef } from "react";
 import { generateUuid } from "@/lib/utils";
+import { Speaker } from "@/types/event";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_IMAGE_TYPES = [
@@ -363,8 +364,25 @@ export default function SpeakerIntakeForm(
   });
 
   React.useEffect(() => {
-    const s = fetchedSpeaker as any;
+    const s = fetchedSpeaker as Speaker;
+    console.log('Fetched speaker data:', s);
+    // If no speaker was fetched, do nothing
     if (!s) return;
+
+    // check if speaker has unauthenticated edit enabled — if so, allow them to edit without logging in, otherwise redirect to login page
+    // else throw the user already exists error to prompt them to log in and associate with existing speaker record
+    if (s.unauthenticatedEditEnabled) {
+      console.log("Speaker has unauthenticated edit enabled, allowing access to edit form without login");
+    } else {
+      // if email field is enabled and prefilled email is present, check if speaker exists with that email and prompt login if so
+      if (emailFieldEnabled && prefilledEmail && s.email) {
+        setExistingEmailError(DUPLICATE_EMAIL_MESSAGE);
+        setDuplicateEmailModalOpen(true);
+      } else {
+        toast.error("You need to log in to edit your submission");
+        navigate(`/login?speakerEmail=${s.email}`);
+      }
+    }
     const resetData: Record<string, any> = {};
     formConfig.forEach((f) => {
       if (f.id === "first_name")
@@ -786,6 +804,8 @@ export default function SpeakerIntakeForm(
       // Tell backend which form this submission is for (backend expects underscored form types)
       payload.formType = backendFormType;
       payload.id = uploadSpeakerId;
+      // only allow edits the first time before submission — after that users must log in to edit, which prevents abuse while still allowing easy edits during the submission process
+      payload.unauthenticatedEditEnabled = false; // only allow edits the first time before submission — after that users must log in to edit, which prevents abuse while still allowing easy edits during the submission process
 
       const confirmedSpeakerId =
         isEditing && speakerId ? speakerId : uploadSpeakerId;

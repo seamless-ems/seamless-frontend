@@ -232,6 +232,7 @@ export default function AddSpeakerDialog({ eventId, eventName = "the event", ema
       lastName: fields.lastName,
       email: fields.email,
       formType: "speaker-info",
+      unauthenticatedEditEnabled: true,
     });
     queryClient.invalidateQueries({ queryKey: ["event", eventId, "speakers"] });
     return speakerId;
@@ -240,9 +241,10 @@ export default function AddSpeakerDialog({ eventId, eventName = "the event", ema
   const handleSendForm = async () => {
     setCreating(true);
     try {
-      // Do NOT create a speaker record here. Instead include name/email in the intake URL
-      // so the public intake form can pre-populate fields and avoid creating a speaker until they submit.
-      setCreatedSpeakerId(null);
+      // First create the speaker
+      const speakerId = await doCreate();
+      
+      setCreatedSpeakerId(speakerId);
       setEmailSubject(`Your speaker details for ${eventName}`);
       setIntroText(DEFAULT_INTRO(eventName));
       setClosingText(DEFAULT_CLOSING(eventName));
