@@ -44,6 +44,29 @@ function ColPicker({
   );
 }
 
+const SORT_OPTIONS: { value: string; label: string }[] = [
+  { value: "name_asc", label: "A–Z" },
+  { value: "name_desc", label: "Z–A" },
+  { value: "newest", label: "Newest" },
+];
+
+function SortPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="flex rounded-md border border-border overflow-hidden">
+      {SORT_OPTIONS.map((opt) => (
+        <button
+          key={opt.value}
+          type="button"
+          onClick={() => onChange(opt.value)}
+          className={`h-8 px-3 text-sm font-medium transition-colors border-r border-border last:border-r-0 ${value === opt.value ? "bg-accent text-accent-foreground" : "bg-background text-muted-foreground hover:bg-muted"}`}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function ZoomPicker({
   value,
   onChange,
@@ -85,7 +108,7 @@ export default function EmbedBuilder({
   const setupKey = eventId ? `seamless-embed-setup-done-${eventId}` : null;
 
   const readCols = (key: string | null) => {
-    if (!key) return { desktop: 2, zoom: 60, platformWidth: 1200 };
+    if (!key) return { desktop: 2, zoom: 60, platformWidth: 1200, sortOrder: "name_asc" };
     try {
       const saved = localStorage.getItem(key);
       if (saved) {
@@ -94,10 +117,11 @@ export default function EmbedBuilder({
           desktop:       parsed.desktop       ?? 2,
           zoom:          parsed.zoom          ?? 60,
           platformWidth: parsed.platformWidth ?? 1200,
+          sortOrder:     parsed.sortOrder     ?? "name_asc",
         };
       }
     } catch {}
-    return { desktop: 2, zoom: 60, platformWidth: 1200 };
+    return { desktop: 2, zoom: 60, platformWidth: 1200, sortOrder: "name_asc" };
   };
 
   const [desktopCols, setDesktopCols] = useState(() => readCols(colsKey).desktop);
@@ -106,11 +130,13 @@ export default function EmbedBuilder({
     return [10, 20, 30, 40, 50, 60, 70, 80, 90, 100].includes(saved) ? saved : 60;
   });
   const [platformWidth, setPlatformWidth] = useState<number>(() => readCols(colsKey).platformWidth as number);
+  const [sortOrder, setSortOrder] = useState<string>(() => readCols(colsKey).sortOrder);
   const [bgColor, setBgColor] = useState<string>("");
   const [previewOpened, setPreviewOpened] = useState(false);
 
   const bcRef = useRef<BroadcastChannel | null>(null);
   const broadcastTimerRef = useRef<number | null>(null);
+  const previewWindowRef = useRef<Window | null>(null);
 
   useEffect(() => {
     bcRef.current = new BroadcastChannel("seamless-preview");
@@ -120,9 +146,9 @@ export default function EmbedBuilder({
   useEffect(() => {
     if (!colsKey) return;
     try {
-      localStorage.setItem(colsKey, JSON.stringify({ desktop: desktopCols, zoom: embedZoom, platformWidth }));
+      localStorage.setItem(colsKey, JSON.stringify({ desktop: desktopCols, zoom: embedZoom, platformWidth, sortOrder }));
     } catch {}
-  }, [colsKey, desktopCols, embedZoom, platformWidth]);
+  }, [colsKey, desktopCols, embedZoom, platformWidth, sortOrder]);
 
   // Broadcast live updates to any open preview tab
   // Deps use upstream values (desktopCols/embedZoom/bgColor) — autoResizeSnippet is derived from them
@@ -135,7 +161,7 @@ export default function EmbedBuilder({
     }, 250);
     return () => { if (broadcastTimerRef.current) clearTimeout(broadcastTimerRef.current); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [desktopCols, embedZoom, bgColor, platformWidth, previewOpened]);
+  }, [desktopCols, embedZoom, bgColor, platformWidth, sortOrder, previewOpened]);
 
   // First visit — open the embed modal directly
   useEffect(() => {
@@ -185,10 +211,21 @@ export default function EmbedBuilder({
     }));
   })();
 
-  const eligibleSpeakers = allSpeakers.filter((s) => s.websiteCardApproved);
+  const eligibleSpeakers = (() => {
+    const arr = allSpeakers.filter((s) => s.websiteCardApproved);
+    if (sortOrder === "name_desc") return [...arr].sort((a, b) => b.name.localeCompare(a.name));
+    if (sortOrder === "newest") {
+      return [...arr].sort((a, b) => {
+        const aDate = a.created_at ?? a.createdAt ?? "";
+        const bDate = b.created_at ?? b.createdAt ?? "";
+        return bDate.localeCompare(aDate);
+      });
+    }
+    return [...arr].sort((a, b) => a.name.localeCompare(b.name));
+  })();
   const liveSpeakers = eligibleSpeakers.filter((s) => s.embedEnabled);
 
-  let embedUrl = `${API_BASE}/embed/${eventId}?column_amount=${desktopCols}&column_amount_mobile=1`;
+  let embedUrl = `${API_BASE}/embed/${eventId}?column_amount=${desktopCols}&column_amount_mobile=1&sort=${sortOrder}`;
   if (bgColor) {
     try { embedUrl += `&bg_color=${encodeURIComponent(bgColor)}`; } catch {}
   }
@@ -262,6 +299,20 @@ window.addEventListener('message', function(e) {
     } finally {
       setToggling(null);
     }
+  };
+
+  const openPreview = () => {
+    const id = `seamless-preview-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    try { localStorage.setItem(id, previewSnippet); } catch {}
+    const bgParam = bgColor ? `&bg=${encodeURIComponent(bgColor)}` : "";
+    const url = `/fake-landing?snippetId=${encodeURIComponent(id)}${bgParam}&contentWidth=${platformWidth}`;
+    if (previewWindowRef.current && !previewWindowRef.current.closed) {
+      previewWindowRef.current.location.href = url;
+      previewWindowRef.current.focus();
+    } else {
+      previewWindowRef.current = window.open(url) ?? null;
+    }
+    setPreviewOpened(true);
   };
 
   return (
@@ -353,6 +404,12 @@ window.addEventListener('message', function(e) {
                 />
               </div>
             </div>
+
+            {/* Speaker order */}
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Speaker order</span>
+              <SortPicker value={sortOrder} onChange={setSortOrder} />
+            </div>
           </div>
 
           <div className="border-t border-border" />
@@ -385,15 +442,7 @@ window.addEventListener('message', function(e) {
                     size="sm"
                     variant="ghost"
                     className="h-7 gap-1.5 text-xs px-2.5"
-                    onClick={() => {
-                      try {
-                        const id = `seamless-preview-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-                        try { localStorage.setItem(id, previewSnippet); } catch {}
-                        const bgParam = bgColor ? `&bg=${encodeURIComponent(bgColor)}` : "";
-                        window.open(`/fake-landing?snippetId=${encodeURIComponent(id)}${bgParam}&contentWidth=${platformWidth}`, "seamless-preview");
-                        setPreviewOpened(true);
-                      } catch {}
-                    }}
+                    onClick={openPreview}
                   >
                     <ExternalLink className="h-3.5 w-3.5" />
                     Preview
@@ -417,15 +466,7 @@ window.addEventListener('message', function(e) {
                     variant="outline"
                     size="sm"
                     className="h-7 gap-1.5 text-xs px-2.5"
-                    onClick={() => {
-                      try {
-                        const id = `seamless-preview-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-                        try { localStorage.setItem(id, previewSnippet); } catch {}
-                        const bgParam = bgColor ? `&bg=${encodeURIComponent(bgColor)}` : "";
-                        window.open(`/fake-landing?snippetId=${encodeURIComponent(id)}${bgParam}&contentWidth=${platformWidth}`, "seamless-preview");
-                        setPreviewOpened(true);
-                      } catch {}
-                    }}
+                    onClick={openPreview}
                   >
                     <ExternalLink className="h-3.5 w-3.5" />
                     Preview

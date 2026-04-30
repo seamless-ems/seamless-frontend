@@ -145,7 +145,8 @@
       "Bash(~/.local/bin/pip install *)",
       "Bash(wait)",
       "Read(//mnt/c/Program Files/**)",
-      "Read(//mnt/c/Program Files \\(x86\\)/**)"
+      "Read(//mnt/c/Program Files \\(x86\\)/**)",
+      "Bash(grep *)"
     ]
   }
 }
