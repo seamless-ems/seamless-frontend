@@ -136,7 +136,16 @@
       "Bash(awk '/return \\\\\\(/,0' /mnt/c/Users/james/OneDrive/Documents/Seamless/seamless-frontend/src/components/SpeakerFormBuilder.tsx)",
       "Bash(git pull:*)",
       "Bash(git reset:*)",
-      "Bash(GIT_EDITOR=true git rebase --continue)"
+      "Bash(GIT_EDITOR=true git rebase --continue)",
+      "WebFetch(domain:sendblox.ai)",
+      "Bash(sudo apt-get *)",
+      "Bash(npm list *)",
+      "Bash(grep -v '^[^a-zA-Z]*$')",
+      "Bash(grep -E '.{20,}')",
+      "Bash(~/.local/bin/pip install *)",
+      "Bash(wait)",
+      "Read(//mnt/c/Program Files/**)",
+      "Read(//mnt/c/Program Files \\(x86\\)/**)"
     ]
   }
 }

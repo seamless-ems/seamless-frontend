@@ -28,14 +28,23 @@ export default function Index() {
 
   const events: Event[] = Array.isArray(data) ? data : (data ? (data as any).items ?? (data as any).results ?? (data as any).data ?? [] : []);
 
-  const now = new Date();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const parseEventDate = (dateStr: string) => {
+    const [y, m, d] = dateStr.split('T')[0].split('-').map(Number);
+    return new Date(y, m - 1, d);
+  };
+
   const currentEvents = events.filter(e => {
-    const endDate = e.endDate ? new Date(e.endDate) : (e.startDate ? new Date(e.startDate) : null);
-    return endDate ? endDate >= now : true;
+    const dateStr = e.endDate || e.startDate;
+    if (!dateStr) return true;
+    return parseEventDate(dateStr) >= today;
   });
   const pastEvents = events.filter(e => {
-    const endDate = e.endDate ? new Date(e.endDate) : (e.startDate ? new Date(e.startDate) : null);
-    return endDate ? endDate < now : false;
+    const dateStr = e.endDate || e.startDate;
+    if (!dateStr) return false;
+    return parseEventDate(dateStr) < today;
   });
 
   const displayEvents = activeTab === "current" ? currentEvents : pastEvents;
