@@ -5,6 +5,7 @@ import React, {
   useImperativeHandle,
   forwardRef,
 } from "react";
+import { useWarnOnLeave } from "@/hooks/useWarnOnLeave";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -227,23 +228,11 @@ export function mergeWithDefaults(saved: FormFieldConfig[]): FormFieldConfig[] {
     .map((f) => FIELD_MIGRATIONS[f.id] ? { ...f, ...FIELD_MIGRATIONS[f.id] } : f);
 
   const savedIds = new Set(patched.map((f) => f.id));
+  // Append any new default fields not already in the saved config, preserving saved order
   const newDefaults = DEFAULT_FIELDS.filter((f) => !savedIds.has(f.id));
-  const merged = [...patched, ...newDefaults];
-
-  // Sort standard fields into canonical DEFAULT_FIELDS order; custom fields stay at end
-  const canonicalOrder = new Map(DEFAULT_FIELDS.map((f, i) => [f.id, i]));
-  const standard = merged.filter((f) => !f.custom).sort((a, b) => {
-    const ai = canonicalOrder.get(a.id) ?? 999;
-    const bi = canonicalOrder.get(b.id) ?? 999;
-    return ai - bi;
-  });
-  const custom = merged.filter((f) => f.custom);
-  return [...standard, ...custom];
+  return [...patched, ...newDefaults];
 }
 
-function getDefaultsForFormType(_ft: string): FormFieldConfig[] {
-  return DEFAULT_FIELDS;
-}
 
 const SHARED_SECTIONS = [
   {
@@ -303,9 +292,10 @@ const SpeakerFormBuilder = forwardRef<
     saved && !STALE_TITLES.includes(saved) ? saved : defaultTitle;
 
   const [fields, setFields] = useState<FormFieldConfig[]>(
-    initialConfig ?? getDefaultsForFormType(formType ?? "speaker-info"),
+    initialConfig ?? DEFAULT_FIELDS,
   );
   const [isDirty, setIsDirty] = useState(false);
+  const isDirtyRef = useRef(false);
   const initializedRef = useRef(false);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
@@ -329,8 +319,6 @@ const SpeakerFormBuilder = forwardRef<
     options: [] as string[],
     newOption: "",
   });
-  const [copied, setCopied] = useState(false);
-
   // Load server-saved config for this event/form type when available
   useEffect(() => {
     let mounted = true;
@@ -341,7 +329,7 @@ const SpeakerFormBuilder = forwardRef<
         .then((res: any) => {
           if (!mounted) return;
           if (!res || !res.config) {
-            setFields(getDefaultsForFormType(formType ?? "speaker-info"));
+            setFields(DEFAULT_FIELDS);
             return;
           }
 
@@ -370,7 +358,7 @@ const SpeakerFormBuilder = forwardRef<
               const cfg = res.config as any;
               const fieldsFromCfg = Array.isArray(cfg.fields)
                 ? cfg.fields
-                : getDefaultsForFormType(formType ?? "speaker-info");
+                : DEFAULT_FIELDS;
               setFields(
                 mergeWithDefaults(fieldsFromCfg as FormFieldConfig[]),
               );
@@ -382,10 +370,10 @@ const SpeakerFormBuilder = forwardRef<
                   : true,
               );
             } else {
-              setFields(getDefaultsForFormType(formType ?? "speaker-info"));
+              setFields(DEFAULT_FIELDS);
             }
           } catch (e) {
-            setFields(getDefaultsForFormType(formType ?? "speaker-info"));
+            setFields(DEFAULT_FIELDS);
           }
         })
         .catch((err: any) => {
@@ -393,7 +381,7 @@ const SpeakerFormBuilder = forwardRef<
           if (err && (err.status === 404 || err?.status === 404)) {
             setMissingFormDialogOpen(true);
           }
-          setFields(getDefaultsForFormType(formType ?? "speaker-info"));
+          setFields(DEFAULT_FIELDS);
         })
         .finally(() => {
           if (mounted)
@@ -409,7 +397,10 @@ const SpeakerFormBuilder = forwardRef<
   }, [eventId, formType]);
 
   const markDirty = () => {
-    if (initializedRef.current) setIsDirty(true);
+    if (initializedRef.current) {
+      isDirtyRef.current = true;
+      setIsDirty(true);
+    }
   };
 
   const toggleField = (fieldId: string) => {
@@ -441,21 +432,6 @@ const SpeakerFormBuilder = forwardRef<
     }
     setFields((prev) =>
       prev.map((f) => (f.id === fieldId ? { ...f, required: !f.required } : f)),
-    );
-    markDirty();
-  };
-
-  const toggleCardBuilder = (fieldId: string) => {
-    if (readOnly) {
-      toast({ title: "Event is read-only", variant: "destructive" });
-      return;
-    }
-    setFields((prev) =>
-      prev.map((f) =>
-        f.id === fieldId
-          ? { ...f, showInCardBuilder: !f.showInCardBuilder }
-          : f,
-      ),
     );
     markDirty();
   };
@@ -517,28 +493,6 @@ const SpeakerFormBuilder = forwardRef<
     markDirty();
   };
 
-  const moveField = (index: number, direction: "up" | "down") => {
-    if (readOnly) {
-      toast({ title: "Event is read-only", variant: "destructive" });
-      return;
-    }
-    if (
-      (direction === "up" && index === 0) ||
-      (direction === "down" && index === fields.length - 1)
-    ) {
-      return;
-    }
-
-    const newFields = [...fields];
-    const targetIndex = direction === "up" ? index - 1 : index + 1;
-    [newFields[index], newFields[targetIndex]] = [
-      newFields[targetIndex],
-      newFields[index],
-    ];
-    setFields(newFields);
-    markDirty();
-  };
-
   const handleDrop = (dropIndex: number) => {
     if (dragIndex === null || dragIndex === dropIndex) {
       setDragIndex(null);
@@ -554,21 +508,11 @@ const SpeakerFormBuilder = forwardRef<
     setDragOverIndex(null);
   };
 
-  // Fields filtered by formType
-  const visibleFields = fields;
   const sections =
     FORM_SECTIONS[formType ?? "speaker-info"] ?? FORM_SECTIONS["speaker-info"];
 
   // Content uploads toggle (controls presence of `content` file field)
   const [previewContentItems, setPreviewContentItems] = useState<any[]>([{ id: 'content-1', file: null, preview: null, name: '', contentType: null }]);
-
-  const handleCopyLink = () => {
-    const url = `${window.location.origin}/speaker-intake/${eventId}`;
-    navigator.clipboard.writeText(url);
-    setCopied(true);
-    toast({ title: "Link copied to clipboard" });
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   const handleSave = () => {
     // Card warnings only apply to the speaker intake form, not applications
@@ -607,6 +551,7 @@ const SpeakerFormBuilder = forwardRef<
         config: payloadConfig,
       });
       toast({ title: "Form configuration saved" });
+      isDirtyRef.current = false;
       setIsDirty(false);
       queryClient.invalidateQueries({
         queryKey: ["event", eventId, "form-config", formType ?? "speaker-info"],
@@ -622,11 +567,14 @@ const SpeakerFormBuilder = forwardRef<
     }
   };
 
-  useImperativeHandle(ref, () => ({ save: handleSave, isDirty }));
+  useImperativeHandle(ref, () => {
+    const handle = { save: handleSave, isDirty: false };
+    Object.defineProperty(handle, 'isDirty', { get: () => isDirtyRef.current, enumerable: true });
+    return handle;
+  });
+  useWarnOnLeave(isDirty);
 
   const enabledFields = fields.filter((f) => f.enabled);
-
-  const previewFields = enabledFields;
 
   return (
     <div className="space-y-6">
@@ -680,9 +628,8 @@ const SpeakerFormBuilder = forwardRef<
             <div className="space-y-1">
               {sections.map((section, sIdx) => {
                 const sectionIdSet = new Set(section.fieldIds);
-                const sectionFields = visibleFields
-                  .filter((f) => !f.custom && sectionIdSet.has(f.id))
-                  .sort((a, b) => section.fieldIds.indexOf(a.id) - section.fieldIds.indexOf(b.id));
+                const sectionFields = fields
+                  .filter((f) => !f.custom && sectionIdSet.has(f.id));
 
                 if (sectionFields.length === 0) return null;
 
@@ -735,15 +682,16 @@ const SpeakerFormBuilder = forwardRef<
                             )}
                             <Input
                               value={field.label}
-                              onChange={(e) =>
+                              onChange={(e) => {
                                 setFields((prev) =>
                                   prev.map((f) =>
                                     f.id === field.id
                                       ? { ...f, label: e.target.value }
                                       : f,
                                   ),
-                                )
-                              }
+                                );
+                                markDirty();
+                              }}
                               className="flex-1 min-w-0 h-7 text-sm border-transparent bg-transparent shadow-none px-1.5 py-0 hover:border-border focus:bg-background focus-visible:ring-0 transition-colors"
                             />
                             {active &&
@@ -834,7 +782,6 @@ const SpeakerFormBuilder = forwardRef<
                 );
               })}
             </div>
-
           </Card>
 
           {/* Custom Fields */}
@@ -1063,15 +1010,16 @@ const SpeakerFormBuilder = forwardRef<
                           <GripVertical className="h-3.5 w-3.5 text-muted-foreground/30 shrink-0 cursor-grab active:cursor-grabbing" />
                           <Input
                             value={field.label}
-                            onChange={(e) =>
+                            onChange={(e) => {
                               setFields((prev) =>
                                 prev.map((f) =>
                                   f.id === field.id
                                     ? { ...f, label: e.target.value }
                                     : f,
                                 ),
-                              )
-                            }
+                              );
+                              markDirty();
+                            }}
                             className="flex-1 min-w-0 h-7 text-sm border-transparent bg-transparent shadow-none px-1.5 py-0 hover:border-border focus:bg-background focus-visible:ring-0 transition-colors"
                           />
                           {field.enabled && (
@@ -1162,7 +1110,7 @@ const SpeakerFormBuilder = forwardRef<
         <div className="lg:col-span-2 space-y-4 lg:sticky lg:top-4 lg:self-start">
           <Card className="p-6 bg-white">
             <div className="space-y-6">
-              {previewFields.map((field) => {
+              {enabledFields.map((field) => {
                 if (field.id === "sample_content") {
                   return (
                     <div key={field.id} className="space-y-2">
@@ -1281,7 +1229,7 @@ const SpeakerFormBuilder = forwardRef<
                 );
               })}
 
-              {previewFields.length === 0 && (
+              {enabledFields.length === 0 && (
                 <p
                   className="text-center text-muted-foreground py-8"
                   style={{ fontSize: "var(--font-body)" }}
@@ -1291,7 +1239,7 @@ const SpeakerFormBuilder = forwardRef<
                 </p>
               )}
 
-              {previewFields.length > 0 && (
+              {enabledFields.length > 0 && (
                 <div className="pt-4">
                   <Button className="w-full" disabled>
                     Submit Information
@@ -1309,26 +1257,13 @@ const SpeakerFormBuilder = forwardRef<
             <DialogTitle>Promo & Website Cards Won't Work</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            {(() => {
-              const headshotMissing = !fields.some(
-                (f) => f.id === "headshot" && f.enabled,
-              );
-              const logoMissing = !fields.some(
-                (f) => f.id === "company_logo" && f.enabled,
-              );
-              const missingCount =
-                (headshotMissing ? 1 : 0) + (logoMissing ? 1 : 0);
-
-              return (
-                <p className="text-sm text-muted-foreground">
-                  We noticed your form is missing{" "}
-                  {missingCount === 1
-                    ? "the following field"
-                    : "the following fields"}
-                  :
-                </p>
-              );
-            })()}
+            <p className="text-sm text-muted-foreground">
+              We noticed your form is missing{" "}
+              {((!fields.some(f => f.id === "headshot" && f.enabled) ? 1 : 0) + (!fields.some(f => f.id === "company_logo" && f.enabled) ? 1 : 0)) === 1
+                ? "the following field"
+                : "the following fields"}
+              :
+            </p>
             <ul className="space-y-2 text-sm">
               {!fields.some((f) => f.id === "headshot" && f.enabled) && (
                 <li className="flex items-start gap-2">

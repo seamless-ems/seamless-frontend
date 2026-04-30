@@ -625,12 +625,11 @@ export default function ApplicationsTab({
                     onClick={onEditForm}
                   >
                     <FileEdit className="h-3.5 w-3.5" />
-                    Edit Application Form
+                    Application Form
                   </Button>
                   <Button
-                    variant="outline"
                     size="sm"
-                    className="gap-1.5 h-7 bg-muted/50 hover:bg-muted text-foreground hover:text-foreground whitespace-nowrap"
+                    className="gap-1.5 h-7 whitespace-nowrap"
                     onClick={onCopyFormLink}
                   >
                     {copiedLink ? (
@@ -641,7 +640,7 @@ export default function ApplicationsTab({
                     ) : (
                       <>
                         <Copy className="h-3.5 w-3.5" />
-                        Copy Application Form
+                        Application Form
                       </>
                     )}
                   </Button>

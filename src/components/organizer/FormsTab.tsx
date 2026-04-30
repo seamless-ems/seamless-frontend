@@ -8,13 +8,24 @@ import SpeakerFormBuilder, { type SpeakerFormBuilderHandle } from "@/components/
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { ArrowLeft, Copy, MoreVertical, Check } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { UnsavedChangesDialog } from "@/components/ui/UnsavedChangesDialog";
 
 export default function FormsTab({ eventId }: { eventId: string | undefined }) {
   const [editingForm, setEditingForm] = useState<string | null>(null);
   const [copiedForm, setCopiedForm] = useState<string | null>(null);
   const [formSaved, setFormSaved] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [unsavedOpen, setUnsavedOpen] = useState(false);
   const formBuilderRef = useRef<SpeakerFormBuilderHandle>(null);
+
+  const handleBack = () => {
+    if (formBuilderRef.current?.isDirty) {
+      setUnsavedOpen(true);
+    } else {
+      setEditingForm(null);
+      setFormSaved(false);
+    }
+  };
 
   const { data: eventData } = useQuery<any>({
     queryKey: ["event", eventId],
@@ -90,7 +101,7 @@ export default function FormsTab({ eventId }: { eventId: string | undefined }) {
       <div className="fixed inset-0 z-50 bg-background flex flex-col">
         <header className="sticky top-0 z-30 h-14 flex items-center gap-3 border-b border-border bg-card/95 px-4 shrink-0">
           <button
-            onClick={() => { setEditingForm(null); setFormSaved(false); }}
+            onClick={handleBack}
             className="flex items-center justify-center h-8 w-8 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -117,11 +128,18 @@ export default function FormsTab({ eventId }: { eventId: string | undefined }) {
               formType={editingForm ?? undefined}
               formName={editingFormData?.name}
               eventName={eventName}
-              onBack={() => setEditingForm(null)}
+              onBack={handleBack}
               onSave={() => setFormSaved(true)}
             />
           </div>
         </div>
+
+        <UnsavedChangesDialog
+          open={unsavedOpen}
+          onCancel={() => setUnsavedOpen(false)}
+          onDiscard={() => { setUnsavedOpen(false); setEditingForm(null); setFormSaved(false); }}
+          onSave={() => { setUnsavedOpen(false); formBuilderRef.current?.save(); }}
+        />
 
         <Dialog open={formSaved} onOpenChange={(v) => { if (!v) setFormSaved(false); }}>
           <DialogContent className="sm:max-w-md">
