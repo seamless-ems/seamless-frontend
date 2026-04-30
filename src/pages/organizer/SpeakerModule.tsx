@@ -182,6 +182,7 @@ export default function SpeakerModule() {
       const speakerInformationStatus = it.speaker_information_status ?? it.speakerInformationStatus ?? null;
       const callForSpeakersStatus = it.call_for_speakers_status ?? it.callForSpeakersStatus ?? null;
       const createdAt = it.registered_at ?? it.created_at ?? it.createdAt ?? null;
+      const updatedAt = it.updated_at ?? it.updatedAt ?? null;
       const name = `${firstName} ${lastName}`.trim() || email;
 
       return {
@@ -196,6 +197,7 @@ export default function SpeakerModule() {
         speakerInformationStatus,
         callForSpeakersStatus,
         createdAt,
+        updatedAt,
         name,
       };
     });
@@ -245,12 +247,12 @@ export default function SpeakerModule() {
     })
     .sort((a, b) => {
       if (sortBy === "newest") {
-        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        const dateA = new Date(a.updatedAt ?? a.createdAt ?? 0).getTime();
+        const dateB = new Date(b.updatedAt ?? b.createdAt ?? 0).getTime();
         return dateB - dateA;
       } else if (sortBy === "oldest") {
-        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        const dateA = new Date(a.updatedAt ?? a.createdAt ?? 0).getTime();
+        const dateB = new Date(b.updatedAt ?? b.createdAt ?? 0).getTime();
         return dateA - dateB;
       } else if (sortBy === "name") {
         return a.name.localeCompare(b.name);
