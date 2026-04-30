@@ -7,7 +7,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { useQueryClient } from "@tanstack/react-query";
 import { deleteSpeaker, updateSpeaker, emailSpeaker } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
-import { Download, Copy, Check, ChevronRight, Trash, MoreVertical, ArrowUpDown, X, Mail, FileEdit, Plus, Mic2 } from "lucide-react";
+import { Download, Copy, Check, ChevronRight, ChevronDown, Trash, MoreVertical, ArrowUpDown, X, Mail, FileEdit, Plus, Mic2 } from "lucide-react";
 import { API_BASE } from "@/lib/api";
 import { HelpTip } from "@/components/ui/HelpTip";
 import {
@@ -407,6 +407,69 @@ export default function SpeakersTable({ speakers, isLoading, eventId, eventName 
     }
   };
 
+  const handleBulkPublishDirect = async () => {
+    const toPublish = speakers.filter(s =>
+      selectedIds.has(s.id) &&
+      (s.websiteCardApproved ?? s.website_card_approved ?? false) &&
+      !(s.embedEnabled ?? s.embed_enabled ?? false)
+    );
+    if (toPublish.length === 0) {
+      toast({ title: 'Nothing to publish', description: 'Selected speakers are either already published or not yet approved.' });
+      return;
+    }
+    setIsBulkApproving(true);
+    try {
+      await Promise.all(toPublish.map(s =>
+        updateSpeaker(eventUuid, s.id, {
+          id: s.id,
+          firstName: s.firstName ?? '',
+          lastName: s.lastName ?? '',
+          email: s.email ?? '',
+          formType: s.formType ?? s.form_type ?? 'speaker-info',
+          embedEnabled: true,
+        })
+      ));
+      queryClient.invalidateQueries({ queryKey: ['event', eventUuid, 'speakers'] });
+      toast({ title: `${toPublish.length} speaker${toPublish.length !== 1 ? 's' : ''} published to Speaker Wall` });
+      setSelectedIds(new Set());
+    } catch (err: any) {
+      toast({ title: 'Failed to publish speakers', description: String(err?.message || err), variant: 'destructive' });
+    } finally {
+      setIsBulkApproving(false);
+    }
+  };
+
+  const handleBulkUnapproveWebsite = async () => {
+    const toUnapprove = speakers.filter(s =>
+      selectedIds.has(s.id) && (s.websiteCardApproved ?? s.website_card_approved ?? false)
+    );
+    if (toUnapprove.length === 0) {
+      toast({ title: 'Nothing to unapprove', description: 'No selected speakers have an approved Speaker Card.' });
+      return;
+    }
+    setIsBulkApproving(true);
+    try {
+      await Promise.all(toUnapprove.map(s =>
+        updateSpeaker(eventUuid, s.id, {
+          id: s.id,
+          firstName: s.firstName ?? '',
+          lastName: s.lastName ?? '',
+          email: s.email ?? '',
+          formType: s.formType ?? s.form_type ?? 'speaker-info',
+          websiteCardApproved: false,
+          embedEnabled: false,
+        })
+      ));
+      queryClient.invalidateQueries({ queryKey: ['event', eventUuid, 'speakers'] });
+      toast({ title: `${toUnapprove.length} Speaker Card${toUnapprove.length !== 1 ? 's' : ''} unapproved` });
+      setSelectedIds(new Set());
+    } catch (err: any) {
+      toast({ title: 'Failed to unapprove Speaker Cards', description: String(err?.message || err), variant: 'destructive' });
+    } finally {
+      setIsBulkApproving(false);
+    }
+  };
+
   const fieldEnabled = (fieldId: string) =>
     !formConfig || formConfig.some((f) => f.id === fieldId && f.enabled);
 
@@ -450,52 +513,71 @@ export default function SpeakersTable({ speakers, isLoading, eventId, eventName 
       <thead className="border-b border-border bg-muted/20">
         <tr className="h-11">
           <th className="pl-4 py-2 w-9" onClick={(e) => e.stopPropagation()}>
-            {isSelectionActive && (
-              <input
-                ref={selectAllRef}
-                type="checkbox"
-                checked={selectedIds.size === speakers.length}
-                onChange={() => {}}
-                onClick={toggleSelectAll}
-                className="h-3.5 w-3.5 rounded accent-primary cursor-pointer"
-              />
-            )}
+            <input
+              ref={selectAllRef}
+              type="checkbox"
+              checked={selectedIds.size === speakers.length && speakers.length > 0}
+              onChange={() => {}}
+              onClick={toggleSelectAll}
+              className="h-3.5 w-3.5 rounded accent-primary cursor-pointer opacity-40 hover:opacity-100 transition-opacity"
+            />
           </th>
           <th className="px-4 py-2">
             {isSelectionActive ? (
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-2">
                 <span className="text-xs font-medium text-foreground whitespace-nowrap">
                   {selectedIds.size} selected
                 </span>
                 <div className="h-3.5 w-px bg-border mx-0.5 shrink-0" />
-                <button
-                  onClick={() => handleBulkApprove('website')}
-                  disabled={isBulkApproving}
-                  className="h-7 px-2.5 text-xs font-medium rounded-md border border-success/40 text-success/80 bg-background hover:bg-success/5 transition-colors whitespace-nowrap disabled:opacity-50"
-                >
-                  Approve Speaker Cards
-                </button>
-                <button
-                  onClick={() => handleBulkApprove('promo')}
-                  disabled={isBulkApproving}
-                  className="h-7 px-2.5 text-xs font-medium rounded-md border border-success/40 text-success/80 bg-background hover:bg-success/5 transition-colors whitespace-nowrap disabled:opacity-50"
-                >
-                  Approve Social Cards
-                </button>
-                <button
-                  onClick={() => setBulkUnpublishOpen(true)}
-                  disabled={isBulkApproving}
-                  className="h-7 px-2.5 text-xs font-medium rounded-md border border-destructive/30 text-destructive/70 bg-background hover:bg-destructive/5 transition-colors whitespace-nowrap disabled:opacity-50"
-                >
-                  Unpublish Speaker Cards
-                </button>
-                <button
-                  onClick={handleBulkUnapprovePromo}
-                  disabled={isBulkApproving}
-                  className="h-7 px-2.5 text-xs font-medium rounded-md border border-destructive/30 text-destructive/70 bg-background hover:bg-destructive/5 transition-colors whitespace-nowrap disabled:opacity-50"
-                >
-                  Unapprove Social Cards
-                </button>
+
+                {/* Speaker Card actions */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      disabled={isBulkApproving}
+                      className="h-7 px-2.5 text-xs font-medium rounded-md border border-border text-foreground bg-background hover:bg-muted transition-colors whitespace-nowrap flex items-center gap-1 disabled:opacity-50"
+                    >
+                      Speaker Card <ChevronDown className="h-3 w-3 opacity-60" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="min-w-[170px]">
+                    <DropdownMenuItem onClick={() => handleBulkApprove('website')}>
+                      Approve
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleBulkPublishDirect}>
+                      Publish to Wall
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setBulkUnpublishOpen(true)} className="text-destructive focus:text-destructive">
+                      Unpublish from Wall
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleBulkUnapproveWebsite} className="text-destructive focus:text-destructive">
+                      Unapprove
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* Social Card actions */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      disabled={isBulkApproving}
+                      className="h-7 px-2.5 text-xs font-medium rounded-md border border-border text-foreground bg-background hover:bg-muted transition-colors whitespace-nowrap flex items-center gap-1 disabled:opacity-50"
+                    >
+                      Social Card <ChevronDown className="h-3 w-3 opacity-60" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="min-w-[140px]">
+                    <DropdownMenuItem onClick={() => handleBulkApprove('promo')}>
+                      Approve
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleBulkUnapprovePromo} className="text-destructive focus:text-destructive">
+                      Unapprove
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
                 <button
                   onClick={openBulkEmail}
                   className="h-7 px-2.5 text-xs font-medium rounded-md border border-border text-foreground bg-background hover:bg-muted transition-colors whitespace-nowrap flex items-center gap-1.5"
@@ -507,7 +589,7 @@ export default function SpeakersTable({ speakers, isLoading, eventId, eventName 
                   onClick={() => setSelectedIds(new Set())}
                   className="ml-auto h-7 px-2 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
                 >
-                  <X className="h-3 w-3" />Clear
+                  <X className="h-3 w-3" /> Clear
                 </button>
               </div>
             ) : searchInput !== undefined ? (
@@ -539,8 +621,8 @@ export default function SpeakersTable({ speakers, isLoading, eventId, eventName 
                 {onEditIntakeForm && (
                   <>
                     <div className="h-3.5 w-px bg-border shrink-0" />
-                    <Button variant="outline" size="sm" className="gap-1.5 h-7 bg-muted/50 hover:bg-muted text-foreground hover:text-foreground whitespace-nowrap" onClick={onEditIntakeForm}>
-                      <FileEdit className="h-3.5 w-3.5" />Edit Intake Form
+                    <Button variant="outline" size="sm" className="gap-1.5 h-7 whitespace-nowrap" onClick={onEditIntakeForm}>
+                      <FileEdit className="h-3.5 w-3.5" />Intake Form
                     </Button>
                     {onAddSpeaker && (
                       <Button size="sm" className="gap-1.5 h-7 whitespace-nowrap" onClick={onAddSpeaker}>
