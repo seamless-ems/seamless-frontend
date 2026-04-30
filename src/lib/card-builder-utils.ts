@@ -76,10 +76,28 @@ export const getGradientCoords = (
 export const migrateLoadedConfig = (
   cfg: CardConfig,
 ): { migrated: CardConfig; changed: boolean } => {
-  // Migration no-op: app now uses `firstName` and `lastName` elements everywhere.
-  // Any legacy conversion (if needed) should be handled elsewhere to avoid
-  // reintroducing a single combined element in the runtime config.
-  return { migrated: cfg, changed: false };
+  const migrated: CardConfig = { ...cfg };
+  let changed = false;
+
+  // Normalize backend dynamic element keys. Some backends return keys like
+  // `dynamicTalkTitle` or `dynamicTalkDescription` instead of the runtime
+  // `dynamic_{fieldId}` form (e.g. `dynamic_talk_title`). If we detect a
+  // dynamic-like key that doesn't start with `dynamic_` but has a `fieldId`
+  // property, move it to the canonical `dynamic_{fieldId}` key.
+  for (const key of Object.keys(cfg)) {
+    if (key.startsWith("dynamic_") || !key.toLowerCase().startsWith("dynamic")) continue;
+    const val = (cfg as any)[key];
+    if (val && typeof val === "object" && val.fieldId && typeof val.fieldId === "string") {
+      const canonical = `dynamic_${val.fieldId}`;
+      if (!(canonical in migrated)) {
+        (migrated as any)[canonical] = val;
+        delete (migrated as any)[key];
+        changed = true;
+      }
+    }
+  }
+
+  return { migrated, changed };
 };
 
 export const getGoogleFontsHref = (fonts: string[]) => {
