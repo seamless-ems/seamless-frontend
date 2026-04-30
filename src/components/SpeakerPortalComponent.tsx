@@ -208,6 +208,7 @@ export default function SpeakerPortalComponent({
   const [uploadingHeadshot, setUploadingHeadshot] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingLogoWhite, setUploadingLogoWhite] = useState(false);
+  const [imageBust, setImageBust] = useState<Record<string, number>>({});
   const [updatingAppStatus, setUpdatingAppStatus] = useState(false);
   const headshotInputRef = useRef<HTMLInputElement | null>(null);
   const logoInputRef = useRef<HTMLInputElement | null>(null);
@@ -426,6 +427,7 @@ export default function SpeakerPortalComponent({
         queryKey: ["event", id, "speakers"],
         exact: false,
       });
+      setImageBust((prev) => ({ ...prev, [ct!]: Date.now() }));
       toast({
         title: isHeadshot
           ? "Headshot updated — approval reset"
@@ -453,6 +455,9 @@ export default function SpeakerPortalComponent({
       setCropType(null);
     }
   };
+
+  const bust = (url: string | null | undefined, key: string) =>
+    url ? `${url}${imageBust[key] ? `?t=${imageBust[key]}` : ""}` : url;
 
   const tabClass = (tab: string) =>
     `py-3 border-b-2 transition-colors text-sm font-medium whitespace-nowrap ${
@@ -854,7 +859,7 @@ export default function SpeakerPortalComponent({
                               <div className="w-[120px] h-[120px] rounded-lg border-2 border-border overflow-hidden bg-muted flex items-center justify-center">
                                 {headshotUrl ? (
                                   <img
-                                    src={headshotUrl}
+                                    src={bust(headshotUrl, "headshot") ?? ""}
                                     alt={fullName ?? ""}
                                     className="w-full h-full object-cover"
                                   />
@@ -912,7 +917,7 @@ export default function SpeakerPortalComponent({
                               <div className="w-full h-[64px] rounded-lg border border-border bg-white flex items-center justify-center p-2.5">
                                 {(s?.companyLogoColour ?? s?.companyLogo) ? (
                                   <img
-                                    src={s?.companyLogoColour ?? s?.companyLogo}
+                                    src={bust(s?.companyLogoColour ?? s?.companyLogo, "logo") ?? ""}
                                     alt="Logo"
                                     className="max-w-full max-h-full object-contain"
                                   />
@@ -972,7 +977,7 @@ export default function SpeakerPortalComponent({
                               >
                                 {s?.companyLogoWhite ? (
                                   <img
-                                    src={s.companyLogoWhite}
+                                    src={bust(s.companyLogoWhite, "logoWhite") ?? ""}
                                     alt="Logo (white)"
                                     className="max-w-full max-h-full object-contain"
                                   />
