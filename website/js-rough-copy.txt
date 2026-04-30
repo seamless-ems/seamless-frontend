@@ -1,0 +1,36 @@
+Hero:
+Seamless Events logo (see note below re/ our brand)
+Tagline:
+-          Organising conferences is hard, let us help
+-          Organising conferences is hard, let us make it easier
+-          Organising conferences is hard, need some help?
+Hero body: Seamless Events builds conference software (starting with Speaker & Content Management) while giving the organizer the ability to choose what they need – event by event.
+Pricing is per event – get started now for $950 USD or with our 14-day free trial.
+NOTE: *This is a bigger conversation but to Connie’s point about being explicit do we potentially consider the brand having Conference in it e.g. Seamless Conference Software – clunky I know but I wonder by putting Conference in our literal name will help on SEO, chatgbt etc (nobody else does)*
+CONFERENCE SOFTWARE YOU NEED, AND THE ABILITY TO CHOOSE
+Frustrated by being offered software features they didn’t need, for budgets they couldn’t justify, the team Seamless Events (hyperlink pop up of us) decided to rethink how conference software is built and delivered.
+They started with some questions:
+-          You decide what tools you need on a per event basis to better manage their budgets?  “You only need Speaker Management for this show? No problem”
+-          Could somebody arrive on our site and instantly start building their conference? “No time for a demo or you prefer to get right into it? No problem – try out Seamless for 14 days, we are here to talk any time”
+-          Can we remove the time & budget & budget spent designing speaker website & promo cards “Absolutely, you can go from a speaker submitting their information to being live on your site with all other speakers in 1 click with nine design templates ready to go”
+-          Wouldn’t it be nice if you didn’t have to figure out for every show how to get speaker content to the event technicians on the AV desk  “Our content management module links uploaded content to each speaker and the option to share content directly to on-site event technicians”
+ 
+ WHY DID WE BUILD SEAMLESS
+Having spent 20 years in the event industry our co-founder James grew increasingly frustrated having to build custom ‘hacks’ to solve basic conference organisation headaches.
+On an annual basis, he would work through each provider of conference software (see blog here) and be served websites with no pricing, demos with no clarity and large quotations with no ability to tailor.
+After 5 years of building custom ad-hoc solutions for clients he teamed us with (the other) James and Catherine to build Seamless, start with what James always wanted.
+If like James you have felt this frustration, try our 14 day (no cc trial) here and if there is a feature you’d like to see – we’d love to hear from you.
+OUR MODULES
+Speaker Management: Speaker management tools are not new, what makes Seamless different?
+-          The user decides exactly what they want to gather from speakers across all formats
+-           Company logo collection included as standard
+-          Choose from 9 website card templates
+-          Embed your speaker wall directly on your site & with 1x click publish new speakers and download ready to-go social cards
+Content Management:
+-          Remove the need for external drives or access issues to event technicians
+-          Content linked to each speaker
+-          History management tracking content replacements & restore ability, never lose a speaker presentation again
+Schedules:
+Sponsors:
+Attendees
+

@@ -147,7 +147,11 @@
       "Read(//mnt/c/Program Files/**)",
       "Read(//mnt/c/Program Files \\(x86\\)/**)",
       "Bash(grep *)",
-      "WebFetch(domain:polar.sh)"
+      "WebFetch(domain:polar.sh)",
+      "Bash(awk -F: '$2 < 4190 {last=$0; lastline=$2} $2 > 4190 {print last; exit}')",
+      "Bash(awk 'NR>=4000 && NR<=4200 && /\\\\\"title\\\\\":/' /mnt/c/Users/james/OneDrive/Documents/Seamless/seamless-frontend/openapi.json)",
+      "Bash(awk -F: '$2 >= 4000 && $2 <= 4250')",
+      "Bash(git *)"
     ]
   }
 }

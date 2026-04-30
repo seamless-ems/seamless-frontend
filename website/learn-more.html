@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Seamless Events | How It Works</title>
+  <meta name="description" content="See Seamless in action. Speaker Management and Content Management built for conference organisers.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <style>
+    /* ─── Brand tokens ─────────────────────────────────── */
+    :root {
+      --accent:        #4e5ca6;
+      --accent-hover:  #3d4a8f;
+      --accent-light:  #eef0f9;
+      --accent-border: #c8cde8;
+      --ink:           #111827;
+      --muted:         #6b7280;
+      --border:        #e5e7eb;
+      --bg:            #faf8f5;
+      --nav-bg:        rgba(250, 248, 245, 0.92);
+      --nav-h:         64px;
+      --px:            clamp(24px, 5vw, 80px);
+    }
+
+    /* ─── Reset ────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; background: var(--bg); }
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      background: var(--bg);
+      color: var(--ink);
+      min-height: 100vh;
+    }
+    a { text-decoration: none; color: inherit; }
+
+    /* ─── Nav ──────────────────────────────────────────── */
+    nav {
+      position: fixed;
+      inset: 0 0 auto 0;
+      z-index: 50;
+      height: var(--nav-h);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 var(--px);
+      background: var(--nav-bg);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-bottom: 1px solid rgba(229, 231, 235, 0.7);
+    }
+    .wordmark {
+      display: flex;
+      align-items: baseline;
+      gap: 5px;
+      line-height: 1;
+    }
+    .wordmark-seamless {
+      font-size: 22px;
+      font-weight: 600;
+      color: var(--accent);
+      letter-spacing: -0.01em;
+    }
+    .wordmark-events {
+      font-size: 22px;
+      font-weight: 300;
+      color: var(--muted);
+    }
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .nav-login {
+      padding: 8px 16px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--muted);
+      border-radius: 7px;
+      transition: color 0.15s, background 0.15s;
+    }
+    .nav-login:hover { color: var(--ink); background: rgba(0,0,0,0.04); }
+    .nav-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 8px 18px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #fff;
+      background: var(--accent);
+      border-radius: 7px;
+      transition: background 0.15s, transform 0.1s;
+    }
+    .nav-cta:hover { background: var(--accent-hover); transform: translateY(-1px); }
+
+    /* ─── Buttons ──────────────────────────────────────── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 15px;
+      cursor: pointer;
+      border: none;
+      transition: background 0.15s, color 0.15s, border-color 0.15s, transform 0.1s, box-shadow 0.15s;
+      white-space: nowrap;
+      text-decoration: none;
+    }
+    .btn:hover  { transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+    .btn-primary {
+      padding: 13px 28px;
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(78, 92, 166, 0.3);
+    }
+    .btn-primary:hover {
+      background: var(--accent-hover);
+      box-shadow: 0 4px 14px rgba(78, 92, 166, 0.4);
+    }
+    .btn-outline {
+      padding: 12px 24px;
+      background: transparent;
+      color: var(--accent);
+      border: 1.5px solid var(--accent-border);
+    }
+    .btn-outline:hover { background: var(--accent-light); border-color: var(--accent); }
+    .arrow-icon { transition: transform 0.15s; }
+    .btn-primary:hover .arrow-icon { transform: translateX(3px); }
+
+    /* ─── Feature sections ─────────────────────────────── */
+    .feature {
+      padding: 80px var(--px);
+    }
+    .feature.alt { background: #fff; }
+
+    .feature-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .feature-text {
+      text-align: center;
+      max-width: 800px;
+      margin: 0 auto 40px;
+    }
+    .feature-label {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--accent);
+      background: var(--accent-light);
+      padding: 4px 10px;
+      border-radius: 4px;
+      margin-bottom: 16px;
+    }
+    .feature-heading {
+      font-size: clamp(26px, 3vw, 38px);
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      color: var(--ink);
+      line-height: 1.1;
+      margin-bottom: 12px;
+    }
+
+
+    /* ─── Screenshot placeholder ───────────────────────── */
+    .screenshot-wrap {
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow:
+        0 0 0 1px rgba(78, 92, 166, 0.08),
+        0 4px 6px -1px rgba(0,0,0,0.06),
+        0 20px 60px -10px rgba(78, 92, 166, 0.18);
+      background: #fff;
+    }
+    .browser-chrome {
+      height: 36px;
+      background: #f3f4f6;
+      border-bottom: 1px solid #e5e7eb;
+      display: flex;
+      align-items: center;
+      padding: 0 14px;
+      gap: 7px;
+      flex-shrink: 0;
+    }
+    .browser-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+    .browser-dot:nth-child(1) { background: #f87171; }
+    .browser-dot:nth-child(2) { background: #fbbf24; }
+    .browser-dot:nth-child(3) { background: #34d399; }
+    .browser-url {
+      margin-left: 10px;
+      flex: 1;
+      height: 20px;
+      background: #fff;
+      border-radius: 4px;
+      border: 1px solid #e5e7eb;
+      max-width: 340px;
+      display: flex;
+      align-items: center;
+      padding: 0 8px;
+    }
+    .browser-url span {
+      font-size: 11px;
+      color: #9ca3af;
+      font-weight: 400;
+    }
+    .screenshot {
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: linear-gradient(135deg, #dfe4f4 0%, #ccd2ec 40%, #b8c0e4 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .screenshot img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .screenshot-placeholder {
+      font-size: 13px;
+      font-weight: 500;
+      color: rgba(78, 92, 166, 0.45);
+      letter-spacing: 0.04em;
+      pointer-events: none;
+    }
+
+    /* ─── Who built this ────────────────────────────────── */
+    .story-strip {
+      padding: 64px var(--px);
+      text-align: center;
+      background: var(--bg);
+    }
+    .story-strip p {
+      font-size: 16px;
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+    .story-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--accent);
+      cursor: pointer;
+      background: none;
+      border: none;
+      padding: 0;
+      text-decoration: underline;
+      text-decoration-color: var(--accent-border);
+      text-underline-offset: 3px;
+      transition: text-decoration-color 0.15s;
+    }
+    .story-link:hover { text-decoration-color: var(--accent); }
+
+    /* ─── Pricing strip ─────────────────────────────────── */
+    .pricing-strip {
+      padding: 80px var(--px);
+      background: #fff;
+      text-align: center;
+    }
+    .pricing-strip h2 {
+      font-size: clamp(22px, 2.5vw, 32px);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--ink);
+      margin-bottom: 8px;
+    }
+    .pricing-strip .sub {
+      font-size: 15px;
+      color: var(--muted);
+      margin-bottom: 36px;
+    }
+
+    @keyframes border-glow {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(78, 92, 166, 0.0), 0 2px 12px rgba(78, 92, 166, 0.08); }
+      50%       { box-shadow: 0 0 0 4px rgba(78, 92, 166, 0.08), 0 4px 24px rgba(78, 92, 166, 0.16); }
+    }
+    .pricing-card {
+      display: inline-block;
+      background: #fff;
+      border: 2px solid var(--accent);
+      border-radius: 16px;
+      padding: 32px 40px;
+      text-align: center;
+      animation: border-glow 3s ease-in-out infinite;
+      min-width: 320px;
+    }
+    .pricing-module-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+    .pricing-amount {
+      display: flex;
+      align-items: baseline;
+      justify-content: center;
+      gap: 4px;
+      margin-bottom: 4px;
+    }
+    .pricing-currency { font-size: 24px; font-weight: 700; color: var(--ink); }
+    .pricing-number   { font-size: 64px; font-weight: 800; color: var(--ink); letter-spacing: -0.03em; line-height: 1; }
+    .pricing-period   { font-size: 15px; font-weight: 500; color: var(--muted); align-self: flex-end; padding-bottom: 8px; }
+    .pricing-unlimiteds {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      margin-top: 16px;
+      flex-wrap: wrap;
+    }
+    .pricing-unlimiteds span { font-size: 13px; color: var(--accent); font-weight: 500; }
+
+    /* ─── Demo CTA strip ────────────────────────────────── */
+    .demo-strip {
+      padding: 80px var(--px);
+      background: var(--bg);
+      text-align: center;
+    }
+    .demo-strip h2 {
+      font-size: clamp(24px, 3vw, 36px);
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      color: var(--ink);
+      margin-bottom: 10px;
+    }
+    .demo-strip p {
+      font-size: 15px;
+      color: var(--muted);
+      margin-bottom: 28px;
+    }
+    .demo-cta-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .no-cc {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--muted);
+      margin-top: 14px;
+    }
+
+    /* ─── Footer ────────────────────────────────────────── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 32px var(--px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      background: var(--bg);
+    }
+    footer .copy {
+      font-size: 13px;
+      color: var(--muted);
+    }
+    footer a {
+      font-size: 13px;
+      color: var(--muted);
+      transition: color 0.15s;
+    }
+    footer a:hover { color: var(--ink); }
+
+    /* ─── Founder modal ─────────────────────────────────── */
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: rgba(17, 24, 39, 0.5);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal {
+      background: #fff;
+      border-radius: 20px;
+      width: 100%;
+      max-width: 580px;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.18), 0 4px 16px rgba(0,0,0,0.08);
+      overflow: hidden;
+      animation: modal-in 0.2s ease;
+    }
+    @keyframes modal-in {
+      from { opacity: 0; transform: translateY(12px) scale(0.98); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 24px 0;
+    }
+    .modal-close {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .modal-close:hover { background: var(--accent-light); color: var(--accent); }
+    .modal-body {
+      padding: 24px;
+    }
+    .modal-body h2 {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--ink);
+      margin-bottom: 16px;
+    }
+    .modal-body p {
+      font-size: 15px;
+      color: var(--muted);
+      line-height: 1.7;
+      margin-bottom: 14px;
+    }
+    .modal-body p:last-child { margin-bottom: 0; }
+    .modal-body strong { color: var(--ink); font-weight: 600; }
+
+    /* ─── Responsive ───────────────────────────────────── */
+    @media (max-width: 640px) {
+      .feature { padding: 56px var(--px); }
+      .pricing-card { min-width: unset; width: 100%; padding: 24px 20px; }
+      .pricing-number { font-size: 52px; }
+      .nav-login { display: none; }
+      footer { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Nav -->
+  <nav>
+    <a href="/" class="wordmark" aria-label="Seamless Events home">
+      <span class="wordmark-seamless">Seamless</span>
+      <span class="wordmark-events">Events</span>
+    </a>
+    <div class="nav-actions">
+      <a href="http://app.seamlessevents.io/" class="nav-login" target="_blank" rel="noopener noreferrer">Log in</a>
+      <a href="http://app.seamlessevents.io/" class="nav-cta" target="_blank" rel="noopener noreferrer">
+        Try Now
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </a>
+    </div>
+  </nav>
+
+  <main>
+
+    <!-- Section 1: Speaker Management -->
+    <section class="feature alt" style="padding-top: calc(var(--nav-h) + 64px);">
+      <div class="feature-inner">
+        <div class="feature-text">
+          <span class="feature-label">Speaker Management</span>
+          <h2 class="feature-heading">All your speakers.<br>All in one place.</h2>
+        </div>
+        <div class="screenshot-wrap">
+          <div class="browser-chrome">
+            <div class="browser-dot"></div>
+            <div class="browser-dot"></div>
+            <div class="browser-dot"></div>
+            <div class="browser-url"><span>app.seamlessevents.io</span></div>
+          </div>
+          <div class="screenshot">
+            <img src="images/Speaker List.png" alt="Speaker management table showing all speakers with status, headshots, and actions">
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 2: Intake Form -->
+    <section class="feature">
+      <div class="feature-inner">
+        <div class="feature-text">
+          <span class="feature-label">Speaker Portal</span>
+          <h2 class="feature-heading">Their own space to manage.<br>Accessible to everyone who needs it.</h2>
+        </div>
+        <div class="screenshot-wrap">
+          <div class="browser-chrome">
+            <div class="browser-dot"></div>
+            <div class="browser-dot"></div>
+            <div class="browser-dot"></div>
+            <div class="browser-url"><span>app.seamlessevents.io</span></div>
+          </div>
+          <div class="screenshot">
+            <img src="images/Speaker Portal.png" alt="Speaker portal showing speaker details and content management">
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 3: Card Builder -->
+    <section class="feature alt">
+      <div class="feature-inner">
+        <div class="feature-text">
+          <span class="feature-label">Speaker &amp; Social Cards</span>
+          <h2 class="feature-heading">Design it once.<br>Auto-filled for every speaker.</h2>
+        </div>
+        <div class="screenshot-wrap">
+          <div class="browser-chrome">
+            <div class="browser-dot"></div>
+            <div class="browser-dot"></div>
+            <div class="browser-dot"></div>
+            <div class="browser-url"><span>app.seamlessevents.io</span></div>
+          </div>
+          <div class="screenshot">
+            <img src="images/Speaker Card Builder.png" alt="Speaker card builder showing a template with live preview">
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 4: Speaker Wall -->
+    <section class="feature">
+      <div class="feature-inner">
+        <div class="feature-text">
+          <span class="feature-label">Speaker Wall</span>
+          <h2 class="feature-heading">Publish once.<br>Every change, live instantly.</h2>
+        </div>
+        <div class="screenshot-wrap">
+          <div class="browser-chrome">
+            <div class="browser-dot"></div>
+            <div class="browser-dot"></div>
+            <div class="browser-dot"></div>
+            <div class="browser-url"><span>app.seamlessevents.io</span></div>
+          </div>
+          <div class="screenshot">
+            <img src="images/Speaker Wall.png" alt="Speaker Wall showing a grid of published speaker cards">
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 5: Content Management -->
+    <section class="feature alt">
+      <div class="feature-inner">
+        <div class="feature-text">
+          <span class="feature-label">Content Management</span>
+          <h2 class="feature-heading">No more lost<br>presentations.</h2>
+        </div>
+        <div class="screenshot-wrap">
+          <div class="browser-chrome">
+            <div class="browser-dot"></div>
+            <div class="browser-dot"></div>
+            <div class="browser-dot"></div>
+            <div class="browser-url"><span>app.seamlessevents.io</span></div>
+          </div>
+          <div class="screenshot">
+            <!-- Replace with: <img src="images/content-tab.png" alt="Content tab showing uploaded files per speaker with version history"> -->
+            <span class="screenshot-placeholder">content-tab.png</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Who built this -->
+    <div class="story-strip">
+      <p>Built by people who've spent 20 years doing this the hard way.</p>
+      <button class="story-link" onclick="openStory()">
+        Read our story
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </button>
+    </div>
+
+    <!-- Pricing -->
+    <section class="pricing-strip">
+      <h2>Simple pricing.</h2>
+      <p class="sub">One price, per event. Choose the modules you need.</p>
+      <div class="pricing-card">
+        <p class="pricing-module-label">Speaker &amp; Content Management</p>
+        <div class="pricing-amount">
+          <span class="pricing-currency">$</span>
+          <span class="pricing-number">950</span>
+          <span class="pricing-period">/ event</span>
+        </div>
+        <div class="pricing-unlimiteds">
+          <span>Unlimited speakers</span><span>Unlimited content</span><span>Unlimited lead time</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Book a Demo -->
+    <section class="demo-strip">
+      <h2>Want to see it live?</h2>
+      <p>15 minutes. No pitch, just a genuine look at how Seamless fits your show.</p>
+      <div class="demo-cta-row">
+        <a href="https://calendly.com/james-ruleyproductions/seamless-events?back=1&month=2026-05" class="btn btn-primary" target="_blank" rel="noopener noreferrer">
+          Book a Demo
+          <svg class="arrow-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </a>
+        <a href="http://app.seamlessevents.io/" class="btn btn-outline" target="_blank" rel="noopener noreferrer">
+          Start Free Trial
+        </a>
+      </div>
+      <p class="no-cc">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+        14-day free trial, no credit card required
+      </p>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer>
+    <a href="/" class="wordmark" aria-label="Seamless Events home">
+      <span class="wordmark-seamless" style="font-size:18px;">Seamless</span>
+      <span class="wordmark-events" style="font-size:18px;">Events</span>
+    </a>
+    <span class="copy">contact@seamlessevents.io</span>
+    <span class="copy">&copy; 2026 Seamless Events</span>
+  </footer>
+
+  <!-- Founder modal -->
+  <div class="modal-backdrop" id="storyModal" role="dialog" aria-modal="true" aria-labelledby="story-title" onclick="handleBackdropClick(event)">
+    <div class="modal">
+      <div class="modal-header">
+        <a href="/" class="wordmark" aria-label="Seamless Events">
+          <span class="wordmark-seamless" style="font-size:18px;">Seamless</span>
+          <span class="wordmark-events" style="font-size:18px;">Events</span>
+        </a>
+        <button class="modal-close" onclick="closeStory()" aria-label="Close">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <h2 id="story-title">20 years in the room.</h2>
+        <p>Our co-founder James spent two decades in the events industry building workarounds for problems that good software should have solved long ago.</p>
+        <p>Every year it was the same: <strong>websites with no pricing, demos with no clarity, and large quotations with no ability to tailor.</strong> Features nobody asked for, bundled into budgets nobody could justify.</p>
+        <p>After years of building custom fixes for clients, he teamed up with James and Catherine to build Seamless from scratch. Starting with what an organiser actually needs, and nothing they don't.</p>
+        <p>If that frustration sounds familiar, <strong>try it free for 14 days</strong> and tell us what you'd like to see next.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function openStory() {
+      document.getElementById('storyModal').classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+    function closeStory() {
+      document.getElementById('storyModal').classList.remove('open');
+      document.body.style.overflow = '';
+    }
+    function handleBackdropClick(e) {
+      if (e.target === document.getElementById('storyModal')) closeStory();
+    }
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeStory();
+    });
+  </script>
+
+</body>
+</html>

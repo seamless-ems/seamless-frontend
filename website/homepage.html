@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Seamless Events — Speaker & Content Management</title>
+  <title>Seamless Events | Speaker & Content Management</title>
   <meta name="description" content="The all-in-one platform for event organisers to collect, manage, and publish speaker content.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -61,14 +61,14 @@
       line-height: 1;
     }
     .wordmark-seamless {
-      font-size: 24px;
+      font-size: 22px;
       font-weight: 600;
       color: var(--accent);
       letter-spacing: -0.01em;
     }
     .wordmark-events {
-      font-size: 18px;
-      font-weight: 400;
+      font-size: 22px;
+      font-weight: 300;
       color: var(--muted);
     }
 
@@ -144,10 +144,13 @@
     .btn {
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: 7px;
       border-radius: 8px;
       font-weight: 600;
       font-size: 15px;
+      cursor: pointer;
+      border: none;
       transition: background 0.15s, color 0.15s, border-color 0.15s, transform 0.1s, box-shadow 0.15s;
       white-space: nowrap;
     }
@@ -257,6 +260,145 @@
       text-transform: uppercase;
     }
 
+    /* ─── Pricing modal ────────────────────────────────── */
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: rgba(17, 24, 39, 0.5);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .modal-backdrop.open { display: flex; }
+
+    .modal {
+      background: #fff;
+      border-radius: 20px;
+      width: 100%;
+      max-width: 580px;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.18), 0 4px 16px rgba(0,0,0,0.08);
+      overflow: hidden;
+      animation: modal-in 0.2s ease;
+    }
+    @keyframes modal-in {
+      from { opacity: 0; transform: translateY(12px) scale(0.98); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 24px 0;
+    }
+    .modal-close {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .modal-close:hover { background: var(--accent-light); color: var(--accent); }
+
+    .modal-body { padding: 24px; }
+
+    @keyframes border-glow {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(78, 92, 166, 0.0), 0 2px 12px rgba(78, 92, 166, 0.08); }
+      50%       { box-shadow: 0 0 0 4px rgba(78, 92, 166, 0.08), 0 4px 24px rgba(78, 92, 166, 0.16); }
+    }
+    .pricing-card {
+      background: #fff;
+      border: 2px solid var(--accent);
+      border-radius: 14px;
+      padding: 24px;
+      text-align: center;
+      margin-bottom: 24px;
+      animation: border-glow 3s ease-in-out infinite;
+    }
+    .pricing-module {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--accent);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    .pricing-amount {
+      display: flex;
+      align-items: baseline;
+      justify-content: center;
+      gap: 4px;
+      margin-bottom: 4px;
+    }
+    .pricing-currency {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+    .pricing-number {
+      font-size: 64px;
+      font-weight: 800;
+      color: var(--ink);
+      letter-spacing: -0.03em;
+      line-height: 1;
+    }
+    .pricing-period {
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--muted);
+      align-self: flex-end;
+      padding-bottom: 8px;
+    }
+    .pricing-unlimiteds {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+    .pricing-unlimiteds span {
+      font-size: 13px;
+      color: var(--accent);
+      font-weight: 500;
+    }
+
+    .features {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+    .features li {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+      color: var(--ink);
+    }
+    .features li svg { color: var(--accent); flex-shrink: 0; }
+
+    .modal-cta { display: flex; flex-direction: column; gap: 10px; }
+    .modal-no-cc {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--muted);
+    }
+
     /* ─── Responsive ───────────────────────────────────── */
     @media (max-width: 900px) {
       .hero-inner {
@@ -273,6 +415,7 @@
 
     @media (max-width: 540px) {
       .nav-login { display: none; }
+      .pricing-number { font-size: 52px; }
     }
   </style>
 </head>
@@ -312,12 +455,12 @@
               Try Now
               <svg class="arrow-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
             </a>
-            <a href="https://calendly.com/james-ruleyproductions/seamless-events?back=1&month=2026-05" class="btn btn-outline" target="_blank" rel="noopener noreferrer">
-              Book Demo
-            </a>
             <a href="https://seamlessevents.io/learn-more" class="btn btn-outline" target="_blank" rel="noopener noreferrer">
               Learn More
             </a>
+            <button class="btn btn-outline" onclick="openPricing()">
+              See Pricing
+            </button>
             <p class="no-cc">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
               No credit card required
@@ -338,6 +481,89 @@
       </div>
     </section>
   </main>
+
+  <!-- Pricing modal -->
+  <div class="modal-backdrop" id="pricingModal" role="dialog" aria-modal="true" aria-labelledby="modal-title" onclick="handleBackdropClick(event)">
+    <div class="modal">
+      <div class="modal-header">
+        <a href="/" class="wordmark" aria-label="Seamless Events">
+          <span class="wordmark-seamless" style="font-size:18px;">Seamless</span>
+          <span class="wordmark-events" style="font-size:18px;">Events</span>
+        </a>
+        <button class="modal-close" onclick="closePricing()" aria-label="Close">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Price -->
+        <div class="pricing-card">
+          <p class="pricing-module">Speaker &amp; Content Management</p>
+          <div class="pricing-amount">
+            <span class="pricing-currency">$</span>
+            <span class="pricing-number">950</span>
+            <span class="pricing-period">/ event</span>
+          </div>
+          <div class="pricing-unlimiteds">
+            <span>Unlimited speakers</span><span>Unlimited content</span><span>Unlimited leadtime</span>
+          </div>
+        </div>
+
+        <!-- What's included -->
+        <ul class="features">
+          <li>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+            Call for Speakers
+          </li>
+          <li>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+            Intake forms direct to your speakers
+          </li>
+          <li>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+            Speaker &amp; Social Card templates
+          </li>
+          <li>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+            Update once, live everywhere, for everyone
+          </li>
+          <li>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+            Content hub with version history
+          </li>
+        </ul>
+
+        <!-- CTA -->
+        <div class="modal-cta">
+          <a href="http://app.seamlessevents.io/" class="btn btn-primary" target="_blank" rel="noopener noreferrer" onclick="closePricing()">
+            Start Free Trial
+            <svg class="arrow-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </a>
+          <p class="modal-no-cc">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+            14-day free trial · No credit card required
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function openPricing() {
+      document.getElementById('pricingModal').classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+    function closePricing() {
+      document.getElementById('pricingModal').classList.remove('open');
+      document.body.style.overflow = '';
+    }
+    function handleBackdropClick(e) {
+      if (e.target === document.getElementById('pricingModal')) closePricing();
+    }
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closePricing();
+    });
+  </script>
 
 </body>
 </html>

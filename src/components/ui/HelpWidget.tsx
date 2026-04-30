@@ -61,7 +61,7 @@ export default function HelpWidget() {
         </DialogContent>
       </Dialog>
 
-      <div className="fixed right-4 bottom-4 z-50">
+      <div className="fixed right-8 bottom-8 z-50">
         <button
           onClick={() => setOpen(true)}
           className="h-10 w-10 rounded-full bg-primary text-accent-foreground shadow-md flex items-center justify-center hover:bg-accent/90 transition-colors text-base font-semibold"

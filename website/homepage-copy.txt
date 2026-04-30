@@ -1,0 +1,62 @@
+HOMEPAGE — COPY DRAFT
+seamlessevents.io
+Last updated: 30 Apr 2026
+────────────────────────────────────────────────────────────
+
+NAV
+────
+Wordmark: Seamless Events
+Links: Log in (→ app.seamlessevents.io) | Try Now (→ app.seamlessevents.io)
+
+────────────────────────────────────────────────────────────
+
+HERO
+────
+Headline (3 lines):
+  Events are Hard.
+  Speaker & Content Management
+  shouldn't be.
+
+  Note: "Speaker & Content" in accent colour (indigo), rest in ink.
+
+CTAs (stacked, in order):
+  1. Try Now              → app.seamlessevents.io
+  2. Learn More           → seamlessevents.io/learn-more
+  3. See Pricing          → opens pricing modal (below)
+
+Under CTAs:
+  ✓ No credit card required
+
+Video placeholder (right of headline):
+  16:9 aspect ratio
+  Label: PRODUCT DEMO
+  (replace with real video embed when ready)
+
+────────────────────────────────────────────────────────────
+
+PRICING MODAL (triggered by "See Pricing")
+────
+Header: Seamless Events wordmark + close button
+
+Price card:
+  Label: Speaker & Content Management
+  Price: $950 / event
+  Unlimiteds: Unlimited speakers · Unlimited content · Unlimited lead time
+
+Feature list (journey order):
+  1. Call for Speakers
+  2. Intake forms direct to your speakers
+  3. Speaker & Social Card templates
+  4. Update once, live everywhere, for everyone
+  5. Content hub with version history
+
+CTA: Start Free Trial (→ app.seamlessevents.io)
+Under CTA: 14-day free trial · No credit card required
+
+────────────────────────────────────────────────────────────
+
+NOTES / QUESTIONS FOR JS
+- "Events are Hard." — capitalised H intentional?
+- Video: placeholder currently shows play button + "PRODUCT DEMO" label. Swap src once video is ready.
+- Pricing modal calendly link not included here (Book Demo removed from homepage). Confirm.
+- All links open in new tab.
