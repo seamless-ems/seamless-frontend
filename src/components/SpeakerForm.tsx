@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "./ui/textarea";
@@ -11,8 +11,11 @@ type Props = {
     formConfig?: any[];
     onSubmit: (values: Values) => Promise<void> | void;
     onCancel?: () => void;
+    onDirtyChange?: (dirty: boolean) => void;
+    onValuesChange?: (values: Values) => void;
     submitLabel?: string;
     submitting?: boolean;
+    formRef?: React.RefObject<HTMLFormElement>;
 };
 
 // Map field IDs to camelCase keys for the values object
@@ -34,10 +37,15 @@ export default function SpeakerForm({
     formConfig,
     onSubmit,
     onCancel,
+    onDirtyChange,
+    onValuesChange,
     submitLabel = "Save",
-    submitting = false
+    submitting = false,
+    formRef,
 }: Props) {
     const [values, setValues] = useState<Values>({});
+
+    const markDirty = () => onDirtyChange?.(true);
 
     useEffect(() => {
         const initValues: Values = {};
@@ -59,13 +67,22 @@ export default function SpeakerForm({
             </label>
         );
 
+        const update = (newVal: string) => {
+            setValues((s) => {
+                const next = { ...s, [key]: newVal };
+                onValuesChange?.(next);
+                return next;
+            });
+            markDirty();
+        };
+
         if (field.type === 'textarea' || field.id === 'bio' || field.id === 'talk_description') {
             return (
                 <div key={field.id} className="grid gap-2">
                     {label}
                     <Textarea
                         value={value}
-                        onChange={(e) => setValues((s) => ({ ...s, [key]: e.target.value }))}
+                        onChange={(e) => update(e.target.value)}
                         placeholder={field.placeholder}
                         required={field.required}
                         className="min-h-[100px]"
@@ -78,7 +95,7 @@ export default function SpeakerForm({
             return (
                 <div key={field.id} className="grid gap-2">
                     {label}
-                    <Select value={value} onValueChange={(v) => setValues((s) => ({ ...s, [key]: v }))}>
+                    <Select value={value} onValueChange={update}>
                         <SelectTrigger>
                             <SelectValue placeholder={field.placeholder || `Select ${field.label.toLowerCase()}`} />
                         </SelectTrigger>
@@ -98,7 +115,7 @@ export default function SpeakerForm({
                 <Input
                     type={field.type === 'email' ? 'email' : field.type === 'url' ? 'url' : 'text'}
                     value={value}
-                    onChange={(e) => setValues((s) => ({ ...s, [key]: e.target.value }))}
+                    onChange={(e) => update(e.target.value)}
                     placeholder={field.placeholder}
                     required={field.required}
                 />
@@ -107,26 +124,46 @@ export default function SpeakerForm({
     };
 
     const enabledFields = formConfig?.filter((f: any) => f.enabled && f.type !== 'file') || [];
-    const firstNameField = enabledFields.find((f: any) => f.id === 'first_name');
-    const lastNameField = enabledFields.find((f: any) => f.id === 'last_name');
-    const otherFields = enabledFields.filter((f: any) => f.id !== 'first_name' && f.id !== 'last_name');
+    const getField = (id: string) => enabledFields.find((f: any) => f.id === id);
+
+    // Paired rows mirroring the portal info layout
+    const PAIRS: [string, string][] = [
+        ['first_name', 'last_name'],
+        ['company_role', 'company_name'],
+        ['email', 'linkedin'],
+    ];
+    const SOLO_ORDER = ['talk_title', 'talk_topic', 'bio', 'talk_description'];
+    const pairedIds = new Set(PAIRS.flat());
+    const remainingFields = enabledFields.filter(
+        (f: any) => !pairedIds.has(f.id) && !SOLO_ORDER.includes(f.id)
+    );
 
     return (
         <form
+            ref={formRef}
             onSubmit={async (e) => {
                 e.preventDefault();
                 await onSubmit(values);
             }}
-            className="space-y-4"
+            className="space-y-4 pb-2"
         >
-            {(firstNameField || lastNameField) && (
-                <div className="grid gap-2 sm:grid-cols-2">
-                    {firstNameField && renderField(firstNameField)}
-                    {lastNameField && renderField(lastNameField)}
-                </div>
-            )}
-            {otherFields.map(renderField)}
-            <div className="flex justify-end gap-2">
+            {PAIRS.map(([a, b]) => {
+                const fa = getField(a), fb = getField(b);
+                if (!fa && !fb) return null;
+                if (fa && fb) return (
+                    <div key={`${a}-${b}`} className="grid grid-cols-2 gap-4">
+                        {renderField(fa)}
+                        {renderField(fb)}
+                    </div>
+                );
+                return fa ? renderField(fa) : renderField(fb!);
+            })}
+            {SOLO_ORDER.map(id => {
+                const f = getField(id);
+                return f ? renderField(f) : null;
+            })}
+            {remainingFields.map(renderField)}
+            <div className="flex justify-end gap-2 pt-2 border-t border-border">
                 <Button variant="outline" type="button" onClick={onCancel}>Cancel</Button>
                 <Button type="submit" disabled={submitting}>{submitLabel}</Button>
             </div>

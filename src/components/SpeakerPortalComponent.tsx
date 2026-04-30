@@ -27,6 +27,8 @@ import {
 import { useEventAccess } from "@/contexts/EventAccessContext";
 import { ImageCropDialog } from "@/components/ImageCropDialog";
 import SpeakerForm from "@/components/SpeakerForm";
+import { useWarnOnLeave } from "@/hooks/useWarnOnLeave";
+import { UnsavedChangesDialog } from "@/components/ui/UnsavedChangesDialog";
 import SpeakerCardTab from "@/components/organizer/SpeakerCardTab";
 import SpeakerContentTab from "@/components/organizer/SpeakerContentTab";
 import { toast } from "@/hooks/use-toast";
@@ -38,6 +40,116 @@ type Props = {
   speakerId?: string | null;
   initialOpenEdit?: boolean;
 };
+
+const DEFAULT_EDIT_FIELDS = [
+  {
+    id: "first_name",
+    label: "First Name",
+    type: "text",
+    enabled: true,
+    required: true,
+  },
+  {
+    id: "last_name",
+    label: "Last Name",
+    type: "text",
+    enabled: true,
+    required: true,
+  },
+  {
+    id: "email",
+    label: "Email",
+    type: "email",
+    enabled: true,
+    required: true,
+  },
+  {
+    id: "company_role",
+    label: "Title",
+    type: "text",
+    enabled: true,
+    required: false,
+  },
+  {
+    id: "company_name",
+    label: "Company",
+    type: "text",
+    enabled: true,
+    required: false,
+  },
+  {
+    id: "linkedin",
+    label: "LinkedIn",
+    type: "url",
+    enabled: true,
+    required: false,
+  },
+  {
+    id: "talk_title",
+    label: "Talk Title",
+    type: "text",
+    enabled: true,
+    required: false,
+  },
+  {
+    id: "talk_description",
+    label: "Talk Description",
+    type: "textarea",
+    enabled: true,
+    required: false,
+  },
+  {
+    id: "bio",
+    label: "Bio",
+    type: "textarea",
+    enabled: true,
+    required: false,
+  },
+];
+
+const FIELD_ID_TO_KEY: Record<string, string> = {
+  first_name: "firstName",
+  last_name: "lastName",
+  company_name: "companyName",
+  company_role: "companyRole",
+  talk_topic: "talkTitle",
+  talk_title: "talkTitle",
+  talk_description: "talkDescription",
+};
+
+function Field({
+  label,
+  value,
+  href,
+}: {
+  label: string;
+  value?: string | null;
+  href?: string;
+}) {
+  return (
+    <div>
+      <p className="text-xs font-medium text-muted-foreground mb-0.5">
+        {label}
+      </p>
+      {href && value ? (
+        <a
+          href={href}
+          target="_blank"
+          rel="noreferrer"
+          className="text-sm text-accent hover:underline truncate block"
+        >
+          {value}
+        </a>
+      ) : (
+        <p className="text-sm text-foreground">
+          {value || (
+            <span className="text-muted-foreground/40">—</span>
+          )}
+        </p>
+      )}
+    </div>
+  );
+}
 
 export default function SpeakerPortalComponent({
   eventId,
@@ -110,71 +222,6 @@ export default function SpeakerPortalComponent({
     return [];
   })();
 
-  const DEFAULT_EDIT_FIELDS = [
-    {
-      id: "first_name",
-      label: "First Name",
-      type: "text",
-      enabled: true,
-      required: true,
-    },
-    {
-      id: "last_name",
-      label: "Last Name",
-      type: "text",
-      enabled: true,
-      required: true,
-    },
-    {
-      id: "email",
-      label: "Email",
-      type: "email",
-      enabled: true,
-      required: true,
-    },
-    {
-      id: "company_role",
-      label: "Title",
-      type: "text",
-      enabled: true,
-      required: false,
-    },
-    {
-      id: "company_name",
-      label: "Company",
-      type: "text",
-      enabled: true,
-      required: false,
-    },
-    {
-      id: "linkedin",
-      label: "LinkedIn",
-      type: "url",
-      enabled: true,
-      required: false,
-    },
-    {
-      id: "talk_title",
-      label: "Talk Title",
-      type: "text",
-      enabled: true,
-      required: false,
-    },
-    {
-      id: "talk_description",
-      label: "Talk Description",
-      type: "textarea",
-      enabled: true,
-      required: false,
-    },
-    {
-      id: "bio",
-      label: "Bio",
-      type: "textarea",
-      enabled: true,
-      required: false,
-    },
-  ];
   const editFormFields =
     configFields.length > 0 ? configFields : DEFAULT_EDIT_FIELDS;
 
@@ -193,14 +240,15 @@ export default function SpeakerPortalComponent({
   const canApprove = Boolean(s?.headshot);
 
   const queryClient = useQueryClient();
-  // Use shared `downloadResource` from utils for file downloads.
   const [rejectionEmail, setRejectionEmail] = useState<EmailDraft | null>(null);
   const [editOpen, setEditOpen] = useState(
     () => initialOpenEdit ?? !!(location.state as any)?.openEdit,
   );
+  const [editIsDirty, setEditIsDirty] = useState(false);
+  const [unsavedOpen, setUnsavedOpen] = useState(false);
+  const editValuesRef = useRef<Record<string, any>>({});
+  useWarnOnLeave(editIsDirty);
   const [bioOpen, setBioOpen] = useState(false);
-  // const [notesOpen, setNotesOpen] = useState(false); // Internal Notes — not MVP
-  // const [internalNotes, setInternalNotes] = useState(''); // Internal Notes — not MVP
   const [cropImageUrl, setCropImageUrl] = useState<string | null>(null);
   const [cropType, setCropType] = useState<
     "headshot" | "logo" | "logoWhite" | null
@@ -456,6 +504,69 @@ export default function SpeakerPortalComponent({
     }
   };
 
+  const makeFileHandler =
+    (type: "headshot" | "logo" | "logoWhite") =>
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (effectiveReadOnly) return;
+      const file = e.target.files?.[0];
+      if (!file) return;
+      if (
+        !["image/png", "image/jpeg", "image/avif"].includes(file.type)
+      ) {
+        toast({
+          title: "Must be PNG, JPEG, or AVIF",
+          variant: "destructive",
+        });
+        e.currentTarget.value = "";
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setCropImageUrl(reader.result as string);
+        setCropType(type);
+      };
+      reader.readAsDataURL(file);
+    };
+
+  const handleEditSave = async (values: Record<string, any>) => {
+    if (!id || !spkId) return;
+    try {
+      const standardKeys = ["firstName","lastName","email","companyName","companyRole","linkedin","bio","talkTitle","talkDescription"];
+      const customFields: Record<string, any> = {};
+      Object.keys(values).forEach((key) => { if (!standardKeys.includes(key)) customFields[key] = values[key]; });
+      const requiredFields = editFormFields.filter((f: any) => f.required && f.enabled);
+      const allRequiredFilled = requiredFields.every((field: any) => {
+        const key = FIELD_ID_TO_KEY[field.id] ?? field.id;
+        const value = standardKeys.includes(key) ? values[key] : customFields[key];
+        return value && value.trim() !== "";
+      });
+      const payload: any = {
+        id: spkId,
+        firstName: values.firstName, lastName: values.lastName, email: values.email,
+        companyName: values.companyName || null, companyRole: values.companyRole || null,
+        linkedin: values.linkedin || null, bio: values.bio || null,
+        talkTitle: values.talkTitle || null, talkDescription: values.talkDescription || null,
+        formType: s?.formType || "speaker-info",
+        intakeFormStatus: allRequiredFilled ? "submitted" : "pending",
+      };
+      if (Object.keys(customFields).length > 0) payload.customFields = customFields;
+      if (payload.customFields) {
+        const cf = payload.customFields as Record<string, any>;
+        if (cf["company_logo_white"]) { payload.companyLogoWhite = cf["company_logo_white"]; delete cf["company_logo_white"]; }
+        if (cf["companylogowhite"]) { payload.companyLogoWhite = cf["companylogowhite"]; delete cf["companylogowhite"]; }
+        if (Object.keys(cf).length === 0) delete payload.customFields;
+      }
+      await updateSpeaker(id, spkId, payload);
+      queryClient.invalidateQueries({ queryKey: ["event", id, "speaker", spkId] });
+      queryClient.invalidateQueries({ queryKey: ["event", id, "speakers"], exact: false });
+      setEditIsDirty(false);
+      setEditOpen(false);
+      toast({ title: "Speaker updated" });
+    } catch (err: any) {
+      toast({ title: "Failed to update speaker", description: String(err?.message || err) });
+    }
+  };
+
   const bust = (url: string | null | undefined, key: string) =>
     url ? `${url}${imageBust[key] ? `?t=${imageBust[key]}` : ""}` : url;
 
@@ -473,6 +584,15 @@ export default function SpeakerPortalComponent({
       </div>
     );
   }
+
+  const customInitialValues: Record<string, any> = {};
+  editFormFields.forEach((field: any) => {
+    if (field.custom && field.enabled && field.type !== "file") {
+      const cf = s?.customFields || {};
+      customInitialValues[field.id] =
+        cf[field.id] || cf[field.id.replace(/_/g, "")] || "";
+    }
+  });
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -585,64 +705,6 @@ export default function SpeakerPortalComponent({
               const fieldEnabled = (id: string) =>
                 !configFields.length ||
                 configFields.some((f) => f.id === id && f.enabled);
-
-              const Field = ({
-                label,
-                value,
-                href,
-              }: {
-                label: string;
-                value?: string | null;
-                href?: string;
-              }) => (
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground mb-0.5">
-                    {label}
-                  </p>
-                  {href && value ? (
-                    <a
-                      href={href}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-sm text-accent hover:underline truncate block"
-                    >
-                      {value}
-                    </a>
-                  ) : (
-                    <p className="text-sm text-foreground">
-                      {value || (
-                        <span className="text-muted-foreground/40">—</span>
-                      )}
-                    </p>
-                  )}
-                </div>
-              );
-
-              const makeFileHandler =
-                (type: "headshot" | "logo" | "logoWhite") =>
-                (e: React.ChangeEvent<HTMLInputElement>) => {
-                  if (effectiveReadOnly) return;
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  if (
-                    !["image/png", "image/jpeg", "image/avif"].includes(
-                      file.type,
-                    )
-                  ) {
-                    toast({
-                      title: "Must be PNG, JPEG, or AVIF",
-                      variant: "destructive",
-                    });
-                    e.currentTarget.value = "";
-                    return;
-                  }
-                  const reader = new FileReader();
-                  reader.onloadend = () => {
-                    setCropImageUrl(reader.result as string);
-                    setCropType(type);
-                  };
-                  reader.readAsDataURL(file);
-                };
 
               // All enabled fields not in the hardcoded core set
               // `sample_content` is handled by the SpeakerContentTab component now
@@ -826,25 +888,6 @@ export default function SpeakerPortalComponent({
                             </div>
                           );
                         })}
-
-                        {/* Internal Notes — commented out, not MVP
-                    {isOrganizerView && (
-                    <div className="pt-4 border-t border-border">
-                      <div className="flex items-center justify-between mb-1.5">
-                        <p className="text-xs font-medium text-muted-foreground">Internal Notes <span className="font-normal opacity-60">(not visible to speaker)</span></p>
-                        <button
-                          className="text-xs text-accent hover:underline"
-                          onClick={() => { setInternalNotes(s?.internalNotes || ''); setNotesOpen(true); }}
-                        >
-                          {s?.internalNotes ? 'Edit' : 'Add'}
-                        </button>
-                      </div>
-                      <p className="text-sm text-foreground leading-relaxed">
-                        {s?.internalNotes || <span className="text-muted-foreground/40">No notes added</span>}
-                      </p>
-                    </div>
-                    )}
-                    */}
                       </div>
 
                       {(fieldEnabled("headshot") ||
@@ -1029,55 +1072,31 @@ export default function SpeakerPortalComponent({
 
                           {extraFileFields.map((field) => {
                             const val = getCustomValue(field);
-                            const isImage =
-                              field.id === "company_logo_white" ||
-                              (val &&
-                                /\.(png|jpg|jpeg|gif|webp|svg)(\?|$)/i.test(
-                                  val,
-                                ));
-                            const isDarkBg = field.id === "company_logo_white";
+                            const isImage = val && /\.(png|jpg|jpeg|gif|webp|svg)(\?|$)/i.test(val);
                             return (
-                              <div
-                                key={field.id}
-                                className="flex flex-col items-center gap-1.5 w-full"
-                              >
+                              <div key={field.id} className="flex flex-col items-center gap-1.5 w-full">
                                 <p className="text-xs font-medium text-muted-foreground self-start mb-1">
                                   {field.label}
                                 </p>
                                 {isImage ? (
-                                  <div
-                                    className="w-full h-[64px] rounded-lg border border-border flex items-center justify-center p-2.5"
-                                    style={{
-                                      background: isDarkBg
-                                        ? "#1f2937"
-                                        : undefined,
-                                    }}
-                                  >
+                                  <div className="w-full h-[64px] rounded-lg border border-border bg-white flex items-center justify-center p-2.5">
                                     {val ? (
-                                      <img
-                                        src={val}
-                                        alt={field.label}
-                                        className="max-w-full max-h-full object-contain"
-                                      />
+                                      <img src={val} alt={field.label} className="max-w-full max-h-full object-contain" />
                                     ) : (
-                                      <span className="text-xs text-muted-foreground/50 text-center leading-tight">
-                                        Not uploaded
-                                      </span>
+                                      <span className="text-xs text-muted-foreground/50 text-center leading-tight">Not uploaded</span>
                                     )}
                                   </div>
                                 ) : (
                                   <div className="w-full rounded-lg border border-border bg-muted/20 px-3 py-2">
                                     {val ? (
                                       <button
-                                        onClick={() => void downloadResource(val, `${s?.id ?? 'file'}-${field.id}`)}
+                                        onClick={() => void downloadResource(val, `${s?.firstName ?? 'file'}-${field.id}`)}
                                         className="text-xs text-accent hover:underline"
                                       >
                                         Download file
                                       </button>
                                     ) : (
-                                      <span className="text-xs text-muted-foreground/50">
-                                        Not uploaded
-                                      </span>
+                                      <span className="text-xs text-muted-foreground/50">Not uploaded</span>
                                     )}
                                   </div>
                                 )}
@@ -1130,14 +1149,23 @@ export default function SpeakerPortalComponent({
         </div>
       </div>
 
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent aria-describedby={undefined}>
-          <DialogHeader>
+      <Dialog
+        open={editOpen}
+        onOpenChange={(open) => {
+          if (!open && editIsDirty) { setUnsavedOpen(true); return; }
+          setEditOpen(open);
+        }}
+      >
+        <DialogContent aria-describedby={undefined} className="sm:max-w-2xl flex flex-col max-h-[90vh]">
+          <DialogHeader className="shrink-0">
             <DialogTitle>
               {isApplication ? "Edit Application" : "Edit Speaker"}
             </DialogTitle>
           </DialogHeader>
+          <div className="overflow-y-auto flex-1 min-h-0">
           <SpeakerForm
+            onDirtyChange={(dirty) => setEditIsDirty(dirty)}
+            onValuesChange={(vals) => { editValuesRef.current = vals; }}
             initialValues={{
               firstName: s?.firstName ?? "",
               lastName: s?.lastName ?? "",
@@ -1148,111 +1176,14 @@ export default function SpeakerPortalComponent({
               bio: s?.bio ?? "",
               talkTitle: s?.talkTitle ?? "",
               talkDescription: s?.talkDescription ?? "",
-              ...(() => {
-                const vals: Record<string, any> = {};
-                editFormFields.forEach((field: any) => {
-                  if (field.custom && field.enabled && field.type !== "file") {
-                    const cf = s?.customFields || {};
-                    vals[field.id] =
-                      cf[field.id] || cf[field.id.replace(/_/g, "")] || "";
-                  }
-                });
-                return vals;
-              })(),
+              ...customInitialValues,
             }}
             formConfig={editFormFields}
             submitLabel="Save"
-            onCancel={() => setEditOpen(false)}
-            onSubmit={async (values) => {
-              if (!id || !spkId) return;
-              try {
-                const standardKeys = [
-                  "firstName",
-                  "lastName",
-                  "email",
-                  "companyName",
-                  "companyRole",
-                  "linkedin",
-                  "bio",
-                  "talkTitle",
-                  "talkDescription",
-                ];
-                const customFields: Record<string, any> = {};
-                Object.keys(values).forEach((key) => {
-                  if (!standardKeys.includes(key))
-                    customFields[key] = values[key];
-                });
-                const requiredFields = editFormFields.filter(
-                  (f: any) => f.required && f.enabled,
-                );
-                const allRequiredFilled = requiredFields.every((field: any) => {
-                  const key =
-                    field.id === "first_name"
-                      ? "firstName"
-                      : field.id === "last_name"
-                        ? "lastName"
-                        : field.id === "company_name"
-                          ? "companyName"
-                          : field.id === "company_role"
-                            ? "companyRole"
-                            : field.id === "talk_topic"
-                              ? "talkTitle"
-                              : field.id === "talk_title"
-                                ? "talkTitle"
-                                : field.id === "talk_description"
-                                  ? "talkDescription"
-                                  : field.id;
-                  const value = standardKeys.includes(key)
-                    ? (values as any)[key]
-                    : customFields[key];
-                  return value && value.trim() !== "";
-                });
-                const payload: any = {
-                  id: spkId,
-                  firstName: values.firstName,
-                  lastName: values.lastName,
-                  email: values.email,
-                  companyName: (values as any).companyName || null,
-                  companyRole: (values as any).companyRole || null,
-                  linkedin: (values as any).linkedin || null,
-                  bio: (values as any).bio || null,
-                  talkTitle: (values as any).talkTitle || null,
-                  talkDescription: (values as any).talkDescription || null,
-                  formType: s?.formType || "speaker-info",
-                  intakeFormStatus: allRequiredFilled ? "submitted" : "pending",
-                };
-                if (Object.keys(customFields).length > 0)
-                  payload.customFields = customFields;
-                if (payload.customFields) {
-                  const cf = payload.customFields as Record<string, any>;
-                  if (cf["company_logo_white"]) {
-                    payload.companyLogoWhite = cf["company_logo_white"];
-                    delete cf["company_logo_white"];
-                  }
-                  if (cf["companylogowhite"]) {
-                    payload.companyLogoWhite = cf["companylogowhite"];
-                    delete cf["companylogowhite"];
-                  }
-                  if (Object.keys(cf).length === 0) delete payload.customFields;
-                }
-                await updateSpeaker(id, spkId, payload);
-                queryClient.invalidateQueries({
-                  queryKey: ["event", id, "speaker", spkId],
-                });
-                queryClient.invalidateQueries({
-                  queryKey: ["event", id, "speakers"],
-                  exact: false,
-                });
-                setEditOpen(false);
-                toast({ title: "Speaker updated" });
-              } catch (err: any) {
-                toast({
-                  title: "Failed to update speaker",
-                  description: String(err?.message || err),
-                });
-              }
-            }}
+            onCancel={() => { setEditIsDirty(false); setEditOpen(false); }}
+            onSubmit={handleEditSave}
           />
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -1265,47 +1196,6 @@ export default function SpeakerPortalComponent({
         </DialogContent>
       </Dialog>
 
-      {/* Internal Notes dialog — commented out, not MVP
-      <Dialog open={notesOpen} onOpenChange={setNotesOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Internal Notes</DialogTitle>
-            <DialogDescription>Only visible to your team</DialogDescription>
-          </DialogHeader>
-          <Textarea
-            value={internalNotes}
-            onChange={(e) => setInternalNotes(e.target.value)}
-            placeholder="Add internal notes about this speaker…"
-            className="min-h-[150px]"
-          />
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setNotesOpen(false)}>Cancel</Button>
-            <Button onClick={async () => {
-              if (!id || !spkId) return;
-              try {
-                const payload: any = { ...s, internalNotes };
-                if (payload.customFields) {
-                  const cf = payload.customFields as Record<string, any>;
-                  if (cf["company_logo_white"]) { payload.companyLogoWhite = cf["company_logo_white"]; delete cf["company_logo_white"]; }
-                  if (cf["companylogowhite"]) { payload.companyLogoWhite = cf["companylogowhite"]; delete cf["companylogowhite"]; }
-                  if (cf["talk_topic"]) { payload.talkTitle = cf["talk_topic"]; delete cf["talk_topic"]; }
-                  if (cf["talk_title"]) { payload.talkTitle = cf["talk_title"]; delete cf["talk_title"]; }
-                  if (cf["talk_description"]) { payload.talkDescription = cf["talk_description"]; delete cf["talk_description"]; }
-                  if (Object.keys(cf).length === 0) delete payload.customFields;
-                }
-                await updateSpeaker(id, spkId, payload);
-                queryClient.invalidateQueries({ queryKey: ['event', id, 'speaker', spkId] });
-                toast({ title: 'Notes saved' });
-                setNotesOpen(false);
-              } catch (err: any) {
-                toast({ title: 'Failed to save notes', description: String(err?.message || err) });
-              }
-            }}>Save</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-      */}
-
       {rejectionEmail && (
         <EmailComposer
           draft={rejectionEmail}
@@ -1317,6 +1207,13 @@ export default function SpeakerPortalComponent({
           onSend={handleSendRejectionEmail}
         />
       )}
+
+      <UnsavedChangesDialog
+        open={unsavedOpen}
+        onCancel={() => setUnsavedOpen(false)}
+        onDiscard={() => { setUnsavedOpen(false); setEditIsDirty(false); setEditOpen(false); }}
+        onSave={() => { setUnsavedOpen(false); void handleEditSave(editValuesRef.current); }}
+      />
 
       {cropImageUrl && (
         <ImageCropDialog

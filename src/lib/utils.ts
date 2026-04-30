@@ -88,44 +88,51 @@ export const generateUuid = () => {
 // Falls back to opening the URL in a new tab if fetch is blocked (CORS) or fails.
 export async function downloadResource(url?: string | null, fallbackName?: string) {
   if (!url) return;
+
+  // Pull the real filename from the URL path — CDN content-type headers are often wrong
+  let urlFilename = '';
   try {
-    console.log("Attempting to download resource:", url);
+    const p = new URL(String(url)).pathname;
+    urlFilename = p.split('/').filter(Boolean).pop() || '';
+  } catch { /* ignore */ }
+
+  try {
     const res = await fetch(url, { credentials: "include" });
-    if (!res.ok) throw new Error(`Failed to download: ${res.status}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    const contentType = res.headers.get('content-type') || '';
+    // HTML response means we got an error/redirect page, not the actual file
+    if (contentType.includes('text/html')) throw new Error('html-response');
+
     const disposition = res.headers.get('content-disposition');
     const headerName = parseContentDispositionFilename(disposition);
     const blob = await res.blob();
     const blobUrl = URL.createObjectURL(blob);
 
-    // Determine file extension from Content-Type when available
-    const contentType = res.headers.get('content-type') || '';
-    const extMap: Record<string, string> = {
-      'image/png': '.png',
-      'image/jpeg': '.jpg',
-      'image/jpg': '.jpg',
-      'image/webp': '.webp',
-      'text/html': '.html',
-      'application/zip': '.zip',
-      'application/pdf': '.pdf',
-    };
-    const inferredExt = Object.keys(extMap).find(k => contentType.includes(k)) ? extMap[Object.keys(extMap).find(k => contentType.includes(k)) as string] : '';
+    // Filename priority: Content-Disposition > fallbackName > URL path filename
+    let name = headerName || fallbackName || urlFilename || 'download';
 
-    let name = headerName || fallbackName || 'download';
-    // If no filename was supplied in headers and fallback doesn't include an extension, try to append one
-    if (!headerName) {
-      try {
-        const p = new URL(String(url)).pathname;
-        const base = p.split('/').filter(Boolean).pop();
-        if (!fallbackName && base) name = base;
-      } catch (e) {
-        /* ignore */
+    // If name has no extension, try URL path extension first, then content-type
+    if (!/\.[a-zA-Z0-9]{1,6}$/.test(name)) {
+      const urlExt = urlFilename.match(/\.([a-zA-Z0-9]{1,6})$/)?.[0] || '';
+      if (urlExt) {
+        name = `${name}${urlExt}`;
+      } else {
+        const extMap: Record<string, string> = {
+          'image/png': '.png', 'image/jpeg': '.jpg', 'image/gif': '.gif',
+          'image/webp': '.webp', 'image/avif': '.avif', 'image/svg+xml': '.svg',
+          'application/pdf': '.pdf', 'application/zip': '.zip',
+          'video/mp4': '.mp4', 'video/quicktime': '.mov',
+          'application/vnd.ms-powerpoint': '.ppt',
+          'application/vnd.openxmlformats-officedocument.presentationml.presentation': '.pptx',
+          'application/msword': '.doc',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
+        };
+        const match = Object.keys(extMap).find(k => contentType.includes(k));
+        if (match) name = `${name}${extMap[match]}`;
       }
     }
 
-    // Ensure filename has an extension when we can infer one
-    if (inferredExt && !/\.[a-zA-Z0-9]{1,6}$/.test(name)) {
-      name = `${name}${inferredExt}`;
-    }
     const a = document.createElement("a");
     a.href = blobUrl;
     a.download = name;
@@ -133,11 +140,8 @@ export async function downloadResource(url?: string | null, fallbackName?: strin
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
-  } catch (err) {
-    try {
-      window.open(String(url), "_blank");
-    } catch (e) {
-      // swallow
-    }
+  } catch {
+    // CORS blocked or error — open in new tab as best fallback
+    try { window.open(String(url), "_blank"); } catch { /* swallow */ }
   }
 }
