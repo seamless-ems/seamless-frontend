@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { API_BASE, getJson, updateSpeaker } from "@/lib/api";
 import { Switch } from "@/components/ui/switch";
@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -52,12 +53,12 @@ function ZoomPicker({
 }) {
   return (
     <div className="flex rounded-md border border-border overflow-hidden">
-      {[30, 40, 50, 60, 70, 80].map((n) => (
+      {[10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map((n) => (
         <button
           key={n}
           type="button"
           onClick={() => onChange(n)}
-          className={`h-8 px-3 text-sm font-medium transition-colors border-r border-border last:border-r-0 ${value === n ? "bg-accent text-accent-foreground" : "bg-background text-muted-foreground hover:bg-muted"}`}
+          className={`h-7 px-2.5 text-xs font-medium transition-colors border-r border-border last:border-r-0 ${value === n ? "bg-accent text-accent-foreground" : "bg-background text-muted-foreground hover:bg-muted"}`}
         >
           {n}%
         </button>
@@ -74,74 +75,92 @@ export default function EmbedBuilder({
   onAddSpeaker?: () => void;
 }) {
   const queryClient = useQueryClient();
-  const [copiedEmbed, setCopiedEmbed] = useState<
-    "iframe" | "url" | "autoresize" | null
-  >(null);
+  const [copiedEmbed, setCopiedEmbed] = useState<"iframe" | "url" | "autoresize" | null>(null);
   const [toggling, setToggling] = useState<string | null>(null);
   const [embedModalOpen, setEmbedModalOpen] = useState(false);
+  const [postSetupOpen, setPostSetupOpen] = useState(false);
+  const [firstVisit, setFirstVisit] = useState(false);
 
   const colsKey = eventId ? `seamless-embed-cols-${eventId}` : null;
   const setupKey = eventId ? `seamless-embed-setup-done-${eventId}` : null;
 
   const readCols = (key: string | null) => {
-    if (!key) return { desktop: 2, mobile: 1, zoom: 60 };
+    if (!key) return { desktop: 2, zoom: 60, platformWidth: 1200 };
     try {
       const saved = localStorage.getItem(key);
-      if (saved)
-        return JSON.parse(saved) as {
-          desktop: number;
-          mobile: number;
-          zoom: number;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return {
+          desktop:       parsed.desktop       ?? 2,
+          zoom:          parsed.zoom          ?? 60,
+          platformWidth: parsed.platformWidth ?? 1200,
         };
+      }
     } catch {}
-    return { desktop: 2, mobile: 1, zoom: 60 };
+    return { desktop: 2, zoom: 60, platformWidth: 1200 };
   };
 
-  const [desktopCols, setDesktopCols] = useState(
-    () => readCols(colsKey).desktop,
-  );
-  const [mobileCols, setMobileCols] = useState(() => readCols(colsKey).mobile);
+  const [desktopCols, setDesktopCols] = useState(() => readCols(colsKey).desktop);
   const [embedZoom, setEmbedZoom] = useState(() => {
     const saved = readCols(colsKey).zoom;
-    return [30, 40, 50, 60, 70, 80].includes(saved) ? saved : 60;
+    return [10, 20, 30, 40, 50, 60, 70, 80, 90, 100].includes(saved) ? saved : 60;
   });
-
+  const [platformWidth, setPlatformWidth] = useState<number>(() => readCols(colsKey).platformWidth as number);
   const [bgColor, setBgColor] = useState<string>("");
+  const [previewOpened, setPreviewOpened] = useState(false);
+
+  const bcRef = useRef<BroadcastChannel | null>(null);
+  const broadcastTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    bcRef.current = new BroadcastChannel("seamless-preview");
+    return () => { bcRef.current?.close(); };
+  }, []);
 
   useEffect(() => {
     if (!colsKey) return;
     try {
-      localStorage.setItem(
-        colsKey,
-        JSON.stringify({
-          desktop: desktopCols,
-          mobile: mobileCols,
-          zoom: embedZoom,
-        }),
-      );
+      localStorage.setItem(colsKey, JSON.stringify({ desktop: desktopCols, zoom: embedZoom, platformWidth }));
     } catch {}
-  }, [colsKey, desktopCols, mobileCols, embedZoom]);
+  }, [colsKey, desktopCols, embedZoom, platformWidth]);
 
-  const [setupOpen, setSetupOpen] = useState(false);
-  const [postSetupOpen, setPostSetupOpen] = useState(false);
-  const [setupDesktop, setSetupDesktop] = useState(
-    () => readCols(colsKey).desktop,
-  );
-  const [setupMobile, setSetupMobile] = useState(
-    () => readCols(colsKey).mobile,
-  );
+  // Broadcast live updates to any open preview tab
+  // Deps use upstream values (desktopCols/embedZoom/bgColor) — autoResizeSnippet is derived from them
+  // and is safe to reference inside the callback (closure captures it from the completed render)
+  useEffect(() => {
+    if (!previewOpened) return;
+    if (broadcastTimerRef.current) clearTimeout(broadcastTimerRef.current);
+    broadcastTimerRef.current = window.setTimeout(() => {
+      bcRef.current?.postMessage({ type: "seamless:preview-update", snippet: previewSnippet, bg: bgColor, contentWidth: platformWidth });
+    }, 250);
+    return () => { if (broadcastTimerRef.current) clearTimeout(broadcastTimerRef.current); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [desktopCols, embedZoom, bgColor, platformWidth, previewOpened]);
 
+  // First visit — open the embed modal directly
   useEffect(() => {
     if (!setupKey) return;
     try {
-      if (!localStorage.getItem(setupKey)) setSetupOpen(true);
+      if (!localStorage.getItem(setupKey)) {
+        setFirstVisit(true);
+        setEmbedModalOpen(true);
+        localStorage.setItem(setupKey, "true");
+      }
     } catch {}
   }, [setupKey]);
 
+  const handleModalOpenChange = (open: boolean) => {
+    setEmbedModalOpen(open);
+    if (!open) setCopiedEmbed(null);
+    if (!open && firstVisit) {
+      setFirstVisit(false);
+      setPostSetupOpen(true);
+    }
+  };
+
   const { data: speakersData, isLoading } = useQuery<any>({
     queryKey: ["event", eventId, "speakers", "embed"],
-    queryFn: () =>
-      getJson<any>(`/events/${eventId}/speakers?form_type=speaker-info`),
+    queryFn: () => getJson<any>(`/events/${eventId}/speakers?form_type=speaker-info`),
     enabled: Boolean(eventId),
   });
 
@@ -156,17 +175,12 @@ export default function EmbedBuilder({
     return arr.map((s: any) => ({
       ...s,
       name:
-        [s.first_name ?? s.firstName, s.last_name ?? s.lastName]
-          .filter(Boolean)
-          .join(" ") ||
-        s.name ||
-        s.email ||
-        "Speaker",
+        [s.first_name ?? s.firstName, s.last_name ?? s.lastName].filter(Boolean).join(" ") ||
+        s.name || s.email || "Speaker",
       companyRole: s.company_role ?? s.companyRole ?? "",
       company: s.company_name ?? s.company ?? s.companyName ?? "",
       avatarUrl: s.headshot ?? s.headshot_url ?? s.avatar_url ?? null,
-      websiteCardApproved:
-        s.website_card_approved ?? s.websiteCardApproved ?? false,
+      websiteCardApproved: s.website_card_approved ?? s.websiteCardApproved ?? false,
       embedEnabled: s.embed_enabled ?? s.embedEnabled ?? false,
     }));
   })();
@@ -174,36 +188,37 @@ export default function EmbedBuilder({
   const eligibleSpeakers = allSpeakers.filter((s) => s.websiteCardApproved);
   const liveSpeakers = eligibleSpeakers.filter((s) => s.embedEnabled);
 
-  let embedUrl = `${API_BASE}/embed/${eventId}?column_amount=${desktopCols}&column_amount_mobile=${mobileCols}`;
+  let embedUrl = `${API_BASE}/embed/${eventId}?column_amount=${desktopCols}&column_amount_mobile=1`;
   if (bgColor) {
-    try {
-      embedUrl += `&bg_color=${encodeURIComponent(bgColor)}`;
-    } catch {}
+    try { embedUrl += `&bg_color=${encodeURIComponent(bgColor)}`; } catch {}
   }
+
   const iframeId = `seamless-wall-${eventId}`;
   const containerId = `seamless-container-${eventId}`;
-
   const zoom = embedZoom / 100;
   const scaleInv = 1 / zoom;
   const widthPct = `${parseFloat((scaleInv * 100).toFixed(2))}%`;
   const scaleInvStr = parseFloat(scaleInv.toFixed(4)).toString();
   const containerH = Math.round(800 * zoom);
 
-  // ─── Backend TODO (embed page) ───────────────────────────────────────────
-  // 1. ZOOM — accept ?zoom=0.x and apply `body { zoom: X }` so content scales
-  //    properly inside the iframe. Replaces the current CSS transform approach,
-  //    which clips content due to overflow clipping on layout (not visual) coords.
-  // 2. RESPONSIVE LAYOUT — remove any max-width / margin:auto centering so the
-  //    card grid fills whatever width the iframe is given (fluid columns).
-  // 3. AUTO-RESIZE HEIGHT — broadcast scrollHeight via postMessage on load + resize:
-  //    function send() { window.parent.postMessage({ type:'seamless:resize', height:document.body.scrollHeight },'*'); }
-  //    window.addEventListener('load', send); window.addEventListener('resize', send);
-  // ─────────────────────────────────────────────────────────────────────────
+  const previewH = 5000;
+  const previewContainerH = Math.round(previewH * zoom);
+  const previewSnippet = `<div id="${containerId}" style="width:100%;height:${previewContainerH}px;overflow:hidden;">
+  <iframe id="${iframeId}" src="${embedUrl}" loading="lazy" style="width:${widthPct};height:${previewH}px;transform:scale(${zoom});transform-origin:0 0;border:none;display:block;"></iframe>
+</div>
+<script>
+window.addEventListener('message', function(e) {
+  if (e.data && e.data.type === 'seamless:resize') {
+    var f = document.getElementById('${iframeId}');
+    var c = document.getElementById('${containerId}');
+    if (f) f.style.height = Math.ceil(e.data.height * ${scaleInvStr}) + 'px';
+    if (c) c.style.height = e.data.height + 'px';
+  }
+});
+</script>`;
 
-  // Basic iframe — fixed 800px content height, zoom via CSS transform (see TODO 1).
   const iframeSnippet = `<div style="width:100%;height:${containerH}px;overflow:hidden;border-radius:8px;"><iframe id="${iframeId}" src="${embedUrl}" loading="lazy" style="width:${widthPct};height:800px;transform:scale(${zoom});transform-origin:0 0;border:none;display:block;"></iframe></div>`;
 
-  // Auto-resize — falls back to 800px; height auto-adjusts once backend ships TODO 3.
   const autoResizeSnippet = `<div id="${containerId}" style="width:100%;height:${containerH}px;overflow:hidden;border-radius:8px;">
   <iframe id="${iframeId}" src="${embedUrl}" loading="lazy" style="width:${widthPct};height:800px;transform:scale(${zoom});transform-origin:0 0;border:none;display:block;"></iframe>
 </div>
@@ -218,6 +233,12 @@ window.addEventListener('message', function(e) {
 });
 </script>`;
 
+  const SNIPPETS: { key: "autoresize" | "iframe" | "url"; label: string; note: string; text: string }[] = [
+    { key: "autoresize", label: "Auto-resize snippet", note: "recommended", text: autoResizeSnippet },
+    { key: "iframe", label: "Basic iFrame", note: "fixed height", text: iframeSnippet },
+    { key: "url", label: "Direct URL", note: "white bg", text: embedUrl },
+  ];
+
   const copyText = (text: string, key: "iframe" | "url" | "autoresize") => {
     navigator.clipboard.writeText(text);
     setCopiedEmbed(key);
@@ -227,18 +248,15 @@ window.addEventListener('message', function(e) {
   const handleToggle = async (speaker: any, value: boolean) => {
     setToggling(speaker.id);
     try {
-      const payload: any = {
+      await updateSpeaker(eventId!, speaker.id, {
         id: speaker.id,
         firstName: speaker.first_name ?? speaker.firstName ?? "",
         lastName: speaker.last_name ?? speaker.lastName ?? "",
         email: speaker.email ?? speaker.email_address ?? "",
         formType: speaker.formType ?? speaker.form_type ?? "speaker-info",
         embedEnabled: value,
-      };
-      await updateSpeaker(eventId!, speaker.id, payload);
-      queryClient.invalidateQueries({
-        queryKey: ["event", eventId, "speakers"],
       });
+      queryClient.invalidateQueries({ queryKey: ["event", eventId, "speakers"] });
     } catch {
       toast({ title: "Failed to update embed status", variant: "destructive" });
     } finally {
@@ -246,84 +264,8 @@ window.addEventListener('message', function(e) {
     }
   };
 
-  const handleSetupDone = () => {
-    setDesktopCols(setupDesktop);
-    setMobileCols(setupMobile);
-    setSetupOpen(false);
-    if (setupKey) {
-      try {
-        localStorage.setItem(setupKey, "true");
-      } catch {}
-    }
-    setPostSetupOpen(true);
-  };
-
-  const SNIPPETS: {
-    key: "autoresize" | "iframe" | "url";
-    label: string;
-    note: string;
-    text: string;
-  }[] = [
-    {
-      key: "autoresize",
-      label: "Auto-resize snippet",
-      note: "recommended",
-      text: autoResizeSnippet,
-    },
-    {
-      key: "iframe",
-      label: "Basic iFrame",
-      note: "fixed height",
-      text: iframeSnippet,
-    },
-    { key: "url", label: "Direct URL", note: "white bg", text: embedUrl },
-  ];
-
-  // Preview iframe dimensions — fills the modal preview area at the chosen zoom
-  const previewH = 400;
-  const previewIframeH = Math.round(previewH / zoom);
-
   return (
     <div className="space-y-4 pt-6">
-      {/* First-visit setup modal */}
-      <Dialog open={setupOpen} onOpenChange={setSetupOpen}>
-        <DialogContent className="sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Set up your Speaker Wall</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            Choose how many speaker cards to show per row. You can adjust this
-            any time from the table header.
-          </p>
-          <div className="space-y-4 py-2">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-foreground">
-                Desktop columns
-              </span>
-              <ColPicker
-                options={[2, 3, 4]}
-                value={setupDesktop}
-                onChange={setSetupDesktop}
-                size="md"
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-foreground">
-                Mobile columns
-              </span>
-              <ColPicker
-                options={[1, 2]}
-                value={setupMobile}
-                onChange={setSetupMobile}
-                size="md"
-              />
-            </div>
-          </div>
-          <Button className="w-full" onClick={handleSetupDone}>
-            Save
-          </Button>
-        </DialogContent>
-      </Dialog>
 
       {/* Post-setup next-step dialog */}
       <Dialog open={postSetupOpen} onOpenChange={setPostSetupOpen}>
@@ -335,12 +277,7 @@ window.addEventListener('message', function(e) {
             Your column layout is saved. Ready to add your first speaker?
           </p>
           <div className="flex gap-2 pt-1">
-            <Button
-              onClick={() => {
-                setPostSetupOpen(false);
-                onAddSpeaker?.();
-              }}
-            >
+            <Button onClick={() => { setPostSetupOpen(false); onAddSpeaker?.(); }}>
               Add Speaker
             </Button>
             <Button variant="outline" onClick={() => setPostSetupOpen(false)}>
@@ -351,162 +288,144 @@ window.addEventListener('message', function(e) {
       </Dialog>
 
       {/* Get Embed Code modal */}
-      <Dialog
-        open={embedModalOpen}
-        onOpenChange={(open) => {
-          setEmbedModalOpen(open);
-          if (!open) setCopiedEmbed(null);
-        }}
-      >
-        <DialogContent className="sm:max-w-2xl">
+      <Dialog open={embedModalOpen} onOpenChange={handleModalOpenChange}>
+        <DialogContent className="sm:max-w-3xl">
           <DialogHeader>
-            <DialogTitle>Get Embed Code</DialogTitle>
+            <DialogTitle>Speaker Wall Embed</DialogTitle>
+            <DialogDescription>Settings save automatically · Preview updates live</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            {/* Live preview */}
-            <div
-              className="w-full rounded-lg border border-border overflow-hidden bg-muted/20"
-              style={{ height: previewH }}
-            >
-              <iframe
-                key={embedUrl}
-                src={embedUrl}
-                style={{
-                  width: widthPct,
-                  height: previewIframeH,
-                  transform: `scale(${zoom})`,
-                  transformOrigin: "0 0",
-                  border: "none",
-                  display: "block",
-                }}
-              />
-            </div>
 
-            {/* Zoom picker */}
+          {/* Controls */}
+          <div className="space-y-5">
+
+            {/* Embed width */}
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-foreground">Zoom</span>
-              <div className="flex items-center gap-3">
-                <ZoomPicker value={embedZoom} onChange={setEmbedZoom} />
-                <div className="flex items-center gap-2">
-                  <label className="text-sm text-muted-foreground">BG</label>
-                  <input
-                    aria-label="Background color"
-                    type="color"
-                    value={bgColor || "#ffffff"}
-                    onChange={(e) => setBgColor(e.target.value)}
-                    className="h-8 w-10 p-0 border border-border rounded"
-                  />
-                  <input
-                    aria-label="Background hex"
-                    type="text"
-                    value={bgColor}
-                    onChange={(e) => setBgColor(e.target.value)}
-                    placeholder="#RRGGBB"
-                    className="h-8 px-2 border border-border rounded w-28 bg-background text-sm"
-                  />
-                </div>
+              <span className="text-sm font-medium">Embed width</span>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="number"
+                  value={platformWidth}
+                  min={200}
+                  max={2400}
+                  onChange={(e) => {
+                    const v = parseInt(e.target.value, 10);
+                    if (!isNaN(v) && v >= 200) setPlatformWidth(v);
+                  }}
+                  className="h-7 w-20 px-2 border border-border rounded bg-background text-sm text-right"
+                />
+                <span className="text-xs text-muted-foreground">px</span>
               </div>
             </div>
 
-            {/* Copy options */}
-            <div className="rounded-lg border border-border overflow-hidden">
-              {SNIPPETS.map(({ key, label, note, text }) => (
-                <div
-                  key={key}
-                  className="flex items-center justify-between px-4 py-3 border-b border-border last:border-0"
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-foreground">
-                      {label}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {note}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 gap-1.5 text-xs px-2.5 shrink-0"
-                      onClick={() => copyText(text, key)}
-                    >
-                      {copiedEmbed === key ? (
-                        <>
-                          <Check className="h-3.5 w-3.5" />
-                          Copied
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="h-3.5 w-3.5" />
-                          Copy
-                        </>
-                      )}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-7 gap-1.5 text-xs px-2.5"
-                      onClick={() => {
-                        try {
-                          const id = `seamless-preview-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-                          try {
-                            localStorage.setItem(id, text);
-                          } catch {}
-                          const url = `/fake-landing?snippetId=${encodeURIComponent(id)}`;
-                          window.open(url, "_blank", "noopener");
-                        } catch (e) {
-                          /* ignore */
-                        }
-                      }}
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" />
-                      Preview
-                    </Button>
-                  </div>
-                </div>
-              ))}
+            {/* Columns */}
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-sm font-medium">Desktop columns</span>
+                <p className="text-xs text-muted-foreground mt-0.5">Mobile always displays 1 column.</p>
+              </div>
+              <ColPicker options={[1, 2, 3, 4]} value={desktopCols} onChange={setDesktopCols} size="md" />
             </div>
 
-            <p className="text-xs text-muted-foreground">
-              Paste once. If you change zoom later, return here and replace the
-              snippet on your site.
-            </p>
+            {/* Card scale */}
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Card scale</span>
+              <ZoomPicker value={embedZoom} onChange={setEmbedZoom} />
+            </div>
+
+            {/* Background */}
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Background</span>
+              <div className="flex items-center gap-2">
+                <input
+                  aria-label="Background color"
+                  type="color"
+                  value={bgColor || "#ffffff"}
+                  onChange={(e) => setBgColor(e.target.value)}
+                  className="h-8 w-10 p-0 border border-border rounded cursor-pointer"
+                />
+                <input
+                  aria-label="Background hex"
+                  type="text"
+                  value={bgColor}
+                  onChange={(e) => setBgColor(e.target.value)}
+                  placeholder="#RRGGBB"
+                  className="h-8 px-2 border border-border rounded w-28 bg-background text-sm"
+                />
+              </div>
+            </div>
           </div>
+
+          <div className="border-t border-border" />
+
+          {/* Snippets */}
+          <div className="rounded-lg border border-border overflow-hidden">
+            {SNIPPETS.map(({ key, label, note, text }) => (
+              <div
+                key={key}
+                className="flex items-center justify-between px-4 py-3 border-b border-border last:border-0"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-foreground">{label}</span>
+                  <span className="text-xs text-muted-foreground">{note}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 gap-1.5 text-xs px-2.5 shrink-0"
+                    onClick={() => copyText(text, key)}
+                  >
+                    {copiedEmbed === key ? (
+                      <><Check className="h-3.5 w-3.5" />Copied</>
+                    ) : (
+                      <><Copy className="h-3.5 w-3.5" />Copy</>
+                    )}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 gap-1.5 text-xs px-2.5"
+                    onClick={() => {
+                      try {
+                        const id = `seamless-preview-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+                        try { localStorage.setItem(id, previewSnippet); } catch {}
+                        const bgParam = bgColor ? `&bg=${encodeURIComponent(bgColor)}` : "";
+                        window.open(`/fake-landing?snippetId=${encodeURIComponent(id)}${bgParam}&contentWidth=${platformWidth}`, "seamless-preview");
+                        setPreviewOpened(true);
+                      } catch {}
+                    }}
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    Preview
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+
         </DialogContent>
       </Dialog>
 
+      {/* Speaker Wall table */}
       <div className="rounded-lg border border-border overflow-hidden">
         <table className="w-full">
           <thead className="border-b border-border">
             <tr className="h-11 bg-muted/20">
               <th className="px-4 py-2" colSpan={3}>
                 <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground whitespace-nowrap">
-                      Desktop
-                    </span>
-                    <ColPicker
-                      options={[2, 3, 4]}
-                      value={desktopCols}
-                      onChange={setDesktopCols}
-                    />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground whitespace-nowrap">
-                      Mobile
-                    </span>
-                    <ColPicker
-                      options={[1, 2]}
-                      value={mobileCols}
-                      onChange={setMobileCols}
-                    />
-                  </div>
-                  <div className="h-3.5 w-px bg-border mx-1 shrink-0" />
                   <Button
                     variant="outline"
                     size="sm"
                     className="h-7 gap-1.5 text-xs px-2.5"
-                    onClick={() => window.open(embedUrl, "_blank", "noopener")}
+                    onClick={() => {
+                      try {
+                        const id = `seamless-preview-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+                        try { localStorage.setItem(id, previewSnippet); } catch {}
+                        const bgParam = bgColor ? `&bg=${encodeURIComponent(bgColor)}` : "";
+                        window.open(`/fake-landing?snippetId=${encodeURIComponent(id)}${bgParam}&contentWidth=${platformWidth}`, "seamless-preview");
+                        setPreviewOpened(true);
+                      } catch {}
+                    }}
                   >
                     <ExternalLink className="h-3.5 w-3.5" />
                     Preview
@@ -517,39 +436,20 @@ window.addEventListener('message', function(e) {
                     onClick={() => setEmbedModalOpen(true)}
                   >
                     <Copy className="h-3.5 w-3.5" />
-                    Get Embed Code
+                    Speaker Wall Embed
                   </Button>
                   {eligibleSpeakers.length > 0 && (
                     <span className="text-xs text-muted-foreground">
-                      <span className="font-medium text-foreground">
-                        {liveSpeakers.length}
-                      </span>{" "}
-                      / {eligibleSpeakers.length} live
+                      <span className="font-medium text-foreground">{liveSpeakers.length}</span>
+                      {" "}/ {eligibleSpeakers.length} live
                     </span>
                   )}
                   <div className="ml-auto">
-                    <HelpTip
-                      title="How Speaker Wall works"
-                      side="bottom"
-                      align="end"
-                      compact
-                    >
+                    <HelpTip title="How Speaker Wall works" side="bottom" align="end" compact>
                       <ul className="space-y-1 list-disc list-inside">
-                        <li>
-                          Toggle speakers on or off — your wall updates
-                          instantly
-                        </li>
-                        <li>
-                          Only speakers with an approved{" "}
-                          <span className="font-medium text-foreground">
-                            Speaker Card
-                          </span>{" "}
-                          appear here
-                        </li>
-                        <li>
-                          Paste the embed code into your website once — no
-                          changes needed after that
-                        </li>
+                        <li>Toggle speakers on or off — your wall updates instantly</li>
+                        <li>Only speakers with an approved <span className="font-medium text-foreground">Speaker Card</span> appear here</li>
+                        <li>Paste the embed code into your website once — no changes needed after that</li>
                       </ul>
                     </HelpTip>
                   </div>
@@ -559,15 +459,17 @@ window.addEventListener('message', function(e) {
           </thead>
           <tbody>
             {isLoading ? (
-              <div className="col-span-full flex justify-center py-8">
-                <CircleLoader size={40} color="#4e5ca6" />
-              </div>
+              <tr>
+                <td colSpan={3}>
+                  <div className="flex justify-center py-8">
+                    <CircleLoader size={40} color="#4e5ca6" />
+                  </div>
+                </td>
+              </tr>
             ) : eligibleSpeakers.length === 0 ? (
               <tr>
                 <td colSpan={3} className="py-12 text-center">
-                  <p className="text-sm font-medium text-foreground">
-                    No speakers ready yet
-                  </p>
+                  <p className="text-sm font-medium text-foreground">No speakers ready yet</p>
                   <p className="text-sm text-muted-foreground mt-1">
                     Approve a speaker's cards in the{" "}
                     <Link
@@ -596,14 +498,10 @@ window.addEventListener('message', function(e) {
                       />
                     </td>
                     <td className="px-3 py-3.5">
-                      <p className="text-sm font-medium text-foreground leading-tight">
-                        {speaker.name}
-                      </p>
+                      <p className="text-sm font-medium text-foreground leading-tight">{speaker.name}</p>
                       {(speaker.companyRole || speaker.company) && (
                         <p className="text-xs text-muted-foreground mt-0.5 leading-tight">
-                          {[speaker.companyRole, speaker.company]
-                            .filter(Boolean)
-                            .join(" · ")}
+                          {[speaker.companyRole, speaker.company].filter(Boolean).join(" · ")}
                         </p>
                       )}
                     </td>
@@ -614,9 +512,7 @@ window.addEventListener('message', function(e) {
                           Live
                         </span>
                       ) : (
-                        <span className="text-xs text-muted-foreground/40">
-                          Off
-                        </span>
+                        <span className="text-xs text-muted-foreground/40">Off</span>
                       )}
                     </td>
                   </tr>
