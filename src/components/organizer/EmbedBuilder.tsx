@@ -302,7 +302,7 @@ window.addEventListener('message', function(e) {
   };
 
   const openPreview = () => {
-    const id = `seamless-preview-current`;
+    const id = `seamless-preview-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
     try { localStorage.setItem(id, previewSnippet); } catch {}
     const bgParam = bgColor ? `&bg=${encodeURIComponent(bgColor)}` : "";
     const url = `/fake-landing?snippetId=${encodeURIComponent(id)}${bgParam}&contentWidth=${platformWidth}`;

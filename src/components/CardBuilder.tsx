@@ -1358,24 +1358,13 @@ export default function CardBuilder({
       setCropMode,
       toast,
     });
-    // Persist event logo to localStorage — compressed to keep storage small.
+    // Persist event logo data URL to localStorage so it survives page reloads and template switches.
     if (cropMode === "event-logo") {
-      const img = new Image();
-      const objectUrl = URL.createObjectURL(blob);
-      img.onload = () => {
-        URL.revokeObjectURL(objectUrl);
-        const MAX_W = 400;
-        const scale = img.width > MAX_W ? MAX_W / img.width : 1;
-        const canvas = document.createElement("canvas");
-        canvas.width = Math.round(img.width * scale);
-        canvas.height = Math.round(img.height * scale);
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return;
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
-        try { localStorage.setItem(eventLogoStorageKey, dataUrl); } catch {}
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        try { localStorage.setItem(eventLogoStorageKey, reader.result as string); } catch {}
       };
-      img.src = objectUrl;
+      reader.readAsDataURL(blob);
     }
   };
 
