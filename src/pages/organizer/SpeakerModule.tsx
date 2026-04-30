@@ -35,6 +35,10 @@ export default function SpeakerModule() {
   const [copiedLink, setCopiedLink] = useState(false);
   const [formSaved, setFormSaved] = useState(false);
   const [copiedFormLink, setCopiedFormLink] = useState(false);
+  const formSavedKey = (type: string) => id ? `seamless-form-saved-${type}-${id}` : null;
+  const isFirstFormSave = (type: string) => { try { return !localStorage.getItem(formSavedKey(type) ?? ''); } catch { return true; } };
+  const markFormSaved = (type: string) => { try { const k = formSavedKey(type); if (k) localStorage.setItem(k, '1'); } catch {} };
+  const hasSpeakersKey = id ? `seamless-has-speakers-${id}` : null;
   const [confirmFormLeave, setConfirmFormLeave] = useState(false);
   const formBuilderRef = useRef<SpeakerFormBuilderHandle>(null);
 
@@ -203,6 +207,15 @@ export default function SpeakerModule() {
     });
   })();
 
+  const hasSpeakersLS = (() => { try { return !!(hasSpeakersKey && localStorage.getItem(hasSpeakersKey)); } catch { return false; } })();
+  const hasSpeakers = speakerList.length > 0 || hasSpeakersLS;
+
+  useEffect(() => {
+    if (speakerList.length > 0 && hasSpeakersKey) {
+      try { localStorage.setItem(hasSpeakersKey, '1'); } catch {}
+    }
+  }, [speakerList.length]);
+
   const filteredSpeakers = speakerList
     .filter((speaker) => {
       const matchesSearch =
@@ -336,7 +349,7 @@ export default function SpeakerModule() {
               websiteCardConfigured={!!websiteCardConfig}
               promoCardConfigured={!!promoCardConfig}
               embedVisited={embedVisited}
-              hasSpeakers={speakerList.length > 0}
+              hasSpeakers={hasSpeakers}
               onEditForm={(type) => setEditingForm(type)}
               onAddSpeaker={() => setAddSpeakerOpen(true)}
               activeStep={1}
@@ -512,7 +525,12 @@ export default function SpeakerModule() {
                 eventId={id}
                 formType={editingForm}
                 eventName={eventName}
-                onSave={() => setFormSaved(true)}
+                onSave={() => {
+                  if (editingForm && isFirstFormSave(editingForm)) {
+                    markFormSaved(editingForm);
+                    setFormSaved(true);
+                  }
+                }}
               />
             </div>
           </div>
@@ -548,12 +566,6 @@ export default function SpeakerModule() {
               <>
                 <p className="text-sm text-muted-foreground">Your Speaker Intake Form is ready. Next up: build your Speaker Card template.</p>
                 <div className="flex gap-2 pt-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => { setFormSaved(false); setEditingForm(null); setAddSpeakerOpen(true); }}
-                  >
-                    <Plus className="h-4 w-4 mr-2" />Add Speaker
-                  </Button>
                   <Button onClick={() => { setFormSaved(false); setEditingForm(null); navigate(`/organizer/event/${id}/website-card-builder`); }}>
                     Build Speaker Card Template
                   </Button>

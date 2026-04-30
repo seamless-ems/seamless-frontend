@@ -41,6 +41,13 @@ export default function FinishSignUp() {
     let stored = '';
     try { stored = window.localStorage.getItem('emailForSignIn') || ''; } catch (e) {}
 
+    if (!stored) {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        stored = params.get('email') || '';
+      } catch (e) {}
+    }
+
     if (stored) {
       completeSignIn(stored);
     } else {
