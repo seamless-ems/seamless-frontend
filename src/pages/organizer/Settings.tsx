@@ -156,7 +156,10 @@ export default function Settings() {
                 )}
               </div>
               <span className="text-muted-foreground">Email</span>
-              <span className="font-medium">{me?.email ?? "—"}</span>
+              <div>
+                <span className="font-medium text-muted-foreground/70">{me?.email ?? "—"}</span>
+                <p className="text-xs text-muted-foreground/50 mt-0.5">To change your email, contact <a href="mailto:contact@seamlessevents.io" className="underline underline-offset-2 hover:text-muted-foreground transition-colors">contact@seamlessevents.io</a></p>
+              </div>
               <span className="text-muted-foreground">Member since</span>
               <span className="font-medium">{me?.createdAt ? new Date(me.createdAt).toLocaleDateString() : "—"}</span>
             </div>

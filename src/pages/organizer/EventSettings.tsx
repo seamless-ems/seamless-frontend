@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
-import { Calendar, FileText, Mail, Mic2, Users } from "lucide-react";
+import { ArrowLeft, Calendar, FileText, Mail, Mic2, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { CircleLoader } from "react-spinners";
 
@@ -248,7 +248,7 @@ export default function EventSettings() {
       const res = await getBillingPortal();
       const url = res?.url || res?.portalUrl || res?.portal_url || null;
       if (url) {
-        window.location.href = url;
+        window.open(url, "_blank");
         return;
       }
       toast({ title: "Billing portal did not return a URL" });
@@ -291,15 +291,17 @@ export default function EventSettings() {
         onCancel={() => setShowLeaveDialog(false)}
       />
       <div>
-        <h1 style={{ fontSize: "var(--font-h1)", fontWeight: 600 }}>
-          Edit Event
-        </h1>
-        <p
-          className="text-muted-foreground mt-1"
-          style={{ fontSize: "var(--font-body)" }}
-        >
-          Update your event details and assets
-        </p>
+        <div className="flex items-center gap-3 mb-1">
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center justify-center h-8 w-8 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+          <h1 style={{ fontSize: "var(--font-h1)", fontWeight: 600 }}>
+            Event Settings
+          </h1>
+        </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -340,7 +342,7 @@ export default function EventSettings() {
                               (typeof res === "string" ? res : undefined) ||
                               res?.data?.url;
                             if (url) {
-                              window.location.href = url;
+                              window.open(url, "_blank");
                               return;
                             }
                             toast({

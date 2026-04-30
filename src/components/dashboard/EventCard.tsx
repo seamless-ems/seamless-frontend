@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import { MoreVertical, Trash2 } from "lucide-react";
+import { Settings, Trash2, Zap } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -72,6 +72,10 @@ export function EventCard({ event, index = 0, onDelete }: EventCardProps) {
 
   const trialEnded = (event as any).trialEnded ?? (event as any).trial_ended ?? false;
   const isOrganizer = event.userRole === 'organizer' || (event as any).user_role === 'organizer';
+  const trialEndsAt = (event as any).trialEndsAt ?? (event as any).trial_ends_at ?? null;
+  const trialDaysLeft = trialEndsAt
+    ? Math.max(0, Math.ceil((new Date(trialEndsAt).getTime() - Date.now()) / 86400000))
+    : null;
 
   const handlePayNow = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -132,9 +136,9 @@ export function EventCard({ event, index = 0, onDelete }: EventCardProps) {
             <Button
               variant="ghost"
               size="icon"
-              className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
+              className="h-8 w-8 text-muted-foreground hover:text-foreground"
             >
-              <MoreVertical className="h-4 w-4" />
+              <Settings className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent
@@ -144,9 +148,6 @@ export function EventCard({ event, index = 0, onDelete }: EventCardProps) {
               e.stopPropagation();
             }}
           >
-            <DropdownMenuItem asChild>
-              <Link to={`/organizer/event/${event.id}/speakers`}>Open Event</Link>
-            </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <Link to={`/organizer/event/${event.id}/settings`}>Edit Event</Link>
             </DropdownMenuItem>
@@ -207,6 +208,24 @@ export function EventCard({ event, index = 0, onDelete }: EventCardProps) {
         <div>{formatDateRange(event.startDate, event.endDate)}</div>
         <div>{event.location}</div>
       </div>
+
+      {!trialEnded && isOrganizer && !paid && (
+        <div className="mb-4 flex items-center justify-between gap-3 rounded-md border border-accent/40 bg-accent/8 px-3 py-2.5">
+          <span className="text-xs font-medium text-accent">
+            Free trial active{trialDaysLeft !== null && <span className="text-accent/60"> | {trialDaysLeft} day{trialDaysLeft !== 1 ? 's' : ''} remaining</span>}
+          </span>
+          <Button
+            size="sm"
+            onClick={handlePayNow}
+            disabled={creatingCheckout}
+            className="h-7 text-xs px-3 shrink-0 gap-1.5 relative overflow-hidden"
+          >
+            <span className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
+            <Zap className="h-3 w-3 relative z-10" />
+            <span className="relative z-10">{creatingCheckout ? 'Processing…' : 'Upgrade'}</span>
+          </Button>
+        </div>
+      )}
 
       {trialEnded && isOrganizer && !paid && (
         <div className="mb-4 rounded-md border border-destructive/25 bg-destructive/10 p-3">
