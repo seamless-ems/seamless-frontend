@@ -127,17 +127,65 @@ export async function signOut() {
 }
 
 export async function signInWithGooglePopup() {
-  
   const provider = new GoogleAuthProvider();
+  console.debug("firebase: starting Google popup sign-in");
   const result = await signInWithPopup(auth, provider);
-  
+  console.debug("firebase: Google popup sign-in result", { providerId: provider.providerId, userEmail: result?.user?.email });
+
+  try {
+    const email = result?.user?.email;
+    if (email) {
+      try {
+        window.localStorage.setItem(`seamless-last-provider:${String(email).toLowerCase()}`, "google.com");
+        console.debug("firebase: persisted last provider for", email, "= google.com");
+      } catch (e) {
+        console.error("firebase: failed to persist last provider for", email, e);
+      }
+    }
+  } catch (e) {
+    console.error("firebase: error while persisting last provider", e);
+  }
+
   return result;
 }
 
 export async function signInWithMicrosoftPopup() {
-  
   const provider = new OAuthProvider("microsoft.com");
+  // request common OpenID scopes and Microsoft Graph user scope
+  try {
+    provider.setCustomParameters({ prompt: "select_account" });
+  } catch (e) {
+    console.warn("firebase: unable to set custom parameters on MS provider", e);
+  }
+  try {
+    provider.addScope("openid");
+    provider.addScope("profile");
+    provider.addScope("email");
+    try { provider.addScope("User.Read"); } catch (e) { try { provider.addScope("user.read"); } catch (e) {} }
+  } catch (e) {
+    console.warn("firebase: unable to add scopes to MS provider", e);
+  }
+
+  console.debug("firebase: starting Microsoft popup sign-in", { providerId: provider.providerId });
   const result = await signInWithPopup(auth, provider);
+  console.debug("firebase: Microsoft popup sign-in result", { userEmail: result?.user?.email });
   
+
+  try {
+    const email = result?.user?.email;
+    if (email) {
+      try {
+        window.localStorage.setItem(`seamless-last-provider:${String(email).toLowerCase()}`, "microsoft.com");
+        console.debug("firebase: persisted last provider for", email, "= microsoft.com");
+      } catch (e) {
+        console.error("firebase: failed to persist last provider for", email, e);
+      }
+    }
+  } catch (e) {
+    console.error("firebase: error while persisting last provider", e);
+  }
+
   return result;
 }
+
+// Note: linking is handled client-side where sign-in occurs (so the UI can present flows).
