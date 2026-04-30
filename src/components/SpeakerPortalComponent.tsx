@@ -248,7 +248,6 @@ export default function SpeakerPortalComponent({
   const [unsavedOpen, setUnsavedOpen] = useState(false);
   const editValuesRef = useRef<Record<string, any>>({});
   useWarnOnLeave(editIsDirty);
-  const [bioOpen, setBioOpen] = useState(false);
   const [cropImageUrl, setCropImageUrl] = useState<string | null>(null);
   const [cropType, setCropType] = useState<
     "headshot" | "logo" | "logoWhite" | null
@@ -833,22 +832,14 @@ export default function SpeakerPortalComponent({
 
                         {fieldEnabled("bio") && s?.bio && (
                           <div className="pt-4 border-t border-border">
-                            <p className="text-xs font-medium text-muted-foreground mb-1.5">
+                            <p className="text-xs font-medium text-muted-foreground mb-2">
                               Bio
                             </p>
-                            <p className="text-sm text-foreground leading-relaxed">
-                              {s.bio.length > 300
-                                ? `${s.bio.substring(0, 300)}…`
-                                : s.bio}
-                            </p>
-                            {s.bio.length > 300 && (
-                              <button
-                                className="text-xs text-accent hover:underline mt-1"
-                                onClick={() => setBioOpen(true)}
-                              >
-                                Read more
-                              </button>
-                            )}
+                            <div className="rounded-lg bg-muted/30 px-3 py-2.5">
+                              <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
+                                {s.bio}
+                              </p>
+                            </div>
                           </div>
                         )}
 
@@ -1184,15 +1175,6 @@ export default function SpeakerPortalComponent({
             onSubmit={handleEditSave}
           />
           </div>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={bioOpen} onOpenChange={setBioOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Bio</DialogTitle>
-          </DialogHeader>
-          <Textarea value={s?.bio ?? ""} readOnly className="min-h-[200px]" />
         </DialogContent>
       </Dialog>
 
