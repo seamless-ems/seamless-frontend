@@ -492,6 +492,7 @@ window.addEventListener('message', function(e) {
                         <li>Only speakers with an approved <span className="font-medium text-foreground">Speaker Card</span> appear here</li>
                         <li>Paste the embed code into your website once — no changes needed after that</li>
                       </ul>
+                      <p className="mt-2 text-muted-foreground">Need help setting up your embed? <a href="mailto:contact@seamlessevents.io" className="text-foreground underline underline-offset-2">contact@seamlessevents.io</a></p>
                     </HelpTip>
                   </div>
                 </div>

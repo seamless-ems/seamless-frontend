@@ -18,12 +18,11 @@ export const SQUARE_PRESETS_DATA: PresetData[] = [
       headshot:        { ...T.headshot, shape: "full-bleed", x: 0, y: 0, size: 800, zIndex: 1 },
       gradientOverlay: { ...T.gradientOverlay, x: 0, y: 420, width: 800, height: 380, gradientDirection: "bottom", overlayOpacity: 0.90, zIndex: 3 },
       companyLogo:     { ...T.companyLogo, x: 632, y: 20, width: 148, height: 74, size: 70, zIndex: 6 },
-      // y-positions sized for max font (55px, lineHeight 1.2 = 66px/line) so wide text never overlaps.
-      // company sits 1 line below title (28px × 1.2 ≈ 34px gap); backend pushes it down if title wraps.
-      firstName:       { ...T.firstName, x: 36, y: 520, color: textColor, fontFamily: font, fontSize: 55, width: 728, fontWeight: 700, zIndex: 10 },
-      lastName:        { ...T.lastName, x: 36, y: 590, color: textColor, fontFamily: font, fontSize: 55, width: 728, fontWeight: 700, zIndex: 10 },
-      title:           { ...T.title, x: 36, y: 664, color: textColor, fontFamily: font, fontSize: 28, width: 728, fontWeight: 500, zIndex: 8 },
-      company:         { ...T.company, x: 36, y: 700, color: textColor, fontFamily: font, fontSize: 28, width: 500, fontWeight: 400, zIndex: 7 },
+      // 44px name, lineHeight 1.2 ≈ 53px/line. Block pushed low so text sits near the bottom.
+      firstName:       { ...T.firstName, x: 36, y: 565, color: textColor, fontFamily: font, fontSize: 44, width: 728, fontWeight: 700, zIndex: 10 },
+      lastName:        { ...T.lastName, x: 36, y: 622, color: textColor, fontFamily: font, fontSize: 44, width: 728, fontWeight: 700, zIndex: 10 },
+      title:           { ...T.title, x: 36, y: 686, color: textColor, fontFamily: font, fontSize: 28, width: 728, fontWeight: 500, zIndex: 8 },
+      company:         { ...T.company, x: 36, y: 722, color: textColor, fontFamily: font, fontSize: 28, width: 500, fontWeight: 400, zIndex: 7 },
     }),
   },
   {

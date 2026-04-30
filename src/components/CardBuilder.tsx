@@ -90,7 +90,6 @@ import {
   handleZoomReset as hb_handleZoomReset,
   applyGradientStyle as hb_applyGradientStyle,
   clearGradient as hb_clearGradient,
-  dismissOnboarding as hb_dismissOnboarding,
 } from "@/lib/card-builder-helpers";
 import {
   SQUARE_PRESETS_DATA,
@@ -224,6 +223,7 @@ export default function CardBuilder({
   const elementRefs = useRef<{ [key: string]: fabric.Object }>({});
   // Skip full canvas rebuild when only position/size changed via Fabric drag (avoids flicker)
   const skipRerenderRef = useRef(false);
+  const ignoreSelectionClearRef = useRef(false);
   // Incremented on every render trigger — stale async renders bail out when their gen doesn't match
   const renderGenRef = useRef(0);
   // Ref mirror of historyIndex — always current, avoids stale closure in addToHistory
@@ -258,19 +258,7 @@ export default function CardBuilder({
   const [textColorPanelOpen, setTextColorPanelOpen] = useState(false);
   const [eventLogoPanelOpen, setEventLogoPanelOpen] = useState(false);
 
-  // Onboarding — controlled by API or default off (no localStorage)
-  const [showOnboarding, setShowOnboarding] = useState<boolean>(false);
-  const [onboardingShowTemplates, setOnboardingShowTemplates] = useState(false);
-  const [onboardingQuickSetup, setOnboardingQuickSetup] = useState(false);
-
-  // Promo-specific onboarding steps (separate from website shape/template flow)
-  const [pendingPreset, setPendingPreset] = useState<StarterPreset | null>(
-    null,
-  );
-  const [quickBg, setQuickBg] = useState("#ffffff");
-  const [quickTextColor, setQuickTextColor] = useState("#111827");
-  const [quickFont, setQuickFont] = useState("Montserrat");
-  const [quickHeadshotShape, setQuickHeadshotShape] = useState("circle");
+  const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
   const [bgGradient, setBgGradient] = useState<{
     from: string;
     to: string;
@@ -341,7 +329,6 @@ export default function CardBuilder({
 
   const [missingFormDialogOpen, setMissingFormDialogOpen] = useState(false);
   const [missingLogoDialogOpen, setMissingLogoDialogOpen] = useState(false);
-  const [blankCanvasConfirmOpen, setBlankCanvasConfirmOpen] = useState(false);
   const skipLogoWarningRef = useRef(false);
   const queryClient = useQueryClient();
 
@@ -589,6 +576,7 @@ export default function CardBuilder({
             setHistoryIndex,
           }),
         elementRefs,
+        ignoreSelectionClearRef,
         onReady: () => setCanvasReady((n) => n + 1),
       });
 
@@ -1446,26 +1434,6 @@ export default function CardBuilder({
       setHasUnsavedChanges,
     });
 
-  const dismissOnboarding = () => {
-    hb_dismissOnboarding({
-      setShowOnboarding,
-      setOnboardingShowShapePicker: () => {},
-      setOnboardingShowTemplates,
-      setOnboardingQuickSetup,
-      setPendingPreset,
-    });
-  };
-
-  // "Blank canvas" in onboarding — resets if canvas already has content, otherwise just dismisses.
-  const handleBlankCanvas = () => {
-    if (Object.keys(config).length > 0 || templateUrl) {
-      setBlankCanvasConfirmOpen(true);
-    } else {
-      handleReset();
-      dismissOnboarding();
-    }
-  };
-
   const getFieldLabel = (elementKey: string, fallback: string): string => {
     const fieldMapping: Record<string, string[]> = {
       headshot: ["headshot"],
@@ -1572,19 +1540,45 @@ export default function CardBuilder({
         </DialogContent>
       </Dialog>
 
-      {/* Blank canvas confirmation — warns that resetting will clear any saved design */}
-      <Dialog open={blankCanvasConfirmOpen} onOpenChange={setBlankCanvasConfirmOpen}>
-        <DialogContent className="sm:max-w-2xl">
+      {/* Template picker */}
+      <Dialog open={templatePickerOpen} onOpenChange={setTemplatePickerOpen}>
+        <DialogContent className="sm:max-w-3xl">
           <DialogHeader>
-            <DialogTitle>Start with a blank canvas?</DialogTitle>
-            <DialogDescription>
-              This will clear your current design. Any unsaved changes will be lost, and your saved design will be overwritten the next time you save.
-            </DialogDescription>
+            <DialogTitle>{isPromo ? "Choose a platform" : "Choose a template"}</DialogTitle>
           </DialogHeader>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setBlankCanvasConfirmOpen(false)}>Cancel</Button>
-            <Button variant="destructive" onClick={() => { setBlankCanvasConfirmOpen(false); handleReset(); dismissOnboarding(); }}>Clear canvas</Button>
-          </DialogFooter>
+          <div className="grid grid-cols-3 gap-5 pt-2">
+            {(isPromo
+              ? [...PROMO_INSTAGRAM_FEED_PRESETS, ...PROMO_INSTAGRAM_STORY_PRESETS, ...PROMO_LINKEDIN_PRESETS]
+              : STARTER_PRESETS
+            ).map((preset) => {
+              const aspectClass = preset.thumbnailShape === "landscape" ? "aspect-[3/2]" : preset.thumbnailShape === "portrait" ? "aspect-[3/4]" : "aspect-square";
+              const shapeLabel = preset.thumbnailShape === "landscape" ? "Landscape" : preset.thumbnailShape === "portrait" ? "Portrait" : "Square";
+              return (
+                <div key={preset.name} className="flex flex-col gap-1.5">
+                  <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">{shapeLabel}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      preset.apply(
+                        preset.defaultBg,
+                        preset.defaultTextColor,
+                        "Montserrat",
+                        preset.canvasW,
+                        preset.canvasH,
+                        preset.allowedHeadshotShapes[0] ?? undefined,
+                      );
+                      setTemplatePickerOpen(false);
+                      tryShowCanvasTip();
+                    }}
+                    className={`${aspectClass} w-full rounded-xl border-2 border-border hover:border-accent hover:shadow-lg transition-all overflow-hidden focus:outline-none focus:ring-2 focus:ring-primary`}
+                  >
+                    <TemplateThumbnail type={preset.thumbnail} />
+                  </button>
+                  <span className="text-xs font-semibold">{preset.name}</span>
+                </div>
+              );
+            })}
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -1622,350 +1616,6 @@ export default function CardBuilder({
         imageFormat={cropMode === "logo" || cropMode === "event-logo" ? "png" : "jpeg"}
       />
 
-      {/* ── Onboarding modal (website + promo card builders, shows once) ── */}
-      {showOnboarding && (cardType === "website" || cardType === "promo") && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div
-            className={`bg-card border border-border rounded-2xl shadow-2xl w-full mx-4 overflow-hidden transition-all ${onboardingShowTemplates && !onboardingQuickSetup ? "max-w-3xl" : "max-w-lg"}`}
-          >
-            {/* Step 1: Welcome / choice */}
-            {!onboardingShowTemplates &&
-              !onboardingQuickSetup && (
-                <div className="relative p-8">
-                  <button
-                    onClick={dismissOnboarding}
-                    className="absolute top-4 right-4 p-1.5 rounded hover:bg-accent text-muted-foreground"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                  <p className="text-sm font-medium mb-6">
-                    How do you want to start?
-                  </p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      onClick={() => setOnboardingShowTemplates(true)}
-                      className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-border hover:border-accent hover:bg-accent/5 transition-all group"
-                    >
-                      <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
-                        <Layers className="h-5 w-5 text-accent" />
-                      </div>
-                      <span className="font-semibold text-sm">
-                        Use a template
-                      </span>
-                    </button>
-                    <button
-                      onClick={handleBlankCanvas}
-                      className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-border hover:border-border/80 hover:bg-muted/30 transition-all group"
-                    >
-                      <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center group-hover:bg-muted/80 transition-colors">
-                        <Square className="h-5 w-5 text-muted-foreground" />
-                      </div>
-                      <span className="font-semibold text-sm">
-                        Blank canvas
-                      </span>
-                    </button>
-                  </div>
-                </div>
-              )}
-
-            {/* Step 2: All templates — shape/platform labelled above each thumbnail */}
-            {onboardingShowTemplates && !onboardingQuickSetup && (
-              <div className="p-8">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setOnboardingShowTemplates(false)}
-                      className="p-1.5 rounded hover:bg-accent text-muted-foreground"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </button>
-                    <span className="font-semibold text-sm">
-                      {isPromo ? "Choose a platform" : "Choose a template"}
-                    </span>
-                  </div>
-                  <button
-                    onClick={dismissOnboarding}
-                    className="p-1.5 rounded hover:bg-accent text-muted-foreground"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-                <div className="grid grid-cols-3 gap-5 mb-6">
-                  {(isPromo
-                    ? [...PROMO_INSTAGRAM_FEED_PRESETS, ...PROMO_INSTAGRAM_STORY_PRESETS, ...PROMO_LINKEDIN_PRESETS]
-                    : STARTER_PRESETS
-                  ).map((preset) => {
-                    const aspectClass = preset.thumbnailShape === "landscape" ? "aspect-[3/2]" : preset.thumbnailShape === "portrait" ? "aspect-[3/4]" : "aspect-square";
-                    const shapeLabel = preset.thumbnailShape === "landscape" ? "Landscape" : preset.thumbnailShape === "portrait" ? "Portrait" : "Square";
-                    return (
-                      <div key={preset.name} className="flex flex-col gap-1.5">
-                        <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">{shapeLabel}</span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setPendingPreset(preset);
-                            setQuickBg(preset.defaultBg);
-                            setQuickTextColor(preset.defaultTextColor);
-                            setQuickFont("Montserrat");
-                            setQuickHeadshotShape(preset.allowedHeadshotShapes[0] ?? "circle");
-                            setOnboardingQuickSetup(true);
-                          }}
-                          className={`${aspectClass} w-full rounded-xl border-2 border-border hover:border-accent hover:shadow-lg transition-all overflow-hidden focus:outline-none focus:ring-2 focus:ring-primary`}
-                        >
-                          <TemplateThumbnail type={preset.thumbnail} />
-                        </button>
-                        <span className="text-xs font-semibold">{preset.name}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-                <div className="text-center">
-                  <button
-                    type="button"
-                    onClick={handleBlankCanvas}
-                    className="text-xs text-muted-foreground hover:text-foreground border border-border rounded-lg px-4 py-1.5 hover:bg-muted/30 transition-colors"
-                  >
-                    Start with blank canvas
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Step 4: Quick Setup — pick background, text colour, font */}
-            {onboardingQuickSetup && pendingPreset && (
-              <div className="p-8">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setOnboardingQuickSetup(false)}
-                      className="p-1.5 rounded hover:bg-accent text-muted-foreground"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </button>
-                    <span className="font-semibold text-sm">
-                      {pendingPreset.name}
-                    </span>
-                  </div>
-                  <button
-                    onClick={dismissOnboarding}
-                    className="p-1.5 rounded hover:bg-accent text-muted-foreground"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-
-                {/* 3 pickers */}
-                <div className="grid grid-cols-3 gap-4 mb-5">
-                  <div>
-                    <label className="text-xs font-medium mb-2 block">
-                      Background
-                    </label>
-                    <div className="flex items-center gap-1.5">
-                      <QuickColorPicker
-                        value={quickBg}
-                        onChange={setQuickBg}
-                        label="Background colour"
-                      />
-                      <HexColorInput
-                        value={quickBg}
-                        onChange={setQuickBg}
-                        className="flex-1 h-7 text-xs font-mono px-1.5 rounded border border-border bg-background min-w-0"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium mb-2 block">
-                      Text
-                    </label>
-                    <div className="flex items-center gap-1.5">
-                      <QuickColorPicker
-                        value={quickTextColor}
-                        onChange={setQuickTextColor}
-                        label="Text colour"
-                      />
-                      <HexColorInput
-                        value={quickTextColor}
-                        onChange={setQuickTextColor}
-                        className="flex-1 h-7 text-xs font-mono px-1.5 rounded border border-border bg-background min-w-0"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium mb-2 block">
-                      Font
-                    </label>
-                    <select
-                      value={quickFont}
-                      onChange={(e) => setQuickFont(e.target.value)}
-                      className="w-full h-7 px-1.5 text-xs border border-border rounded bg-background"
-                    >
-                      {[
-                        "Roboto",
-                        "Open Sans",
-                        "Lato",
-                        "Montserrat",
-                        "Poppins",
-                        "Raleway",
-                        "Noto Sans",
-                        "Source Sans Pro",
-                        "Merriweather",
-                        "Playfair Display",
-                        "Nunito",
-                        "Ubuntu",
-                        "PT Sans",
-                        "Karla",
-                        "Oswald",
-                        "Fira Sans",
-                        "Work Sans",
-                        "Inconsolata",
-                        "Josefin Sans",
-                        "Alegreya",
-                        "Cabin",
-                        "Titillium Web",
-                        "Mulish",
-                        "Quicksand",
-                        "Anton",
-                        "Droid Sans",
-                        "Archivo",
-                        "Hind",
-                        "Bitter",
-                        "Libre Franklin",
-                      ].map((f) => (
-                        <option key={f} value={f}>
-                          {f}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                {/* Build font import string dynamically from FONT_FAMILIES to keep JSX clean */}
-
-                {/* Gradient */}
-                <div className="mb-6">
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="text-xs font-medium">Gradient</label>
-                    {bgGradient && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setBgGradient(null);
-                          setBgGradientStyle(null);
-                        }}
-                        className="text-[10px] text-muted-foreground hover:text-foreground underline underline-offset-2"
-                      >
-                        Remove
-                      </button>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-4 gap-2">
-                    {(
-                      [
-                        { style: null, label: "None" },
-                        { style: "dark", label: "Dark" },
-                        { style: "tonal", label: "Tonal" },
-                        { style: "soft", label: "Soft" },
-                      ] as const
-                    ).map(({ style, label }) => {
-                      const preview = style
-                        ? deriveGradient(quickBg, style)
-                        : null;
-                      const isActive =
-                        style === null
-                          ? !bgGradient
-                          : bgGradientStyle === style;
-                      return (
-                        <button
-                          key={label}
-                          type="button"
-                          onClick={() => {
-                            if (style === null) {
-                              setBgGradient(null);
-                              setBgGradientStyle(null);
-                            } else {
-                              const g = deriveGradient(quickBg, style);
-                              setBgGradient(g);
-                              setBgGradientStyle(style);
-                            }
-                          }}
-                          className={`flex flex-col items-center gap-1.5 py-2 px-1.5 rounded-lg border-2 transition-all ${isActive ? "border-accent bg-accent/5" : "border-border hover:border-accent/40"}`}
-                        >
-                          <div
-                            className="w-full rounded h-6 border border-border/30"
-                            style={{
-                              background: preview
-                                ? `linear-gradient(135deg, ${preview.from}, ${preview.to})`
-                                : quickBg,
-                            }}
-                          />
-                          <span className="text-[10px] font-semibold">
-                            {label}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Headshot shape picker — shown when template supports multiple shapes */}
-                {pendingPreset.allowedHeadshotShapes.length > 1 && (
-                  <div className="mb-5">
-                    <label className="text-xs font-medium mb-2 block">
-                      Headshot Shape
-                    </label>
-                    <div className="flex gap-2 flex-wrap">
-                      {pendingPreset.allowedHeadshotShapes.map((shape) => {
-                        const isActive = quickHeadshotShape === shape;
-                        const label = shape.charAt(0).toUpperCase() + shape.slice(1);
-                        return (
-                          <button
-                            key={shape}
-                            type="button"
-                            onClick={() => setQuickHeadshotShape(shape)}
-                            className={`px-3 py-1.5 text-xs rounded-lg border-2 font-medium transition-all ${isActive ? "border-accent bg-accent/5 text-accent" : "border-border hover:border-accent/40"}`}
-                          >
-                            {label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Apply button */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    const cw = pendingPreset.canvasW;
-                    const ch = pendingPreset.canvasH;
-                    const hs =
-                      pendingPreset.allowedHeadshotShapes.length > 1
-                        ? quickHeadshotShape
-                        : undefined;
-                    pendingPreset.apply(
-                      quickBg,
-                      quickTextColor,
-                      quickFont,
-                      cw,
-                      ch,
-                      hs,
-                    );
-                    setShowOnboarding(false);
-                    setOnboardingShowTemplates(false);
-                    setOnboardingQuickSetup(false);
-                    setPendingPreset(null);
-                    tryShowCanvasTip();
-                  }}
-                  className="w-full py-2.5 rounded-xl bg-primary text-accent-foreground font-semibold text-sm hover:bg-accent/90 transition-colors"
-                >
-                  Apply &amp; Start Designing
-                </button>
-              </div>
-            )}
-
-          </div>
-        </div>
-      )}
 
       <div className="h-full w-full flex flex-col bg-background">
         {/* ── Two-row toolbar ── */}
@@ -2197,11 +1847,15 @@ export default function CardBuilder({
               <div className="h-5 w-px bg-border mx-0.5" />
               {cardType === "website" ? (
                 <HelpTip title="Speaker Card Template" side="bottom" align="end">
-                  <p>One design, every speaker — headshot, name, title, and logo are filled in automatically. Save here, then approve each speaker's card from their profile.</p>
+                  <p>One template, every speaker's card is generated automatically from the information you collect — any field in your intake form can appear on the card.</p>
+                  <p>Start from a template or build from scratch. Save here, then approve each speaker's card from their profile.</p>
+                  <p className="mt-2 text-muted-foreground">Need support? <a href="mailto:contact@seamlessevents.io" className="text-foreground underline underline-offset-2">contact@seamlessevents.io</a></p>
                 </HelpTip>
               ) : (
                 <HelpTip title="Social Card Template" side="bottom" align="end">
-                  <p>One template, every speaker gets their own version for LinkedIn, Instagram, and similar. Choose square, landscape, or story format.</p>
+                  <p>One template, every speaker gets their own version generated from the information you collect — any field in your intake form can appear on the card.</p>
+                  <p>Start from a template or build from scratch. Speakers can download their card.</p>
+                  <p className="mt-2 text-muted-foreground">Need support? <a href="mailto:contact@seamlessevents.io" className="text-foreground underline underline-offset-2">contact@seamlessevents.io</a></p>
                 </HelpTip>
               )}
             </div>
@@ -2212,8 +1866,7 @@ export default function CardBuilder({
             {/* Templates */}
             <button
               onClick={() => {
-                setOnboardingShowTemplates(true);
-                setShowOnboarding(true);
+                setTemplatePickerOpen(true);
               }}
               className="flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
               title="Browse templates"
@@ -2544,7 +2197,14 @@ export default function CardBuilder({
 
             {/* Overlay controls — shown when a gradient-overlay element is selected */}
             {selectedElement && config[selectedElement]?.type === "gradient-overlay" && (
-              <div className="flex items-center gap-2 shrink-0" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+              <div
+                className="flex items-center gap-2 shrink-0"
+                onMouseDown={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
+                onPointerDown={() => { ignoreSelectionClearRef.current = true; }}
+                onPointerUp={() => { setTimeout(() => { ignoreSelectionClearRef.current = false; }, 150); }}
+                onPointerLeave={() => { setTimeout(() => { ignoreSelectionClearRef.current = false; }, 150); }}
+              >
                 <div className="h-6 w-px bg-border mr-1" />
                 <span className="text-xs text-muted-foreground whitespace-nowrap">Colour</span>
                 <QuickColorPicker value={(config[selectedElement]?.gradientColor as string) || "#000000"} onChange={(hex) => updateElement(selectedElement, { gradientColor: hex })} label="Overlay colour" />
@@ -2684,8 +2344,7 @@ export default function CardBuilder({
             <div className="w-full px-2">
               <button
                 onClick={() => {
-                  setOnboardingShowTemplates(true);
-                  setShowOnboarding(true);
+                  setTemplatePickerOpen(true);
                 }}
                 className="w-full flex flex-row items-center gap-2 px-3 py-2 rounded-lg transition-colors hover:bg-accent"
                 title="Starter Templates"
@@ -3080,8 +2739,7 @@ export default function CardBuilder({
                   </p>
                   <button
                     onClick={() => {
-                      setOnboardingShowTemplates(true);
-                      setShowOnboarding(true);
+                      setTemplatePickerOpen(true);
                     }}
                     className="px-3 py-1.5 text-xs font-medium rounded-lg bg-primary text-accent-foreground hover:bg-accent/90 transition-colors"
                   >

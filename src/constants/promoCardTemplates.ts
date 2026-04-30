@@ -4,8 +4,8 @@ import { PresetData } from "@/types/card-builder";
 //   Headshot: full-bleed, x:0, y:0, size:1080
 //   Gradient: y:560 → bottom (520px ramp, opacity:0.92)
 //   Event logo: top-right, 220×100
-//   Names: left-aligned, 76px bold, y:710/800
-//   Title/company: left-aligned, 38/36px, y:908/956
+//   Names: left-aligned, 60px bold, y:770/843
+//   Title/company: left-aligned, 38/36px, y:938/986
 export const INSTAGRAM_FEED_PRESETS: PresetData[] = [
   {
     name: "Instagram Feed",
@@ -21,10 +21,10 @@ export const INSTAGRAM_FEED_PRESETS: PresetData[] = [
       headshot:        { ...T.headshot, shape: "full-bleed", x: 0, y: 0, size: 1080, zIndex: 1 },
       gradientOverlay: { ...T.gradientOverlay, x: 0, y: 560, width: 1080, height: 520, gradientDirection: "bottom", overlayOpacity: 0.92, zIndex: 3 },
       eventLogo:       { ...T.eventLogo, x: 820, y: 30, width: 220, height: 100, zIndex: 6 },
-      firstName:       { ...T.firstName, x: 60, y: 710, color: textColor, fontFamily: font, fontSize: 76, fontWeight: 700, textAlign: "left", width: 960, zIndex: 10 },
-      lastName:        { ...T.lastName, x: 60, y: 800, color: textColor, fontFamily: font, fontSize: 76, fontWeight: 700, textAlign: "left", width: 960, zIndex: 10 },
-      title:           { ...T.title, x: 60, y: 908, color: textColor, fontFamily: font, fontSize: 38, fontWeight: 500, textAlign: "left", width: 760, zIndex: 9 },
-      company:         { ...T.company, x: 60, y: 956, color: textColor, fontFamily: font, fontSize: 36, fontWeight: 400, textAlign: "left", width: 760, zIndex: 8 },
+      firstName:       { ...T.firstName, x: 60, y: 770, color: textColor, fontFamily: font, fontSize: 60, fontWeight: 700, textAlign: "left", width: 960, zIndex: 10 },
+      lastName:        { ...T.lastName, x: 60, y: 843, color: textColor, fontFamily: font, fontSize: 60, fontWeight: 700, textAlign: "left", width: 960, zIndex: 10 },
+      title:           { ...T.title, x: 60, y: 938, color: textColor, fontFamily: font, fontSize: 38, fontWeight: 500, textAlign: "left", width: 760, zIndex: 9 },
+      company:         { ...T.company, x: 60, y: 986, color: textColor, fontFamily: font, fontSize: 36, fontWeight: 400, textAlign: "left", width: 760, zIndex: 8 },
     }),
   },
 ];

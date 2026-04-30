@@ -22,6 +22,8 @@ type CreateCanvasParams = {
   setHasUnsavedChanges: (b: boolean) => void;
   addToHistory: (cfg: any) => void;
   elementRefs: React.MutableRefObject<{ [key: string]: fabric.Object }>;
+  /** When true, selection:cleared will not clear selectedElement (used during toolbar interactions). */
+  ignoreSelectionClearRef: React.MutableRefObject<boolean>;
   /** Called once the Fabric canvas is fully initialised and ready to render. */
   onReady?: () => void;
 };
@@ -47,6 +49,7 @@ export const createFabricCanvas = (params: CreateCanvasParams) => {
     setHasUnsavedChanges,
     addToHistory,
     elementRefs,
+    ignoreSelectionClearRef,
     onReady,
   } = params;
 
@@ -189,6 +192,7 @@ export const createFabricCanvas = (params: CreateCanvasParams) => {
   });
 
   canvas.on("selection:cleared", () => {
+    if (ignoreSelectionClearRef.current) return;
     setSelectedElement(null);
     setMultiSelectActive(false);
     setMultiSelectedKeys([]);
