@@ -73,52 +73,45 @@ function buildDynamicSchema(fields: FormFieldConfig[]): z.ZodSchema {
   fields
     .filter((f) => f.enabled)
     .forEach((field) => {
+      const req = field.required;
       let fieldSchema: z.ZodTypeAny;
 
       switch (field.type) {
         case "email":
-          fieldSchema = z.string().email("Invalid email address");
+          fieldSchema = req
+            ? z.string().email("Invalid email address")
+            : z.string().email("Invalid email address").or(z.literal("")).optional();
           break;
         case "textarea":
-          fieldSchema = z
-            .string()
-            .min(10, `${field.label} must be at least 10 characters`);
+          fieldSchema = req
+            ? z.string().min(10, `${field.label} must be at least 10 characters`)
+            : z.string().optional();
           break;
         case "radio":
-          fieldSchema = z.string();
+          fieldSchema = req ? z.string().min(1) : z.string().optional();
           break;
         case "checkbox":
-          // If checkbox has options it's a multi-select array, otherwise a boolean
           if (
             (field as any).options &&
             Array.isArray((field as any).options) &&
             (field as any).options.length > 0
           ) {
-            fieldSchema = z.array(z.string());
+            fieldSchema = req ? z.array(z.string()).min(1) : z.array(z.string()).optional();
           } else {
-            fieldSchema = z.boolean();
+            fieldSchema = z.boolean().optional();
           }
           break;
         case "text":
         case "url":
-          fieldSchema = z
-            .string()
-            .min(1, `${field.label} is required`)
-            .max(250);
+          fieldSchema = req
+            ? z.string().min(1, `${field.label} is required`).max(250)
+            : z.string().max(250).optional();
           break;
         case "file":
-          // File fields are handled separately via state
           fieldSchema = z.any().optional();
           break;
         default:
-          fieldSchema = z.string();
-      }
-
-      // Apply required check
-      if (field.required) {
-        // Already required via min(1)
-      } else {
-        fieldSchema = fieldSchema.optional();
+          fieldSchema = req ? z.string() : z.string().optional();
       }
 
       shape[field.id] = fieldSchema;
