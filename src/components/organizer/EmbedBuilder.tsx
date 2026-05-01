@@ -135,10 +135,13 @@ export default function EmbedBuilder({
   const [sortOrder, setSortOrder] = useState<string>(() => readCols(colsKey).sortOrder);
   const [bgColor, setBgColor] = useState<string>("");
   const [previewOpened, setPreviewOpened] = useState(false);
+  const [showSaved, setShowSaved] = useState(false);
 
   const bcRef = useRef<BroadcastChannel | null>(null);
   const broadcastTimerRef = useRef<number | null>(null);
   const previewWindowRef = useRef<Window | null>(null);
+  const savedTimerRef = useRef<number | null>(null);
+  const settingsMountedRef = useRef(false);
 
   useEffect(() => {
     bcRef.current = new BroadcastChannel("seamless-preview");
@@ -164,6 +167,14 @@ export default function EmbedBuilder({
     return () => { if (broadcastTimerRef.current) clearTimeout(broadcastTimerRef.current); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [desktopCols, embedZoom, bgColor, platformWidth, sortOrder, previewOpened]);
+
+  useEffect(() => {
+    if (!settingsMountedRef.current) { settingsMountedRef.current = true; return; }
+    if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+    setShowSaved(true);
+    savedTimerRef.current = window.setTimeout(() => setShowSaved(false), 2000);
+    return () => { if (savedTimerRef.current) clearTimeout(savedTimerRef.current); };
+  }, [desktopCols, embedZoom, bgColor, platformWidth, sortOrder]);
 
   // First visit — open the embed modal directly
   useEffect(() => {
@@ -381,7 +392,16 @@ window.addEventListener('message', function(e) {
         <DialogContent className="sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle>Speaker Wall Embed</DialogTitle>
-            <DialogDescription>Settings save automatically · Preview updates live</DialogDescription>
+            <div className="flex items-center gap-3">
+              <DialogDescription>Preview updates live</DialogDescription>
+              <span
+                className="flex items-center gap-1 text-xs text-muted-foreground transition-opacity duration-500"
+                style={{ opacity: showSaved ? 1 : 0 }}
+              >
+                <Check className="h-3 w-3 text-green-500" />
+                Saved
+              </span>
+            </div>
           </DialogHeader>
 
           {/* Controls */}

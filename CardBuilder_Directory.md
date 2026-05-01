@@ -169,13 +169,10 @@ Anchors: `// Sidebar resize drag handlers`, `sidebarDragging`
 
 ---
 
-## 12. Save & Auto-save
+## 12. Save
 
 **`handleSave`** — checks read-only, warns on missing event logo, delegates to `hb_handleSave`.
 Anchors: `const handleSave = useCallback`, `hb_handleSave`, `skipLogoWarningRef`
-
-**Auto-save effect** — 3s debounce after any unsaved change, calls `handleSave(true)` (silent).
-Anchors: `// Auto-save: 3 seconds after any change`
 
 ---
 

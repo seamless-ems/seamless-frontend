@@ -10,35 +10,37 @@ import {
 
 interface MissingFormDialogProps {
   open: boolean;
-  onOpenChange: (open: boolean) => void;
   eventId: string;
 }
 
 export default function MissingFormDialog({
   open,
-  onOpenChange,
   eventId,
 }: MissingFormDialogProps) {
   const navigate = useNavigate();
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+    <Dialog open={open} onOpenChange={() => {}}>
+      <DialogContent
+        className="[&>button]:hidden"
+        onInteractOutside={(e) => e.preventDefault()}
+      >
         <DialogHeader>
-          <DialogTitle>Set up your Intake Form first</DialogTitle>
+          <DialogTitle className="text-destructive">Intake Form required</DialogTitle>
         </DialogHeader>
         <div className="mt-2">
           <p className="text-sm text-muted-foreground">
-            Before building your speaker card template, you need to set up your Speaker Intake form. This tells speakers what information to submit — like their bio, headshot, and company logo.
+            You need a Speaker Intake Form before you can build a card template.
           </p>
           <div className="mt-4 flex justify-end gap-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+            <Button
+              variant="outline"
+              onClick={() => navigate(`/organizer/event/${eventId}/speakers`)}
+            >
+              Back to Speakers
             </Button>
             <Button
-              onClick={() => {
-                onOpenChange(false);
-                navigate(`/organizer/event/${eventId}/speakers?edit-form=speaker-info`);
-              }}
+              variant="destructive"
+              onClick={() => navigate(`/organizer/event/${eventId}/speakers?edit-form=speaker-info`)}
             >
               Set up Intake Form
             </Button>
