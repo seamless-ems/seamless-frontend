@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { setCurrentToken, setTokenAndNotify, clearTokenAndNotify, setUserAndNotify, clearUserAndNotify } from '@/lib/session';
 import UpdateNameDialog from '@/components/account/UpdateNameDialog';
-import { updateMe } from '@/lib/api';
+import { updateMe, getTeam, updateTeamDetails } from '@/lib/api';
 
 interface User {
   id: string;
@@ -133,12 +133,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         onOpenChange={(open) => setShowUpdateName(open)}
         initialName={user?.name || ''}
         userId={user?.id}
-        onSave={async (name) => {
+            onSave={async (name) => {
           try {
             const res = await updateMe({ name });
-            const updated = { ...(user as User), name: res?.name || name };
-            setUser(updated);
-            setUserAndNotify(updated);
+            // `updateMe` may return a TokenSchema (accessToken + user) or the
+            // updated user directly. Normalize to a user object for state.
+            const updatedUser = res?.id || res?.name ? res : { ...(user as User), name };
+            setUser(updatedUser);
+            setUserAndNotify(updatedUser);
+
+            // Attempt to update the account team name to "{displayName}'s team".
+            // Use the first team returned from the account teams list if available.
+            (async () => {
+              try {
+                const teams = await getTeam();
+                const teamId = teams && teams.length ? teams[0].id : null;
+                if (teamId) {
+                  const teamName = `${updated.name}'s team`;
+                  await updateTeamDetails(teamId, { name: teamName });
+                }
+              } catch (te) {
+                console.warn('Failed to update team name after user name change', te);
+              }
+            })();
+
             setShowUpdateName(false);
           } catch (e) {
             console.error('Failed to update name', e);

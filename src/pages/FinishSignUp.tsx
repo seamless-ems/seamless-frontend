@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '@/lib/firebase';
 import { isSignInWithEmailLink, signInWithEmailLink } from 'firebase/auth';
-import { toast } from 'sonner';
+import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { isOnboardingCompleted } from '@/lib/onboarding';
@@ -69,7 +69,7 @@ export default function FinishSignUp() {
       }
       navigate(dest, { replace: true });
     } catch (err: any) {
-      toast.error(String(err?.message || err || 'Failed to complete sign-in'));
+      toast({ title: String(err?.message || err || 'Failed to complete sign-in'), variant: 'destructive' });
       setStatus('needs-email');
     }
   };

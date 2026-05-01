@@ -1,4 +1,4 @@
-import { getCurrentToken } from "@/lib/session";
+import { getCurrentToken, setTokenAndNotify, setUserAndNotify } from "@/lib/session";
 import { deepCamel } from "@/lib/utils";
 
 export const API_BASE = import.meta.env.VITE_API_URL || "";
@@ -147,6 +147,7 @@ export type LoginRequest = {
 export type TokenSchema = {
   accessToken: string;
   tokenType: string;
+  user?: any;
 };
 
 export function signup(body: SignupRequest): Promise<TokenSchema> {
@@ -170,9 +171,17 @@ export function exchangeFirebaseToken(idToken: string, name?: string): Promise<T
   if (name) body.name = name;
   return postJson<typeof body, TokenSchema>("/auth/firebase", body).then((res) => {
     try {
-      
+      // If backend returns a TokenSchema with an access token and user payload,
+      // persist them to local session so the frontend stays in sync.
+      if (res?.accessToken) {
+        try {
+          setTokenAndNotify(res.accessToken);
+        } catch (e) {}
+        if (res.user) {
+          try { setUserAndNotify(res.user); } catch (e) {}
+        }
+      }
     } catch (e) {
-      
     }
     return res;
   });
@@ -295,12 +304,37 @@ export function getMe(): Promise<any> {
     // Defensive fallback — if session helper throws, continue to call the endpoint.
   }
 
-  return getJson<any>(`/account/me`);
+  return getJson<any>(`/account/me`).then((res) => {
+    if (!res) return null;
+    // Backend may return a TokenSchema { accessToken, tokenType, user }
+    if (res?.accessToken) {
+      try { setTokenAndNotify(res.accessToken); } catch (e) {}
+      const u = res.user ?? null;
+      if (u) {
+        try { setUserAndNotify(u); } catch (e) {}
+        return u;
+      }
+      return null;
+    }
+    return res;
+  });
 }
 
 // Update the current authenticated user's account details.
 export function updateMe(body: { name?: string; email?: string; avatar?: string }): Promise<any> {
-  return patchJson<typeof body, any>(`/account/me`, body);
+  return patchJson<typeof body, any>(`/account/me`, body).then((res) => {
+    if (!res) return null;
+    if (res?.accessToken) {
+      try { setTokenAndNotify(res.accessToken); } catch (e) {}
+      const u = res.user ?? null;
+      if (u) {
+        try { setUserAndNotify(u); } catch (e) {}
+        return u;
+      }
+      return null;
+    }
+    return res;
+  });
 }
 
 // Return speakers associated with the current account (appearances)
