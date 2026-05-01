@@ -18,8 +18,7 @@ Rules for every agent that touches this file:
 ## How to onboard
 1. Read `README.md` for setup.
 2. Read this file for current priorities and rules.
-3. Check `API_GAPS.md` before any API-related work.
-4. Check `BACKEND_QUEUE.md` for pending backend items and their frontend wiring instructions.
+3. Check `BACKEND_QUEUE.md` for pending backend items and their frontend wiring instructions.
 
 ---
 
@@ -29,7 +28,7 @@ Use these exact terms everywhere (UI labels, tooltips, dialogs, HelpTips, copy):
 - **Speaker Card** — the website embed card
 - **Social Card** — the downloadable social image
 - **Speaker Wall embed** — only when referring specifically to the embed code/snippet itself
-- **TODO: full language sweep pending** — "Embed" still appears in various tooltips, dialog copy, and comments. Do not fix ad-hoc; sweep all at once when instructed.
+- **Language sweep pending** — "Embed" still appears in various tooltips, dialog copy, and comments. Do not fix ad-hoc; sweep all at once when instructed.
 
 ## No assumptions
 - **Never assume URLs, email addresses, external links, API endpoints, or any external values** that haven't been explicitly provided. Leave a `// TODO` placeholder and flag it verbally instead.
@@ -44,7 +43,7 @@ Use these exact terms everywhere (UI labels, tooltips, dialogs, HelpTips, copy):
 ## Working rules
 - **Speaker forms parity:** `speaker-info` and `call-for-speakers` form builders are intentionally separate configs but must always present identical field options and UI. Any change to `SpeakerFormBuilder.tsx` fields, labels, or sections applies to both. Never add a field or section to one without the other.
 - **CardBuilder:** frontend and backend rendering must match exactly. No frontend-only visual styles (e.g. text stroke) unless also in the backend HTML renderer. See `example-speaker-website-card.html` and `corresponding-config-speaker-website-card.json`.
-- **Frontend-only:** no backend changes. Flag gaps verbally and ask the user — only James writes to `API_GAPS.md`.
+- **Frontend-only:** no backend changes. Flag gaps verbally and ask the user.
 - **Mock data:** only with explicit approval; mark with `// TODO: Replace with API data`.
 - **Commits & pushes:** James handles all git operations. Never run `git commit`, `git push`, `git rebase`, or `git stash` unless explicitly asked.
 - **No completion docs:** never create summary/review/completed files. Update this file in place. Report results verbally.
@@ -110,15 +109,15 @@ Use these exact terms everywhere (UI labels, tooltips, dialogs, HelpTips, copy):
 ---
 
 ## Known issues
-- **`nameFormat: "two-line"`** — saves correctly but embed renders single line. Backend bug (see API_GAPS.md).
-- **`company` / `companyLogo`** — not persisting after server save/reload. Backend bug (see API_GAPS.md).
+- **`nameFormat: "two-line"`** — saves correctly but embed renders single line. Backend bug.
+- **`company` / `companyLogo`** — not persisting after server save/reload. Backend bug.
 - **Event logo not appearing in embed** — `companyLogo.url` is not persisted across template switches in the website card builder (no localStorage for it, unlike `eventLogo`). Also `testEventLogo` is set in `makeApply` even when the template has no `eventLogo` element. Investigate both paths before touching.
 - **Custom field keys** — backend strips underscores (`custom_123` → `custom123`). Frontend has fallback logic.
 - **ShareDialog** — UI complete, not yet wired to backend.
-- **Card downloads** — open in new tab only; PNG export not yet available (see API_GAPS.md).
-- **Content history attribution** — frontend sends `createdBy` but backend not storing/returning it (see API_GAPS.md).
-- **Content archive** — stub only; backend endpoint not yet available (see API_GAPS.md).
-- **`embed_enabled` toggle** — optimistic UI only; backend field not yet implemented (see API_GAPS.md).
+- **Card downloads** — open in new tab only; PNG export not yet available.
+- **Content history attribution** — frontend sends `createdBy` but backend not storing/returning it.
+- **Content archive** — stub only; backend endpoint not yet available.
+- **`embed_enabled` toggle** — optimistic UI only; backend field not yet implemented.
 
 ---
 
@@ -155,7 +154,7 @@ Event routes use `:id` (bare UUID). All API calls use this directly.
 - 9 templates: Square (Overlay, Headline, Spotlight), Landscape (Overlay, Side by Side, Editorial), Portrait (Overlay, Spotlight, Brand Forward)
 - 4-step onboarding modal; localStorage key `seamless-card-builder-onboarding-website-v1`
 - Rule of 3: exactly 3 templates per shape, do NOT add a 4th
-- Outstanding: `nameFormat: "two-line"` backend rendering bug (see Known Issues)
+- Outstanding: `nameFormat: "two-line"` backend rendering bug (see Known Issues above)
 
 **Promo (TODO)**
 - Opens to blank canvas today
@@ -176,7 +175,7 @@ Event routes use `:id` (bare UUID). All API calls use this directly.
 ---
 
 ## Mandatory agent check
-Before any API-related changes, read `openapi.json` and verify endpoints, shapes, and flags. Report missing fields verbally — only James writes to `API_GAPS.md`.
+Before any API-related changes, read `openapi.json` and verify endpoints, shapes, and flags. Report missing fields verbally.
 
 ---
 

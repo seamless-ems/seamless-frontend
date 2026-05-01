@@ -28,6 +28,7 @@ import PromoCardBuilderPage from "./pages/organizer/PromoCardBuilderPage";
 import WebsiteCardBuilderPage from "./pages/organizer/WebsiteCardBuilderPage";
 import Onboarding from "./components/onboarding/Onboarding";
 import FakeLandingPage from "./pages/FakeLandingPage";
+import MobileBlock from "@/components/ui/MobileBlock";
 
 // Helper component for root redirect
 function RootRedirect() {
@@ -60,6 +61,7 @@ const App = () => {
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <MobileBlock />
           <ConditionalHelp />
           <Routes>
             <Route
