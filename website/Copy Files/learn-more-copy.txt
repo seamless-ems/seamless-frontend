@@ -1,0 +1,119 @@
+LEARN MORE — COPY DRAFT
+seamlessevents.io/learn-more
+Last updated: 1 May 2026
+────────────────────────────────────────────────────────────
+
+NAV
+────
+Wordmark: Seamless Events
+Links: Log in (→ app.seamlessevents.io) | Try Now (→ app.seamlessevents.io)
+
+────────────────────────────────────────────────────────────
+
+SECTION 1 — SPEAKER MANAGEMENT
+────
+Label: Speaker Management
+Heading line 1: All your speakers.
+Heading line 2: All in one place.
+Image: Speaker List.png (1920x1080)
+
+────────────────────────────────────────────────────────────
+
+SECTION 2 — SPEAKER PORTAL
+────
+Label: Speaker Portal
+Heading line 1: Their own space to manage.
+Heading line 2: Accessible to everyone who needs it.
+Image: Speaker Portal.png (1920x1080)
+
+────────────────────────────────────────────────────────────
+
+SECTION 3 — SPEAKER & SOCIAL CARDS
+────
+Label: Speaker & Social Cards
+Heading line 1: Design it once.
+Heading line 2: Auto-filled for every speaker.
+Image: Speaker Card Builder.png (1920x1080)
+
+────────────────────────────────────────────────────────────
+
+SECTION 4 — SPEAKER WALL
+────
+Label: Speaker Wall
+Heading line 1: Publish once.
+Heading line 2: Every change, live instantly.
+Image: Speaker Wall.png (1920x1080)
+
+────────────────────────────────────────────────────────────
+
+SECTION 5 — CONTENT MANAGEMENT
+────
+Label: Content Management
+Heading line 1: All content. Every speaker.
+Heading line 2: Accessible to everyone who needs it.
+Image: Content.png (1920x1080)
+
+────────────────────────────────────────────────────────────
+
+PRICING
+────
+(All within the accent-bordered card)
+
+Wordmark: Seamless Events
+Label: Speaker & Content Management
+Price: $950 / event
+Unlimiteds: Unlimited speakers · Unlimited content · Unlimited lead time
+
+Divider
+
+Feature list:
+  1. Call for Speakers
+  2. Intake forms direct to your speakers
+  3. Speaker & Social Card templates
+  4. Update once, live everywhere, for everyone
+  5. Content hub with version history
+
+CTA: Start Free Trial (→ app.seamlessevents.io)
+Under CTA: 14-day free trial · No credit card required
+
+────────────────────────────────────────────────────────────
+
+STORY STRIP
+────
+Heading: 20 years of hacks.
+Link: Read our story (opens founder modal)
+
+────────────────────────────────────────────────────────────
+
+FOUNDER MODAL (triggered by "Read our story")
+────
+Wordmark: Seamless Events
+
+Heading: 20 years of hacks.
+
+Para 1: Our co-founder James spent two decades in the events industry building workarounds for problems that good software should have solved long ago.
+
+Para 2: Every year it was the same:
+  · Websites with no pricing
+  · Demos with no clarity
+  · Quotes too large to justify, with no ability to tailor
+
+Para 3: After years of building custom fixes for clients, he teamed up with another James and Catherine to build Seamless Events from scratch. Starting with Speaker and Content Management.
+
+Para 4: If any of that sounds familiar, James is always happy to chat (and swap some event war stories).
+
+CTA: Book a Demo with James (→ calendly.com/james-ruleyproductions/seamless-events)
+
+────────────────────────────────────────────────────────────
+
+FOOTER
+────
+Wordmark: Seamless Events
+contact@seamlessevents.io
+© 2026 Seamless Events
+
+────────────────────────────────────────────────────────────
+NOTES / QUESTIONS FOR JS
+- Founder photo placeholder: add above or alongside modal text when ready
+- Book a Demo calendly URL has month=2026-05 hardcoded, update when needed
+- Coming Soon modules (Schedule, Attendee, Partner) not on page yet

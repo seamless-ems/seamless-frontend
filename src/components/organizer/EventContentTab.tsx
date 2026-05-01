@@ -249,17 +249,23 @@ export default function EventContentTab({ eventId }: Props) {
   });
 
   const itemsBySpeaker = useMemo(() => {
-    const map: Record<string, any[]> = {};
+    const map: Record<string, Map<string, any>> = {};
     const arr = Array.isArray(eventContent) ? eventContent : [];
     arr.forEach((it: any) => {
       if (it.archived) return;
       const sid = it.speakerId ?? it.speaker_id ?? it.speaker ?? null;
       if (!sid) return;
-      const key = String(sid);
-      if (!map[key]) map[key] = [];
-      map[key].push(it);
+      const skey = String(sid);
+      if (!map[skey]) map[skey] = new Map();
+      const docKey = String(it.documentId ?? it.document_id ?? it.id);
+      const existing = map[skey].get(docKey);
+      if (!existing || (it.version ?? 0) > (existing.version ?? 0)) {
+        map[skey].set(docKey, it);
+      }
     });
-    return map;
+    return Object.fromEntries(
+      Object.entries(map).map(([sid, docMap]) => [sid, Array.from(docMap.values())])
+    );
   }, [eventContent]);
 
   const handleUpload = async () => {
@@ -304,8 +310,18 @@ export default function EventContentTab({ eventId }: Props) {
         queryClient.setQueryData(["content", sid], items);
       });
 
-      const allWithUrls = allItems
-        .filter((it: any) => !it.archived)
+      // Deduplicate: keep only the latest version per speaker+document
+      const latestBySpeakerDoc = new Map<string, any>();
+      allItems.filter((it: any) => !it.archived).forEach((it: any) => {
+        const sid = it.speakerId ?? it.speaker_id ?? it.speaker ?? "";
+        const docKey = `${sid}__${it.documentId ?? it.document_id ?? it.id}`;
+        const existing = latestBySpeakerDoc.get(docKey);
+        if (!existing || (it.version ?? 0) > (existing.version ?? 0)) {
+          latestBySpeakerDoc.set(docKey, it);
+        }
+      });
+
+      const allWithUrls = Array.from(latestBySpeakerDoc.values())
         .flatMap((item: any) => {
           const sid = item.speakerId ?? item.speaker_id ?? item.speaker ?? null;
           const speaker = speakers.find((s) => String(s.id) === String(sid));

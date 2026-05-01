@@ -5,6 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Seamless Events | Speaker & Content Management</title>
   <meta name="description" content="The all-in-one platform for event organisers to collect, manage, and publish speaker content.">
+  <!-- OG / social -->
+  <meta property="og:type"        content="website">
+  <meta property="og:url"         content="https://seamlessevents.io">
+  <meta property="og:title"       content="Seamless Events | Speaker &amp; Content Management">
+  <meta property="og:description" content="The all-in-one platform for event organisers to collect, manage, and publish speaker content.">
+  <meta property="og:image"       content="TODO: hosted logo URL">
+  <meta name="twitter:card"       content="summary_large_image">
+  <meta name="twitter:title"      content="Seamless Events | Speaker &amp; Content Management">
+  <meta name="twitter:description" content="The all-in-one platform for event organisers to collect, manage, and publish speaker content.">
+  <meta name="twitter:image"      content="TODO: hosted logo URL">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -191,73 +202,114 @@
       color: var(--muted);
     }
 
-    /* ─── Video placeholder ────────────────────────────── */
+    /* ─── Slideshow ────────────────────────────────────── */
     .video-wrap {
       position: relative;
-      aspect-ratio: 16 / 9;
-      border-radius: 20px;
       margin-right: 40px;
+      border-radius: 20px;
       overflow: hidden;
-      background: linear-gradient(135deg, #dfe4f4 0%, #ccd2ec 40%, #b8c0e4 100%);
+      background: #e8eaf2;
+      align-self: center;
       box-shadow:
-        0 2px 0 rgba(255,255,255,0.6) inset,
         0 30px 70px -10px rgba(78, 92, 166, 0.28),
         0 10px 24px -6px rgba(78, 92, 166, 0.16);
+      animation: border-pulse 3s ease-in-out infinite;
+    }
+
+    @keyframes border-pulse {
+      0%, 100% {
+        box-shadow:
+          0 0 0 0px rgba(78, 92, 166, 0),
+          0 30px 70px -10px rgba(78, 92, 166, 0.28),
+          0 10px 24px -6px rgba(78, 92, 166, 0.16);
+      }
+      50% {
+        box-shadow:
+          0 0 0 3px rgba(78, 92, 166, 0.18),
+          0 30px 70px -10px rgba(78, 92, 166, 0.32),
+          0 10px 24px -6px rgba(78, 92, 166, 0.20);
+      }
+    }
+
+    /* Browser chrome bar */
+    .browser-chrome {
+      background: #f1f3f9;
+      border-bottom: 1px solid #dde0ee;
       display: flex;
-      flex-direction: column;
       align-items: center;
-      justify-content: center;
-      gap: 18px;
+      gap: 10px;
+      padding: 9px 14px;
+      flex-shrink: 0;
     }
-
-    .video-wrap::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
-      pointer-events: none;
-      z-index: 1;
+    .browser-dots {
+      display: flex;
+      gap: 5px;
+      flex-shrink: 0;
     }
-
-    .video-wrap::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      border-radius: 20px;
-      border: 1px solid rgba(255,255,255,0.45);
-      pointer-events: none;
-      z-index: 2;
-    }
-
-    .play-btn {
-      position: relative;
-      z-index: 3;
-      width: 72px;
-      height: 72px;
-      background: rgba(255,255,255,0.95);
+    .browser-dots span {
+      width: 10px;
+      height: 10px;
       border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      border: none;
-      box-shadow: 0 8px 28px rgba(0,0,0,0.14), 0 2px 6px rgba(0,0,0,0.08);
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      display: block;
     }
-    .play-btn:hover {
-      transform: scale(1.08);
-      box-shadow: 0 12px 36px rgba(0,0,0,0.18), 0 4px 10px rgba(0,0,0,0.1);
+    .browser-dots span:nth-child(1) { background: #ff5f57; }
+    .browser-dots span:nth-child(2) { background: #febc2e; }
+    .browser-dots span:nth-child(3) { background: #28c840; }
+    .browser-url {
+      flex: 1;
+      background: #fff;
+      border: 1px solid #dde0ee;
+      border-radius: 5px;
+      padding: 4px 10px;
+      font-size: 11px;
+      color: #6b7280;
+      font-family: inherit;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
-    .play-btn svg { margin-left: 4px; }
 
-    .video-label {
+    /* Slides container */
+    .slides-container {
       position: relative;
-      z-index: 3;
-      font-size: 12px;
-      font-weight: 600;
-      color: rgba(78, 92, 166, 0.65);
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
+      aspect-ratio: 16 / 9;
+      overflow: hidden;
+    }
+    .slide-img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: top left;
+      opacity: 0;
+      transition: opacity 0.45s ease;
+    }
+    .slide-img.active { opacity: 1; }
+
+    /* Dot indicators */
+    .slide-dots {
+      position: absolute;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 6px;
+      z-index: 10;
+    }
+    .slide-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.45);
+      border: none;
+      padding: 0;
+      cursor: pointer;
+      transition: background 0.3s, transform 0.3s;
+    }
+    .slide-dot.active {
+      background: #fff;
+      transform: scale(1.3);
     }
 
     /* ─── Pricing modal ────────────────────────────────── */
@@ -424,7 +476,7 @@
 
   <!-- Nav -->
   <nav>
-    <a href="/" class="wordmark" aria-label="Seamless Events home">
+    <a href="https://seamlessevents.io" class="wordmark" aria-label="Seamless Events home">
       <span class="wordmark-seamless">Seamless</span>
       <span class="wordmark-events">Events</span>
     </a>
@@ -455,7 +507,7 @@
               Try Now
               <svg class="arrow-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
             </a>
-            <a href="https://seamlessevents.io/learn-more" class="btn btn-outline" target="_blank" rel="noopener noreferrer">
+            <a href="learn-more.html" class="btn btn-outline">
               Learn More
             </a>
             <button class="btn btn-outline" onclick="openPricing()">
@@ -468,14 +520,24 @@
           </div>
         </div>
 
-        <!-- Video -->
-        <div class="video-wrap" role="img" aria-label="Product video placeholder">
-          <button class="play-btn" aria-label="Play product demo video">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="#4e5ca6" aria-hidden="true">
-              <polygon points="5,3 19,12 5,21"/>
-            </svg>
-          </button>
-          <span class="video-label">Product Demo</span>
+        <!-- Slideshow -->
+        <div class="video-wrap" aria-label="Product screenshots slideshow">
+          <div class="browser-chrome">
+            <div class="browser-dots">
+              <span></span><span></span><span></span>
+            </div>
+            <div class="browser-url" id="slideUrl">app.seamlessevents.io</div>
+          </div>
+          <div class="slides-container">
+            <img class="slide-img active" src="images/08-welcome-page.png" alt="Events dashboard" data-url="app.seamlessevents.io/organizer">
+            <img class="slide-img"        src="images/06-applications.png" alt="Speaker applications" data-url="app.seamlessevents.io/organizer/event/…/speakers/applications">
+            <img class="slide-img"        src="images/07-intake-form.png"  alt="Sending speaker intake form" data-url="app.seamlessevents.io/organizer/event/…/speakers">
+            <img class="slide-img"        src="images/01-speaker-list.png" alt="Speaker list" data-url="app.seamlessevents.io/organizer/event/…/speakers">
+            <img class="slide-img"        src="images/03-card-builder.png" alt="Card builder" data-url="app.seamlessevents.io/organizer/event/…/website-card-builder">
+            <img class="slide-img"        src="images/04-speaker-wall.png" alt="Speaker wall" data-url="app.seamlessevents.io/organizer/event/…/speakers/embed">
+            <img class="slide-img"        src="images/05-content.png"      alt="Content management" data-url="app.seamlessevents.io/organizer/event/…/speakers">
+            <div class="slide-dots" id="slideDots"></div>
+          </div>
         </div>
 
       </div>
@@ -486,7 +548,7 @@
   <div class="modal-backdrop" id="pricingModal" role="dialog" aria-modal="true" aria-labelledby="modal-title" onclick="handleBackdropClick(event)">
     <div class="modal">
       <div class="modal-header">
-        <a href="/" class="wordmark" aria-label="Seamless Events">
+        <a href="https://seamlessevents.io" class="wordmark" aria-label="Seamless Events">
           <span class="wordmark-seamless" style="font-size:18px;">Seamless</span>
           <span class="wordmark-events" style="font-size:18px;">Events</span>
         </a>
@@ -505,7 +567,7 @@
             <span class="pricing-period">/ event</span>
           </div>
           <div class="pricing-unlimiteds">
-            <span>Unlimited speakers</span><span>Unlimited content</span><span>Unlimited leadtime</span>
+            <span>Unlimited speakers</span><span>Unlimited content</span><span>Unlimited lead time</span>
           </div>
         </div>
 
@@ -549,6 +611,7 @@
   </div>
 
   <script>
+    /* ─── Pricing modal ───────────────────────────────── */
     function openPricing() {
       document.getElementById('pricingModal').classList.add('open');
       document.body.style.overflow = 'hidden';
@@ -563,6 +626,46 @@
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') closePricing();
     });
+
+    /* ─── Slideshow ───────────────────────────────────── */
+    (function () {
+      const slides  = Array.from(document.querySelectorAll('.slide-img'));
+      const dotsEl  = document.getElementById('slideDots');
+      const urlEl   = document.getElementById('slideUrl');
+      let current   = 0;
+      let timer;
+
+      // Build dots
+      slides.forEach((_, i) => {
+        const d = document.createElement('button');
+        d.className = 'slide-dot' + (i === 0 ? ' active' : '');
+        d.setAttribute('aria-label', 'Go to slide ' + (i + 1));
+        d.addEventListener('click', () => goTo(i));
+        dotsEl.appendChild(d);
+      });
+
+      const dots = Array.from(dotsEl.querySelectorAll('.slide-dot'));
+
+      function goTo(n) {
+        slides[current].classList.remove('active');
+        dots[current].classList.remove('active');
+        current = (n + slides.length) % slides.length;
+        slides[current].classList.add('active');
+        dots[current].classList.add('active');
+        urlEl.textContent = slides[current].dataset.url || 'app.seamlessevents.io';
+        resetTimer();
+      }
+
+      function advance() { goTo(current + 1); }
+
+      function resetTimer() {
+        clearInterval(timer);
+        timer = setInterval(advance, 2600);
+      }
+
+      // Advance quickly on first slide so motion is caught immediately
+      setTimeout(() => { advance(); resetTimer(); }, 900);
+    })();
   </script>
 
 </body>

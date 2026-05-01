@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Terms &amp; Conditions | Seamless Events</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --accent:       #4e5ca6;
+      --accent-hover: #3d4a8f;
+      --accent-light: #eef0f9;
+      --ink:          #111827;
+      --muted:        #6b7280;
+      --border:       #e5e7eb;
+      --bg:           #faf8f5;
+      --nav-bg:       rgba(250, 248, 245, 0.92);
+      --nav-h:        64px;
+      --px:           clamp(24px, 5vw, 64px);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; background: var(--bg); }
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      background: var(--bg);
+      color: var(--ink);
+      min-height: 100vh;
+    }
+    a { text-decoration: none; color: inherit; }
+
+    /* ─── Nav ─── */
+    nav {
+      position: fixed;
+      inset: 0 0 auto 0;
+      z-index: 50;
+      height: var(--nav-h);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 var(--px);
+      background: var(--nav-bg);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-bottom: 1px solid rgba(229, 231, 235, 0.7);
+    }
+    .wordmark { display: flex; align-items: baseline; gap: 5px; line-height: 1; }
+    .wordmark-seamless { font-size: 22px; font-weight: 600; color: var(--accent); letter-spacing: -0.01em; }
+    .wordmark-events   { font-size: 22px; font-weight: 300; color: var(--muted); }
+
+    .nav-actions { display: flex; align-items: center; gap: 6px; }
+    .nav-login {
+      padding: 8px 16px; font-size: 14px; font-weight: 500; color: var(--muted);
+      border-radius: 7px; transition: color 0.15s, background 0.15s;
+    }
+    .nav-login:hover { color: var(--ink); background: rgba(0,0,0,0.04); }
+    .nav-cta {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 8px 18px; font-size: 14px; font-weight: 600;
+      color: #fff; background: var(--accent); border-radius: 7px;
+      transition: background 0.15s;
+    }
+    .nav-cta:hover { background: var(--accent-hover); }
+
+    /* ─── Content ─── */
+    .doc-wrap {
+      max-width: 740px;
+      margin: 0 auto;
+      padding: calc(var(--nav-h) + 56px) var(--px) 80px;
+    }
+
+    .doc-wrap h1 {
+      font-size: 36px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: var(--ink);
+      margin-bottom: 8px;
+    }
+    .doc-date {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 40px;
+      display: block;
+    }
+    .doc-wrap h2 {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--ink);
+      margin: 40px 0 12px;
+    }
+    .doc-wrap p {
+      font-size: 15px;
+      line-height: 1.7;
+      color: #374151;
+      margin-bottom: 14px;
+    }
+    .doc-wrap ul, .doc-wrap ol {
+      padding-left: 22px;
+      margin-bottom: 14px;
+    }
+    .doc-wrap li {
+      font-size: 15px;
+      line-height: 1.7;
+      color: #374151;
+      margin-bottom: 6px;
+    }
+    .doc-wrap strong { color: var(--ink); }
+    .doc-wrap a { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+    .doc-wrap a:hover { color: var(--accent-hover); }
+    .doc-wrap hr { border: none; border-top: 1px solid var(--border); margin: 36px 0; }
+
+    /* ─── Footer ─── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 32px var(--px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      background: var(--bg);
+    }
+    footer .copy { font-size: 13px; color: var(--muted); }
+    footer a { font-size: 13px; color: var(--muted); transition: color 0.15s; }
+    footer a:hover { color: var(--ink); }
+    .footer-links { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+
+    @media (max-width: 640px) {
+      .nav-login { display: none; }
+      footer { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+
+<body>
+
+  <nav>
+    <a href="https://seamlessevents.io" class="wordmark" aria-label="Seamless Events home">
+      <span class="wordmark-seamless">Seamless</span>
+      <span class="wordmark-events">Events</span>
+    </a>
+    <div class="nav-actions">
+      <a href="http://app.seamlessevents.io/" class="nav-login" target="_blank" rel="noopener noreferrer">Log in</a>
+      <a href="http://app.seamlessevents.io/" class="nav-cta" target="_blank" rel="noopener noreferrer">Try Now</a>
+    </div>
+  </nav>
+
+  <main>
+    <div class="doc-wrap">
+
+      <h1>Terms &amp; Conditions</h1>
+      <span class="doc-date">Last updated: 1 May 2026</span>
+
+      <p>These Terms &amp; Conditions ("Terms") govern your access to and use of the Seamless Events platform (the "Service"), operated by <strong>Seamless Events</strong> ("we", "us", "our").</p>
+      <p>By creating an account or using the Service, you agree to these Terms. If you are accepting on behalf of a company or organisation, you confirm you have authority to bind that entity.</p>
+      <p>Purchases of the Service are made through Polar, our authorised reseller and merchant of record. Your purchase is subject to Polar's checkout terms in addition to these Terms.</p>
+
+      <hr>
+
+      <h2>1. The Service</h2>
+      <p>Seamless Events is a speaker management platform for event organisers. It enables organisers to manage speaker profiles, build speaker cards and social cards, collect speaker information via intake forms, and publish speaker walls.</p>
+      <p>We may update, modify, or discontinue features of the Service from time to time. For material changes that substantially affect your use, we will give reasonable notice by email.</p>
+
+      <hr>
+
+      <h2>2. Your account</h2>
+      <p>You are responsible for:</p>
+      <ul>
+        <li>Keeping your login credentials secure</li>
+        <li>All activity that occurs under your account</li>
+        <li>Ensuring any team members or users you grant access to comply with these Terms</li>
+      </ul>
+      <p>You must notify us immediately at <a href="mailto:contact@seamlessevents.io">contact@seamlessevents.io</a> if you suspect unauthorised access to your account.</p>
+
+      <hr>
+
+      <h2>3. Acceptable use</h2>
+      <p>You may use the Service only for lawful purposes and in accordance with these Terms. You must not:</p>
+      <ul>
+        <li>Use the Service to collect, process, or publish personal data without a lawful basis for doing so</li>
+        <li>Upload content that infringes any third-party intellectual property rights</li>
+        <li>Introduce malicious code, viruses, or anything that could harm the Service or other users</li>
+        <li>Attempt to gain unauthorised access to any part of the Service or its infrastructure</li>
+        <li>Reverse engineer, decompile, or attempt to extract the source code of the Service</li>
+        <li>Resell, sublicense, or make the Service available to third parties outside your organisation</li>
+        <li>Use the Service in any way that violates applicable laws or regulations</li>
+      </ul>
+      <p>We reserve the right to suspend or terminate access where we reasonably believe these terms have been breached.</p>
+
+      <hr>
+
+      <h2>4. Speaker data and public content</h2>
+      <p>When you use the Service to manage speakers:</p>
+      <ul>
+        <li>You are responsible for having a lawful basis to collect and process speaker personal data</li>
+        <li>You are responsible for informing speakers how their data will be used, including that profile information may be published via a Speaker Wall embed on your website</li>
+        <li>You must not submit special category personal data (health, biometric, political, religious, or similar data) to the platform</li>
+      </ul>
+      <p>Where you enable a Speaker Wall embed, speaker profile data becomes publicly accessible on your website. You are responsible for ensuring speakers have been informed of and consented to this.</p>
+
+      <hr>
+
+      <h2>5. Intellectual property</h2>
+      <p><strong>Our IP.</strong> We own all rights in the Service, including its software, design, and underlying technology. These Terms grant you a limited, non-exclusive, non-transferable licence to use the Service during your subscription. No other rights are granted.</p>
+      <p><strong>Your content.</strong> You retain all rights in content you upload to the Service (speaker data, event branding, photographs, etc.). You grant us a limited licence to use that content solely to provide the Service to you.</p>
+      <p><strong>Generated cards.</strong> Speaker cards and social cards generated by the Service may be downloaded and used by you and your speakers for promotional purposes without restriction.</p>
+
+      <hr>
+
+      <h2>6. Data protection</h2>
+      <p>We process personal data in accordance with our <a href="privacy-policy.html">Privacy Policy</a>. By using the Service you confirm you have read and understood it.</p>
+      <p>As an event organiser, you are the data controller for speaker personal data you submit to the platform. We process that data as your data processor. A Data Processing Addendum is available on request.</p>
+
+      <hr>
+
+      <h2>7. Availability and support</h2>
+      <p>We make reasonable efforts to keep the Service available and operational. We do not guarantee uninterrupted availability. Planned maintenance will be communicated where possible.</p>
+      <p>Support is available via <a href="mailto:contact@seamlessevents.io">contact@seamlessevents.io</a>. We aim to respond within 2 business days.</p>
+
+      <hr>
+
+      <h2>8. Beta and early access</h2>
+      <p>The Service is currently in early access / beta. This means:</p>
+      <ul>
+        <li>Features may change, be added, or be removed without notice</li>
+        <li>The Service is provided "as is" during this period</li>
+        <li>We are not liable for any loss arising from reliance on features that change or are discontinued</li>
+      </ul>
+      <p>We will notify you by email of any material changes to the Service or these Terms.</p>
+
+      <hr>
+
+      <h2>9. Limitation of liability</h2>
+      <p><strong>What we are not liable for.</strong> To the fullest extent permitted by law, we are not liable for:</p>
+      <ul>
+        <li>Loss of profits, revenue, or business</li>
+        <li>Loss or corruption of data</li>
+        <li>Indirect or consequential loss of any kind</li>
+        <li>Any loss arising from your use of speaker data or published embeds</li>
+      </ul>
+      <p><strong>Cap.</strong> Our total aggregate liability to you under these Terms shall not exceed the fees you paid to us in the 12 months preceding the event giving rise to the claim.</p>
+      <p><strong>What we cannot exclude.</strong> Nothing in these Terms excludes liability for death or personal injury caused by negligence, fraud, or any other liability that cannot be excluded by law.</p>
+
+      <hr>
+
+      <h2>10. Refunds</h2>
+      <p>If you are unsatisfied with the Service within 14 days of your first payment, contact us at <a href="mailto:contact@seamlessevents.io">contact@seamlessevents.io</a> and we will arrange a full refund.</p>
+      <p>After 14 days, subscription fees for elapsed billing periods are non-refundable except where required by law or where the Service was not delivered. Refunds are processed by Polar as our merchant of record.</p>
+
+      <hr>
+
+      <h2>11. Termination</h2>
+      <p><strong>By you.</strong> You may cancel your subscription at any time via your Polar account. Access continues until the end of your current billing period.</p>
+      <p><strong>By us.</strong> We may suspend or terminate your access immediately if you breach these Terms, or on 30 days' written notice for any other reason.</p>
+      <p><strong>On termination.</strong> Your right to access the Service ends. We will retain your data for 90 days following termination, after which it will be deleted in accordance with our Privacy Policy. You may request an export of your data before this period expires by contacting <a href="mailto:contact@seamlessevents.io">contact@seamlessevents.io</a>.</p>
+
+      <hr>
+
+      <h2>12. General</h2>
+      <p><strong>Entire agreement.</strong> These Terms, together with our Privacy Policy and Polar's checkout terms, constitute the entire agreement between you and us regarding the Service.</p>
+      <p><strong>Amendments.</strong> We may update these Terms from time to time. We will notify you by email at least 14 days before material changes take effect. Continued use of the Service after that date constitutes acceptance.</p>
+      <p><strong>Severability.</strong> If any provision of these Terms is found to be unenforceable, the remaining provisions continue in full force.</p>
+      <p><strong>No waiver.</strong> Failure to enforce any provision of these Terms does not constitute a waiver of that right.</p>
+      <p><strong>Assignment.</strong> You may not assign your rights under these Terms without our prior written consent. We may assign our rights to a successor entity in the event of a merger, acquisition, or sale of assets.</p>
+      <p><strong>Governing law.</strong> These Terms are governed by the laws of England and Wales. Any disputes shall be subject to the exclusive jurisdiction of the courts of England and Wales.</p>
+
+      <hr>
+
+      <h2>Contact</h2>
+      <p><strong>Seamless Events</strong><br>
+      <a href="mailto:contact@seamlessevents.io">contact@seamlessevents.io</a></p>
+
+    </div>
+  </main>
+
+  <footer>
+    <a href="https://seamlessevents.io" class="wordmark" aria-label="Seamless Events home">
+      <span class="wordmark-seamless" style="font-size:18px;">Seamless</span>
+      <span class="wordmark-events" style="font-size:18px;">Events</span>
+    </a>
+    <div class="footer-links">
+      <a href="https://seamlessevents.io/contact">Contact</a>
+      <a href="privacy-policy.html">Privacy Policy</a>
+      <a href="terms.html">Terms &amp; Conditions</a>
+      <span class="copy">&copy; 2026 Seamless Events</span>
+    </div>
+  </footer>
+
+</body>
+</html>

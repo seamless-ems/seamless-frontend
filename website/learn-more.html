@@ -5,6 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Seamless Events | How It Works</title>
   <meta name="description" content="See Seamless in action. Speaker Management and Content Management built for conference organisers.">
+  <!-- OG / social -->
+  <meta property="og:type"        content="website">
+  <meta property="og:url"         content="https://seamlessevents.io/learn-more">
+  <meta property="og:title"       content="How It Works | Seamless Events">
+  <meta property="og:description" content="See Seamless in action. Speaker Management and Content Management built for conference organisers.">
+  <meta property="og:image"       content="TODO: hosted logo URL">
+  <meta name="twitter:card"       content="summary_large_image">
+  <meta name="twitter:title"      content="How It Works | Seamless Events">
+  <meta name="twitter:description" content="See Seamless in action. Speaker Management and Content Management built for conference organisers.">
+  <meta name="twitter:image"      content="TODO: hosted logo URL">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -168,9 +179,9 @@
       letter-spacing: -0.025em;
       color: var(--ink);
       line-height: 1.1;
-      margin-bottom: 12px;
     }
 
+    .feature-first { padding-top: calc(var(--nav-h) + 64px); }
 
     /* ─── Screenshot placeholder ───────────────────────── */
     .screenshot-wrap {
@@ -233,30 +244,25 @@
       object-fit: cover;
       display: block;
     }
-    .screenshot-placeholder {
-      font-size: 13px;
-      font-weight: 500;
-      color: rgba(78, 92, 166, 0.45);
-      letter-spacing: 0.04em;
-      pointer-events: none;
-    }
-
     /* ─── Who built this ────────────────────────────────── */
     .story-strip {
-      padding: 64px var(--px);
+      padding: 80px var(--px);
       text-align: center;
       background: var(--bg);
     }
-    .story-strip p {
-      font-size: 16px;
-      color: var(--muted);
+    .story-strip h2 {
+      font-size: clamp(28px, 3.5vw, 44px);
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      color: var(--ink);
+      line-height: 1.1;
       margin-bottom: 16px;
     }
     .story-link {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      font-size: 14px;
+      gap: 8px;
+      font-size: 20px;
       font-weight: 600;
       color: var(--accent);
       cursor: pointer;
@@ -265,7 +271,7 @@
       padding: 0;
       text-decoration: underline;
       text-decoration-color: var(--accent-border);
-      text-underline-offset: 3px;
+      text-underline-offset: 4px;
       transition: text-decoration-color 0.15s;
     }
     .story-link:hover { text-decoration-color: var(--accent); }
@@ -274,19 +280,9 @@
     .pricing-strip {
       padding: 80px var(--px);
       background: #fff;
-      text-align: center;
-    }
-    .pricing-strip h2 {
-      font-size: clamp(22px, 2.5vw, 32px);
-      font-weight: 800;
-      letter-spacing: -0.02em;
-      color: var(--ink);
-      margin-bottom: 8px;
-    }
-    .pricing-strip .sub {
-      font-size: 15px;
-      color: var(--muted);
-      margin-bottom: 36px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
 
     @keyframes border-glow {
@@ -294,14 +290,14 @@
       50%       { box-shadow: 0 0 0 4px rgba(78, 92, 166, 0.08), 0 4px 24px rgba(78, 92, 166, 0.16); }
     }
     .pricing-card {
-      display: inline-block;
       background: #fff;
       border: 2px solid var(--accent);
       border-radius: 16px;
       padding: 32px 40px;
       text-align: center;
       animation: border-glow 3s ease-in-out infinite;
-      min-width: 320px;
+      width: 100%;
+      max-width: 520px;
     }
     .pricing-module-label {
       font-size: 11px;
@@ -330,31 +326,43 @@
     }
     .pricing-unlimiteds span { font-size: 13px; color: var(--accent); font-weight: 500; }
 
-    /* ─── Demo CTA strip ────────────────────────────────── */
-    .demo-strip {
-      padding: 80px var(--px);
-      background: var(--bg);
-      text-align: center;
+    .pricing-wordmark {
+      display: flex;
+      align-items: baseline;
+      justify-content: center;
+      gap: 5px;
+      margin-bottom: 20px;
     }
-    .demo-strip h2 {
-      font-size: clamp(24px, 3vw, 36px);
-      font-weight: 800;
-      letter-spacing: -0.025em;
-      color: var(--ink);
-      margin-bottom: 10px;
+    .pricing-divider {
+      border: none;
+      border-top: 1px solid var(--accent-border);
+      margin: 20px 0;
     }
-    .demo-strip p {
-      font-size: 15px;
-      color: var(--muted);
-      margin-bottom: 28px;
+    .features {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 24px;
+      width: 100%;
+      text-align: left;
     }
-    .demo-cta-row {
+    .features li {
       display: flex;
       align-items: center;
-      justify-content: center;
-      gap: 12px;
-      flex-wrap: wrap;
+      gap: 10px;
+      font-size: 14px;
+      color: var(--ink);
     }
+    .features li svg { color: var(--accent); flex-shrink: 0; }
+    .pricing-cta {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+    }
+    .pricing-cta .btn { width: 100%; }
     .no-cc {
       display: flex;
       align-items: center;
@@ -363,7 +371,6 @@
       font-size: 12px;
       font-weight: 500;
       color: var(--muted);
-      margin-top: 14px;
     }
 
     /* ─── Footer ────────────────────────────────────────── */
@@ -387,6 +394,12 @@
       transition: color 0.15s;
     }
     footer a:hover { color: var(--ink); }
+    .footer-links {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
 
     /* ─── Founder modal ─────────────────────────────────── */
     .modal-backdrop {
@@ -452,13 +465,44 @@
       margin-bottom: 14px;
     }
     .modal-body p:last-child { margin-bottom: 0; }
-    .modal-body strong { color: var(--ink); font-weight: 600; }
+    .story-bullets {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin: 0 0 14px;
+      padding: 0;
+    }
+    .story-bullets li {
+      font-size: 15px;
+      color: var(--ink);
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .story-bullets li::before {
+      content: '';
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--accent);
+      flex-shrink: 0;
+    }
+    .modal-cta {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 20px;
+    }
 
     /* ─── Responsive ───────────────────────────────────── */
     @media (max-width: 640px) {
       .feature { padding: 56px var(--px); }
-      .pricing-card { min-width: unset; width: 100%; padding: 24px 20px; }
+      .feature-first { padding-top: calc(var(--nav-h) + 40px); }
+      .pricing-card { padding: 24px 20px; }
       .pricing-number { font-size: 52px; }
+      .modal-cta .btn { width: 100%; }
       .nav-login { display: none; }
       footer { flex-direction: column; align-items: flex-start; }
     }
@@ -469,7 +513,7 @@
 
   <!-- Nav -->
   <nav>
-    <a href="/" class="wordmark" aria-label="Seamless Events home">
+    <a href="https://seamlessevents.io" class="wordmark" aria-label="Seamless Events home">
       <span class="wordmark-seamless">Seamless</span>
       <span class="wordmark-events">Events</span>
     </a>
@@ -485,7 +529,7 @@
   <main>
 
     <!-- Section 1: Speaker Management -->
-    <section class="feature alt" style="padding-top: calc(var(--nav-h) + 64px);">
+    <section class="feature alt feature-first">
       <div class="feature-inner">
         <div class="feature-text">
           <span class="feature-label">Speaker Management</span>
@@ -499,7 +543,7 @@
             <div class="browser-url"><span>app.seamlessevents.io</span></div>
           </div>
           <div class="screenshot">
-            <img src="images/Speaker List.png" alt="Speaker management table showing all speakers with status, headshots, and actions">
+            <img src="images/01-speaker-list.png" alt="Speaker management table showing all speakers with status, headshots, and actions">
           </div>
         </div>
       </div>
@@ -520,7 +564,7 @@
             <div class="browser-url"><span>app.seamlessevents.io</span></div>
           </div>
           <div class="screenshot">
-            <img src="images/Speaker Portal.png" alt="Speaker portal showing speaker details and content management">
+            <img src="images/02-speaker-portal.png" alt="Speaker portal showing speaker details and content management">
           </div>
         </div>
       </div>
@@ -541,7 +585,7 @@
             <div class="browser-url"><span>app.seamlessevents.io</span></div>
           </div>
           <div class="screenshot">
-            <img src="images/Speaker Card Builder.png" alt="Speaker card builder showing a template with live preview">
+            <img src="images/03-card-builder.png" alt="Speaker card builder showing a template with live preview">
           </div>
         </div>
       </div>
@@ -562,7 +606,7 @@
             <div class="browser-url"><span>app.seamlessevents.io</span></div>
           </div>
           <div class="screenshot">
-            <img src="images/Speaker Wall.png" alt="Speaker Wall showing a grid of published speaker cards">
+            <img src="images/04-speaker-wall.png" alt="Speaker Wall showing a grid of published speaker cards">
           </div>
         </div>
       </div>
@@ -573,7 +617,7 @@
       <div class="feature-inner">
         <div class="feature-text">
           <span class="feature-label">Content Management</span>
-          <h2 class="feature-heading">No more lost<br>presentations.</h2>
+          <h2 class="feature-heading">All content. Every speaker.<br>Accessible to everyone who needs it.</h2>
         </div>
         <div class="screenshot-wrap">
           <div class="browser-chrome">
@@ -583,27 +627,19 @@
             <div class="browser-url"><span>app.seamlessevents.io</span></div>
           </div>
           <div class="screenshot">
-            <!-- Replace with: <img src="images/content-tab.png" alt="Content tab showing uploaded files per speaker with version history"> -->
-            <span class="screenshot-placeholder">content-tab.png</span>
+            <img src="images/05-content.png" alt="Content tab showing all speakers and their uploaded files">
           </div>
         </div>
       </div>
     </section>
 
-    <!-- Who built this -->
-    <div class="story-strip">
-      <p>Built by people who've spent 20 years doing this the hard way.</p>
-      <button class="story-link" onclick="openStory()">
-        Read our story
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-      </button>
-    </div>
-
     <!-- Pricing -->
     <section class="pricing-strip">
-      <h2>Simple pricing.</h2>
-      <p class="sub">One price, per event. Choose the modules you need.</p>
       <div class="pricing-card">
+        <div class="pricing-wordmark">
+          <span class="wordmark-seamless" style="font-size:18px;">Seamless</span>
+          <span class="wordmark-events" style="font-size:18px;">Events</span>
+        </div>
         <p class="pricing-module-label">Speaker &amp; Content Management</p>
         <div class="pricing-amount">
           <span class="pricing-currency">$</span>
@@ -613,45 +649,75 @@
         <div class="pricing-unlimiteds">
           <span>Unlimited speakers</span><span>Unlimited content</span><span>Unlimited lead time</span>
         </div>
+
+        <hr class="pricing-divider">
+
+        <ul class="features">
+          <li>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+            Call for Speakers
+          </li>
+          <li>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+            Intake forms direct to your speakers
+          </li>
+          <li>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+            Speaker &amp; Social Card templates
+          </li>
+          <li>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+            Update once, live everywhere, for everyone
+          </li>
+          <li>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+            Content hub with version history
+          </li>
+        </ul>
+
+        <div class="pricing-cta">
+          <a href="http://app.seamlessevents.io/" class="btn btn-primary" target="_blank" rel="noopener noreferrer">
+            Start Free Trial
+            <svg class="arrow-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </a>
+          <p class="no-cc">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+            14-day free trial · No credit card required
+          </p>
+        </div>
       </div>
     </section>
 
-    <!-- Book a Demo -->
-    <section class="demo-strip">
-      <h2>Want to see it live?</h2>
-      <p>15 minutes. No pitch, just a genuine look at how Seamless fits your show.</p>
-      <div class="demo-cta-row">
-        <a href="https://calendly.com/james-ruleyproductions/seamless-events?back=1&month=2026-05" class="btn btn-primary" target="_blank" rel="noopener noreferrer">
-          Book a Demo
-          <svg class="arrow-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-        </a>
-        <a href="http://app.seamlessevents.io/" class="btn btn-outline" target="_blank" rel="noopener noreferrer">
-          Start Free Trial
-        </a>
-      </div>
-      <p class="no-cc">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
-        14-day free trial, no credit card required
-      </p>
-    </section>
+    <!-- Who built this -->
+    <div class="story-strip">
+      <h2>20 years of hacks.</h2>
+      <button class="story-link" onclick="openStory()">
+        Read our story
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </button>
+    </div>
 
   </main>
 
   <!-- Footer -->
   <footer>
-    <a href="/" class="wordmark" aria-label="Seamless Events home">
+    <a href="https://seamlessevents.io" class="wordmark" aria-label="Seamless Events home">
       <span class="wordmark-seamless" style="font-size:18px;">Seamless</span>
       <span class="wordmark-events" style="font-size:18px;">Events</span>
     </a>
-    <span class="copy">contact@seamlessevents.io</span>
-    <span class="copy">&copy; 2026 Seamless Events</span>
+    <div class="footer-links">
+      <a href="https://seamlessevents.io/contact">Contact</a>
+      <a href="privacy-policy.html">Privacy Policy</a>
+      <a href="terms.html">Terms &amp; Conditions</a>
+      <span class="copy">&copy; 2026 Seamless Events</span>
+    </div>
   </footer>
 
   <!-- Founder modal -->
   <div class="modal-backdrop" id="storyModal" role="dialog" aria-modal="true" aria-labelledby="story-title" onclick="handleBackdropClick(event)">
     <div class="modal">
       <div class="modal-header">
-        <a href="/" class="wordmark" aria-label="Seamless Events">
+        <a href="https://seamlessevents.io" class="wordmark" aria-label="Seamless Events">
           <span class="wordmark-seamless" style="font-size:18px;">Seamless</span>
           <span class="wordmark-events" style="font-size:18px;">Events</span>
         </a>
@@ -660,11 +726,22 @@
         </button>
       </div>
       <div class="modal-body">
-        <h2 id="story-title">20 years in the room.</h2>
+        <h2 id="story-title">20 years of hacks.</h2>
         <p>Our co-founder James spent two decades in the events industry building workarounds for problems that good software should have solved long ago.</p>
-        <p>Every year it was the same: <strong>websites with no pricing, demos with no clarity, and large quotations with no ability to tailor.</strong> Features nobody asked for, bundled into budgets nobody could justify.</p>
-        <p>After years of building custom fixes for clients, he teamed up with James and Catherine to build Seamless from scratch. Starting with what an organiser actually needs, and nothing they don't.</p>
-        <p>If that frustration sounds familiar, <strong>try it free for 14 days</strong> and tell us what you'd like to see next.</p>
+        <p>Every year it was the same:</p>
+        <ul class="story-bullets">
+          <li>Websites with no pricing</li>
+          <li>Demos with no clarity</li>
+          <li>Quotes too large to justify, with no ability to tailor</li>
+        </ul>
+        <p>After years of building custom fixes for clients, he teamed up with another James and Catherine to build Seamless Events from scratch. Starting with Speaker and Content Management.</p>
+        <p>If any of that sounds familiar, James is always happy to chat (and swap some event war stories).</p>
+        <div class="modal-cta">
+          <a href="https://calendly.com/james-ruleyproductions/seamless-events" class="btn btn-primary" target="_blank" rel="noopener noreferrer" onclick="closeStory()">
+            Book a Demo with James
+            <svg class="arrow-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </a>
+        </div>
       </div>
     </div>
   </div>

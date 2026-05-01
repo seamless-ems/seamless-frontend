@@ -463,7 +463,7 @@ export default function AddSpeakerDialog({ eventId, eventName = "the event", ema
         {step === "email" && (
           <>
             <DialogHeader>
-              <DialogTitle>Send intake form to {fields.firstName}</DialogTitle>
+              <DialogTitle>Send Speaker Intake to {fields.firstName}</DialogTitle>
             </DialogHeader>
 
             <div className="space-y-0">
