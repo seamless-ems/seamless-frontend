@@ -447,7 +447,7 @@ export function emailSpeaker(eventId: string, speakerId: string, payload: { reci
   return postJson<typeof payload, any>(`/events/${encodeURIComponent(eventId)}/speakers/${encodeURIComponent(speakerId)}/email`, payload);
 }
 
-export function createPromoConfig(body: { eventId: string; promoType: string; config: any }): Promise<any> {
+export function createPromoConfig(body: { eventId: string; promoType: string; config: any, embedWidth?: number; embedColumns?: number; embedZoomPercentage?: number; embedBackgroundColor?: string | null; embedSpeakerOrder?: string; embedIncludeBioModal?: boolean }): Promise<any> {
   return postJson<typeof body, any>(`/promo-cards/config`, body);
 }
 

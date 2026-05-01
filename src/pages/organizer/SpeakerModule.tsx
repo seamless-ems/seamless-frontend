@@ -453,7 +453,11 @@ export default function SpeakerModule() {
               activeStep={4}
             />
           )}
-          <EmbedBuilder eventId={id} onAddSpeaker={() => { navigate(`/organizer/event/${id}/speakers`); setAddSpeakerOpen(true); }} />
+          <EmbedBuilder
+            eventId={id}
+            promoCardConfig={promoCardConfig}
+            onAddSpeaker={() => { navigate(`/organizer/event/${id}/speakers`); setAddSpeakerOpen(true); }}
+          />
         </div>
       )}
 

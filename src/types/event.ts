@@ -92,3 +92,18 @@ export interface Subscription {
   nextBillingDate: string;
   status: 'active' | 'past_due' | 'cancelled';
 }
+
+export interface EmbedConfig {
+  eventId: string;
+  promoType: 'promo' | 'website';
+  config: Any; // The config object can have various properties depending on the promoType
+  id: string;
+  embedWidth: number;
+  embedColumns: number;
+  embedZoomPercentage: number;
+  embedBackgroundColor: string | null;
+  embedSpeakerOrder: 'A-Z' | 'Z-A' | 'newest';
+  embedIncludeBioModal: boolean;
+  createdAt: string;
+  updatedAt: string;
+}

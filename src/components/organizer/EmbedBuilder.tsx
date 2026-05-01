@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { API_BASE, getJson, updateSpeaker } from "@/lib/api";
+import { API_BASE, getJson, updateSpeaker, createPromoConfig } from "@/lib/api";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import {
@@ -45,8 +45,8 @@ function ColPicker({
 }
 
 const SORT_OPTIONS: { value: string; label: string }[] = [
-  { value: "name_asc", label: "A–Z" },
-  { value: "name_desc", label: "Z–A" },
+  { value: "A-Z", label: "A–Z" },
+  { value: "Z-A", label: "Z–A" },
   { value: "newest", label: "Newest" },
 ];
 
@@ -92,9 +92,11 @@ function ZoomPicker({
 
 export default function EmbedBuilder({
   eventId,
+  promoCardConfig,
   onAddSpeaker,
 }: {
   eventId: string | undefined;
+  promoCardConfig?: any;
   onAddSpeaker?: () => void;
 }) {
   const queryClient = useQueryClient();
@@ -108,7 +110,7 @@ export default function EmbedBuilder({
   const setupKey = eventId ? `seamless-embed-setup-done-${eventId}` : null;
 
   const readCols = (key: string | null) => {
-    if (!key) return { desktop: 2, zoom: 60, platformWidth: 1200, sortOrder: "name_asc" };
+    if (!key) return { desktop: 2, zoom: 60, platformWidth: 1200, sortOrder: "A-Z" };
     try {
       const saved = localStorage.getItem(key);
       if (saved) {
@@ -117,11 +119,11 @@ export default function EmbedBuilder({
           desktop:       parsed.desktop       ?? 2,
           zoom:          parsed.zoom          ?? 60,
           platformWidth: parsed.platformWidth ?? 1200,
-          sortOrder:     parsed.sortOrder     ?? "name_asc",
+          sortOrder:     parsed.sortOrder     ?? "A-Z",
         };
       }
     } catch {}
-    return { desktop: 2, zoom: 60, platformWidth: 1200, sortOrder: "name_asc" };
+    return { desktop: 2, zoom: 60, platformWidth: 1200, sortOrder: "A-Z" };
   };
 
   const [desktopCols, setDesktopCols] = useState(() => readCols(colsKey).desktop);
@@ -277,6 +279,24 @@ window.addEventListener('message', function(e) {
   ];
 
   const copyText = (text: string, key: "iframe" | "url" | "autoresize") => {
+    // Persist the current embed settings to the backend (fire-and-forget)
+    if (eventId) {
+      const cfg = promoCardConfig?.config ?? promoCardConfig ?? {};
+      createPromoConfig({
+        eventId: eventId,
+        promoType: "website",
+        config: cfg,
+        embedWidth: platformWidth,
+        embedColumns: desktopCols,
+        embedZoomPercentage: embedZoom,
+        embedBackgroundColor: bgColor || null,
+        embedSpeakerOrder: sortOrder,
+        embedIncludeBioModal: true,
+      }).catch(() => {
+        toast({ title: "Failed to save embed settings", variant: "destructive" });
+      });
+    }
+
     navigator.clipboard.writeText(text);
     setCopiedEmbed(key);
     setTimeout(() => setCopiedEmbed(null), 2000);
@@ -302,6 +322,24 @@ window.addEventListener('message', function(e) {
   };
 
   const openPreview = () => {
+    // Persist the current embed settings to the backend (fire-and-forget)
+    if (eventId) {
+      const cfg = promoCardConfig?.config ?? promoCardConfig ?? {};
+      createPromoConfig({
+        eventId: eventId,
+        promoType: "website",
+        config: cfg,
+        embedWidth: platformWidth,
+        embedColumns: desktopCols,
+        embedZoomPercentage: embedZoom,
+        embedBackgroundColor: bgColor || null,
+        embedSpeakerOrder: sortOrder,
+        embedIncludeBioModal: true,
+      }).catch(() => {
+        toast({ title: "Failed to save embed settings", variant: "destructive" });
+      });
+    }
+
     const id = `seamless-preview-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
     try { localStorage.setItem(id, previewSnippet); } catch {}
     const bgParam = bgColor ? `&bg=${encodeURIComponent(bgColor)}` : "";
