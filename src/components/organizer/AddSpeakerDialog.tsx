@@ -444,15 +444,15 @@ export default function AddSpeakerDialog({ eventId, eventName = "the event", ema
               </div>
 
               <div className="flex gap-2 pt-1">
-                <Button variant="outline" onClick={() => setStep("choose")}>
+                <Button variant="outline" className="flex-1" onClick={() => setStep("choose")}>
                   Back
                 </Button>
                 <Button
-                  className="flex-1"
+                  className="flex-[2]"
                   disabled={!isStep1Valid || creating || isCheckingExistingEmail || emailExistsForEvent}
                   onClick={handleSendForm}
                 >
-                  {creating ? "Adding…" : "Next — Compose Email"}
+                  {creating ? "Adding…" : "Add Speaker & Send Intake Form"}
                 </Button>
               </div>
             </div>
@@ -467,35 +467,19 @@ export default function AddSpeakerDialog({ eventId, eventName = "the event", ema
             </DialogHeader>
 
             <div className="space-y-0">
+              {/* MVP: header fields hidden — organiser copies and sends via their own email client
               <div className="rounded-t-lg border border-border bg-muted/20 px-4">
                 <div className={headerRowCls}>
                   <span className={headerLabelCls}>From name</span>
-                  <Input
-                    value={fromName}
-                    onChange={(e) => setFromName(e.target.value)}
-                    placeholder={`${eventName} Speaker Team`}
-                    className="h-8 text-sm border-0 shadow-none p-0 focus-visible:ring-0 bg-transparent flex-1"
-                  />
+                  <Input value={fromName} onChange={(e) => setFromName(e.target.value)} placeholder={`${eventName} Speaker Team`} className="h-8 text-sm border-0 shadow-none p-0 focus-visible:ring-0 bg-transparent flex-1" />
                 </div>
                 <div className={headerRowCls}>
                   <span className={headerLabelCls}>From email</span>
-                  <Input
-                    type="email"
-                    value={fromEmail}
-                    onChange={(e) => setFromEmail(e.target.value)}
-                    placeholder="you@yourorg.com"
-                    className="h-8 text-sm border-0 shadow-none p-0 focus-visible:ring-0 bg-transparent flex-1"
-                  />
+                  <Input type="email" value={fromEmail} onChange={(e) => setFromEmail(e.target.value)} placeholder="you@yourorg.com" className="h-8 text-sm border-0 shadow-none p-0 focus-visible:ring-0 bg-transparent flex-1" />
                 </div>
                 <div className={headerRowCls}>
                   <span className={headerLabelCls}>Reply-to</span>
-                  <Input
-                    type="email"
-                    value={replyTo}
-                    onChange={(e) => setReplyTo(e.target.value)}
-                    placeholder={fromEmail || "defaults to From email"}
-                    className="h-8 text-sm border-0 shadow-none p-0 focus-visible:ring-0 bg-transparent flex-1"
-                  />
+                  <Input type="email" value={replyTo} onChange={(e) => setReplyTo(e.target.value)} placeholder={fromEmail || "defaults to From email"} className="h-8 text-sm border-0 shadow-none p-0 focus-visible:ring-0 bg-transparent flex-1" />
                 </div>
                 <div className={headerRowCls}>
                   <span className={headerLabelCls}>To</span>
@@ -503,15 +487,12 @@ export default function AddSpeakerDialog({ eventId, eventName = "the event", ema
                 </div>
                 <div className={`${headerRowCls} border-b-0`}>
                   <span className={headerLabelCls}>Subject</span>
-                  <Input
-                    value={emailSubject}
-                    onChange={(e) => setEmailSubject(e.target.value)}
-                    className="h-8 text-sm border-0 shadow-none p-0 focus-visible:ring-0 bg-transparent flex-1"
-                  />
+                  <Input value={emailSubject} onChange={(e) => setEmailSubject(e.target.value)} className="h-8 text-sm border-0 shadow-none p-0 focus-visible:ring-0 bg-transparent flex-1" />
                 </div>
               </div>
+              */}
 
-              <div className="rounded-b-lg border border-t-0 border-border bg-white px-8 pt-5 pb-4 space-y-3">
+              <div className="rounded-lg border border-border bg-white px-8 pt-5 pb-4 space-y-3">
                 <p className="text-sm text-gray-700">Hi {fields.firstName || "…"},</p>
 
                 <Textarea
@@ -563,15 +544,12 @@ export default function AddSpeakerDialog({ eventId, eventName = "the event", ema
             </div>
 
             <div className="flex gap-2 pt-1">
-              <Button variant="outline" className="flex-1" onClick={handleCopyEmail}>
+              <Button className="flex-1" onClick={handleCopyEmail}>
                 {copied ? (
                   <><Check className="h-3.5 w-3.5 mr-1.5" />Copied</>
                 ) : (
                   <><Copy className="h-3.5 w-3.5 mr-1.5" />Copy Email</>
                 )}
-              </Button>
-              <Button onClick={handleSendClick}>
-                Send
               </Button>
             </div>
           </>

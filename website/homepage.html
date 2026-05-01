@@ -203,13 +203,17 @@
     }
 
     /* ─── Slideshow ────────────────────────────────────── */
-    .video-wrap {
+    .video-outer {
       position: relative;
       margin-right: 40px;
+      align-self: center;
+      padding-bottom: 22px;
+    }
+    .video-wrap {
+      position: relative;
       border-radius: 20px;
       overflow: hidden;
       background: #e8eaf2;
-      align-self: center;
       box-shadow:
         0 30px 70px -10px rgba(78, 92, 166, 0.28),
         0 10px 24px -6px rgba(78, 92, 166, 0.16);
@@ -283,9 +287,10 @@
       object-fit: cover;
       object-position: top left;
       opacity: 0;
-      transition: opacity 0.45s ease;
+      transform: scale(1.03);
+      transition: opacity 0.5s ease, transform 0.5s ease;
     }
-    .slide-img.active { opacity: 1; }
+    .slide-img.active { opacity: 1; transform: scale(1); }
 
     /* Dot indicators */
     .slide-dots {
@@ -310,6 +315,24 @@
     .slide-dot.active {
       background: #fff;
       transform: scale(1.3);
+    }
+
+    .slide-badge {
+      position: absolute;
+      bottom: 0;
+      right: 28px;
+      z-index: 10;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent);
+      background: var(--accent-light);
+      border: 1.5px solid var(--accent-border);
+      padding: 7px 16px;
+      border-radius: 6px;
+      box-shadow: 0 2px 10px rgba(78, 92, 166, 0.15);
+      pointer-events: none;
     }
 
     /* ─── Pricing modal ────────────────────────────────── */
@@ -459,9 +482,11 @@
         gap: 40px;
         align-items: start;
       }
+      .video-outer {
+        margin-right: 0;
+      }
       .video-wrap {
         border-radius: 14px;
-        margin-right: 0;
       }
     }
 
@@ -521,23 +546,26 @@
         </div>
 
         <!-- Slideshow -->
-        <div class="video-wrap" aria-label="Product screenshots slideshow">
-          <div class="browser-chrome">
-            <div class="browser-dots">
-              <span></span><span></span><span></span>
+        <div class="video-outer" aria-label="Product screenshots slideshow">
+          <div class="video-wrap">
+            <div class="browser-chrome">
+              <div class="browser-dots">
+                <span></span><span></span><span></span>
+              </div>
+              <div class="browser-url" id="slideUrl">app.seamlessevents.io</div>
             </div>
-            <div class="browser-url" id="slideUrl">app.seamlessevents.io</div>
+            <div class="slides-container">
+              <img class="slide-img active" src="images/08-welcome-page.png" alt="Events dashboard"            data-url="app.seamlessevents.io/organizer"                                 data-badge="Multi-Event Dashboard">
+              <img class="slide-img"        src="images/06-applications.png" alt="Speaker applications"        data-url="app.seamlessevents.io/organizer/event/…/speakers/applications"  data-badge="Call for Speakers">
+              <img class="slide-img"        src="images/07-intake-form.png"  alt="Sending speaker intake form" data-url="app.seamlessevents.io/organizer/event/…/speakers"               data-badge="Speaker Intake">
+              <img class="slide-img"        src="images/01-speaker-list.png" alt="Speaker list"                data-url="app.seamlessevents.io/organizer/event/…/speakers"               data-badge="Speaker Management">
+              <img class="slide-img"        src="images/03-card-builder.png" alt="Card builder"                data-url="app.seamlessevents.io/organizer/event/…/website-card-builder"   data-badge="Card Builder">
+              <img class="slide-img"        src="images/04-speaker-wall.png" alt="Speaker wall"                data-url="app.seamlessevents.io/organizer/event/…/speakers/embed"          data-badge="Speaker Wall">
+              <img class="slide-img"        src="images/05-content.png"      alt="Content management"          data-url="app.seamlessevents.io/organizer/event/…/speakers"               data-badge="Content Management">
+              <div class="slide-dots" id="slideDots"></div>
+            </div>
           </div>
-          <div class="slides-container">
-            <img class="slide-img active" src="images/08-welcome-page.png" alt="Events dashboard" data-url="app.seamlessevents.io/organizer">
-            <img class="slide-img"        src="images/06-applications.png" alt="Speaker applications" data-url="app.seamlessevents.io/organizer/event/…/speakers/applications">
-            <img class="slide-img"        src="images/07-intake-form.png"  alt="Sending speaker intake form" data-url="app.seamlessevents.io/organizer/event/…/speakers">
-            <img class="slide-img"        src="images/01-speaker-list.png" alt="Speaker list" data-url="app.seamlessevents.io/organizer/event/…/speakers">
-            <img class="slide-img"        src="images/03-card-builder.png" alt="Card builder" data-url="app.seamlessevents.io/organizer/event/…/website-card-builder">
-            <img class="slide-img"        src="images/04-speaker-wall.png" alt="Speaker wall" data-url="app.seamlessevents.io/organizer/event/…/speakers/embed">
-            <img class="slide-img"        src="images/05-content.png"      alt="Content management" data-url="app.seamlessevents.io/organizer/event/…/speakers">
-            <div class="slide-dots" id="slideDots"></div>
-          </div>
+          <div class="slide-badge" id="slideBadge">Multi-Event Dashboard</div>
         </div>
 
       </div>
@@ -632,6 +660,7 @@
       const slides  = Array.from(document.querySelectorAll('.slide-img'));
       const dotsEl  = document.getElementById('slideDots');
       const urlEl   = document.getElementById('slideUrl');
+      const badgeEl = document.getElementById('slideBadge');
       let current   = 0;
       let timer;
 
@@ -653,6 +682,7 @@
         slides[current].classList.add('active');
         dots[current].classList.add('active');
         urlEl.textContent = slides[current].dataset.url || 'app.seamlessevents.io';
+        badgeEl.textContent = slides[current].dataset.badge || '';
         resetTimer();
       }
 
@@ -660,7 +690,7 @@
 
       function resetTimer() {
         clearInterval(timer);
-        timer = setInterval(advance, 2600);
+        timer = setInterval(advance, 3200);
       }
 
       // Advance quickly on first slide so motion is caught immediately
