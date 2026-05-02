@@ -92,11 +92,11 @@ function ZoomPicker({
 
 export default function EmbedBuilder({
   eventId,
-  promoCardConfig,
+  websiteCardConfig,
   onAddSpeaker,
 }: {
   eventId: string | undefined;
-  promoCardConfig?: any;
+  websiteCardConfig?: any;
   onAddSpeaker?: () => void;
 }) {
   const queryClient = useQueryClient();
@@ -281,7 +281,7 @@ window.addEventListener('message', function(e) {
   const copyText = (text: string, key: "iframe" | "url" | "autoresize") => {
     // Persist the current embed settings to the backend (fire-and-forget)
     if (eventId) {
-      const cfg = promoCardConfig?.config ?? promoCardConfig ?? {};
+      const cfg = websiteCardConfig?.config ?? websiteCardConfig ?? {};
       createPromoConfig({
         eventId: eventId,
         promoType: "website",
@@ -324,7 +324,7 @@ window.addEventListener('message', function(e) {
   const openPreview = () => {
     // Persist the current embed settings to the backend (fire-and-forget)
     if (eventId) {
-      const cfg = promoCardConfig?.config ?? promoCardConfig ?? {};
+      const cfg = websiteCardConfig?.config ?? websiteCardConfig ?? {};
       createPromoConfig({
         eventId: eventId,
         promoType: "website",

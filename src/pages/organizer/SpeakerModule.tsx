@@ -455,7 +455,7 @@ export default function SpeakerModule() {
           )}
           <EmbedBuilder
             eventId={id}
-            promoCardConfig={promoCardConfig}
+            websiteCardConfig={websiteCardConfig}
             onAddSpeaker={() => { navigate(`/organizer/event/${id}/speakers`); setAddSpeakerOpen(true); }}
           />
         </div>
