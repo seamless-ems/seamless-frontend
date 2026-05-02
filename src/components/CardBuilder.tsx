@@ -1003,16 +1003,6 @@ export default function CardBuilder({
     ],
   );
 
-  // Auto-save: 3 seconds after any change, persist to server only.
-  // The orange dot on Save still shows until explicitly dismissed; auto-save just prevents data loss.
-  useEffect(() => {
-    if (!hasUnsavedChanges) return;
-    const timer = window.setTimeout(() => {
-      handleSave(true); // silent=true — no toast
-    }, 3000);
-    return () => clearTimeout(timer);
-  }, [handleSave, hasUnsavedChanges]);
-
   // Sidebar resize drag handlers
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
@@ -1458,7 +1448,15 @@ export default function CardBuilder({
     <>
       <UnsavedChangesDialog
         open={showLeaveDialog}
-        onSave={() => { setShowLeaveDialog(false); handleSave(); onBack?.(); }}
+        onSave={async () => {
+          setShowLeaveDialog(false);
+          try {
+            await handleSave(true); // silent: skip post-save dialog when navigating away
+            onBack?.();
+          } catch {
+            toast({ title: "Save failed — please try again", variant: "destructive" });
+          }
+        }}
         onDiscard={() => { setShowLeaveDialog(false); onBack?.(); }}
         onCancel={() => setShowLeaveDialog(false)}
       />
@@ -1502,7 +1500,6 @@ export default function CardBuilder({
 
       <MissingFormDialog
         open={missingFormDialogOpen}
-        onOpenChange={setMissingFormDialogOpen}
         eventId={eventId || ""}
       />
 

@@ -1,0 +1,82 @@
+LEARN MORE — COPY DRAFT
+seamlessevents.io/learn-more
+Last updated: 30 Apr 2026
+────────────────────────────────────────────────────────────
+
+HERO
+────
+Headline: Conference software that does what you need. Nothing you don't.
+Sub: Seamless is built for organisers who are tired of bloated platforms, surprise quotes, and budgets that don't match the show.
+
+────────────────────────────────────────────────────────────
+
+TWO MODULES. LIVE NOW.
+────
+Intro: Choose what you need, event by event.
+
+--- Speaker Management ---
+Collect, manage, and publish speaker assets without the back-and-forth.
+
+[SCREENSHOT: Speaker intake form / speaker table in the app]
+- Intake forms sent direct to your speakers
+- Headshots, bios, logos and talk details collected automatically
+- Approval workflow before anything goes live
+- Speaker and Social Card templates, generated instantly
+- Speaker Wall embed, one click to publish
+
+--- Content Management ---
+Every file, linked to the right speaker.
+
+[SCREENSHOT: Content tab showing uploaded files per speaker]
+
+- Presentations, videos and files in one place
+- Speakers upload and replace content directly
+- Lock content when it is ready to go
+- Version history, nothing gets lost
+
+--- Coming Soon ---
+Schedule Management, Attendee Management, Partner Management
+
+────────────────────────────────────────────────────────────
+
+WHY WE BUILT IT
+────
+Having spent 20 years in the events industry, our co-founder James grew increasingly frustrated building workarounds for problems that good software should have solved years ago.
+
+Every year it was the same: no pricing on websites, demos that led nowhere, quotes too large to justify with no way to tailor.
+
+So James teamed up with James and Catherine to build Seamless from scratch, starting with what an organiser actually needs.
+
+────────────────────────────────────────────────────────────
+
+PRICING
+────
+$950 per event
+Speaker & Content Management
+Unlimited speakers, unlimited content, unlimited lead time
+14-day free trial, no credit card required
+
+────────────────────────────────────────────────────────────
+
+CLOSING CTA
+────
+Headline: Want to see it in action?
+Body: Book a 15-minute call. No pitch, just a genuine look at how Seamless fits your show.
+CTA button: Book a Demo
+Under button: No credit card required
+
+────────────────────────────────────────────────────────────
+
+FOOTER
+────
+Seamless Events
+contact@seamlessevents.io
+© 2026 Seamless Events
+
+────────────────────────────────────────────────────────────
+NOTES / QUESTIONS FOR JS
+- Stats block removed (original numbers flagged as aspirational, not verified)
+- "Less chaos. More magic." dropped in favour of direct headline
+- [SCREENSHOT] markers need real product screenshots before build
+- Founder story moved below modules, kept short
+- Book a Demo lives only on this page, not on homepage
