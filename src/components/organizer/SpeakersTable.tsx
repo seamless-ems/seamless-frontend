@@ -593,34 +593,36 @@ export default function SpeakersTable({ speakers, isLoading, eventId, eventName 
                 </button>
               </div>
             ) : searchInput !== undefined ? (
-              <div className="flex items-center gap-1.5">
-                <Input placeholder="Search…" value={searchInput} onChange={(e) => setSearchInput?.(e.target.value)} className="w-[160px] h-7 text-sm" />
-                <Select value={statusFilter ?? "all"} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-[140px] h-7 text-sm"><SelectValue placeholder="All" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All</SelectItem>
-                    <SelectItem value="pending">Info Pending</SelectItem>
-                    <SelectItem value="submitted">Pending Approval</SelectItem>
-                    <SelectItem value="cards_approved">Ready to Publish</SelectItem>
-                    <SelectItem value="published">Published</SelectItem>
-                    <SelectItem value="archived">Archived</SelectItem>
-                  </SelectContent>
-                </Select>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button title={`Sort: ${sortBy === 'name' ? 'Name A–Z' : sortBy === 'oldest' ? 'Oldest first' : 'Newest first'}`} className="h-7 w-7 flex items-center justify-center rounded-md border border-input bg-background hover:bg-muted transition-colors shrink-0">
-                      <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-40">
-                    <DropdownMenuItem onClick={() => setSortBy?.('newest')}>{(sortBy ?? 'newest') === 'newest' ? <Check className="h-3 w-3 mr-2 text-accent" /> : <span className="h-3 w-3 mr-2 inline-block" />}Newest first</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setSortBy?.('oldest')}>{sortBy === 'oldest' ? <Check className="h-3 w-3 mr-2 text-accent" /> : <span className="h-3 w-3 mr-2 inline-block" />}Oldest first</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setSortBy?.('name')}>{sortBy === 'name' ? <Check className="h-3 w-3 mr-2 text-accent" /> : <span className="h-3 w-3 mr-2 inline-block" />}Name A–Z</DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+              <div className="@container flex items-center gap-1.5">
+                <div className="hidden @[500px]:flex items-center gap-1.5">
+                  <Input placeholder="Search…" value={searchInput} onChange={(e) => setSearchInput?.(e.target.value)} className="w-[160px] h-7 text-sm" />
+                  <Select value={statusFilter ?? "all"} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="w-[140px] h-7 text-sm"><SelectValue placeholder="All" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All</SelectItem>
+                      <SelectItem value="pending">Info Pending</SelectItem>
+                      <SelectItem value="submitted">Pending Approval</SelectItem>
+                      <SelectItem value="cards_approved">Ready to Publish</SelectItem>
+                      <SelectItem value="published">Published</SelectItem>
+                      <SelectItem value="archived">Archived</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button title={`Sort: ${sortBy === 'name' ? 'Name A–Z' : sortBy === 'oldest' ? 'Oldest first' : 'Newest first'}`} className="h-7 w-7 flex items-center justify-center rounded-md border border-input bg-background hover:bg-muted transition-colors shrink-0">
+                        <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-40">
+                      <DropdownMenuItem onClick={() => setSortBy?.('newest')}>{(sortBy ?? 'newest') === 'newest' ? <Check className="h-3 w-3 mr-2 text-accent" /> : <span className="h-3 w-3 mr-2 inline-block" />}Newest first</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setSortBy?.('oldest')}>{sortBy === 'oldest' ? <Check className="h-3 w-3 mr-2 text-accent" /> : <span className="h-3 w-3 mr-2 inline-block" />}Oldest first</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setSortBy?.('name')}>{sortBy === 'name' ? <Check className="h-3 w-3 mr-2 text-accent" /> : <span className="h-3 w-3 mr-2 inline-block" />}Name A–Z</DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
                 {onEditIntakeForm && (
                   <>
-                    <div className="h-3.5 w-px bg-border shrink-0" />
+                    <div className="h-3.5 w-px bg-border shrink-0 hidden md:block" />
                     <Button variant="outline" size="sm" className="gap-1.5 h-7 whitespace-nowrap" onClick={onEditIntakeForm}>
                       <FileEdit className="h-3.5 w-3.5" />Intake Form
                     </Button>
