@@ -67,7 +67,7 @@ function buildHtml(
           ${introHtml}
           <table cellpadding="0" cellspacing="0" style="margin:32px 0">
             <tr><td>
-              <a href="${intakeUrl}" style="display:inline-block;background:#4F46E5;color:#ffffff;font-size:15px;font-weight:600;padding:14px 28px;border-radius:6px;text-decoration:none">${ctaLabel}</a>
+              <a href="${intakeUrl}" style="display:inline-block;background:#ffffff;color:#4F46E5;font-size:15px;font-weight:600;padding:14px 28px;border-radius:6px;text-decoration:none;border:1px solid currentColor">${ctaLabel}</a>
             </td></tr>
           </table>
           ${closingHtml}
@@ -511,14 +511,15 @@ export default function AddSpeakerDialog({ eventId, eventName = "the event", ema
                   <span
                     style={{
                       display: "inline-block",
-                      background: "#4F46E5",
-                      color: "#fff",
+                      background: "#ffffff",
+                      color: "#4F46E5",
                       fontSize: 14,
                       fontWeight: 600,
                       padding: "11px 22px",
                       borderRadius: 6,
                       cursor: "default",
                       whiteSpace: "nowrap",
+                      border:"1px solid currentColor"
                     }}
                   >
                     {ctaLabel}

@@ -238,7 +238,7 @@ export default function EmbedBuilder({
   })();
   const liveSpeakers = eligibleSpeakers.filter((s) => s.embedEnabled);
 
-  let embedUrl = `${API_BASE}/embed/${eventId}?column_amount=${desktopCols}&column_amount_mobile=1&sort=${sortOrder}`;
+  let embedUrl = `${API_BASE}/embed/${eventId}`;
   if (bgColor) {
     try { embedUrl += `&bg_color=${encodeURIComponent(bgColor)}`; } catch {}
   }

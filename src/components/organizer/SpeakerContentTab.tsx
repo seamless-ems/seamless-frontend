@@ -49,6 +49,7 @@ import {
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { CircleLoader } from "react-spinners";
+import { downloadResource } from "@/lib/utils";
 
 type RestoringState = {
   version: any;
@@ -165,6 +166,8 @@ function HistorySection({
       {versions.map((v: any) => {
         const isCurrent = v.version === currentVersion;
         const url = v.content ?? v.publicUrl ?? v.public_url ?? "";
+        const downloadUrl = v.contentDownloadUrl ?? v.content_download_url ?? null;
+        const effectiveUrl = downloadUrl || url;
         const action = v.version === 1 ? "Uploaded" : "Replaced";
         const who = v.createdByName ?? null;
         return (
@@ -191,21 +194,24 @@ function HistorySection({
                 {formatDateTime(v.createdAt)}
               </p>
             </div>
-            {isCurrent && (
+              {isCurrent && (
               <span className="text-xs px-1.5 py-0.5 bg-success/10 text-success rounded font-medium shrink-0">
                 Current
               </span>
             )}
             <div className="flex items-center gap-1 shrink-0">
               {url && (
-                <a
-                  href={url}
-                  download
+                <button
+                  type="button"
+                  onClick={(e) => {
+                      e.preventDefault();
+                      downloadResource(effectiveUrl, v.name ?? getFilename(effectiveUrl || url));
+                    }}
                   className="p-1 rounded text-muted-foreground/50 hover:text-accent hover:bg-muted transition-colors"
                   title="Download this version"
                 >
                   <Download className="h-3.5 w-3.5" />
-                </a>
+                </button>
               )}
               {!isCurrent && (
                 <Button
@@ -519,6 +525,9 @@ export default function SpeakerContentTab({
                   item.publicUrl ??
                   item.public_url ??
                   "";
+                const downloadUrl =
+                  item.contentDownloadUrl ?? item.content_download_url ?? null;
+                const effectiveDownloadUrl = downloadUrl || url;
                 const id = docId(item);
                 const description = item.name;
                 const filename = getFilename(url);
@@ -571,14 +580,17 @@ export default function SpeakerContentTab({
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-1 justify-end">
                           {url && (
-                            <a
-                              href={url}
-                              download
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                downloadResource(effectiveDownloadUrl, filename);
+                              }}
                               title="Download"
                               className="p-1 rounded text-muted-foreground/50 hover:text-accent hover:bg-muted transition-colors"
                             >
                               <Download className="h-4 w-4" />
-                            </a>
+                            </button>
                           )}
                           {!readOnly && (
                             <button

@@ -690,6 +690,27 @@
         }
       }
     },
+    "/admin/firebase-auth/nuke-everything": {
+      "delete": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Nuke Firebase Users",
+        "operationId": "nuke_firebase_users_admin_firebase_auth_nuke_everything_delete",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/auth/firebase": {
       "post": {
         "tags": [
@@ -1260,7 +1281,7 @@
             "content": {
               "application/json": {
                 "schema": {
-
+                  "$ref": "#/components/schemas/TokenSchema"
                 }
               }
             }
@@ -3394,6 +3415,58 @@
         }
       }
     },
+    "/promo-cards/{event_id}/speaker/{speaker_id}/download": {
+      "get": {
+        "tags": [
+          "promo-cards"
+        ],
+        "summary": "Download Promo Card Speaker Embed",
+        "description": "Generate a PNG of the promo card for a specific speaker and return it as a download.",
+        "operationId": "download_promo_card_speaker_embed_promo_cards__event_id__speaker__speaker_id__download_get",
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Event Id"
+            }
+          },
+          {
+            "name": "speaker_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Speaker Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/embed/{event_id}": {
       "get": {
         "tags": [
@@ -3410,42 +3483,6 @@
             "schema": {
               "type": "string",
               "title": "Event Id"
-            }
-          },
-          {
-            "name": "column_amount",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "default": 2,
-              "title": "Column Amount"
-            }
-          },
-          {
-            "name": "include_bio_modal",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "boolean",
-              "default": true,
-              "title": "Include Bio Modal"
-            }
-          },
-          {
-            "name": "bg_color",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Bg Color"
             }
           }
         ],
@@ -3481,6 +3518,58 @@
         "summary": "Get Website Speaker Embed",
         "description": "Get the website embed for a specific speaker in an event.",
         "operationId": "get_website_speaker_embed_embed__event_id__speaker__speaker_id__get",
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Event Id"
+            }
+          },
+          {
+            "name": "speaker_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Speaker Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/embed/{event_id}/speaker/{speaker_id}/download": {
+      "get": {
+        "tags": [
+          "website embed"
+        ],
+        "summary": "Download Website Speaker Embed",
+        "description": "Generate a PNG of the website promo card for a specific speaker and return it as a download.",
+        "operationId": "download_website_speaker_embed_embed__event_id__speaker__speaker_id__download_get",
         "parameters": [
           {
             "name": "event_id",
@@ -3684,6 +3773,47 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HelpSchema"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mail/contact": {
+      "post": {
+        "tags": [
+          "Email"
+        ],
+        "summary": "Create Contact",
+        "operationId": "create_contact_mail_contact_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateContactSchema"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+
                 }
               }
             }
@@ -4773,6 +4903,30 @@
         ],
         "title": "ContentSchema"
       },
+      "CreateContactSchema": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "email",
+          "message"
+        ],
+        "title": "CreateContactSchema"
+      },
       "CreateContentSchema": {
         "properties": {
           "content": {
@@ -4829,12 +4983,26 @@
             "title": "Htmlcontent"
           },
           "userName": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Username"
           },
           "userEmail": {
-            "type": "string",
-            "format": "email",
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "email"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Useremail"
           }
         },
@@ -4843,9 +5011,7 @@
           "recipientEmail",
           "recipientName",
           "subject",
-          "htmlContent",
-          "userName",
-          "userEmail"
+          "htmlContent"
         ],
         "title": "EmailPayloadSchema"
       },
@@ -5999,6 +6165,72 @@
             "additionalProperties": true,
             "type": "object",
             "title": "Config"
+          },
+          "embedWidth": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Embedwidth"
+          },
+          "embedColumns": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Embedcolumns"
+          },
+          "embedZoomPercentage": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Embedzoompercentage"
+          },
+          "embedBackgroundColor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Embedbackgroundcolor"
+          },
+          "embedSpeakerOrder": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Embedspeakerorder"
+          },
+          "embedIncludeBioModal": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Embedincludebiomodal"
           }
         },
         "type": "object",
@@ -6024,6 +6256,72 @@
             "additionalProperties": true,
             "type": "object",
             "title": "Config"
+          },
+          "embedWidth": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Embedwidth"
+          },
+          "embedColumns": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Embedcolumns"
+          },
+          "embedZoomPercentage": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Embedzoompercentage"
+          },
+          "embedBackgroundColor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Embedbackgroundcolor"
+          },
+          "embedSpeakerOrder": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Embedspeakerorder"
+          },
+          "embedIncludeBioModal": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Embedincludebiomodal"
           },
           "id": {
             "anyOf": [
@@ -6251,6 +6549,18 @@
             ],
             "title": "Callforspeakersstatus",
             "default": "submitted"
+          },
+          "unauthenticatedEditEnabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unauthenticatededitenabled",
+            "default": false
           },
           "customFields": {
             "anyOf": [
@@ -6521,6 +6831,18 @@
             "title": "Callforspeakersstatus",
             "default": "submitted"
           },
+          "unauthenticatedEditEnabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unauthenticatededitenabled",
+            "default": false
+          },
           "customFields": {
             "anyOf": [
               {
@@ -6627,7 +6949,7 @@
             "title": "Headshotdownloadurl",
             "readOnly": true
           },
-          "logoDownloadUrl": {
+          "colourLogoDownloadUrl": {
             "anyOf": [
               {
                 "type": "string"
@@ -6636,7 +6958,19 @@
                 "type": "null"
               }
             ],
-            "title": "Logodownloadurl",
+            "title": "Colourlogodownloadurl",
+            "readOnly": true
+          },
+          "whiteLogoDownloadUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Whitelogodownloadurl",
             "readOnly": true
           }
         },
@@ -6648,7 +6982,8 @@
           "email",
           "formType",
           "headshotDownloadUrl",
-          "logoDownloadUrl"
+          "colourLogoDownloadUrl",
+          "whiteLogoDownloadUrl"
         ],
         "title": "SpeakerBase"
       },
@@ -6815,6 +7150,18 @@
             ],
             "title": "Callforspeakersstatus",
             "default": "submitted"
+          },
+          "unauthenticatedEditEnabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unauthenticatededitenabled",
+            "default": false
           },
           "customFields": {
             "anyOf": [
@@ -7016,6 +7363,18 @@
             ],
             "title": "Callforspeakersstatus",
             "default": "submitted"
+          },
+          "unauthenticatedEditEnabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unauthenticatededitenabled",
+            "default": false
           },
           "customFields": {
             "anyOf": [
@@ -7286,6 +7645,18 @@
             "title": "Callforspeakersstatus",
             "default": "submitted"
           },
+          "unauthenticatedEditEnabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unauthenticatededitenabled",
+            "default": false
+          },
           "customFields": {
             "anyOf": [
               {
@@ -7420,7 +7791,7 @@
             "title": "Headshotdownloadurl",
             "readOnly": true
           },
-          "logoDownloadUrl": {
+          "colourLogoDownloadUrl": {
             "anyOf": [
               {
                 "type": "string"
@@ -7429,7 +7800,19 @@
                 "type": "null"
               }
             ],
-            "title": "Logodownloadurl",
+            "title": "Colourlogodownloadurl",
+            "readOnly": true
+          },
+          "whiteLogoDownloadUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Whitelogodownloadurl",
             "readOnly": true
           }
         },
@@ -7441,7 +7824,8 @@
           "email",
           "formType",
           "headshotDownloadUrl",
-          "logoDownloadUrl"
+          "colourLogoDownloadUrl",
+          "whiteLogoDownloadUrl"
         ],
         "title": "SpeakerWithEvents"
       },
@@ -7613,6 +7997,18 @@
               }
             ],
             "title": "Teamids"
+          },
+          "createdAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Createdat"
           }
         },
         "type": "object",

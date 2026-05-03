@@ -149,7 +149,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 const teams = await getTeam();
                 const teamId = teams && teams.length ? teams[0].id : null;
                 if (teamId) {
-                  const teamName = `${updated.name}'s team`;
+                  const teamName = `${updatedUser.name}'s team`;
                   await updateTeamDetails(teamId, { name: teamName });
                 }
               } catch (te) {

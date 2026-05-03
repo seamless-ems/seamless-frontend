@@ -3,11 +3,31 @@ import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 import { useQueryClient } from "@tanstack/react-query";
 import { deleteSpeaker, updateSpeaker, emailSpeaker } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
-import { Download, Copy, Check, ChevronRight, ChevronDown, Trash, MoreVertical, ArrowUpDown, X, Mail, FileEdit, Plus, Mic2 } from "lucide-react";
+import {
+  Download,
+  Copy,
+  Check,
+  ChevronRight,
+  ChevronDown,
+  Trash,
+  MoreVertical,
+  ArrowUpDown,
+  X,
+  Mail,
+  FileEdit,
+  Plus,
+  Mic2,
+} from "lucide-react";
 import { API_BASE } from "@/lib/api";
 import { HelpTip } from "@/components/ui/HelpTip";
 import {
@@ -27,7 +47,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { CircleLoader } from "react-spinners";
 
@@ -58,10 +84,12 @@ type Props = {
   setPage?: (p: number) => void;
   setPageSize?: (s: number) => void;
   // Quick panel
-  onBadgeClick?: (speaker: any, view: 'info' | 'speaker-card' | 'social-card' | 'speaker-wall') => void;
+  onBadgeClick?: (
+    speaker: any,
+    view: "info" | "speaker-card" | "social-card" | "speaker-wall",
+  ) => void;
   selectedSpeakerId?: string;
 };
-
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -82,48 +110,100 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
-
 function getInfoStatus(speaker: any) {
-  const infoStatus = speaker.speakerInformationStatus ?? speaker.speaker_information_status ?? speaker.intakeFormStatus ?? speaker.intake_form_status ?? "pending";
-  const headshotUrl = speaker.headshot || speaker.headshotUrl || speaker.headshot_url || null;
+  const infoStatus =
+    speaker.speakerInformationStatus ??
+    speaker.speaker_information_status ??
+    speaker.intakeFormStatus ??
+    speaker.intake_form_status ??
+    "pending";
+  const headshotUrl =
+    speaker.headshot || speaker.headshotUrl || speaker.headshot_url || null;
   return infoStatus === "pending" || !headshotUrl;
 }
 
 function resolveSpeakerCardStatus(speaker: any) {
   if (getInfoStatus(speaker))
-    return { label: "Info Pending", cls: "bg-transparent text-foreground border-warning/50", tooltip: "Waiting for the speaker to submit their information" };
-  const websiteApproved = speaker.websiteCardApproved ?? speaker.website_card_approved ?? false;
+    return {
+      label: "Info Pending",
+      cls: "bg-transparent text-foreground border-warning/50",
+      tooltip: "Waiting for the speaker to submit their information",
+    };
+  const websiteApproved =
+    speaker.websiteCardApproved ?? speaker.website_card_approved ?? false;
   const embedEnabled = speaker.embedEnabled ?? speaker.embed_enabled ?? false;
   if (!websiteApproved)
-    return { label: "Pending Approval", cls: "bg-transparent text-foreground border-blue-500/40", tooltip: "Review and approve this speaker's Speaker Card" };
+    return {
+      label: "Pending Approval",
+      cls: "bg-transparent text-foreground border-blue-500/40",
+      tooltip: "Review and approve this speaker's Speaker Card",
+    };
   if (!embedEnabled)
-    return { label: "Ready to Publish", cls: "bg-transparent text-foreground border-blue-500/40", tooltip: "Approved — toggle live in Speaker Wall to publish" };
-  return { label: "Published", cls: "bg-transparent text-foreground border-success/50", tooltip: "Live on your Speaker Wall" };
+    return {
+      label: "Ready to Publish",
+      cls: "bg-transparent text-foreground border-blue-500/40",
+      tooltip: "Approved — toggle live in Speaker Wall to publish",
+    };
+  return {
+    label: "Published",
+    cls: "bg-transparent text-foreground border-success/50",
+    tooltip: "Live on your Speaker Wall",
+  };
 }
 
 function resolveSocialCardStatus(speaker: any) {
   if (getInfoStatus(speaker))
-    return { label: "Info Pending", cls: "bg-transparent text-foreground border-warning/50", tooltip: "Waiting for the speaker to submit their information" };
-  const promoApproved = speaker.promoCardApproved ?? speaker.promo_card_approved ?? false;
+    return {
+      label: "Info Pending",
+      cls: "bg-transparent text-foreground border-warning/50",
+      tooltip: "Waiting for the speaker to submit their information",
+    };
+  const promoApproved =
+    speaker.promoCardApproved ?? speaker.promo_card_approved ?? false;
   if (!promoApproved)
-    return { label: "Pending Approval", cls: "bg-transparent text-foreground border-blue-500/40", tooltip: "Review and approve this speaker's Social Card" };
-  return { label: "Ready to Download", cls: "bg-transparent text-foreground border-success/50", tooltip: "Approved — download available" };
+    return {
+      label: "Pending Approval",
+      cls: "bg-transparent text-foreground border-blue-500/40",
+      tooltip: "Review and approve this speaker's Social Card",
+    };
+  return {
+    label: "Ready to Download",
+    cls: "bg-transparent text-foreground border-success/50",
+    tooltip: "Approved — download available",
+  };
 }
 
 function resolveApplicationStatus(speaker: any) {
-  const appStatus = speaker.callForSpeakersStatus ?? speaker.call_for_speakers_status ?? "pending";
+  const appStatus =
+    speaker.callForSpeakersStatus ??
+    speaker.call_for_speakers_status ??
+    "pending";
   if (appStatus === "approved" || appStatus === "cards_approved")
-    return { label: "Approved", cls: "bg-transparent text-foreground border-success/50", tooltip: "Application approved" };
+    return {
+      label: "Approved",
+      cls: "bg-transparent text-foreground border-success/50",
+      tooltip: "Application approved",
+    };
   if (appStatus === "submitted")
-    return { label: "Submitted", cls: "bg-transparent text-foreground border-blue-500/40", tooltip: "Review this application and approve or decline" };
-  return { label: "Pending Review", cls: "bg-transparent text-foreground border-warning/50", tooltip: "Awaiting application submission" };
+    return {
+      label: "Submitted",
+      cls: "bg-transparent text-foreground border-blue-500/40",
+      tooltip: "Review this application and approve or decline",
+    };
+  return {
+    label: "Pending Review",
+    cls: "bg-transparent text-foreground border-warning/50",
+    tooltip: "Awaiting application submission",
+  };
 }
 
 function formatDate(dateStr: string | null | undefined) {
   if (!dateStr) return null;
   try {
     return new Date(dateStr).toLocaleDateString("en-GB", {
-      day: "numeric", month: "long", year: "numeric",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
     });
   } catch {
     return null;
@@ -137,25 +217,70 @@ const DEFAULT_CLOSING = (eventName: string) =>
   `If you have any questions, don't hesitate to get in touch.\n\nBest regards,\nTeam ${eventName}`;
 
 function buildReminderHtml(
-  firstName: string, intro: string, closing: string, intakeUrl: string,
-  fromEmail: string, fromName: string, replyTo: string, toEmail: string, subject: string
+  firstName: string,
+  intro: string,
+  closing: string,
+  intakeUrl: string,
+  fromEmail: string,
+  fromName: string,
+  replyTo: string,
+  toEmail: string,
+  subject: string,
 ) {
-  const introHtml = intro.split("\n\n").map(p =>
-    `<p style="margin:0 0 16px 0;color:#374151;font-size:15px;line-height:1.6">${p.replace(/\n/g, "<br>")}</p>`
-  ).join("");
-  const closingHtml = closing.split("\n\n").map(p =>
-    `<p style="margin:0 0 12px 0;color:#374151;font-size:15px;line-height:1.6">${p.replace(/\n/g, "<br>")}</p>`
-  ).join("");
-  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="margin:0;padding:0;background:#f9fafb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"><table width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;padding:40px 0"><tr><td align="center"><table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;border:1px solid #e5e7eb"><tr><td style="padding:40px 48px"><p style="margin:0 0 24px 0;color:#374151;font-size:15px;line-height:1.6">Hi ${firstName},</p>${introHtml}<table cellpadding="0" cellspacing="0" style="margin:32px 0"><tr><td><a href="${intakeUrl}" style="display:inline-block;background:#4F46E5;color:#ffffff;font-size:15px;font-weight:600;padding:14px 28px;border-radius:6px;text-decoration:none">Submit your speaker details</a></td></tr></table>${closingHtml}</td></tr><tr><td style="padding:16px 48px 24px;border-top:1px solid #f3f4f6;text-align:center"><p style="margin:0;font-size:11px;color:#9ca3af">Powered by <a href="https://seamlessevents.io" style="color:#9ca3af;text-decoration:underline">Seamless Events</a></p></td></tr></table></td></tr></table></body></html>`;
+  const introHtml = intro
+    .split("\n\n")
+    .map(
+      (p) =>
+        `<p style="margin:0 0 16px 0;color:#374151;font-size:15px;line-height:1.6">${p.replace(/\n/g, "<br>")}</p>`,
+    )
+    .join("");
+  const closingHtml = closing
+    .split("\n\n")
+    .map(
+      (p) =>
+        `<p style="margin:0 0 12px 0;color:#374151;font-size:15px;line-height:1.6">${p.replace(/\n/g, "<br>")}</p>`,
+    )
+    .join("");
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="margin:0;padding:0;background:#f9fafb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"><table width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;padding:40px 0"><tr><td align="center"><table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;border:1px solid #e5e7eb"><tr><td style="padding:40px 48px"><p style="margin:0 0 24px 0;color:#374151;font-size:15px;line-height:1.6">Hi ${firstName},</p>${introHtml}<table cellpadding="0" cellspacing="0" style="margin:32px 0"><tr><td><a href="${intakeUrl}" style="display:inline-block;background:#ffffff;color:#4F46E5;font-size:15px;font-weight:600;padding:14px 28px;border-radius:6px;text-decoration:none;border:1px solid currentColor">Submit your speaker details</a></td></tr></table>${closingHtml}</td></tr><tr><td style="padding:16px 48px 24px;border-top:1px solid #f3f4f6;text-align:center"><p style="margin:0;font-size:11px;color:#9ca3af">Powered by <a href="https://seamlessevents.io" style="color:#9ca3af;text-decoration:underline">Seamless Events</a></p></td></tr></table></td></tr></table></body></html>`;
   return html;
 }
 
-export default function SpeakersTable({ speakers, isLoading, eventId, eventName = "the event", emailDefaults, selectedTab, formConfig, websiteCardConfigured = false, promoCardConfigured = false, searchInput, setSearchInput, statusFilter, setStatusFilter, sortBy, setSortBy, totalCount, pendingCount, page, pageSize, setPage, setPageSize, onBadgeClick, selectedSpeakerId, hasAnySpeakers, onEditIntakeForm, onAddSpeaker }: Props) {
+export default function SpeakersTable({
+  speakers,
+  isLoading,
+  eventId,
+  eventName = "the event",
+  emailDefaults,
+  selectedTab,
+  formConfig,
+  websiteCardConfigured = false,
+  promoCardConfigured = false,
+  searchInput,
+  setSearchInput,
+  statusFilter,
+  setStatusFilter,
+  sortBy,
+  setSortBy,
+  totalCount,
+  pendingCount,
+  page,
+  pageSize,
+  setPage,
+  setPageSize,
+  onBadgeClick,
+  selectedSpeakerId,
+  hasAnySpeakers,
+  onEditIntakeForm,
+  onAddSpeaker,
+}: Props) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const eventUuid = eventId ?? "";
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [confirmTarget, setConfirmTarget] = useState<{ id: string; name: string } | null>(null);
+  const [confirmTarget, setConfirmTarget] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isBulkApproving, setIsBulkApproving] = useState(false);
   const [bulkPublishOpen, setBulkPublishOpen] = useState(false);
@@ -190,13 +315,27 @@ export default function SpeakersTable({ speakers, isLoading, eventId, eventName 
 
   const handleReminderCopy = async () => {
     if (!reminderSpeaker) return;
-    const firstName = reminderSpeaker.firstName ?? reminderSpeaker.name?.split(" ")[0] ?? "";
+    const firstName =
+      reminderSpeaker.firstName ?? reminderSpeaker.name?.split(" ")[0] ?? "";
     const intakeUrl = `${window.location.origin}/speaker-intake/${eventUuid}?speakerId=${reminderSpeaker.id}`;
-    const html = buildReminderHtml(firstName, reminderIntro, reminderClosing, intakeUrl, reminderFromEmail, reminderFromName, reminderReplyTo, reminderSpeaker.email ?? "", reminderSubject);
+    const html = buildReminderHtml(
+      firstName,
+      reminderIntro,
+      reminderClosing,
+      intakeUrl,
+      reminderFromEmail,
+      reminderFromName,
+      reminderReplyTo,
+      reminderSpeaker.email ?? "",
+      reminderSubject,
+    );
     const plain = `Hi ${firstName},\n\n${reminderIntro}\n\nSubmit your speaker details:\n${intakeUrl}\n\n${reminderClosing}`;
     try {
       await navigator.clipboard.write([
-        new ClipboardItem({ "text/html": new Blob([html], { type: "text/html" }), "text/plain": new Blob([plain], { type: "text/plain" }) }),
+        new ClipboardItem({
+          "text/html": new Blob([html], { type: "text/html" }),
+          "text/plain": new Blob([plain], { type: "text/plain" }),
+        }),
       ]);
     } catch {
       await navigator.clipboard.writeText(plain);
@@ -207,12 +346,25 @@ export default function SpeakersTable({ speakers, isLoading, eventId, eventName 
 
   const handleReminderSend = async () => {
     if (!reminderSpeaker || !eventId) return;
-    const firstName = reminderSpeaker.firstName ?? reminderSpeaker.name?.split(" ")[0] ?? "";
+    const firstName =
+      reminderSpeaker.firstName ?? reminderSpeaker.name?.split(" ")[0] ?? "";
     const intakeUrl = `${window.location.origin}/speaker-intake/${eventUuid}?speakerId=${reminderSpeaker.id}`;
-    const html = buildReminderHtml(firstName, reminderIntro, reminderClosing, intakeUrl, reminderFromEmail, reminderFromName, reminderReplyTo, reminderSpeaker.email ?? "", reminderSubject);
+    const html = buildReminderHtml(
+      firstName,
+      reminderIntro,
+      reminderClosing,
+      intakeUrl,
+      reminderFromEmail,
+      reminderFromName,
+      reminderReplyTo,
+      reminderSpeaker.email ?? "",
+      reminderSubject,
+    );
     const body = {
       recipient_email: reminderSpeaker.email ?? "",
-      recipient_name: (reminderSpeaker.name || `${reminderSpeaker.firstName ?? ""} ${reminderSpeaker.lastName ?? ""}`.trim()),
+      recipient_name:
+        reminderSpeaker.name ||
+        `${reminderSpeaker.firstName ?? ""} ${reminderSpeaker.lastName ?? ""}`.trim(),
       subject: reminderSubject,
       html_content: html,
       userName: reminderFromName || reminderFromEmail || `Team ${eventName}`,
@@ -224,7 +376,10 @@ export default function SpeakersTable({ speakers, isLoading, eventId, eventName 
       toast({ title: "Reminder sent" });
       setReminderSpeaker(null);
     } catch (err: any) {
-      toast({ title: "Failed to send reminder", description: String(err?.message || err) });
+      toast({
+        title: "Failed to send reminder",
+        description: String(err?.message || err),
+      });
     } finally {
       setReminderSending(false);
     }
@@ -243,21 +398,34 @@ export default function SpeakersTable({ speakers, isLoading, eventId, eventName 
 
   const handleBulkEmail = async () => {
     if (!eventId || selectedIds.size === 0) return;
-    const targets = speakers.filter(s => selectedIds.has(s.id));
+    const targets = speakers.filter((s) => selectedIds.has(s.id));
     setBulkEmailSending(true);
     setBulkEmailProgress(0);
     let sent = 0;
     for (const speaker of targets) {
       const firstName = speaker.firstName ?? speaker.name?.split(" ")[0] ?? "";
       const intakeUrl = `${window.location.origin}/speaker-intake/${eventUuid}?speakerId=${speaker.id}`;
-      const html = buildReminderHtml(firstName, reminderIntro, reminderClosing, intakeUrl, reminderFromEmail, reminderFromName, reminderReplyTo, speaker.email ?? "", reminderSubject);
+      const html = buildReminderHtml(
+        firstName,
+        reminderIntro,
+        reminderClosing,
+        intakeUrl,
+        reminderFromEmail,
+        reminderFromName,
+        reminderReplyTo,
+        speaker.email ?? "",
+        reminderSubject,
+      );
       try {
         await emailSpeaker(eventId, speaker.id, {
           recipient_email: speaker.email ?? "",
-          recipient_name: speaker.name || `${speaker.firstName ?? ""} ${speaker.lastName ?? ""}`.trim(),
+          recipient_name:
+            speaker.name ||
+            `${speaker.firstName ?? ""} ${speaker.lastName ?? ""}`.trim(),
           subject: reminderSubject,
           html_content: html,
-          userName: reminderFromName || reminderFromEmail || `Team ${eventName}`,
+          userName:
+            reminderFromName || reminderFromEmail || `Team ${eventName}`,
           userEmail: reminderFromEmail,
         });
         sent++;
@@ -265,7 +433,9 @@ export default function SpeakersTable({ speakers, isLoading, eventId, eventName 
       setBulkEmailProgress(sent);
     }
     setBulkEmailSending(false);
-    toast({ title: `Sent ${sent} of ${targets.length} reminder${targets.length !== 1 ? "s" : ""}` });
+    toast({
+      title: `Sent ${sent} of ${targets.length} reminder${targets.length !== 1 ? "s" : ""}`,
+    });
     setBulkEmailOpen(false);
     setSelectedIds(new Set());
   };
@@ -274,13 +444,14 @@ export default function SpeakersTable({ speakers, isLoading, eventId, eventName 
 
   useEffect(() => {
     if (selectAllRef.current) {
-      selectAllRef.current.indeterminate = selectedIds.size > 0 && selectedIds.size < speakers.length;
+      selectAllRef.current.indeterminate =
+        selectedIds.size > 0 && selectedIds.size < speakers.length;
     }
   }, [selectedIds.size, speakers.length]);
 
   const toggleSelect = (e: React.MouseEvent, speakerId: string) => {
     e.stopPropagation();
-    setSelectedIds(prev => {
+    setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(speakerId)) next.delete(speakerId);
       else next.add(speakerId);
@@ -290,46 +461,65 @@ export default function SpeakersTable({ speakers, isLoading, eventId, eventName 
 
   const toggleSelectAll = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setSelectedIds(prev =>
-      prev.size === speakers.length ? new Set() : new Set(speakers.map(s => s.id))
+    setSelectedIds((prev) =>
+      prev.size === speakers.length
+        ? new Set()
+        : new Set(speakers.map((s) => s.id)),
     );
   };
 
-  const handleBulkApprove = async (cardType: 'website' | 'promo') => {
-    const toApprove = speakers.filter(s => {
+  const handleBulkApprove = async (cardType: "website" | "promo") => {
+    const toApprove = speakers.filter((s) => {
       if (!selectedIds.has(s.id)) return false;
       if (getInfoStatus(s)) return false;
-      const alreadyApproved = cardType === 'website'
-        ? (s.websiteCardApproved ?? s.website_card_approved ?? false)
-        : (s.promoCardApproved ?? s.promo_card_approved ?? false);
+      const alreadyApproved =
+        cardType === "website"
+          ? (s.websiteCardApproved ?? s.website_card_approved ?? false)
+          : (s.promoCardApproved ?? s.promo_card_approved ?? false);
       return !alreadyApproved;
     });
     if (toApprove.length === 0) {
-      toast({ title: 'Nothing to approve', description: 'Selected speakers are already approved or have info pending.' });
+      toast({
+        title: "Nothing to approve",
+        description:
+          "Selected speakers are already approved or have info pending.",
+      });
       return;
     }
     setIsBulkApproving(true);
     try {
-      await Promise.all(toApprove.map(s =>
-        updateSpeaker(eventUuid, s.id, {
-          id: s.id,
-          firstName: s.firstName ?? '',
-          lastName: s.lastName ?? '',
-          email: s.email ?? '',
-          formType: s.formType ?? s.form_type ?? 'speaker-info',
-          ...(cardType === 'website' ? { websiteCardApproved: true } : { promoCardApproved: true }),
-        })
-      ));
-      queryClient.invalidateQueries({ queryKey: ['event', eventUuid, 'speakers'] });
-      const label = cardType === 'website' ? 'Speaker Card' : 'Social Card';
-      toast({ title: `${toApprove.length} ${label}${toApprove.length !== 1 ? 's' : ''} approved` });
+      await Promise.all(
+        toApprove.map((s) =>
+          updateSpeaker(eventUuid, s.id, {
+            id: s.id,
+            firstName: s.firstName ?? "",
+            lastName: s.lastName ?? "",
+            email: s.email ?? "",
+            formType: s.formType ?? s.form_type ?? "speaker-info",
+            ...(cardType === "website"
+              ? { websiteCardApproved: true }
+              : { promoCardApproved: true }),
+          }),
+        ),
+      );
+      queryClient.invalidateQueries({
+        queryKey: ["event", eventUuid, "speakers"],
+      });
+      const label = cardType === "website" ? "Speaker Card" : "Social Card";
+      toast({
+        title: `${toApprove.length} ${label}${toApprove.length !== 1 ? "s" : ""} approved`,
+      });
       setSelectedIds(new Set());
-      if (cardType === 'website') {
-        setBulkPublishIds(toApprove.map(s => s.id));
+      if (cardType === "website") {
+        setBulkPublishIds(toApprove.map((s) => s.id));
         setBulkPublishOpen(true);
       }
     } catch (err: any) {
-      toast({ title: 'Bulk approval failed', description: String(err?.message || err), variant: 'destructive' });
+      toast({
+        title: "Bulk approval failed",
+        description: String(err?.message || err),
+        variant: "destructive",
+      });
     } finally {
       setIsBulkApproving(false);
     }
@@ -338,22 +528,32 @@ export default function SpeakersTable({ speakers, isLoading, eventId, eventName 
   const handleBulkPublish = async () => {
     setBulkPublishOpen(false);
     try {
-      await Promise.all(bulkPublishIds.map(speakerId => {
-        const s = speakers.find(sp => sp.id === speakerId);
-        if (!s) return Promise.resolve();
-        return updateSpeaker(eventUuid, speakerId, {
-          id: speakerId,
-          firstName: s.firstName ?? '',
-          lastName: s.lastName ?? '',
-          email: s.email ?? '',
-          formType: s.formType ?? s.form_type ?? 'speaker-info',
-          embedEnabled: true,
-        });
-      }));
-      queryClient.invalidateQueries({ queryKey: ['event', eventUuid, 'speakers'] });
-      toast({ title: `${bulkPublishIds.length} speaker${bulkPublishIds.length !== 1 ? 's' : ''} published to Speaker Wall` });
+      await Promise.all(
+        bulkPublishIds.map((speakerId) => {
+          const s = speakers.find((sp) => sp.id === speakerId);
+          if (!s) return Promise.resolve();
+          return updateSpeaker(eventUuid, speakerId, {
+            id: speakerId,
+            firstName: s.firstName ?? "",
+            lastName: s.lastName ?? "",
+            email: s.email ?? "",
+            formType: s.formType ?? s.form_type ?? "speaker-info",
+            embedEnabled: true,
+          });
+        }),
+      );
+      queryClient.invalidateQueries({
+        queryKey: ["event", eventUuid, "speakers"],
+      });
+      toast({
+        title: `${bulkPublishIds.length} speaker${bulkPublishIds.length !== 1 ? "s" : ""} published to Speaker Wall`,
+      });
     } catch (err: any) {
-      toast({ title: 'Failed to publish speakers', description: String(err?.message || err), variant: 'destructive' });
+      toast({
+        title: "Failed to publish speakers",
+        description: String(err?.message || err),
+        variant: "destructive",
+      });
     } finally {
       setBulkPublishIds([]);
     }
@@ -361,110 +561,171 @@ export default function SpeakersTable({ speakers, isLoading, eventId, eventName 
 
   const handleBulkUnpublish = async (resetApproval: boolean) => {
     setBulkUnpublishOpen(false);
-    const toUnpublish = speakers.filter(s => selectedIds.has(s.id) && (s.embedEnabled ?? s.embed_enabled ?? false));
+    const toUnpublish = speakers.filter(
+      (s) =>
+        selectedIds.has(s.id) && (s.embedEnabled ?? s.embed_enabled ?? false),
+    );
     if (!toUnpublish.length) return;
     try {
-      await Promise.all(toUnpublish.map(s => {
-        const patch: any = {
-          id: s.id,
-          firstName: s.firstName ?? '',
-          lastName: s.lastName ?? '',
-          email: s.email ?? '',
-          formType: s.formType ?? s.form_type ?? 'speaker-info',
-          embedEnabled: false,
-        };
-        if (resetApproval) patch.websiteCardApproved = false;
-        return updateSpeaker(eventUuid, s.id, patch);
-      }));
-      queryClient.invalidateQueries({ queryKey: ['event', eventUuid, 'speakers'] });
-      toast({ title: resetApproval ? `${toUnpublish.length} speaker${toUnpublish.length !== 1 ? 's' : ''} unpublished and unapproved` : `${toUnpublish.length} speaker${toUnpublish.length !== 1 ? 's' : ''} removed from Speaker Wall` });
+      await Promise.all(
+        toUnpublish.map((s) => {
+          const patch: any = {
+            id: s.id,
+            firstName: s.firstName ?? "",
+            lastName: s.lastName ?? "",
+            email: s.email ?? "",
+            formType: s.formType ?? s.form_type ?? "speaker-info",
+            embedEnabled: false,
+          };
+          if (resetApproval) patch.websiteCardApproved = false;
+          return updateSpeaker(eventUuid, s.id, patch);
+        }),
+      );
+      queryClient.invalidateQueries({
+        queryKey: ["event", eventUuid, "speakers"],
+      });
+      toast({
+        title: resetApproval
+          ? `${toUnpublish.length} speaker${toUnpublish.length !== 1 ? "s" : ""} unpublished and unapproved`
+          : `${toUnpublish.length} speaker${toUnpublish.length !== 1 ? "s" : ""} removed from Speaker Wall`,
+      });
       setSelectedIds(new Set());
     } catch (err: any) {
-      toast({ title: 'Failed to unpublish speakers', description: String(err?.message || err), variant: 'destructive' });
+      toast({
+        title: "Failed to unpublish speakers",
+        description: String(err?.message || err),
+        variant: "destructive",
+      });
     }
   };
 
   const handleBulkUnapprovePromo = async () => {
-    const toUnapprove = speakers.filter(s => selectedIds.has(s.id) && (s.promoCardApproved ?? s.promo_card_approved ?? false));
+    const toUnapprove = speakers.filter(
+      (s) =>
+        selectedIds.has(s.id) &&
+        (s.promoCardApproved ?? s.promo_card_approved ?? false),
+    );
     if (!toUnapprove.length) return;
     setIsBulkApproving(true);
     try {
-      await Promise.all(toUnapprove.map(s => updateSpeaker(eventUuid, s.id, {
-        id: s.id,
-        firstName: s.firstName ?? '',
-        lastName: s.lastName ?? '',
-        email: s.email ?? '',
-        formType: s.formType ?? s.form_type ?? 'speaker-info',
-        promoCardApproved: false,
-      })));
-      queryClient.invalidateQueries({ queryKey: ['event', eventUuid, 'speakers'] });
-      toast({ title: `${toUnapprove.length} social card${toUnapprove.length !== 1 ? 's' : ''} unapproved` });
+      await Promise.all(
+        toUnapprove.map((s) =>
+          updateSpeaker(eventUuid, s.id, {
+            id: s.id,
+            firstName: s.firstName ?? "",
+            lastName: s.lastName ?? "",
+            email: s.email ?? "",
+            formType: s.formType ?? s.form_type ?? "speaker-info",
+            promoCardApproved: false,
+          }),
+        ),
+      );
+      queryClient.invalidateQueries({
+        queryKey: ["event", eventUuid, "speakers"],
+      });
+      toast({
+        title: `${toUnapprove.length} social card${toUnapprove.length !== 1 ? "s" : ""} unapproved`,
+      });
       setSelectedIds(new Set());
     } catch (err: any) {
-      toast({ title: 'Failed to unapprove social cards', description: String(err?.message || err), variant: 'destructive' });
+      toast({
+        title: "Failed to unapprove social cards",
+        description: String(err?.message || err),
+        variant: "destructive",
+      });
     } finally {
       setIsBulkApproving(false);
     }
   };
 
   const handleBulkPublishDirect = async () => {
-    const toPublish = speakers.filter(s =>
-      selectedIds.has(s.id) &&
-      (s.websiteCardApproved ?? s.website_card_approved ?? false) &&
-      !(s.embedEnabled ?? s.embed_enabled ?? false)
+    const toPublish = speakers.filter(
+      (s) =>
+        selectedIds.has(s.id) &&
+        (s.websiteCardApproved ?? s.website_card_approved ?? false) &&
+        !(s.embedEnabled ?? s.embed_enabled ?? false),
     );
     if (toPublish.length === 0) {
-      toast({ title: 'Nothing to publish', description: 'Selected speakers are either already published or not yet approved.' });
+      toast({
+        title: "Nothing to publish",
+        description:
+          "Selected speakers are either already published or not yet approved.",
+      });
       return;
     }
     setIsBulkApproving(true);
     try {
-      await Promise.all(toPublish.map(s =>
-        updateSpeaker(eventUuid, s.id, {
-          id: s.id,
-          firstName: s.firstName ?? '',
-          lastName: s.lastName ?? '',
-          email: s.email ?? '',
-          formType: s.formType ?? s.form_type ?? 'speaker-info',
-          embedEnabled: true,
-        })
-      ));
-      queryClient.invalidateQueries({ queryKey: ['event', eventUuid, 'speakers'] });
-      toast({ title: `${toPublish.length} speaker${toPublish.length !== 1 ? 's' : ''} published to Speaker Wall` });
+      await Promise.all(
+        toPublish.map((s) =>
+          updateSpeaker(eventUuid, s.id, {
+            id: s.id,
+            firstName: s.firstName ?? "",
+            lastName: s.lastName ?? "",
+            email: s.email ?? "",
+            formType: s.formType ?? s.form_type ?? "speaker-info",
+            embedEnabled: true,
+          }),
+        ),
+      );
+      queryClient.invalidateQueries({
+        queryKey: ["event", eventUuid, "speakers"],
+      });
+      toast({
+        title: `${toPublish.length} speaker${toPublish.length !== 1 ? "s" : ""} published to Speaker Wall`,
+      });
       setSelectedIds(new Set());
     } catch (err: any) {
-      toast({ title: 'Failed to publish speakers', description: String(err?.message || err), variant: 'destructive' });
+      toast({
+        title: "Failed to publish speakers",
+        description: String(err?.message || err),
+        variant: "destructive",
+      });
     } finally {
       setIsBulkApproving(false);
     }
   };
 
   const handleBulkUnapproveWebsite = async () => {
-    const toUnapprove = speakers.filter(s =>
-      selectedIds.has(s.id) && (s.websiteCardApproved ?? s.website_card_approved ?? false)
+    const toUnapprove = speakers.filter(
+      (s) =>
+        selectedIds.has(s.id) &&
+        (s.websiteCardApproved ?? s.website_card_approved ?? false),
     );
     if (toUnapprove.length === 0) {
-      toast({ title: 'Nothing to unapprove', description: 'No selected speakers have an approved Speaker Card.' });
+      toast({
+        title: "Nothing to unapprove",
+        description: "No selected speakers have an approved Speaker Card.",
+      });
       return;
     }
     setIsBulkApproving(true);
     try {
-      await Promise.all(toUnapprove.map(s =>
-        updateSpeaker(eventUuid, s.id, {
-          id: s.id,
-          firstName: s.firstName ?? '',
-          lastName: s.lastName ?? '',
-          email: s.email ?? '',
-          formType: s.formType ?? s.form_type ?? 'speaker-info',
-          websiteCardApproved: false,
-          embedEnabled: false,
-        })
-      ));
-      queryClient.invalidateQueries({ queryKey: ['event', eventUuid, 'speakers'] });
-      toast({ title: `${toUnapprove.length} Speaker Card${toUnapprove.length !== 1 ? 's' : ''} unapproved` });
+      await Promise.all(
+        toUnapprove.map((s) =>
+          updateSpeaker(eventUuid, s.id, {
+            id: s.id,
+            firstName: s.firstName ?? "",
+            lastName: s.lastName ?? "",
+            email: s.email ?? "",
+            formType: s.formType ?? s.form_type ?? "speaker-info",
+            websiteCardApproved: false,
+            embedEnabled: false,
+          }),
+        ),
+      );
+      queryClient.invalidateQueries({
+        queryKey: ["event", eventUuid, "speakers"],
+      });
+      toast({
+        title: `${toUnapprove.length} Speaker Card${toUnapprove.length !== 1 ? "s" : ""} unapproved`,
+      });
       setSelectedIds(new Set());
     } catch (err: any) {
-      toast({ title: 'Failed to unapprove Speaker Cards', description: String(err?.message || err), variant: 'destructive' });
+      toast({
+        title: "Failed to unapprove Speaker Cards",
+        description: String(err?.message || err),
+        variant: "destructive",
+      });
     } finally {
       setIsBulkApproving(false);
     }
@@ -473,7 +734,9 @@ export default function SpeakersTable({ speakers, isLoading, eventId, eventName 
   const fieldEnabled = (fieldId: string) =>
     !formConfig || formConfig.some((f) => f.id === fieldId && f.enabled);
 
-  const approvedSocialSpeakers = speakers.filter(s => s.promoCardApproved ?? s.promo_card_approved ?? false);
+  const approvedSocialSpeakers = speakers.filter(
+    (s) => s.promoCardApproved ?? s.promo_card_approved ?? false,
+  );
 
   const downloadCard = async (url: string, filename: string) => {
     try {
@@ -481,7 +744,7 @@ export default function SpeakersTable({ speakers, isLoading, eventId, eventName 
       if (!resp.ok) throw new Error(`${resp.status}`);
       const blob = await resp.blob();
       const blobUrl = URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = blobUrl;
       a.download = filename;
       document.body.appendChild(a);
@@ -489,14 +752,20 @@ export default function SpeakersTable({ speakers, isLoading, eventId, eventName 
       document.body.removeChild(a);
       URL.revokeObjectURL(blobUrl);
     } catch {
-      window.open(url, '_blank', 'noopener,noreferrer');
+      window.open(url, "_blank", "noopener,noreferrer");
     }
   };
 
   const handleDownloadAllSocialCards = async () => {
     for (const s of approvedSocialSpeakers) {
       const url = `${API_BASE}/promo-cards/${eventUuid}/speaker/${s.id}`;
-      const name = (s.name || `${s.firstName ?? ''} ${s.lastName ?? ''}`.trim() || 'speaker').replace(/\s+/g, '-').toLowerCase();
+      const name = (
+        s.name ||
+        `${s.firstName ?? ""} ${s.lastName ?? ""}`.trim() ||
+        "speaker"
+      )
+        .replace(/\s+/g, "-")
+        .toLowerCase();
       await downloadCard(url, `${name}-social-card.html`);
     }
   };
@@ -504,576 +773,1050 @@ export default function SpeakersTable({ speakers, isLoading, eventId, eventName 
   return (
     <>
       <table className="w-full table-fixed">
-      <colgroup>{[<col key="select" style={{ width: '36px' }} />,
-        <col key="name" />,
-        <col key="reminder" style={{ width: '52px' }} />,
-        <col key="website" style={{ width: '148px' }} />,
-        <col key="promo" style={{ width: '148px' }} />,
-        <col key="actions" style={{ width: '40px' }} />]}</colgroup>
-      <thead className="border-b border-border bg-muted/20">
-        <tr className="h-11">
-          <th className="pl-4 py-2 w-9" onClick={(e) => e.stopPropagation()}>
-            <input
-              ref={selectAllRef}
-              type="checkbox"
-              checked={selectedIds.size === speakers.length && speakers.length > 0}
-              onChange={() => {}}
-              onClick={toggleSelectAll}
-              className="h-3.5 w-3.5 rounded accent-primary cursor-pointer opacity-40 hover:opacity-100 transition-opacity"
-            />
-          </th>
-          <th className="px-4 py-2">
-            {isSelectionActive ? (
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-medium text-foreground whitespace-nowrap">
-                  {selectedIds.size} selected
-                </span>
-                <div className="h-3.5 w-px bg-border mx-0.5 shrink-0" />
+        <colgroup>
+          {[
+            <col key="select" style={{ width: "36px" }} />,
+            <col key="name" />,
+            <col key="reminder" style={{ width: "52px" }} />,
+            <col key="website" style={{ width: "148px" }} />,
+            <col key="promo" style={{ width: "148px" }} />,
+            <col key="actions" style={{ width: "40px" }} />,
+          ]}
+        </colgroup>
+        <thead className="border-b border-border bg-muted/20">
+          <tr className="h-11">
+            <th className="pl-4 py-2 w-9" onClick={(e) => e.stopPropagation()}>
+              <input
+                ref={selectAllRef}
+                type="checkbox"
+                checked={
+                  selectedIds.size === speakers.length && speakers.length > 0
+                }
+                onChange={() => {}}
+                onClick={toggleSelectAll}
+                className="h-3.5 w-3.5 rounded accent-primary cursor-pointer opacity-40 hover:opacity-100 transition-opacity"
+              />
+            </th>
+            <th className="px-4 py-2">
+              {isSelectionActive ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-foreground whitespace-nowrap">
+                    {selectedIds.size} selected
+                  </span>
+                  <div className="h-3.5 w-px bg-border mx-0.5 shrink-0" />
 
-                {/* Speaker Card actions */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button
-                      disabled={isBulkApproving}
-                      className="h-7 px-2.5 text-xs font-medium rounded-md border border-border text-foreground bg-background hover:bg-muted transition-colors whitespace-nowrap flex items-center gap-1 disabled:opacity-50"
-                    >
-                      Speaker Card <ChevronDown className="h-3 w-3 opacity-60" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="min-w-[170px]">
-                    <DropdownMenuItem onClick={() => handleBulkApprove('website')}>
-                      Approve
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleBulkPublishDirect}>
-                      Publish to Wall
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => setBulkUnpublishOpen(true)} className="text-destructive focus:text-destructive">
-                      Unpublish from Wall
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleBulkUnapproveWebsite} className="text-destructive focus:text-destructive">
-                      Unapprove
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-
-                {/* Social Card actions */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button
-                      disabled={isBulkApproving}
-                      className="h-7 px-2.5 text-xs font-medium rounded-md border border-border text-foreground bg-background hover:bg-muted transition-colors whitespace-nowrap flex items-center gap-1 disabled:opacity-50"
-                    >
-                      Social Card <ChevronDown className="h-3 w-3 opacity-60" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="min-w-[140px]">
-                    <DropdownMenuItem onClick={() => handleBulkApprove('promo')}>
-                      Approve
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleBulkUnapprovePromo} className="text-destructive focus:text-destructive">
-                      Unapprove
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-
-                <button
-                  onClick={openBulkEmail}
-                  className="h-7 px-2.5 text-xs font-medium rounded-md border border-border text-foreground bg-background hover:bg-muted transition-colors whitespace-nowrap flex items-center gap-1.5"
-                >
-                  <Mail className="h-3 w-3" />
-                  Email {selectedIds.size}
-                </button>
-                <button
-                  onClick={() => setSelectedIds(new Set())}
-                  className="ml-auto h-7 px-2 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
-                >
-                  <X className="h-3 w-3" /> Clear
-                </button>
-              </div>
-            ) : searchInput !== undefined ? (
-              <div className="@container flex items-center gap-1.5">
-                <div className="hidden @[500px]:flex items-center gap-1.5">
-                  <Input placeholder="Search…" value={searchInput} onChange={(e) => setSearchInput?.(e.target.value)} className="w-[160px] h-7 text-sm" />
-                  <Select value={statusFilter ?? "all"} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-[140px] h-7 text-sm"><SelectValue placeholder="All" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All</SelectItem>
-                      <SelectItem value="pending">Info Pending</SelectItem>
-                      <SelectItem value="submitted">Pending Approval</SelectItem>
-                      <SelectItem value="cards_approved">Ready to Publish</SelectItem>
-                      <SelectItem value="published">Published</SelectItem>
-                      <SelectItem value="archived">Archived</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  {/* Speaker Card actions */}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <button title={`Sort: ${sortBy === 'name' ? 'Name A–Z' : sortBy === 'oldest' ? 'Oldest first' : 'Newest first'}`} className="h-7 w-7 flex items-center justify-center rounded-md border border-input bg-background hover:bg-muted transition-colors shrink-0">
-                        <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
+                      <button
+                        disabled={isBulkApproving}
+                        className="h-7 px-2.5 text-xs font-medium rounded-md border border-border text-foreground bg-background hover:bg-muted transition-colors whitespace-nowrap flex items-center gap-1 disabled:opacity-50"
+                      >
+                        Speaker Card{" "}
+                        <ChevronDown className="h-3 w-3 opacity-60" />
                       </button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="w-40">
-                      <DropdownMenuItem onClick={() => setSortBy?.('newest')}>{(sortBy ?? 'newest') === 'newest' ? <Check className="h-3 w-3 mr-2 text-accent" /> : <span className="h-3 w-3 mr-2 inline-block" />}Newest first</DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setSortBy?.('oldest')}>{sortBy === 'oldest' ? <Check className="h-3 w-3 mr-2 text-accent" /> : <span className="h-3 w-3 mr-2 inline-block" />}Oldest first</DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setSortBy?.('name')}>{sortBy === 'name' ? <Check className="h-3 w-3 mr-2 text-accent" /> : <span className="h-3 w-3 mr-2 inline-block" />}Name A–Z</DropdownMenuItem>
+                    <DropdownMenuContent
+                      align="start"
+                      className="min-w-[170px]"
+                    >
+                      <DropdownMenuItem
+                        onClick={() => handleBulkApprove("website")}
+                      >
+                        Approve
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={handleBulkPublishDirect}>
+                        Publish to Wall
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => setBulkUnpublishOpen(true)}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        Unpublish from Wall
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={handleBulkUnapproveWebsite}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        Unapprove
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
-                </div>
-                {onEditIntakeForm && (
-                  <>
-                    <div className="h-3.5 w-px bg-border shrink-0 hidden md:block" />
-                    <Button variant="outline" size="sm" className="gap-1.5 h-7 whitespace-nowrap" onClick={onEditIntakeForm}>
-                      <FileEdit className="h-3.5 w-3.5" />Intake Form
-                    </Button>
-                    {onAddSpeaker && (
-                      <Button size="sm" className="gap-1.5 h-7 whitespace-nowrap" onClick={onAddSpeaker}>
-                        <Plus className="h-3.5 w-3.5" />Add Speaker
-                      </Button>
-                    )}
-                  </>
-                )}
-              </div>
-            ) : null}
-          </th>
-          <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground w-[52px]" />
-          <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground w-[148px]">
-            {!isSelectionActive && <span>Speaker Card</span>}
-          </th>
-          <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground w-[148px]">
-            {!isSelectionActive && (
-              <div className="flex items-center gap-1.5">
-                <span>Social Card</span>
-                {approvedSocialSpeakers.length > 0 && (
-                  <button onClick={handleDownloadAllSocialCards} title={`Download all ${approvedSocialSpeakers.length} social cards`} className="text-muted-foreground/40 hover:text-accent transition-colors">
-                    <Download className="h-3 w-3" />
-                  </button>
-                )}
-              </div>
-            )}
-          </th>
-          <th className="px-2 py-2 w-9 text-right">
-            {!isSelectionActive && onEditIntakeForm && (
-              <HelpTip title="How speakers work" side="bottom" align="end" compact>
-                <ul className="space-y-1 list-disc list-inside">
-                  <li>Add speakers manually or approve them from <span className="font-medium text-foreground">Applications</span></li>
-                  <li>Send each speaker their intake form to collect headshot, bio, and logo</li>
-                  <li>Approve their <span className="font-medium text-foreground">Speaker Card</span> and <span className="font-medium text-foreground">Social Card</span> from their profile</li>
-                  <li>Publish live via <span className="font-medium text-foreground">Speaker Wall</span></li>
-                </ul>
-              </HelpTip>
-            )}
-          </th>
-        </tr>
-      </thead>
 
-      <tbody>
-        {isLoading ? (
-          <tr>
-            <td colSpan={6}>
-              <div className="flex justify-center py-8">
-                <CircleLoader size={40} color="#4e5ca6" />
-              </div>
-            </td>
-          </tr>
-        ) : speakers.length === 0 && !hasAnySpeakers && onAddSpeaker ? (
-          <tr>
-            <td colSpan={6}>
-              <div className="flex flex-col items-center justify-center py-16 text-center">
-                <Mic2 className="h-10 w-10 text-muted-foreground/20 mb-3" />
-                <p className="text-sm font-medium text-foreground mb-1">No speakers yet</p>
-                <p className="text-xs text-muted-foreground mb-4">Add your first speaker to get started.</p>
-                <Button size="sm" onClick={onAddSpeaker}>
-                  <Plus className="h-3.5 w-3.5 mr-1.5" />Add Speaker
-                </Button>
-              </div>
-            </td>
-          </tr>
-        ) : speakers.length === 0 ? (
-          <tr><td colSpan={6} className="py-12 text-center text-sm text-muted-foreground">No speakers match your filter.</td></tr>
-        ) : null}
-        {!isLoading && speakers.map((speaker) => {
-          const speakerName = speaker.name || `${speaker.firstName ?? ""} ${speaker.lastName ?? ""}`.trim() || speaker.email || "Speaker";
-
-          // TODO: replace with direct PNG download URLs once backend exposes them (see API_GAPS.md)
-          const promoCardUrl = `${API_BASE}/promo-cards/${eventUuid}/speaker/${speaker.id}`;
-
-          const websiteApproved = speaker.websiteCardApproved ?? speaker.website_card_approved ?? false;
-          const promoApproved = speaker.promoCardApproved ?? speaker.promo_card_approved ?? false;
-
-          const speakerCardStatus = selectedTab === "applications" ? resolveApplicationStatus(speaker) : resolveSpeakerCardStatus(speaker);
-          const socialCardStatus = resolveSocialCardStatus(speaker);
-          const updatedDate = formatDate(speaker.updatedAt ?? speaker.updated_at ?? speaker.createdAt);
-
-          return (
-            <tr
-              key={speaker.id}
-              className={`border-b border-border transition-colors group cursor-pointer ${
-                selectedSpeakerId === speaker.id
-                  ? 'bg-accent/5 hover:bg-accent/8'
-                  : 'hover:bg-muted/40'
-              }`}
-              onClick={() => navigate(`/organizer/event/${eventId}/speakers/${speaker.id}`)}
-            >
-              {/* Checkbox */}
-              <td className="pl-4 py-3 w-9" onClick={(e) => e.stopPropagation()}>
-                <input
-                  type="checkbox"
-                  checked={selectedIds.has(speaker.id)}
-                  onChange={() => {}}
-                  onClick={(e) => toggleSelect(e, speaker.id)}
-                  className={`h-3.5 w-3.5 rounded accent-primary cursor-pointer transition-opacity ${isSelectionActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
-                />
-              </td>
-              {/* Speaker info */}
-              <td className="pl-3 pr-2 py-3 overflow-hidden">
-                <div className="flex items-center gap-2 min-w-0">
-                  {speaker.avatarUrl ? (
-                    <img src={speaker.avatarUrl} alt="" className="h-7 w-7 rounded-md object-cover shrink-0" />
-                  ) : (
-                    <div className="h-7 w-7 rounded-md bg-muted flex items-center justify-center text-xs font-medium text-muted-foreground shrink-0">
-                      {(speaker.name || "S")[0].toUpperCase()}
-                    </div>
-                  )}
-                  <div className="min-w-0">
-                    <div className="flex items-center">
-                      <div className="text-sm font-semibold text-foreground leading-tight truncate">
-                        {speakerName}
-                      </div>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground/20 group-hover:text-muted-foreground/70 transition-colors ml-0.5 flex-shrink-0" />
-                      <CopyButton text={[speakerName, speaker.companyRole, speaker.company].filter(Boolean).join("\n")} />
-                    </div>
-                    {(speaker.companyRole || speaker.company) && (
-                      <div className="text-xs text-muted-foreground mt-0.5 leading-tight truncate">
-                        {[speaker.companyRole, speaker.company].filter(Boolean).join(' · ')}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </td>
-
-
-              {/* Send Reminder */}
-              <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
-                <button
-                  title="Send reminder"
-                  onClick={() => openReminder(speaker)}
-                  className="rounded p-1 text-muted-foreground/30 hover:text-accent hover:bg-accent/8 group-hover:text-muted-foreground/60 transition-all"
-                >
-                  <Mail className="h-4 w-4" />
-                </button>
-              </td>
-
-              {/* Speaker Card */}
-              <td className="px-3 py-3">
-                <div className="flex items-center gap-1.5" title={speakerCardStatus.tooltip}>
-                  <Badge
-                    variant="outline"
-                    className={`text-xs font-medium cursor-pointer w-[132px] justify-center whitespace-nowrap ${speakerCardStatus.cls}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (onBadgeClick) {
-                        const view =
-                          speakerCardStatus.label === 'Info Pending' ? 'info'
-                          : speakerCardStatus.label === 'Ready to Publish' || speakerCardStatus.label === 'Published' ? 'speaker-wall'
-                          : 'speaker-card';
-                        onBadgeClick(speaker, view);
-                      } else if (speakerCardStatus.label === 'Ready to Publish') {
-                        navigate(`/organizer/event/${eventId}/speakers/embed`);
-                      } else {
-                        navigate(`/organizer/event/${eventId}/speakers/${speaker.id}/speaker-card`);
-                      }
-                    }}
-                  >
-                    {speakerCardStatus.label}
-                  </Badge>
-                </div>
-              </td>
-
-              {/* Social Card */}
-              <td className="px-3 py-3">
-                <div className="flex items-center gap-1.5" title={socialCardStatus.tooltip}>
-                  <Badge
-                    variant="outline"
-                    className={`text-xs font-medium cursor-pointer w-[132px] justify-center whitespace-nowrap ${socialCardStatus.cls}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (onBadgeClick) {
-                        const view = socialCardStatus.label === 'Info Pending' ? 'info' : 'social-card';
-                        onBadgeClick(speaker, view);
-                      } else if (socialCardStatus.label === 'Ready to Download') {
-                        downloadCard(promoCardUrl, `${speakerName.replace(/\s+/g, "-").toLowerCase()}-social-card.html`);
-                      } else {
-                        navigate(`/organizer/event/${eventId}/speakers/${speaker.id}/social-card`);
-                      }
-                    }}
-                  >
-                    {socialCardStatus.label}
-                  </Badge>
-                </div>
-              </td>
-
-              {/* 3-dot menu: updated date + delete */}
-              <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button className="rounded p-1 text-muted-foreground/40 hover:text-muted-foreground hover:bg-muted opacity-0 group-hover:opacity-100 transition-all">
-                      <MoreVertical className="h-4 w-4" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-48">
-                    {updatedDate && (
-                      <div className="px-2 py-1.5 text-xs text-muted-foreground">Updated {updatedDate}</div>
-                    )}
-                    {updatedDate && <DropdownMenuSeparator />}
-                    <DropdownMenuItem
-                      className="text-red-600 focus:text-red-600 focus:bg-red-50"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (!eventId) { toast({ title: "Missing event id" }); return; }
-                        setConfirmTarget({ id: speaker.id, name: speakerName });
-                        setConfirmOpen(true);
-                      }}
+                  {/* Social Card actions */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        disabled={isBulkApproving}
+                        className="h-7 px-2.5 text-xs font-medium rounded-md border border-border text-foreground bg-background hover:bg-muted transition-colors whitespace-nowrap flex items-center gap-1 disabled:opacity-50"
+                      >
+                        Social Card{" "}
+                        <ChevronDown className="h-3 w-3 opacity-60" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      align="start"
+                      className="min-w-[140px]"
                     >
-                      <Trash className="h-3.5 w-3.5 mr-2" />Delete speaker
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                      <DropdownMenuItem
+                        onClick={() => handleBulkApprove("promo")}
+                      >
+                        Approve
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={handleBulkUnapprovePromo}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        Unapprove
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
+                  <button
+                    onClick={openBulkEmail}
+                    className="h-7 px-2.5 text-xs font-medium rounded-md border border-border text-foreground bg-background hover:bg-muted transition-colors whitespace-nowrap flex items-center gap-1.5"
+                  >
+                    <Mail className="h-3 w-3" />
+                    Email {selectedIds.size}
+                  </button>
+                  <button
+                    onClick={() => setSelectedIds(new Set())}
+                    className="ml-auto h-7 px-2 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
+                  >
+                    <X className="h-3 w-3" /> Clear
+                  </button>
+                </div>
+              ) : searchInput !== undefined ? (
+                <div className="@container flex items-center gap-1.5">
+                  <div className="hidden @[500px]:flex items-center gap-1.5">
+                    <Input
+                      placeholder="Search…"
+                      value={searchInput}
+                      onChange={(e) => setSearchInput?.(e.target.value)}
+                      className="w-[160px] h-7 text-sm"
+                    />
+                    <Select
+                      value={statusFilter ?? "all"}
+                      onValueChange={setStatusFilter}
+                    >
+                      <SelectTrigger className="w-[140px] h-7 text-sm">
+                        <SelectValue placeholder="All" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All</SelectItem>
+                        <SelectItem value="pending">Info Pending</SelectItem>
+                        <SelectItem value="submitted">
+                          Pending Approval
+                        </SelectItem>
+                        <SelectItem value="cards_approved">
+                          Ready to Publish
+                        </SelectItem>
+                        <SelectItem value="published">Published</SelectItem>
+                        <SelectItem value="archived">Archived</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          title={`Sort: ${sortBy === "name" ? "Name A–Z" : sortBy === "oldest" ? "Oldest first" : "Newest first"}`}
+                          className="h-7 w-7 flex items-center justify-center rounded-md border border-input bg-background hover:bg-muted transition-colors shrink-0"
+                        >
+                          <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="w-40">
+                        <DropdownMenuItem onClick={() => setSortBy?.("newest")}>
+                          {(sortBy ?? "newest") === "newest" ? (
+                            <Check className="h-3 w-3 mr-2 text-accent" />
+                          ) : (
+                            <span className="h-3 w-3 mr-2 inline-block" />
+                          )}
+                          Newest first
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setSortBy?.("oldest")}>
+                          {sortBy === "oldest" ? (
+                            <Check className="h-3 w-3 mr-2 text-accent" />
+                          ) : (
+                            <span className="h-3 w-3 mr-2 inline-block" />
+                          )}
+                          Oldest first
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setSortBy?.("name")}>
+                          {sortBy === "name" ? (
+                            <Check className="h-3 w-3 mr-2 text-accent" />
+                          ) : (
+                            <span className="h-3 w-3 mr-2 inline-block" />
+                          )}
+                          Name A–Z
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                  {onEditIntakeForm && (
+                    <>
+                      <div className="h-3.5 w-px bg-border shrink-0 hidden md:block" />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5 h-7 whitespace-nowrap"
+                        onClick={onEditIntakeForm}
+                      >
+                        <FileEdit className="h-3.5 w-3.5" />
+                        Intake Form
+                      </Button>
+                      {onAddSpeaker && (
+                        <Button
+                          size="sm"
+                          className="gap-1.5 h-7 whitespace-nowrap"
+                          onClick={onAddSpeaker}
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                          Add Speaker
+                        </Button>
+                      )}
+                    </>
+                  )}
+                </div>
+              ) : null}
+            </th>
+            <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground w-[52px]" />
+            <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground w-[148px]">
+              {!isSelectionActive && <span>Speaker Card</span>}
+            </th>
+            <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground w-[148px]">
+              {!isSelectionActive && (
+                <div className="flex items-center gap-1.5">
+                  <span>Social Card</span>
+                  {approvedSocialSpeakers.length > 0 && (
+                    <button
+                      onClick={handleDownloadAllSocialCards}
+                      title={`Download all ${approvedSocialSpeakers.length} social cards`}
+                      className="text-muted-foreground/40 hover:text-accent transition-colors"
+                    >
+                      <Download className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+              )}
+            </th>
+            <th className="px-2 py-2 w-9 text-right">
+              {!isSelectionActive && onEditIntakeForm && (
+                <HelpTip
+                  title="How speakers work"
+                  side="bottom"
+                  align="end"
+                  compact
+                >
+                  <ul className="space-y-1 list-disc list-inside">
+                    <li>
+                      Add speakers manually or approve them from{" "}
+                      <span className="font-medium text-foreground">
+                        Applications
+                      </span>
+                    </li>
+                    <li>
+                      Send each speaker their intake form to collect headshot,
+                      bio, and logo
+                    </li>
+                    <li>
+                      Approve their{" "}
+                      <span className="font-medium text-foreground">
+                        Speaker Card
+                      </span>{" "}
+                      and{" "}
+                      <span className="font-medium text-foreground">
+                        Social Card
+                      </span>{" "}
+                      from their profile
+                    </li>
+                    <li>
+                      Publish live via{" "}
+                      <span className="font-medium text-foreground">
+                        Speaker Wall
+                      </span>
+                    </li>
+                  </ul>
+                </HelpTip>
+              )}
+            </th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {isLoading ? (
+            <tr>
+              <td colSpan={6}>
+                <div className="flex justify-center py-8">
+                  <CircleLoader size={40} color="#4e5ca6" />
+                </div>
               </td>
             </tr>
-          );
-        })}
-      </tbody>
-    </table>
-    {/* Bulk publish dialog — shown after bulk speaker card approval */}
-    <AlertDialog open={bulkPublishOpen} onOpenChange={(open) => { if (!open) { setBulkPublishOpen(false); setBulkPublishIds([]); } }}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Publish {bulkPublishIds.length} speaker{bulkPublishIds.length !== 1 ? 's' : ''} to your Speaker Wall?</AlertDialogTitle>
-          <AlertDialogDescription>
-            Their Speaker Cards are approved and ready. Publishing makes them visible on your Speaker Wall embed immediately.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel onClick={() => setBulkPublishIds([])}>Not now</AlertDialogCancel>
-          <AlertDialogAction onClick={handleBulkPublish}>Publish</AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+          ) : speakers.length === 0 && !hasAnySpeakers && onAddSpeaker ? (
+            <tr>
+              <td colSpan={6}>
+                <div className="flex flex-col items-center justify-center py-16 text-center">
+                  <Mic2 className="h-10 w-10 text-muted-foreground/20 mb-3" />
+                  <p className="text-sm font-medium text-foreground mb-1">
+                    No speakers yet
+                  </p>
+                  <p className="text-xs text-muted-foreground mb-4">
+                    Add your first speaker to get started.
+                  </p>
+                  <Button size="sm" onClick={onAddSpeaker}>
+                    <Plus className="h-3.5 w-3.5 mr-1.5" />
+                    Add Speaker
+                  </Button>
+                </div>
+              </td>
+            </tr>
+          ) : speakers.length === 0 ? (
+            <tr>
+              <td
+                colSpan={6}
+                className="py-12 text-center text-sm text-muted-foreground"
+              >
+                No speakers match your filter.
+              </td>
+            </tr>
+          ) : null}
+          {!isLoading &&
+            speakers.map((speaker) => {
+              const speakerName =
+                speaker.name ||
+                `${speaker.firstName ?? ""} ${speaker.lastName ?? ""}`.trim() ||
+                speaker.email ||
+                "Speaker";
 
-    {/* Bulk unpublish dialog */}
-    <Dialog open={bulkUnpublishOpen} onOpenChange={setBulkUnpublishOpen}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Remove from Speaker Wall?</DialogTitle>
-          <DialogDescription>{selectedIds.size} speaker{selectedIds.size !== 1 ? 's' : ''} · Speaker Card</DialogDescription>
-        </DialogHeader>
-        <div className="flex flex-col gap-2 pt-1">
-          <Button className="w-full" onClick={() => handleBulkUnpublish(false)}>
-            Unpublish
-          </Button>
-          <Button variant="outline" className="w-full text-destructive border-destructive/30 hover:bg-destructive/5 hover:text-destructive" onClick={() => handleBulkUnpublish(true)}>
-            Unpublish &amp; Unapprove
-          </Button>
-          <Button variant="ghost" className="w-full" onClick={() => setBulkUnpublishOpen(false)}>
-            Cancel
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+              // TODO: replace with direct PNG download URLs once backend exposes them (see API_GAPS.md)
+              const promoCardUrl = `${API_BASE}/promo-cards/${eventUuid}/speaker/${speaker.id}`;
 
-    {/* Pagination footer */}
-    {typeof totalCount === 'number' && typeof page === 'number' && typeof pageSize === 'number' && totalCount > pageSize && (setPage || setPageSize) && (
-      <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-card/50">
-        <div className="text-sm text-muted-foreground">
-          {(() => {
-            const start = (page - 1) * pageSize + 1;
-            const end = Math.min(start + speakers.length - 1, totalCount);
-            return `Showing ${start}–${end} of ${totalCount}`;
-          })()}
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2">
-            <button
-              className="h-8 px-3 rounded border border-input bg-background hover:bg-muted disabled:opacity-50"
-              onClick={() => setPage && setPage(Math.max(1, page - 1))}
-              disabled={page <= 1}
-            >Prev</button>
-            <button
-              className="h-8 px-3 rounded border border-input bg-background hover:bg-muted disabled:opacity-50"
-              onClick={() => setPage && setPage(page + 1)}
-              disabled={page * pageSize >= totalCount}
-            >Next</button>
+              const websiteApproved =
+                speaker.websiteCardApproved ??
+                speaker.website_card_approved ??
+                false;
+              const promoApproved =
+                speaker.promoCardApproved ??
+                speaker.promo_card_approved ??
+                false;
+
+              const speakerCardStatus =
+                selectedTab === "applications"
+                  ? resolveApplicationStatus(speaker)
+                  : resolveSpeakerCardStatus(speaker);
+              const socialCardStatus = resolveSocialCardStatus(speaker);
+              const updatedDate = formatDate(
+                speaker.updatedAt ?? speaker.updated_at ?? speaker.createdAt,
+              );
+
+              return (
+                <tr
+                  key={speaker.id}
+                  className={`border-b border-border transition-colors group cursor-pointer ${
+                    selectedSpeakerId === speaker.id
+                      ? "bg-accent/5 hover:bg-accent/8"
+                      : "hover:bg-muted/40"
+                  }`}
+                  onClick={() =>
+                    navigate(
+                      `/organizer/event/${eventId}/speakers/${speaker.id}`,
+                    )
+                  }
+                >
+                  {/* Checkbox */}
+                  <td
+                    className="pl-4 py-3 w-9"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(speaker.id)}
+                      onChange={() => {}}
+                      onClick={(e) => toggleSelect(e, speaker.id)}
+                      className={`h-3.5 w-3.5 rounded accent-primary cursor-pointer transition-opacity ${isSelectionActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+                    />
+                  </td>
+                  {/* Speaker info */}
+                  <td className="pl-3 pr-2 py-3 overflow-hidden">
+                    <div className="flex items-center gap-2 min-w-0">
+                      {speaker.avatarUrl ? (
+                        <img
+                          src={speaker.avatarUrl}
+                          alt=""
+                          className="h-7 w-7 rounded-md object-cover shrink-0"
+                        />
+                      ) : (
+                        <div className="h-7 w-7 rounded-md bg-muted flex items-center justify-center text-xs font-medium text-muted-foreground shrink-0">
+                          {(speaker.name || "S")[0].toUpperCase()}
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <div className="flex items-center">
+                          <div className="text-sm font-semibold text-foreground leading-tight truncate">
+                            {speakerName}
+                          </div>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground/20 group-hover:text-muted-foreground/70 transition-colors ml-0.5 flex-shrink-0" />
+                          <CopyButton
+                            text={[
+                              speakerName,
+                              speaker.companyRole,
+                              speaker.company,
+                            ]
+                              .filter(Boolean)
+                              .join("\n")}
+                          />
+                        </div>
+                        {(speaker.companyRole || speaker.company) && (
+                          <div className="text-xs text-muted-foreground mt-0.5 leading-tight truncate">
+                            {[speaker.companyRole, speaker.company]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </td>
+
+                  {/* Send Reminder */}
+                  <td
+                    className="px-3 py-3"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <button
+                      title="Send reminder"
+                      onClick={() => openReminder(speaker)}
+                      className="rounded p-1 text-muted-foreground/30 hover:text-accent hover:bg-accent/8 group-hover:text-muted-foreground/60 transition-all"
+                    >
+                      <Mail className="h-4 w-4" />
+                    </button>
+                  </td>
+
+                  {/* Speaker Card */}
+                  <td className="px-3 py-3">
+                    <div
+                      className="flex items-center gap-1.5"
+                      title={speakerCardStatus.tooltip}
+                    >
+                      <Badge
+                        variant="outline"
+                        className={`text-xs font-medium cursor-pointer w-[132px] justify-center whitespace-nowrap ${speakerCardStatus.cls}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (onBadgeClick) {
+                            const view =
+                              speakerCardStatus.label === "Info Pending"
+                                ? "info"
+                                : speakerCardStatus.label ===
+                                      "Ready to Publish" ||
+                                    speakerCardStatus.label === "Published"
+                                  ? "speaker-wall"
+                                  : "speaker-card";
+                            onBadgeClick(speaker, view);
+                          } else if (
+                            speakerCardStatus.label === "Ready to Publish"
+                          ) {
+                            navigate(
+                              `/organizer/event/${eventId}/speakers/embed`,
+                            );
+                          } else {
+                            navigate(
+                              `/organizer/event/${eventId}/speakers/${speaker.id}/speaker-card`,
+                            );
+                          }
+                        }}
+                      >
+                        {speakerCardStatus.label}
+                      </Badge>
+                    </div>
+                  </td>
+
+                  {/* Social Card */}
+                  <td className="px-3 py-3">
+                    <div
+                      className="flex items-center gap-1.5"
+                      title={socialCardStatus.tooltip}
+                    >
+                      <Badge
+                        variant="outline"
+                        className={`text-xs font-medium cursor-pointer w-[132px] justify-center whitespace-nowrap ${socialCardStatus.cls}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (onBadgeClick) {
+                            const view =
+                              socialCardStatus.label === "Info Pending"
+                                ? "info"
+                                : "social-card";
+                            onBadgeClick(speaker, view);
+                          } else if (
+                            socialCardStatus.label === "Ready to Download"
+                          ) {
+                            downloadCard(
+                              promoCardUrl,
+                              `${speakerName.replace(/\s+/g, "-").toLowerCase()}-social-card.html`,
+                            );
+                          } else {
+                            navigate(
+                              `/organizer/event/${eventId}/speakers/${speaker.id}/social-card`,
+                            );
+                          }
+                        }}
+                      >
+                        {socialCardStatus.label}
+                      </Badge>
+                    </div>
+                  </td>
+
+                  {/* 3-dot menu: updated date + delete */}
+                  <td
+                    className="px-3 py-3"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className="rounded p-1 text-muted-foreground/40 hover:text-muted-foreground hover:bg-muted opacity-0 group-hover:opacity-100 transition-all">
+                          <MoreVertical className="h-4 w-4" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-48">
+                        {updatedDate && (
+                          <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                            Updated {updatedDate}
+                          </div>
+                        )}
+                        {updatedDate && <DropdownMenuSeparator />}
+                        <DropdownMenuItem
+                          className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (!eventId) {
+                              toast({ title: "Missing event id" });
+                              return;
+                            }
+                            setConfirmTarget({
+                              id: speaker.id,
+                              name: speakerName,
+                            });
+                            setConfirmOpen(true);
+                          }}
+                        >
+                          <Trash className="h-3.5 w-3.5 mr-2" />
+                          Delete speaker
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </td>
+                </tr>
+              );
+            })}
+        </tbody>
+      </table>
+      {/* Bulk publish dialog — shown after bulk speaker card approval */}
+      <AlertDialog
+        open={bulkPublishOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setBulkPublishOpen(false);
+            setBulkPublishIds([]);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Publish {bulkPublishIds.length} speaker
+              {bulkPublishIds.length !== 1 ? "s" : ""} to your Speaker Wall?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Their Speaker Cards are approved and ready. Publishing makes them
+              visible on your Speaker Wall embed immediately.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setBulkPublishIds([])}>
+              Not now
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleBulkPublish}>
+              Publish
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk unpublish dialog */}
+      <Dialog open={bulkUnpublishOpen} onOpenChange={setBulkUnpublishOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Remove from Speaker Wall?</DialogTitle>
+            <DialogDescription>
+              {selectedIds.size} speaker{selectedIds.size !== 1 ? "s" : ""} ·
+              Speaker Card
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-2 pt-1">
+            <Button
+              className="w-full"
+              onClick={() => handleBulkUnpublish(false)}
+            >
+              Unpublish
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full text-destructive border-destructive/30 hover:bg-destructive/5 hover:text-destructive"
+              onClick={() => handleBulkUnpublish(true)}
+            >
+              Unpublish &amp; Unapprove
+            </Button>
+            <Button
+              variant="ghost"
+              className="w-full"
+              onClick={() => setBulkUnpublishOpen(false)}
+            >
+              Cancel
+            </Button>
           </div>
-          {totalCount > 50 && (
+        </DialogContent>
+      </Dialog>
+
+      {/* Pagination footer */}
+      {typeof totalCount === "number" &&
+        typeof page === "number" &&
+        typeof pageSize === "number" &&
+        totalCount > pageSize &&
+        (setPage || setPageSize) && (
+          <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-card/50">
+            <div className="text-sm text-muted-foreground">
+              {(() => {
+                const start = (page - 1) * pageSize + 1;
+                const end = Math.min(start + speakers.length - 1, totalCount);
+                return `Showing ${start}–${end} of ${totalCount}`;
+              })()}
+            </div>
             <div className="flex items-center gap-2">
-              <div className="text-sm text-muted-foreground">Per page</div>
-              <Select value={String(pageSize)} onValueChange={(v) => { const n = Number(v); setPageSize && setPageSize(n); setPage && setPage(1); }}>
-                <SelectTrigger className="w-[84px] h-8 text-sm"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="50">50</SelectItem>
-                  <SelectItem value="100">100</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-        </div>
-      </div>
-    )}
-    {/* Reminder email dialog */}
-    <Dialog open={!!reminderSpeaker} onOpenChange={(v) => { if (!v) setReminderSpeaker(null); }}>
-      <DialogContent className="sm:max-w-3xl">
-        {reminderSpeaker && (() => {
-          const firstName = reminderSpeaker.firstName ?? reminderSpeaker.name?.split(" ")[0] ?? "";
-          const headerRowCls = "flex items-center gap-3 border-b border-border/50 py-2";
-          const headerLabelCls = "text-xs font-medium text-muted-foreground w-16 shrink-0";
-          return (
-            <>
-              <DialogHeader>
-                <DialogTitle>Send reminder to {firstName}</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-0 pt-1">
-                <div className="rounded-t-lg border border-border bg-muted/20 px-4">
-                  <div className={headerRowCls}>
-                    <span className={headerLabelCls}>From name</span>
-                    <Input value={reminderFromName} onChange={(e) => setReminderFromName(e.target.value)} placeholder={`${eventName} Speaker Team`} className="h-8 text-sm border-0 shadow-none p-0 focus-visible:ring-0 bg-transparent flex-1" />
-                  </div>
-                  <div className={headerRowCls}>
-                    <span className={headerLabelCls}>From email</span>
-                    <Input type="email" value={reminderFromEmail} onChange={(e) => setReminderFromEmail(e.target.value)} placeholder="you@yourorg.com" className="h-8 text-sm border-0 shadow-none p-0 focus-visible:ring-0 bg-transparent flex-1" />
-                  </div>
-                  <div className={headerRowCls}>
-                    <span className={headerLabelCls}>Reply-to</span>
-                    <Input type="email" value={reminderReplyTo} onChange={(e) => setReminderReplyTo(e.target.value)} placeholder={reminderFromEmail || "defaults to From email"} className="h-8 text-sm border-0 shadow-none p-0 focus-visible:ring-0 bg-transparent flex-1" />
-                  </div>
-                  <div className={headerRowCls}>
-                    <span className={headerLabelCls}>To</span>
-                    <span className="text-sm text-foreground">{reminderSpeaker.email}</span>
-                  </div>
-                  <div className={`${headerRowCls} border-b-0`}>
-                    <span className={headerLabelCls}>Subject</span>
-                    <Input value={reminderSubject} onChange={(e) => setReminderSubject(e.target.value)} className="h-8 text-sm border-0 shadow-none p-0 focus-visible:ring-0 bg-transparent flex-1" />
-                  </div>
+              <div className="flex items-center gap-2">
+                <button
+                  className="h-8 px-3 rounded border border-input bg-background hover:bg-muted disabled:opacity-50"
+                  onClick={() => setPage && setPage(Math.max(1, page - 1))}
+                  disabled={page <= 1}
+                >
+                  Prev
+                </button>
+                <button
+                  className="h-8 px-3 rounded border border-input bg-background hover:bg-muted disabled:opacity-50"
+                  onClick={() => setPage && setPage(page + 1)}
+                  disabled={page * pageSize >= totalCount}
+                >
+                  Next
+                </button>
+              </div>
+              {totalCount > 50 && (
+                <div className="flex items-center gap-2">
+                  <div className="text-sm text-muted-foreground">Per page</div>
+                  <Select
+                    value={String(pageSize)}
+                    onValueChange={(v) => {
+                      const n = Number(v);
+                      setPageSize && setPageSize(n);
+                      setPage && setPage(1);
+                    }}
+                  >
+                    <SelectTrigger className="w-[84px] h-8 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="50">50</SelectItem>
+                      <SelectItem value="100">100</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-                <div className="rounded-b-lg border border-t-0 border-border bg-white px-8 pt-5 pb-4 space-y-3">
-                  <p className="text-sm text-gray-700">Hi {firstName || "…"},</p>
-                  <Textarea value={reminderIntro} rows={1} ref={(el) => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; } }} onChange={(e) => { setReminderIntro(e.target.value); e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }} className="text-sm resize-none overflow-hidden border border-slate-200 bg-transparent shadow-none leading-relaxed focus-visible:border-accent/40" />
-                  <div>
-                    <span style={{ display: "inline-block", background: "#4F46E5", color: "#fff", fontSize: 14, fontWeight: 600, padding: "11px 22px", borderRadius: 6, cursor: "default", whiteSpace: "nowrap" }}>
-                      Submit your speaker details
-                    </span>
-                  </div>
-                  <Textarea value={reminderClosing} rows={1} ref={(el) => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; } }} onChange={(e) => { setReminderClosing(e.target.value); e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }} className="text-sm resize-none overflow-hidden border border-slate-200 bg-transparent shadow-none leading-relaxed focus-visible:border-accent/40" />
-                  <div className="border-t border-gray-100 pt-3 text-center">
-                    <span className="text-[11px] text-gray-400">Powered by <span className="font-medium">Seamless Events</span></span>
-                  </div>
-                </div>
-              </div>
-              <div className="flex gap-2 pt-1">
-                <Button variant="outline" className="flex-1" onClick={handleReminderCopy}>
-                  {reminderCopied ? <><Check className="h-3.5 w-3.5 mr-1.5" />Copied</> : <><Copy className="h-3.5 w-3.5 mr-1.5" />Copy Email</>}
-                </Button>
-                <Button onClick={handleReminderSend} disabled={reminderSending}>
-                  {reminderSending ? "Sending…" : "Send"}
-                </Button>
-              </div>
-            </>
-          );
-        })()}
-      </DialogContent>
-    </Dialog>
-
-    {/* Bulk email dialog */}
-    <Dialog open={bulkEmailOpen} onOpenChange={(v) => { if (!v) setBulkEmailOpen(false); }}>
-      <DialogContent className="sm:max-w-3xl">
-        <DialogHeader>
-          <DialogTitle>Send reminder to {selectedIds.size} speaker{selectedIds.size !== 1 ? "s" : ""}</DialogTitle>
-          <DialogDescription>Each speaker receives a personalised email with their intake link.</DialogDescription>
-        </DialogHeader>
-        <div className="space-y-0 pt-1">
-          <div className="rounded-t-lg border border-border bg-muted/20 px-4">
-            {[
-              { label: "From name", value: reminderFromName, setter: setReminderFromName, placeholder: `${eventName} Speaker Team`, type: "text" },
-              { label: "From email", value: reminderFromEmail, setter: setReminderFromEmail, placeholder: "you@yourorg.com", type: "email" },
-              { label: "Reply-to", value: reminderReplyTo, setter: setReminderReplyTo, placeholder: reminderFromEmail || "defaults to From email", type: "email" },
-            ].map(({ label, value, setter, placeholder, type }) => (
-              <div key={label} className="flex items-center gap-3 border-b border-border/50 py-2">
-                <span className="text-xs font-medium text-muted-foreground w-16 shrink-0">{label}</span>
-                <Input type={type} value={value} onChange={(e) => setter(e.target.value)} placeholder={placeholder} className="h-8 text-sm border-0 shadow-none p-0 focus-visible:ring-0 bg-transparent flex-1" />
-              </div>
-            ))}
-            <div className="flex items-center gap-3 border-b border-border/50 py-2">
-              <span className="text-xs font-medium text-muted-foreground w-16 shrink-0">To</span>
-              <span className="text-sm text-foreground">{selectedIds.size} speaker{selectedIds.size !== 1 ? "s" : ""}</span>
+              )}
             </div>
-            <div className="flex items-center gap-3 py-2">
-              <span className="text-xs font-medium text-muted-foreground w-16 shrink-0">Subject</span>
-              <Input value={reminderSubject} onChange={(e) => setReminderSubject(e.target.value)} className="h-8 text-sm border-0 shadow-none p-0 focus-visible:ring-0 bg-transparent flex-1" />
-            </div>
-          </div>
-          <div className="rounded-b-lg border border-t-0 border-border bg-white px-8 pt-5 pb-4 space-y-3">
-            <p className="text-sm text-gray-700">Hi [Name],</p>
-            <Textarea value={reminderIntro} rows={1} ref={(el) => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; } }} onChange={(e) => { setReminderIntro(e.target.value); e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }} className="text-sm resize-none overflow-hidden border border-slate-200 bg-transparent shadow-none leading-relaxed focus-visible:border-accent/40" />
-            <div>
-              <span style={{ display: "inline-block", background: "#4F46E5", color: "#fff", fontSize: 14, fontWeight: 600, padding: "11px 22px", borderRadius: 6, cursor: "default", whiteSpace: "nowrap" }}>
-                Submit your speaker details
-              </span>
-            </div>
-            <Textarea value={reminderClosing} rows={1} ref={(el) => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; } }} onChange={(e) => { setReminderClosing(e.target.value); e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }} className="text-sm resize-none overflow-hidden border border-slate-200 bg-transparent shadow-none leading-relaxed focus-visible:border-accent/40" />
-            <div className="border-t border-gray-100 pt-3 text-center">
-              <span className="text-[11px] text-gray-400">Powered by <span className="font-medium">Seamless Events</span></span>
-            </div>
-          </div>
-        </div>
-        {bulkEmailSending && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground pt-1">
-            <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-              <div className="h-full bg-accent transition-all duration-300 rounded-full" style={{ width: `${(bulkEmailProgress / selectedIds.size) * 100}%` }} />
-            </div>
-            <span className="text-xs shrink-0">{bulkEmailProgress} / {selectedIds.size}</span>
           </div>
         )}
-        <div className="flex gap-2 pt-1">
-          <Button variant="outline" onClick={() => setBulkEmailOpen(false)} disabled={bulkEmailSending}>Cancel</Button>
-          <Button className="flex-1" onClick={handleBulkEmail} disabled={bulkEmailSending}>
-            {bulkEmailSending ? `Sending… ${bulkEmailProgress}/${selectedIds.size}` : `Send to ${selectedIds.size} speaker${selectedIds.size !== 1 ? "s" : ""}`}
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+      {/* Reminder email dialog */}
+      <Dialog
+        open={!!reminderSpeaker}
+        onOpenChange={(v) => {
+          if (!v) setReminderSpeaker(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-3xl">
+          {reminderSpeaker &&
+            (() => {
+              const firstName =
+                reminderSpeaker.firstName ??
+                reminderSpeaker.name?.split(" ")[0] ??
+                "";
+              const headerRowCls =
+                "flex items-center gap-3 border-b border-border/50 py-2";
+              const headerLabelCls =
+                "text-xs font-medium text-muted-foreground w-16 shrink-0";
+              return (
+                <>
+                  <DialogHeader>
+                    <DialogTitle>Send reminder to {firstName}</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-0 pt-1">
+                    <div className="rounded-t-lg border border-border bg-muted/20 px-4">
+                      <div className={headerRowCls}>
+                        <span className={headerLabelCls}>From name</span>
+                        <Input
+                          value={reminderFromName}
+                          onChange={(e) => setReminderFromName(e.target.value)}
+                          placeholder={`${eventName} Speaker Team`}
+                          className="h-8 text-sm border-0 shadow-none p-0 focus-visible:ring-0 bg-transparent flex-1"
+                        />
+                      </div>
+                      <div className={headerRowCls}>
+                        <span className={headerLabelCls}>From email</span>
+                        <Input
+                          type="email"
+                          value={reminderFromEmail}
+                          onChange={(e) => setReminderFromEmail(e.target.value)}
+                          placeholder="you@yourorg.com"
+                          className="h-8 text-sm border-0 shadow-none p-0 focus-visible:ring-0 bg-transparent flex-1"
+                        />
+                      </div>
+                      <div className={headerRowCls}>
+                        <span className={headerLabelCls}>Reply-to</span>
+                        <Input
+                          type="email"
+                          value={reminderReplyTo}
+                          onChange={(e) => setReminderReplyTo(e.target.value)}
+                          placeholder={
+                            reminderFromEmail || "defaults to From email"
+                          }
+                          className="h-8 text-sm border-0 shadow-none p-0 focus-visible:ring-0 bg-transparent flex-1"
+                        />
+                      </div>
+                      <div className={headerRowCls}>
+                        <span className={headerLabelCls}>To</span>
+                        <span className="text-sm text-foreground">
+                          {reminderSpeaker.email}
+                        </span>
+                      </div>
+                      <div className={`${headerRowCls} border-b-0`}>
+                        <span className={headerLabelCls}>Subject</span>
+                        <Input
+                          value={reminderSubject}
+                          onChange={(e) => setReminderSubject(e.target.value)}
+                          className="h-8 text-sm border-0 shadow-none p-0 focus-visible:ring-0 bg-transparent flex-1"
+                        />
+                      </div>
+                    </div>
+                    <div className="rounded-b-lg border border-t-0 border-border bg-white px-8 pt-5 pb-4 space-y-3">
+                      <p className="text-sm text-gray-700">
+                        Hi {firstName || "…"},
+                      </p>
+                      <Textarea
+                        value={reminderIntro}
+                        rows={1}
+                        ref={(el) => {
+                          if (el) {
+                            el.style.height = "auto";
+                            el.style.height = el.scrollHeight + "px";
+                          }
+                        }}
+                        onChange={(e) => {
+                          setReminderIntro(e.target.value);
+                          e.target.style.height = "auto";
+                          e.target.style.height = e.target.scrollHeight + "px";
+                        }}
+                        className="text-sm resize-none overflow-hidden border border-slate-200 bg-transparent shadow-none leading-relaxed focus-visible:border-accent/40"
+                      />
+                      <div>
+                        <span
+                          style={{
+                            display: "inline-block",
+                            background: "#ffffff",
+                            color: "#4F46E5",
+                            fontSize: 14,
+                            fontWeight: 600,
+                            padding: "11px 22px",
+                            borderRadius: 6,
+                            cursor: "default",
+                            whiteSpace: "nowrap",
+                            border: "1px solid currentColor",
+                          }}
+                        >
+                          Submit your speaker details
+                        </span>
+                      </div>
+                      <Textarea
+                        value={reminderClosing}
+                        rows={1}
+                        ref={(el) => {
+                          if (el) {
+                            el.style.height = "auto";
+                            el.style.height = el.scrollHeight + "px";
+                          }
+                        }}
+                        onChange={(e) => {
+                          setReminderClosing(e.target.value);
+                          e.target.style.height = "auto";
+                          e.target.style.height = e.target.scrollHeight + "px";
+                        }}
+                        className="text-sm resize-none overflow-hidden border border-slate-200 bg-transparent shadow-none leading-relaxed focus-visible:border-accent/40"
+                      />
+                      <div className="border-t border-gray-100 pt-3 text-center">
+                        <span className="text-[11px] text-gray-400">
+                          Powered by{" "}
+                          <span className="font-medium">Seamless Events</span>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <Button
+                      variant="outline"
+                      className="flex-1"
+                      onClick={handleReminderCopy}
+                    >
+                      {reminderCopied ? (
+                        <>
+                          <Check className="h-3.5 w-3.5 mr-1.5" />
+                          Copied
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-3.5 w-3.5 mr-1.5" />
+                          Copy Email
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      onClick={handleReminderSend}
+                      disabled={reminderSending}
+                    >
+                      {reminderSending ? "Sending…" : "Send"}
+                    </Button>
+                  </div>
+                </>
+              );
+            })()}
+        </DialogContent>
+      </Dialog>
 
-    {/* Danger confirmation modal for deletions */}
-    <AlertDialog open={confirmOpen} onOpenChange={(open) => { if (!open) { setConfirmTarget(null); } setConfirmOpen(open); }}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Delete speaker?</AlertDialogTitle>
-          <AlertDialogDescription>
-            This will permanently delete the speaker{confirmTarget ? ` — ${confirmTarget.name}` : ""}. This action cannot be undone.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            className="bg-red-600 hover:bg-red-700 text-white"
-            onClick={async () => {
-              if (!eventId || !confirmTarget) return;
-              try {
-                await deleteSpeaker(eventId, confirmTarget.id);
-                queryClient.invalidateQueries({ queryKey: ["event", eventId, "speakers"] });
-                toast({ title: "Speaker deleted" });
-              } catch (err: any) {
-                toast({ title: "Failed to delete speaker", description: String(err?.message || err) });
-              } finally {
-                setConfirmOpen(false);
-                setConfirmTarget(null);
-              }
-            }}
-          >
-            Delete speaker
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+      {/* Bulk email dialog */}
+      <Dialog
+        open={bulkEmailOpen}
+        onOpenChange={(v) => {
+          if (!v) setBulkEmailOpen(false);
+        }}
+      >
+        <DialogContent className="sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>
+              Send reminder to {selectedIds.size} speaker
+              {selectedIds.size !== 1 ? "s" : ""}
+            </DialogTitle>
+            <DialogDescription>
+              Each speaker receives a personalised email with their intake link.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-0 pt-1">
+            <div className="rounded-t-lg border border-border bg-muted/20 px-4">
+              {[
+                {
+                  label: "From name",
+                  value: reminderFromName,
+                  setter: setReminderFromName,
+                  placeholder: `${eventName} Speaker Team`,
+                  type: "text",
+                },
+                {
+                  label: "From email",
+                  value: reminderFromEmail,
+                  setter: setReminderFromEmail,
+                  placeholder: "you@yourorg.com",
+                  type: "email",
+                },
+                {
+                  label: "Reply-to",
+                  value: reminderReplyTo,
+                  setter: setReminderReplyTo,
+                  placeholder: reminderFromEmail || "defaults to From email",
+                  type: "email",
+                },
+              ].map(({ label, value, setter, placeholder, type }) => (
+                <div
+                  key={label}
+                  className="flex items-center gap-3 border-b border-border/50 py-2"
+                >
+                  <span className="text-xs font-medium text-muted-foreground w-16 shrink-0">
+                    {label}
+                  </span>
+                  <Input
+                    type={type}
+                    value={value}
+                    onChange={(e) => setter(e.target.value)}
+                    placeholder={placeholder}
+                    className="h-8 text-sm border-0 shadow-none p-0 focus-visible:ring-0 bg-transparent flex-1"
+                  />
+                </div>
+              ))}
+              <div className="flex items-center gap-3 border-b border-border/50 py-2">
+                <span className="text-xs font-medium text-muted-foreground w-16 shrink-0">
+                  To
+                </span>
+                <span className="text-sm text-foreground">
+                  {selectedIds.size} speaker{selectedIds.size !== 1 ? "s" : ""}
+                </span>
+              </div>
+              <div className="flex items-center gap-3 py-2">
+                <span className="text-xs font-medium text-muted-foreground w-16 shrink-0">
+                  Subject
+                </span>
+                <Input
+                  value={reminderSubject}
+                  onChange={(e) => setReminderSubject(e.target.value)}
+                  className="h-8 text-sm border-0 shadow-none p-0 focus-visible:ring-0 bg-transparent flex-1"
+                />
+              </div>
+            </div>
+            <div className="rounded-b-lg border border-t-0 border-border bg-white px-8 pt-5 pb-4 space-y-3">
+              <p className="text-sm text-gray-700">Hi [Name],</p>
+              <Textarea
+                value={reminderIntro}
+                rows={1}
+                ref={(el) => {
+                  if (el) {
+                    el.style.height = "auto";
+                    el.style.height = el.scrollHeight + "px";
+                  }
+                }}
+                onChange={(e) => {
+                  setReminderIntro(e.target.value);
+                  e.target.style.height = "auto";
+                  e.target.style.height = e.target.scrollHeight + "px";
+                }}
+                className="text-sm resize-none overflow-hidden border border-slate-200 bg-transparent shadow-none leading-relaxed focus-visible:border-accent/40"
+              />
+              <div>
+                <span
+                  style={{
+                    display: "inline-block",
+                    background: "#ffffff",
+                    color: "#4F46E5",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    padding: "11px 22px",
+                    borderRadius: 6,
+                    cursor: "default",
+                    whiteSpace: "nowrap",
+                    border:"1px solid currentColor"
+                  }}
+                >
+                  Submit your speaker details
+                </span>
+              </div>
+              <Textarea
+                value={reminderClosing}
+                rows={1}
+                ref={(el) => {
+                  if (el) {
+                    el.style.height = "auto";
+                    el.style.height = el.scrollHeight + "px";
+                  }
+                }}
+                onChange={(e) => {
+                  setReminderClosing(e.target.value);
+                  e.target.style.height = "auto";
+                  e.target.style.height = e.target.scrollHeight + "px";
+                }}
+                className="text-sm resize-none overflow-hidden border border-slate-200 bg-transparent shadow-none leading-relaxed focus-visible:border-accent/40"
+              />
+              <div className="border-t border-gray-100 pt-3 text-center">
+                <span className="text-[11px] text-gray-400">
+                  Powered by{" "}
+                  <span className="font-medium">Seamless Events</span>
+                </span>
+              </div>
+            </div>
+          </div>
+          {bulkEmailSending && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground pt-1">
+              <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-accent transition-all duration-300 rounded-full"
+                  style={{
+                    width: `${(bulkEmailProgress / selectedIds.size) * 100}%`,
+                  }}
+                />
+              </div>
+              <span className="text-xs shrink-0">
+                {bulkEmailProgress} / {selectedIds.size}
+              </span>
+            </div>
+          )}
+          <div className="flex gap-2 pt-1">
+            <Button
+              variant="outline"
+              onClick={() => setBulkEmailOpen(false)}
+              disabled={bulkEmailSending}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="flex-1"
+              onClick={handleBulkEmail}
+              disabled={bulkEmailSending}
+            >
+              {bulkEmailSending
+                ? `Sending… ${bulkEmailProgress}/${selectedIds.size}`
+                : `Send to ${selectedIds.size} speaker${selectedIds.size !== 1 ? "s" : ""}`}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Danger confirmation modal for deletions */}
+      <AlertDialog
+        open={confirmOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setConfirmTarget(null);
+          }
+          setConfirmOpen(open);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete speaker?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the speaker
+              {confirmTarget ? ` — ${confirmTarget.name}` : ""}. This action
+              cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700 text-white"
+              onClick={async () => {
+                if (!eventId || !confirmTarget) return;
+                try {
+                  await deleteSpeaker(eventId, confirmTarget.id);
+                  queryClient.invalidateQueries({
+                    queryKey: ["event", eventId, "speakers"],
+                  });
+                  toast({ title: "Speaker deleted" });
+                } catch (err: any) {
+                  toast({
+                    title: "Failed to delete speaker",
+                    description: String(err?.message || err),
+                  });
+                } finally {
+                  setConfirmOpen(false);
+                  setConfirmTarget(null);
+                }
+              }}
+            >
+              Delete speaker
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

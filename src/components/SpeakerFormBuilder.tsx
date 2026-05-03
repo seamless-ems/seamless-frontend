@@ -838,7 +838,8 @@ const SpeakerFormBuilder = forwardRef<
                           <SelectItem value="text">Short Text</SelectItem>
                           <SelectItem value="textarea">Long Text</SelectItem>
                           <SelectItem value="email">Email</SelectItem>
-                          <SelectItem value="file">File Upload</SelectItem>
+                          {/* BE AWARE: outcommented as the File Upload feature is a bit buggy atm */}
+                          {/* <SelectItem value="file">File Upload</SelectItem> */}
                           <SelectItem value="radio">Radio Options</SelectItem>
                           <SelectItem value="checkbox">
                             Checkbox Options
