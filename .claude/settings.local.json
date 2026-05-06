@@ -151,7 +151,18 @@
       "Bash(awk -F: '$2 < 4190 {last=$0; lastline=$2} $2 > 4190 {print last; exit}')",
       "Bash(awk 'NR>=4000 && NR<=4200 && /\\\\\"title\\\\\":/' /mnt/c/Users/james/OneDrive/Documents/Seamless/seamless-frontend/openapi.json)",
       "Bash(awk -F: '$2 >= 4000 && $2 <= 4250')",
-      "Bash(git *)"
+      "Bash(git *)",
+      "WebFetch(domain:world.productledalliance.com)",
+      "WebFetch(domain:uxdx.com)",
+      "WebFetch(domain:www.ddxconference.com)",
+      "WebFetch(domain:www.thinksummit.nyc)",
+      "WebFetch(domain:advertisingweek.com)",
+      "WebFetch(domain:www.saasiestlondon.com)",
+      "WebFetch(domain:tech.eu)",
+      "WebFetch(domain:www.mindtheproduct.com)",
+      "WebFetch(domain:www.madfestlondon.com)",
+      "WebFetch(domain:www.productledalliance.com)",
+      "WebFetch(domain:web.cvent.com)"
     ]
   }
 }
