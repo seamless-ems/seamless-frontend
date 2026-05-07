@@ -328,7 +328,8 @@ export default function SpeakerIntakeForm(
     if (needReset) {
       form.reset({ ...form.getValues(), ...resetValues });
     }
-    if (email && readonlyFlag) setPrefilledEmail(true);
+    // if (email && readonlyFlag) setPrefilledEmail(true);
+    if (speakerId) setPrefilledEmail(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.search]);
 
